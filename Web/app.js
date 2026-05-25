@@ -84,6 +84,85 @@ const authShell      = $("auth-shell");
 const viewTabs       = $("view-tabs");
 const categoriesView = $("categories-view");
 const ledgerView     = $("ledger-view");
+const incomeView     = $("income-view");
+const goalsView      = $("goals-view");
+
+// Goals refs
+const goalsBadge          = $("goals-badge");
+const goalsTotalSaved     = $("goals-total-saved");
+const goalsTotalSavedSub  = $("goals-total-saved-sub");
+const goalsOnTrack        = $("goals-on-track");
+const goalsOnTrackSub     = $("goals-on-track-sub");
+const goalsNeeded         = $("goals-needed");
+const goalsNeededSub      = $("goals-needed-sub");
+const goalsList           = $("goals-list");
+const goalsCount          = $("goals-count");
+const goalHistoryList     = $("goal-history-list");
+const goalHistoryToggle   = $("goal-history-toggle");
+
+// Goal form refs
+const goalFormToggle      = $("goal-form-toggle");
+const goalForm            = $("goal-form");
+const goalFormTitle       = $("goal-form-title");
+const goalType            = $("goal-type");
+const goalEmoji           = $("goal-emoji");
+const goalName            = $("goal-name");
+const goalTargetAmount    = $("goal-target-amount");
+const goalTargetAmountField = $("goal-target-amount-field");
+const goalDeadline        = $("goal-deadline");
+const goalDeadlineField   = $("goal-deadline-field");
+const goalTargetMonths    = $("goal-target-months");
+const goalTargetMonthsField   = $("goal-target-months-field");
+const goalTargetMonthsPreview = $("goal-target-months-preview");
+const goalNote            = $("goal-note");
+const goalCancel          = $("goal-cancel");
+const goalSave            = $("goal-save");
+const goalFormError       = $("goal-form-error");
+
+// Goal contribution form refs
+const goalContribToggle   = $("goal-contrib-toggle");
+const goalContribForm     = $("goal-contrib-form");
+const goalContribAmount   = $("goal-contrib-amount");
+const goalContribDate     = $("goal-contrib-date");
+const goalContribMode     = $("goal-contrib-mode");
+const goalContribTarget   = $("goal-contrib-target");
+const goalContribTargetField = $("goal-contrib-target-field");
+const goalContribNote     = $("goal-contrib-note");
+const goalContribCancel   = $("goal-contrib-cancel");
+const goalContribSave     = $("goal-contrib-save");
+const goalContribError    = $("goal-contrib-error");
+const goalContribPreview  = $("goal-contrib-preview");
+
+// Income refs
+const incomeBadge          = $("income-badge");
+const incomeActual         = $("income-actual");
+const incomeActualSub      = $("income-actual-sub");
+const incomeExpected       = $("income-expected");
+const incomeExpectedSub    = $("income-expected-sub");
+const incomeVariance       = $("income-variance");
+const incomeVarianceSub    = $("income-variance-sub");
+const incomePeriodLabel    = $("income-period-label");
+const incomeSuggestions    = $("income-suggestions");
+const incomeSuggCount      = $("income-sugg-count");
+const incomeFormToggle     = $("income-form-toggle");
+const incomeForm           = $("income-form");
+const incomeType           = $("income-type");
+const incomeAmount         = $("income-amount");
+const incomeSource         = $("income-source");
+const incomeCadence        = $("income-cadence");
+const incomeCadenceField   = $("income-cadence-field");
+const incomeIntervalField  = $("income-interval-field");
+const incomeIntervalDays   = $("income-interval-days");
+const incomeOccursOn       = $("income-occurs-on");
+const incomeDateLabel      = $("income-date-label");
+const incomeNote           = $("income-note");
+const incomeCancel         = $("income-cancel");
+const incomeSave           = $("income-save");
+const incomeFormError      = $("income-form-error");
+const incomeRecurringList  = $("income-recurring-list");
+const incomeRecurringCount = $("income-recurring-count");
+const incomeOneoffList     = $("income-oneoff-list");
+const incomeOneoffCount    = $("income-oneoff-count");
 
 // Ledger refs
 const ledgerBadge       = $("ledger-badge");
@@ -102,6 +181,8 @@ const ledgerAmount      = $("ledger-amount");
 const ledgerDue         = $("ledger-due");
 const ledgerCadence     = $("ledger-cadence");
 const ledgerCadenceField= $("ledger-cadence-field");
+const ledgerIntervalField = $("ledger-interval-field");
+const ledgerIntervalDays  = $("ledger-interval-days");
 const ledgerNote        = $("ledger-note");
 const ledgerCancel      = $("ledger-cancel");
 const ledgerSave        = $("ledger-save");
@@ -164,6 +245,20 @@ const state = {
   editingId: null,         // id of the entry the form is editing, or null = new
   payingId: null,          // id of the entry whose inline pay form is open
   showClosed: false,       // whether the "Closed entries" section is expanded
+  income: [],              // i_income_entries rows
+  incomeDismissed: new Set(), // counterparty_match keys the user has dismissed
+  editingIncomeId: null,
+  goals: [],               // i_goals rows
+  goalContributions: [],   // i_goal_contributions rows (most recent first)
+  editingGoalId: null,
+  goalHistoryOpen: false,
+  // Notion-style per-tab view modes.
+  ledgerListView: "cards",   // "cards" | "table" | "calendar"
+  incomeListView: "cards",   // "cards" | "table" | "calendar"
+  goalsListView:  "cards",   // "cards" | "table" | "progress"
+  // Cursor for calendar views (first of the visible month).
+  ledgerCalCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime(),
+  incomeCalCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime(),
 };
 
 // Defaults match TransactionCategoryCatalog.kt on Android.
@@ -264,8 +359,12 @@ function switchView(name) {
   dashboardView.classList.toggle("hidden", name !== "dashboard");
   categoriesView.classList.toggle("hidden", name !== "categories");
   ledgerView.classList.toggle("hidden", name !== "ledger");
+  incomeView.classList.toggle("hidden", name !== "income");
+  goalsView.classList.toggle("hidden", name !== "goals");
   if (name === "categories") renderCategoriesView();
   if (name === "ledger") renderLedgerView();
+  if (name === "income") renderIncomeView();
+  if (name === "goals") renderGoalsView();
   // Scroll to top so the user lands above-the-fold on the new view.
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -319,8 +418,10 @@ async function showDashboard(session) {
   state.userId = userId;
   renderBatchPills();
   rerender();
-  // Fire-and-forget ledger fetch so the dashboard renders immediately.
+  // Fire-and-forget ledger + income + goals fetches so the dashboard renders immediately.
   fetchLedger().catch((e) => console.warn("Ledger fetch failed:", e));
+  fetchIncome().catch((e) => console.warn("Income fetch failed:", e));
+  fetchGoals().catch((e) => console.warn("Goals fetch failed:", e));
 }
 
 // ----------------------------------------------------------------------------
@@ -403,6 +504,7 @@ function renderLedgerView() {
 
   attachLedgerEntryHandlers();
   renderLedgerBadge();
+  applyLedgerListView();
 }
 
 function sortByDue(a, b) {
@@ -432,7 +534,7 @@ function renderLedgerEntry(e) {
     isSettled ? "settled" : "",
   ].filter(Boolean).join(" ");
   const typePill = e.type === "RECURRING"
-    ? `RECURRING · ${(e.cadence || "monthly").toLowerCase()}`
+    ? `RECURRING · ${cadenceLabel(e.cadence, e.interval_days)}`
     : "IOU";
   const principal = Number(e.principal || 0);
   const balance   = Number(e.balance || 0);
@@ -531,8 +633,11 @@ function attachLedgerEntryHandlers() {
 function showFormForCadence() {
   const isRecurring = ledgerType.value === "RECURRING";
   ledgerCadenceField.style.display = isRecurring ? "" : "none";
+  const isCustom = isRecurring && ledgerCadence.value === "CUSTOM";
+  ledgerIntervalField.classList.toggle("hidden", !isCustom);
 }
 ledgerType.addEventListener("change", showFormForCadence);
+ledgerCadence.addEventListener("change", showFormForCadence);
 
 ledgerFormToggle.addEventListener("click", () => {
   if (state.editingId) {
@@ -548,6 +653,19 @@ ledgerCancel.addEventListener("click", () => resetLedgerForm());
 ledgerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   ledgerFormError.classList.add("hidden");
+
+  if (!state.userId) {
+    showFormError("You're not signed in. Refresh and log in again.");
+    return;
+  }
+
+  const isRecurring = ledgerType.value === "RECURRING";
+  const isCustom = isRecurring && ledgerCadence.value === "CUSTOM";
+  const intervalDays = isCustom ? parseInt(ledgerIntervalDays.value, 10) : null;
+  if (isCustom && (!Number.isFinite(intervalDays) || intervalDays <= 0)) {
+    showFormError("Custom cadence needs a positive number of days.");
+    return;
+  }
   const payload = {
     user_id:     state.userId,
     type:        ledgerType.value,
@@ -556,7 +674,8 @@ ledgerForm.addEventListener("submit", async (e) => {
     principal:   parseFloat(ledgerAmount.value),
     balance:     parseFloat(ledgerAmount.value),  // overridden below if editing
     due_date:    ledgerDue.value || null,
-    cadence:     ledgerType.value === "RECURRING" ? ledgerCadence.value : null,
+    cadence:     isRecurring ? ledgerCadence.value : null,
+    interval_days: intervalDays,
     note:        ledgerNote.value.trim() || null,
   };
   if (!payload.counterparty || !Number.isFinite(payload.principal) || payload.principal < 0) {
@@ -565,36 +684,90 @@ ledgerForm.addEventListener("submit", async (e) => {
   }
 
   ledgerSave.disabled = true;
+  ledgerSave.textContent = "Saving…";
+
   let res;
-  if (state.editingId) {
-    // Keep the existing balance ratio if the user changed the principal.
-    const existing = state.ledger.find((x) => x.id === state.editingId);
-    const ratio = existing && existing.principal > 0 ? Number(existing.balance) / Number(existing.principal) : 1;
-    payload.balance = payload.principal * ratio;
-    res = await supabase.from("i_ledger_entries").update(payload).eq("id", state.editingId).select().maybeSingle();
-  } else {
-    res = await supabase.from("i_ledger_entries").insert(payload).select().maybeSingle();
+  try {
+    if (state.editingId) {
+      const existing = state.ledger.find((x) => x.id === state.editingId);
+      const ratio = existing && existing.principal > 0 ? Number(existing.balance) / Number(existing.principal) : 1;
+      payload.balance = payload.principal * ratio;
+      res = await supabase.from("i_ledger_entries").update(payload).eq("id", state.editingId).select().maybeSingle();
+    } else {
+      res = await supabase.from("i_ledger_entries").insert(payload).select().maybeSingle();
+    }
+  } catch (err) {
+    res = { error: { message: err?.message || String(err) } };
   }
+
   ledgerSave.disabled = false;
-  if (res.error) {
+  ledgerSave.textContent = state.editingId ? "Update entry" : "Save entry";
+
+  if (res?.error) {
+    console.error("[ledger save] insert/update failed:", res.error, "payload:", payload);
     showFormError(prettyLedgerError(res.error.message));
+    showToast(`Save failed: ${prettyLedgerError(res.error.message)}`, "error");
     return;
   }
+
+  console.log("[ledger save] success:", res?.data);
   await fetchLedger();
   resetLedgerForm();
   showToast(state.editingId ? "Entry updated" : "Entry saved", "success");
 });
 
 function showFormError(msg) {
-  ledgerFormError.textContent = msg;
+  ledgerFormError.innerHTML = msg;
   ledgerFormError.classList.remove("hidden");
+  ledgerFormError.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function prettyLedgerError(raw) {
-  if (/relation .* does not exist/i.test(raw)) {
-    return "Database isn't set up yet. Run supabase/add_ledger.sql in your Supabase SQL editor.";
+  if (!raw) return "Save failed.";
+
+  const url = "https://supabase.com/dashboard/project/sadbxjnmcgzwtjbqqhbk/sql/new";
+
+  // PostgREST error: "Could not find the '<col>' column of '<table>' in the schema cache"
+  // Test column-missing BEFORE table-missing so the column branch catches it first.
+  const colCacheMatch = raw.match(/could not find the ['"]?(\w+)['"]? column of ['"]?(\w+)['"]?/i);
+  if (colCacheMatch) {
+    const col = colCacheMatch[1];
+    const table = colCacheMatch[2];
+    let file = "supabase/add_custom_cadence.sql";
+    if (col === "counterparty_match" || col === "last_received_at") file = "supabase/add_income.sql";
+    return `Schema is out of date — column <code>${col}</code> on <code>${table}</code> is missing. Paste <code>${file}</code> into the <a href="${url}" target="_blank" rel="noopener" style="color:var(--coral);text-decoration:underline">Supabase SQL editor</a> and run it.`;
   }
-  return raw || "Save failed.";
+
+  // SQL "column X does not exist" (raw Postgres error, less common via PostgREST).
+  if (/column .* does not exist/i.test(raw)) {
+    const colMatch = raw.match(/column\s+"?(\w+)"?/i);
+    const col = colMatch?.[1] || "";
+    return `Schema is out of date — column <code>${col || "?"}</code> is missing. Paste <code>supabase/add_custom_cadence.sql</code> into the <a href="${url}" target="_blank" rel="noopener" style="color:var(--coral);text-decoration:underline">Supabase SQL editor</a> and run it.`;
+  }
+
+  // Missing table — pick the right migration based on the table name in the error.
+  if (/relation .* does not exist|could not find the table|schema cache/i.test(raw)) {
+    const tableMatch = raw.match(/(?:relation\s+"?|table\s+'?)(?:public\.)?(i_\w+)/i)
+                    || raw.match(/['"]?(i_\w+)['"]?/);
+    const table = tableMatch?.[1] || "";
+    let file = "supabase/add_ledger.sql";
+    if (/i_income/.test(table))      file = "supabase/add_income.sql";
+    else if (/i_ledger/.test(table)) file = "supabase/add_ledger.sql";
+    return `Database isn't set up yet — <code>${table || "the required table"}</code> is missing. Paste <code>${file}</code> into the <a href="${url}" target="_blank" rel="noopener" style="color:var(--coral);text-decoration:underline">Supabase SQL editor</a> and run it, then try again.`;
+  }
+
+  // Check constraint — usually a stale cadence enum.
+  if (/violates check constraint/i.test(raw) && /cadence/i.test(raw)) {
+    return `Your DB still has the old cadence list. Run <code>supabase/add_custom_cadence.sql</code> in the <a href="${url}" target="_blank" rel="noopener" style="color:var(--coral);text-decoration:underline">Supabase SQL editor</a> to allow Bi-weekly / Every-N-days values.`;
+  }
+
+  if (/permission denied|RLS|row-level security/i.test(raw)) {
+    return `Insert blocked by Row-Level Security. Make sure you re-ran the policies in the matching migration file.`;
+  }
+  if (/duplicate key|unique constraint/i.test(raw)) {
+    return "Looks like this entry already exists.";
+  }
+  return raw;
 }
 
 function openEditForm(entry) {
@@ -605,6 +778,7 @@ function openEditForm(entry) {
   ledgerAmount.value      = Number(entry.principal).toFixed(2);
   ledgerDue.value         = entry.due_date || "";
   ledgerCadence.value     = entry.cadence || "MONTHLY";
+  ledgerIntervalDays.value = entry.interval_days ?? "";
   ledgerNote.value        = entry.note || "";
   ledgerSave.textContent  = "Update entry";
   showFormForCadence();
@@ -648,7 +822,7 @@ async function logRepayment(entryId, amount) {
 
   // Auto-roll a recurring entry on full payment.
   if (fullyPaid && entry.type === "RECURRING") {
-    const nextDue = nextDueDate(entry.due_date, entry.cadence);
+    const nextDue = nextDueDate(entry.due_date, entry.cadence, entry.interval_days);
     await supabase.from("i_ledger_entries").insert({
       user_id:     state.userId,
       type:        "RECURRING",
@@ -658,10 +832,11 @@ async function logRepayment(entryId, amount) {
       balance:     entry.principal,
       due_date:    nextDue,
       cadence:     entry.cadence,
+      interval_days: entry.interval_days,
       parent_id:   entry.id,
       note:        entry.note,
     });
-    showToast(`Paid. Next ${(entry.cadence || "").toLowerCase()} entry queued for ${formatDueDate(nextDue)}.`, "success");
+    showToast(`Paid. Next ${cadenceLabel(entry.cadence, entry.interval_days)} entry queued for ${formatDueDate(nextDue)}.`, "success");
   } else {
     showToast(fullyPaid ? "Settled in full" : "Payment recorded", "success");
   }
@@ -670,16 +845,35 @@ async function logRepayment(entryId, amount) {
   await fetchLedger();
 }
 
-function nextDueDate(currentIso, cadence) {
+function nextDueDate(currentIso, cadence, intervalDays) {
   const base = currentIso ? new Date(currentIso) : new Date();
   switch ((cadence || "MONTHLY").toUpperCase()) {
-    case "WEEKLY":    base.setDate(base.getDate() + 7); break;
-    case "QUARTERLY": base.setMonth(base.getMonth() + 3); break;
-    case "YEARLY":    base.setFullYear(base.getFullYear() + 1); break;
+    case "WEEKLY":        base.setDate(base.getDate() + 7); break;
+    case "BIWEEKLY":      base.setDate(base.getDate() + 14); break;
+    case "EVERY_30_DAYS": base.setDate(base.getDate() + 30); break;
+    case "QUARTERLY":     base.setMonth(base.getMonth() + 3); break;
+    case "YEARLY":        base.setFullYear(base.getFullYear() + 1); break;
+    case "CUSTOM": {
+      const n = Number(intervalDays);
+      base.setDate(base.getDate() + (Number.isFinite(n) && n > 0 ? n : 30));
+      break;
+    }
     case "MONTHLY":
-    default:          base.setMonth(base.getMonth() + 1); break;
+    default:              base.setMonth(base.getMonth() + 1); break;
   }
   return base.toISOString().slice(0, 10);
+}
+
+/** Pretty label for a cadence (used in entry cards and toasts). */
+function cadenceLabel(cadence, intervalDays) {
+  const c = (cadence || "MONTHLY").toUpperCase();
+  if (c === "CUSTOM") {
+    const n = Number(intervalDays);
+    return Number.isFinite(n) && n > 0 ? `every ${n} days` : "custom";
+  }
+  if (c === "BIWEEKLY")      return "bi-weekly";
+  if (c === "EVERY_30_DAYS") return "every 30 days";
+  return c.toLowerCase();
 }
 
 async function updateEntry(id, patch) {
@@ -699,6 +893,1389 @@ ledgerClosedToggle.addEventListener("click", () => {
   ledgerClosedList.classList.toggle("hidden", !state.showClosed);
   ledgerClosedToggle.textContent = state.showClosed ? "Hide" : "Show";
 });
+
+// ============================================================================
+// Income — fetch, detection, render, CRUD
+// ============================================================================
+async function fetchIncome() {
+  if (!state.userId) return;
+  const [entriesRes, dismissedRes] = await Promise.all([
+    supabase.from("i_income_entries").select("*").eq("user_id", state.userId).order("created_at", { ascending: false }),
+    supabase.from("i_income_dismissed").select("counterparty_match").eq("user_id", state.userId),
+  ]);
+  if (entriesRes.error) {
+    if (/relation .* does not exist/i.test(entriesRes.error.message)) {
+      console.warn("i_income_entries table missing — run supabase/add_income.sql in your Supabase project.");
+    } else {
+      console.warn("Income fetch error:", entriesRes.error.message);
+    }
+    state.income = [];
+  } else {
+    state.income = entriesRes.data || [];
+  }
+  state.incomeDismissed = new Set((dismissedRes?.data || []).map((d) => d.counterparty_match));
+  renderIncomeBadge();
+  if (state.view === "income") renderIncomeView();
+}
+
+function renderIncomeBadge() {
+  const overdue = state.income.filter((e) => e.type === "RECURRING" && e.status === "ACTIVE" && isOverdue(e.occurs_on)).length;
+  if (overdue > 0) {
+    incomeBadge.textContent = String(overdue);
+    incomeBadge.classList.remove("hidden");
+  } else {
+    incomeBadge.classList.add("hidden");
+  }
+}
+
+function renderIncomeView() {
+  const entries = state.income;
+  const recurring = entries.filter((e) => e.type === "RECURRING" && e.status === "ACTIVE");
+  const oneoff    = entries.filter((e) => e.type === "ONEOFF"    && e.status === "ACTIVE");
+
+  // Period-scoped actual income (from CREDIT transactions in state.allTxs).
+  const range = periodRange(state.period);
+  const actual = state.allTxs
+    .filter((t) => t.type === "CREDIT")
+    .filter((t) => {
+      const ts = Date.parse(t.occurred_at);
+      return Number.isFinite(ts) && ts >= range.start && ts <= range.end;
+    })
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const oneoffInRange = oneoff
+    .filter((e) => {
+      const ts = e.occurs_on ? Date.parse(e.occurs_on) : 0;
+      return ts >= range.start && ts <= range.end;
+    })
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+  const totalActual = actual + oneoffInRange;
+
+  // Expected recurring (always monthlyised — Weekly → ×4, Quarterly → /3, Yearly → /12).
+  const monthlyExpected = recurring.reduce(
+    (s, e) => s + monthlyEquivalent(Number(e.amount), e.cadence, e.interval_days),
+    0
+  );
+
+  incomePeriodLabel.textContent = PERIOD_LABELS[state.period] || "";
+  incomeActual.textContent = formatETB(totalActual);
+  incomeActualSub.textContent = `${state.allTxs.filter((t) => t.type === "CREDIT").length} CREDIT tx tracked total`;
+
+  incomeExpected.textContent = formatETB(monthlyExpected);
+  incomeExpectedSub.textContent = recurring.length === 0
+    ? "no recurring sources yet"
+    : `${recurring.length} source${recurring.length === 1 ? "" : "s"} (monthly equivalent)`;
+
+  const variance = totalActual - monthlyExpected;
+  incomeVariance.textContent = (variance >= 0 ? "+ " : "- ") + formatNumberAbs(variance);
+  incomeVariance.classList.remove("income", "coral");
+  incomeVariance.classList.add(variance >= 0 ? "income" : "coral");
+  incomeVarianceSub.textContent = variance >= 0
+    ? "ahead of expectation"
+    : "below expectation so far";
+
+  // Suggestions — strict matching: same counterparty + ±10% amount + ~monthly cadence.
+  const suggestions = detectRecurringIncome();
+  incomeSuggCount.textContent = suggestions.length === 0
+    ? "no patterns found"
+    : `${suggestions.length} suggestion${suggestions.length === 1 ? "" : "s"}`;
+  incomeSuggestions.innerHTML = suggestions.length === 0
+    ? `<p class="muted">No recurring income patterns detected in your CREDIT history (yet). The app looks for the same counterparty paying within ±10% of the same amount, roughly once a month, at least 3 times.</p>`
+    : suggestions.map(renderSuggestionCard).join("");
+  incomeSuggestions.querySelectorAll(".income-suggestion").forEach(attachSuggestionHandlers);
+
+  // Tracked recurring.
+  incomeRecurringCount.textContent = `${recurring.length} active`;
+  incomeRecurringList.innerHTML = recurring.length === 0
+    ? `<p class="muted">No recurring incomes tracked yet. Confirm a suggestion above or add one manually.</p>`
+    : recurring.sort(sortByDueIncome).map(renderIncomeEntry).join("");
+
+  // One-off.
+  incomeOneoffCount.textContent = `${oneoff.length} recorded`;
+  incomeOneoffList.innerHTML = oneoff.length === 0
+    ? `<p class="muted">Nothing recorded yet.</p>`
+    : oneoff.sort((a, b) => Date.parse(b.occurs_on || 0) - Date.parse(a.occurs_on || 0)).map(renderIncomeEntry).join("");
+
+  attachIncomeHandlers();
+  renderIncomeBadge();
+  applyIncomeListView();
+}
+
+function sortByDueIncome(a, b) {
+  const ax = a.occurs_on ? Date.parse(a.occurs_on) : Number.POSITIVE_INFINITY;
+  const bx = b.occurs_on ? Date.parse(b.occurs_on) : Number.POSITIVE_INFINITY;
+  return ax - bx;
+}
+
+function monthlyEquivalent(amount, cadence, intervalDays) {
+  const DAYS_PER_MONTH = 30.4375;  // 365.25 / 12
+  switch ((cadence || "MONTHLY").toUpperCase()) {
+    case "WEEKLY":        return amount * (DAYS_PER_MONTH / 7);   // ≈ 4.346
+    case "BIWEEKLY":      return amount * (DAYS_PER_MONTH / 14);  // ≈ 2.173
+    case "EVERY_30_DAYS": return amount * (DAYS_PER_MONTH / 30);  // ≈ 1.014
+    case "QUARTERLY":     return amount / 3;
+    case "YEARLY":        return amount / 12;
+    case "CUSTOM": {
+      const n = Number(intervalDays);
+      return Number.isFinite(n) && n > 0 ? amount * (DAYS_PER_MONTH / n) : amount;
+    }
+    case "MONTHLY":
+    default:              return amount;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Detection — strict: same counterparty + ±10% amount + monthly cadence (25-35d)
+// ----------------------------------------------------------------------------
+function detectRecurringIncome() {
+  const credits = state.allTxs.filter((t) => t.type === "CREDIT");
+
+  // Group by normalised counterparty.
+  const groups = new Map();
+  for (const tx of credits) {
+    const key = normaliseSource(tx.counterparty || tx.sender);
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, { display: tx.counterparty || tx.sender, txs: [] });
+    groups.get(key).txs.push(tx);
+  }
+
+  // Filter to those already tracked or dismissed.
+  const trackedKeys = new Set(
+    state.income.filter((e) => e.counterparty_match).map((e) => e.counterparty_match)
+  );
+
+  const suggestions = [];
+  for (const [key, g] of groups) {
+    if (g.txs.length < 3) continue;
+    if (trackedKeys.has(key) || state.incomeDismissed.has(key)) continue;
+
+    const sorted = [...g.txs].sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at));
+
+    const amounts = sorted.map((t) => Number(t.amount)).filter((n) => Number.isFinite(n) && n > 0);
+    if (amounts.length < 3) continue;
+    const sortedAmt = [...amounts].sort((a, b) => a - b);
+    const median = sortedAmt[Math.floor(sortedAmt.length / 2)];
+
+    // Within ±10% of the median.
+    const close = sorted.filter((t) => Math.abs(Number(t.amount) - median) / median <= 0.10);
+    if (close.length < 3) continue;
+
+    // Median interval in days.
+    const intervals = [];
+    for (let i = 1; i < close.length; i++) {
+      const days = Math.round((Date.parse(close[i].occurred_at) - Date.parse(close[i - 1].occurred_at)) / 864e5);
+      if (days > 0) intervals.push(days);
+    }
+    if (intervals.length === 0) continue;
+    const medianInterval = [...intervals].sort((a, b) => a - b)[Math.floor(intervals.length / 2)];
+    if (medianInterval < 25 || medianInterval > 35) continue;
+
+    const last = close[close.length - 1];
+    const nextDue = new Date(Date.parse(last.occurred_at) + medianInterval * 864e5)
+      .toISOString().slice(0, 10);
+
+    suggestions.push({
+      key,
+      source: g.display,
+      median,
+      count: close.length,
+      intervalDays: medianInterval,
+      lastReceivedAt: last.occurred_at,
+      nextExpected: nextDue,
+    });
+  }
+  return suggestions.sort((a, b) => b.median - a.median);
+}
+
+function normaliseSource(name) {
+  if (!name) return "";
+  return String(name)
+    .toLowerCase()
+    .replace(/\(2519[\d*]+\)/g, "")             // strip phone tails like (2519****1234)
+    .replace(/account\s+number\s+\d+/gi, "")     // strip bank-account suffix
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function renderSuggestionCard(s) {
+  const lastAgo = formatRelativeDate(Date.parse(s.lastReceivedAt));
+  return `
+    <div class="income-suggestion" data-key="${escapeHtml(s.key)}"
+         data-source="${escapeHtml(s.source)}"
+         data-median="${s.median}"
+         data-interval="${s.intervalDays}"
+         data-next="${s.nextExpected}">
+      <span class="src">${escapeHtml(s.source)}</span>
+      <span class="amount">${formatETB(s.median)}</span>
+      <span class="meta">${s.count} payments · ~every ${s.intervalDays} days · last ${escapeHtml(lastAgo)} · next ${escapeHtml(formatDueDate(s.nextExpected))}</span>
+      <div class="actions">
+        <button class="confirm" data-action="confirm">Track this</button>
+        <button data-action="dismiss">Not income</button>
+      </div>
+    </div>
+  `;
+}
+
+function attachSuggestionHandlers(card) {
+  card.querySelectorAll("button[data-action]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const key = card.dataset.key;
+      const action = btn.dataset.action;
+      if (action === "confirm") {
+        await confirmSuggestion({
+          key,
+          source: card.dataset.source,
+          median: parseFloat(card.dataset.median),
+          nextExpected: card.dataset.next,
+        });
+      } else if (action === "dismiss") {
+        await dismissSuggestion(key);
+      }
+    });
+  });
+}
+
+async function confirmSuggestion({ key, source, median, nextExpected }) {
+  const { error } = await supabase.from("i_income_entries").insert({
+    user_id:    state.userId,
+    type:       "RECURRING",
+    source:     source || "Unknown",
+    amount:     median,
+    occurs_on:  nextExpected,
+    cadence:    "MONTHLY",
+    counterparty_match: key,
+  });
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  showToast(`Now tracking "${source}" as recurring income`, "success");
+  await fetchIncome();
+}
+
+async function dismissSuggestion(key) {
+  const { error } = await supabase.from("i_income_dismissed").insert({
+    user_id: state.userId,
+    counterparty_match: key,
+  });
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  state.incomeDismissed.add(key);
+  renderIncomeView();
+}
+
+// ----------------------------------------------------------------------------
+// Income entry rendering (reuses ledger-entry markup with .income variant)
+// ----------------------------------------------------------------------------
+function renderIncomeEntry(e) {
+  const recurring = e.type === "RECURRING";
+  const overdue   = recurring && isOverdue(e.occurs_on);
+  const klass = ["ledger-entry", "income", overdue ? "overdue" : ""].filter(Boolean).join(" ");
+  const typePill = recurring
+    ? `RECURRING · ${cadenceLabel(e.cadence, e.interval_days)}`
+    : "ONE-OFF";
+  const dateLabel = e.occurs_on
+    ? (recurring
+        ? (overdue ? `Expected · overdue ${formatDueDate(e.occurs_on)}` : `Expected ${formatDueDate(e.occurs_on)}`)
+        : `Received ${formatDueDate(e.occurs_on)}`)
+    : (recurring ? "No next date" : "No date");
+
+  const actions = recurring
+    ? `<button class="primary" data-income-action="received" data-id="${e.id}">Mark Received</button>
+       <button data-income-action="edit"    data-id="${e.id}">Edit</button>
+       <button data-income-action="archive" data-id="${e.id}">Archive</button>`
+    : `<button data-income-action="edit"    data-id="${e.id}">Edit</button>
+       <button data-income-action="delete"  data-id="${e.id}">Delete</button>`;
+
+  return `
+    <div class="${klass}" data-id="${e.id}">
+      <div class="ledger-head">
+        <span class="ledger-cp" title="${escapeHtml(e.source)}">${escapeHtml(e.source)}</span>
+        <span class="ledger-type-pill">${escapeHtml(typePill)}</span>
+      </div>
+      <div class="ledger-amounts">
+        <span class="ledger-balance">${formatETB(Number(e.amount))}</span>
+      </div>
+      <div class="ledger-due">${escapeHtml(dateLabel)}</div>
+      ${e.note ? `<div class="ledger-note">${escapeHtml(e.note)}</div>` : ""}
+      <div class="ledger-actions">${actions}</div>
+    </div>
+  `;
+}
+
+function attachIncomeHandlers() {
+  incomeView.querySelectorAll("button[data-income-action]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const action = btn.dataset.action || btn.dataset.incomeAction;
+      const entry = state.income.find((x) => x.id === id);
+      if (!entry) return;
+      if (action === "received") await markIncomeReceived(entry);
+      else if (action === "edit") openIncomeEdit(entry);
+      else if (action === "archive") await updateIncomeEntry(id, { status: "ARCHIVED" });
+      else if (action === "delete") {
+        if (!confirm("Delete this entry?")) return;
+        await deleteIncomeEntry(id);
+      }
+    });
+  });
+}
+
+async function markIncomeReceived(entry) {
+  const nextIso = nextDueDate(entry.occurs_on, entry.cadence, entry.interval_days);
+  const { error } = await supabase.from("i_income_entries").update({
+    last_received_at: new Date().toISOString(),
+    occurs_on: nextIso,
+  }).eq("id", entry.id);
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  showToast(`Marked received. Next ${cadenceLabel(entry.cadence, entry.interval_days)} due ${formatDueDate(nextIso)}.`, "success");
+  await fetchIncome();
+}
+
+async function updateIncomeEntry(id, patch) {
+  const { error } = await supabase.from("i_income_entries").update(patch).eq("id", id);
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  await fetchIncome();
+}
+
+async function deleteIncomeEntry(id) {
+  const { error } = await supabase.from("i_income_entries").delete().eq("id", id);
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  await fetchIncome();
+}
+
+// ----------------------------------------------------------------------------
+// Income form
+// ----------------------------------------------------------------------------
+function refreshIncomeFormForType() {
+  const isRecurring = incomeType.value === "RECURRING";
+  incomeCadenceField.style.display = isRecurring ? "" : "none";
+  incomeDateLabel.textContent = isRecurring ? "Next expected date" : "Date received";
+  const isCustom = isRecurring && incomeCadence.value === "CUSTOM";
+  incomeIntervalField.classList.toggle("hidden", !isCustom);
+}
+incomeType.addEventListener("change", refreshIncomeFormForType);
+incomeCadence.addEventListener("change", refreshIncomeFormForType);
+
+incomeFormToggle.addEventListener("click", () => {
+  if (state.editingIncomeId) { resetIncomeForm(); return; }
+  incomeForm.classList.toggle("hidden");
+  refreshIncomeFormForType();
+});
+incomeCancel.addEventListener("click", () => resetIncomeForm());
+
+incomeForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  incomeFormError.classList.add("hidden");
+  if (!state.userId) { showIncomeFormError("Not signed in."); return; }
+
+  const isRecurring = incomeType.value === "RECURRING";
+  const isCustom = isRecurring && incomeCadence.value === "CUSTOM";
+  const intervalDays = isCustom ? parseInt(incomeIntervalDays.value, 10) : null;
+  if (isCustom && (!Number.isFinite(intervalDays) || intervalDays <= 0)) {
+    showIncomeFormError("Custom cadence needs a positive number of days.");
+    return;
+  }
+  const payload = {
+    user_id:   state.userId,
+    type:      incomeType.value,
+    source:    incomeSource.value.trim(),
+    amount:    parseFloat(incomeAmount.value),
+    occurs_on: incomeOccursOn.value || null,
+    cadence:   isRecurring ? incomeCadence.value : null,
+    interval_days: intervalDays,
+    note:      incomeNote.value.trim() || null,
+  };
+  if (!payload.source || !Number.isFinite(payload.amount) || payload.amount < 0) {
+    showIncomeFormError("Source and a non-negative amount are required.");
+    return;
+  }
+
+  incomeSave.disabled = true;
+  incomeSave.textContent = "Saving…";
+  let res;
+  try {
+    if (state.editingIncomeId) {
+      res = await supabase.from("i_income_entries").update(payload).eq("id", state.editingIncomeId).select().maybeSingle();
+    } else {
+      res = await supabase.from("i_income_entries").insert(payload).select().maybeSingle();
+    }
+  } catch (err) {
+    res = { error: { message: err?.message || String(err) } };
+  }
+  incomeSave.disabled = false;
+  incomeSave.textContent = state.editingIncomeId ? "Update income" : "Save income";
+
+  if (res?.error) {
+    console.error("[income save] failed:", res.error, "payload:", payload);
+    showIncomeFormError(prettyLedgerError(res.error.message));
+    showToast(`Save failed: ${stripHtml(prettyLedgerError(res.error.message))}`, "error");
+    return;
+  }
+  await fetchIncome();
+  resetIncomeForm();
+  showToast(state.editingIncomeId ? "Income updated" : "Income saved", "success");
+});
+
+function showIncomeFormError(msg) {
+  incomeFormError.innerHTML = msg;
+  incomeFormError.classList.remove("hidden");
+  incomeFormError.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function openIncomeEdit(entry) {
+  state.editingIncomeId = entry.id;
+  incomeType.value     = entry.type;
+  incomeSource.value   = entry.source;
+  incomeAmount.value   = Number(entry.amount).toFixed(2);
+  incomeOccursOn.value = entry.occurs_on || "";
+  incomeCadence.value  = entry.cadence || "MONTHLY";
+  incomeIntervalDays.value = entry.interval_days ?? "";
+  incomeNote.value     = entry.note || "";
+  incomeSave.textContent = "Update income";
+  refreshIncomeFormForType();
+  incomeForm.classList.remove("hidden");
+  incomeForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetIncomeForm() {
+  state.editingIncomeId = null;
+  incomeForm.reset();
+  incomeForm.classList.add("hidden");
+  incomeSave.textContent = "Save income";
+  incomeFormError.classList.add("hidden");
+  refreshIncomeFormForType();
+}
+
+function stripHtml(s) {
+  const div = document.createElement("div");
+  div.innerHTML = s;
+  return div.textContent || "";
+}
+
+// ============================================================================
+// Goals — fetch, status, contributions, render, CRUD
+// ============================================================================
+async function fetchGoals() {
+  if (!state.userId) return;
+  const [gRes, cRes] = await Promise.all([
+    supabase.from("i_goals").select("*").eq("user_id", state.userId).order("priority", { ascending: true }),
+    supabase.from("i_goal_contributions").select("*").eq("user_id", state.userId).order("contributed_at", { ascending: false }).limit(200),
+  ]);
+  if (gRes.error) {
+    if (/relation .* does not exist/i.test(gRes.error.message)) {
+      console.warn("i_goals table missing — run supabase/add_goals.sql in your Supabase project.");
+    } else {
+      console.warn("Goals fetch error:", gRes.error.message);
+    }
+    state.goals = [];
+  } else {
+    state.goals = gRes.data || [];
+  }
+  state.goalContributions = cRes?.data || [];
+  refreshGoalContribTargetOptions();
+  renderGoalsBadge();
+  if (state.view === "goals") renderGoalsView();
+}
+
+function renderGoalsBadge() {
+  const behind = state.goals.filter((g) => g.status === "ACTIVE" && goalStatus(g) === "behind").length;
+  if (behind > 0) {
+    goalsBadge.textContent = String(behind);
+    goalsBadge.classList.remove("hidden");
+  } else {
+    goalsBadge.classList.add("hidden");
+  }
+}
+
+// ---- Aggregation helpers ----------------------------------------------------
+function sumContributions(goalId, sinceMs = 0) {
+  return state.goalContributions
+    .filter((c) => c.goal_id === goalId && Date.parse(c.contributed_at) >= sinceMs)
+    .reduce((s, c) => s + Number(c.amount), 0);
+}
+
+function startOfMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+}
+
+function daysInMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+/** Trailing-3-month average spend, used as the basis for OPEN_ENDED goals. */
+function avgMonthlySpend() {
+  const now = Date.now();
+  const cutoff = now - 90 * 864e5;
+  const expenseTypes = new Set(["DEBIT", "TRANSFER_OUT", "PAYMENT"]);
+  const total = state.allTxs
+    .filter((t) => expenseTypes.has(t.type))
+    .filter((t) => {
+      const ts = Date.parse(t.occurred_at);
+      return Number.isFinite(ts) && ts >= cutoff;
+    })
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  return total / 3;
+}
+
+/** Computed target for a goal (resolves OPEN_ENDED to a number). */
+function goalTarget(g) {
+  if (g.type === "OPEN_ENDED") return (g.target_months || 0) * avgMonthlySpend();
+  return Number(g.target_amount || 0);
+}
+
+/** How much money this goal still wants right now (zero if met for the period). */
+function goalShortfall(g) {
+  if (g.status !== "ACTIVE") return 0;
+  if (g.type === "RECURRING") {
+    const monthStart = startOfMonth();
+    const savedThisMonth = sumContributions(g.id, monthStart);
+    return Math.max(0, Number(g.target_amount || 0) - savedThisMonth);
+  }
+  // DATE_BOUND + OPEN_ENDED → lifetime shortfall
+  return Math.max(0, goalTarget(g) - sumContributions(g.id));
+}
+
+/** Required contribution this month to stay on pace. */
+function requiredThisMonth(g) {
+  if (g.status !== "ACTIVE") return 0;
+  if (g.type === "RECURRING") return goalShortfall(g);
+  if (g.type === "OPEN_ENDED") {
+    // No deadline → spread the shortfall over target_months as a guide.
+    const months = Math.max(1, g.target_months || 1);
+    return goalShortfall(g) / months;
+  }
+  // DATE_BOUND
+  const now = new Date();
+  const deadline = g.deadline ? new Date(g.deadline) : null;
+  if (!deadline || deadline <= now) return goalShortfall(g);
+  const monthsLeft = Math.max(1,
+    (deadline.getFullYear() - now.getFullYear()) * 12 + (deadline.getMonth() - now.getMonth()) + 1
+  );
+  return goalShortfall(g) / monthsLeft;
+}
+
+function goalStatus(g) {
+  if (g.status === "ACHIEVED") return "achieved";
+  if (g.status === "ARCHIVED") return "archived";
+
+  if (g.type === "RECURRING") {
+    const monthStart = startOfMonth();
+    const saved = sumContributions(g.id, monthStart);
+    const target = Number(g.target_amount || 0);
+    if (target <= 0) return "on-track";
+    if (saved >= target) return "achieved"; // this month
+    const dayRatio = new Date().getDate() / daysInMonth();
+    const progressRatio = saved / target;
+    if (progressRatio >= dayRatio * 0.95) return "on-track";
+    if (progressRatio >= dayRatio * 0.80) return "catching";
+    return "behind";
+  }
+
+  const target = goalTarget(g);
+  if (target <= 0) return "on-track";
+  const saved = sumContributions(g.id);
+  if (saved >= target) return "achieved";
+
+  if (g.type === "OPEN_ENDED") {
+    // No deadline; consider behind only if 0 progress for a meaningful goal.
+    return saved > 0 ? "on-track" : "catching";
+  }
+
+  // DATE_BOUND
+  const now = Date.now();
+  const start = Date.parse(g.created_at);
+  const deadline = Date.parse(g.deadline);
+  if (!Number.isFinite(deadline) || deadline <= start) return "on-track";
+  const elapsed = Math.max(0, Math.min(1, (now - start) / (deadline - start)));
+  const progress = saved / target;
+  if (progress >= elapsed * 0.95) return "on-track";
+  if (progress >= elapsed * 0.80) return "catching";
+  return "behind";
+}
+
+// ---- Render -----------------------------------------------------------------
+function renderGoalsView() {
+  const goals = state.goals;
+  const active = goals.filter((g) => g.status === "ACTIVE");
+  const totalSaved = state.goalContributions.reduce((s, c) => s + Number(c.amount), 0);
+  const totalNeeded = active.reduce((s, g) => s + requiredThisMonth(g), 0);
+  const onTrackCount = active.filter((g) => {
+    const st = goalStatus(g);
+    return st === "on-track" || st === "achieved";
+  }).length;
+
+  goalsTotalSaved.textContent = formatETB(totalSaved);
+  goalsTotalSavedSub.textContent = `${state.goalContributions.length} contribution${state.goalContributions.length === 1 ? "" : "s"} logged`;
+  goalsOnTrack.textContent = `${onTrackCount} / ${active.length}`;
+  goalsOnTrackSub.textContent = active.length === 0 ? "no active goals" : "active goals on pace";
+  goalsNeeded.textContent = formatETB(totalNeeded);
+  goalsNeededSub.textContent = totalNeeded === 0 ? "you're all caught up" : "to stay on pace this month";
+
+  // Goals list (ACTIVE first by priority, then non-active grouped after)
+  const sorted = [...goals].sort((a, b) => {
+    if (a.status !== b.status) return a.status === "ACTIVE" ? -1 : 1;
+    return (a.priority ?? 100) - (b.priority ?? 100);
+  });
+  goalsCount.textContent = `${active.length} active${goals.length > active.length ? ` · ${goals.length - active.length} closed` : ""}`;
+  goalsList.innerHTML = goals.length === 0
+    ? `<p class="muted">No goals yet. Tap + Add above to create one.</p>`
+    : sorted.map((g, i, arr) => renderGoalCard(g, i, arr)).join("");
+  attachGoalCardHandlers();
+
+  // History
+  const recent = state.goalContributions.slice(0, 20);
+  goalHistoryList.innerHTML = recent.length === 0
+    ? `<p class="muted">No contributions yet.</p>`
+    : recent.map((c) => {
+        const g = state.goals.find((x) => x.id === c.goal_id);
+        return `<div class="goal-history-row">
+          <span>${escapeHtml(g?.emoji || "💰")} ${escapeHtml(g?.name || "Unknown goal")}${c.note ? ` <span class="meta">— ${escapeHtml(c.note)}</span>` : ""}</span>
+          <span><span class="amt">+ ${formatETB(Number(c.amount))}</span> <span class="meta">${escapeHtml(formatRelativeDate(Date.parse(c.contributed_at)))}</span></span>
+        </div>`;
+      }).join("");
+
+  renderGoalsBadge();
+  applyGoalsListView();
+}
+
+function renderGoalCard(g, idx, arr) {
+  const st = goalStatus(g);
+  const klass = `goal-card ${st}`;
+  const target = goalTarget(g);
+  const saved  = sumContributions(g.id);
+  const pct    = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
+  const typeLabel = g.type === "DATE_BOUND" ? "DATE-BOUND"
+                  : g.type === "OPEN_ENDED" ? "OPEN-ENDED"
+                  : "RECURRING";
+  const statusLabel = st === "on-track" ? "On track"
+                    : st === "catching" ? "Catching up"
+                    : st === "behind"   ? "Behind"
+                    : st === "achieved" ? "Achieved"
+                    : "Archived";
+
+  let meta = "";
+  if (g.type === "DATE_BOUND") {
+    const remaining = Math.max(0, target - saved);
+    const need = requiredThisMonth(g);
+    meta = remaining > 0
+      ? `${formatETB(remaining)} to go${g.deadline ? ` · due ${formatDueDate(g.deadline)}` : ""}${need > 0 ? ` · need ${formatETB(need)}/mo` : ""}`
+      : `Target reached`;
+  } else if (g.type === "OPEN_ENDED") {
+    const months = g.target_months || 0;
+    meta = `Target = ${months}× monthly spend = ${formatETB(target)} (recomputes from your data)`;
+  } else { // RECURRING
+    const monthStart = startOfMonth();
+    const savedThisMonth = sumContributions(g.id, monthStart);
+    const mTarget = Number(g.target_amount || 0);
+    meta = `This month: ${formatETB(savedThisMonth)} / ${formatETB(mTarget)} target`;
+  }
+
+  // Lifetime stats for RECURRING + DATE_BOUND
+  const savedRow = g.type === "RECURRING"
+    ? `<div class="row"><span class="saved">${formatETB(sumContributions(g.id, startOfMonth()))}</span><span class="target">/ ${formatETB(Number(g.target_amount || 0))} this month</span></div>`
+    : `<div class="row"><span class="saved">${formatETB(saved)}</span><span class="target">/ ${formatETB(target)}</span></div>`;
+
+  const activeArr = arr.filter((x) => x.status === "ACTIVE");
+  const activeIdx = activeArr.findIndex((x) => x.id === g.id);
+  const isFirst = activeIdx <= 0;
+  const isLast  = activeIdx === activeArr.length - 1;
+
+  const actions = g.status === "ARCHIVED"
+    ? `<button data-goal-action="restore" data-id="${g.id}">Restore</button>
+       <button data-goal-action="delete"  data-id="${g.id}">Delete</button>`
+    : g.status === "ACHIEVED"
+      ? `<button data-goal-action="reopen"  data-id="${g.id}">Reopen</button>
+         <button data-goal-action="archive" data-id="${g.id}">Archive</button>`
+      : `<button class="primary" data-goal-action="contribute" data-id="${g.id}">+ Contribute</button>
+         <button data-goal-action="edit"     data-id="${g.id}">Edit</button>
+         ${st === "achieved" ? "" : `<button data-goal-action="mark-achieved" data-id="${g.id}">Mark Achieved</button>`}
+         <button data-goal-action="archive"  data-id="${g.id}">Archive</button>`;
+
+  const prioControls = g.status === "ACTIVE"
+    ? `<div class="goal-prio-controls">
+         <button data-goal-action="prio-up"   data-id="${g.id}" ${isFirst ? "disabled" : ""} title="Higher priority">▲</button>
+         <button data-goal-action="prio-down" data-id="${g.id}" ${isLast  ? "disabled" : ""} title="Lower priority">▼</button>
+       </div>`
+    : "";
+
+  return `
+    <div class="${klass}" data-id="${g.id}">
+      <div class="goal-emoji">${escapeHtml(g.emoji || "💰")}</div>
+      <div class="goal-name">
+        <span class="goal-name-text">${escapeHtml(g.name)}</span>
+        <span class="goal-type-pill">${typeLabel}</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="goal-status-pill ${st}">${statusLabel}</span>
+        ${prioControls}
+      </div>
+      <div class="goal-progress">
+        ${savedRow}
+        <div class="goal-bar"><span style="width: ${pct.toFixed(1)}%"></span></div>
+      </div>
+      <div class="goal-meta">${escapeHtml(meta)}</div>
+      <div class="goal-actions">${actions}</div>
+    </div>
+  `;
+}
+
+function attachGoalCardHandlers() {
+  goalsList.querySelectorAll("button[data-goal-action]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const action = btn.dataset.goalAction;
+      const g = state.goals.find((x) => x.id === id);
+      if (!g) return;
+      if (action === "contribute") openContribForSpecificGoal(g);
+      else if (action === "edit") openGoalEdit(g);
+      else if (action === "archive") await updateGoal(g.id, { status: "ARCHIVED" });
+      else if (action === "restore") await updateGoal(g.id, { status: "ACTIVE" });
+      else if (action === "reopen")  await updateGoal(g.id, { status: "ACTIVE", achieved_at: null });
+      else if (action === "mark-achieved") await updateGoal(g.id, { status: "ACHIEVED", achieved_at: new Date().toISOString() });
+      else if (action === "delete") {
+        if (!confirm("Delete this goal and all its contributions?")) return;
+        await deleteGoal(g.id);
+      } else if (action === "prio-up" || action === "prio-down") {
+        await reorderGoal(g, action === "prio-up" ? -1 : +1);
+      }
+    });
+  });
+}
+
+async function updateGoal(id, patch) {
+  const { error } = await supabase.from("i_goals").update(patch).eq("id", id);
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  await fetchGoals();
+}
+
+async function deleteGoal(id) {
+  const { error } = await supabase.from("i_goals").delete().eq("id", id);
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  await fetchGoals();
+}
+
+async function reorderGoal(goal, delta) {
+  const active = state.goals.filter((g) => g.status === "ACTIVE").sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  const idx = active.findIndex((g) => g.id === goal.id);
+  const swapIdx = idx + delta;
+  if (swapIdx < 0 || swapIdx >= active.length) return;
+  const other = active[swapIdx];
+  // Swap priorities
+  const a = goal.priority ?? 100;
+  const b = other.priority ?? 100;
+  const { error: e1 } = await supabase.from("i_goals").update({ priority: b }).eq("id", goal.id);
+  const { error: e2 } = await supabase.from("i_goals").update({ priority: a }).eq("id", other.id);
+  if (e1 || e2) { showToast("Reorder failed", "error"); return; }
+  await fetchGoals();
+}
+
+// ---- Goal form (create / edit) ---------------------------------------------
+function refreshGoalFormForType() {
+  const t = goalType.value;
+  goalTargetAmountField.classList.toggle("hidden", t === "OPEN_ENDED");
+  goalDeadlineField.classList.toggle("hidden",     t !== "DATE_BOUND");
+  goalTargetMonthsField.classList.toggle("hidden", t !== "OPEN_ENDED");
+  if (t === "OPEN_ENDED") refreshOpenEndedPreview();
+  if (t === "RECURRING") {
+    goalTargetAmount.placeholder = "Monthly amount, e.g. 5000.00";
+  } else {
+    goalTargetAmount.placeholder = "0.00";
+  }
+}
+function refreshOpenEndedPreview() {
+  const m = parseInt(goalTargetMonths.value, 10);
+  if (!Number.isFinite(m) || m <= 0) {
+    goalTargetMonthsPreview.textContent = "";
+    return;
+  }
+  const avg = avgMonthlySpend();
+  const target = avg * m;
+  goalTargetMonthsPreview.textContent = avg > 0
+    ? `Computed target: ${formatETB(target)} (${m} × ${formatETB(avg)} avg/mo)`
+    : "Need more expense history to compute this — record some transactions first.";
+}
+goalType.addEventListener("change", refreshGoalFormForType);
+goalTargetMonths.addEventListener("input", refreshOpenEndedPreview);
+
+goalFormToggle.addEventListener("click", () => {
+  if (state.editingGoalId) { resetGoalForm(); return; }
+  goalForm.classList.toggle("hidden");
+  refreshGoalFormForType();
+});
+goalCancel.addEventListener("click", () => resetGoalForm());
+
+goalForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  goalFormError.classList.add("hidden");
+  if (!state.userId) { showGoalFormError("Not signed in."); return; }
+  const t = goalType.value;
+  const payload = {
+    user_id: state.userId,
+    name: goalName.value.trim(),
+    emoji: (goalEmoji.value || "").trim() || null,
+    type: t,
+    target_amount: (t === "OPEN_ENDED") ? null : parseFloat(goalTargetAmount.value),
+    target_months: (t === "OPEN_ENDED") ? parseInt(goalTargetMonths.value, 10) : null,
+    deadline: t === "DATE_BOUND" ? (goalDeadline.value || null) : null,
+    note: goalNote.value.trim() || null,
+  };
+  if (!payload.name) { showGoalFormError("Name is required."); return; }
+  if (t !== "OPEN_ENDED" && (!Number.isFinite(payload.target_amount) || payload.target_amount < 0)) {
+    showGoalFormError("Target amount is required.");
+    return;
+  }
+  if (t === "DATE_BOUND" && !payload.deadline) {
+    showGoalFormError("Date-bound goals need a deadline.");
+    return;
+  }
+  if (t === "OPEN_ENDED" && (!Number.isFinite(payload.target_months) || payload.target_months <= 0)) {
+    showGoalFormError("Open-ended goals need a positive number of months.");
+    return;
+  }
+
+  // Assign priority for new goals (one slot below the current lowest).
+  if (!state.editingGoalId) {
+    const maxPrio = state.goals.reduce((m, g) => Math.max(m, g.priority ?? 0), 0);
+    payload.priority = maxPrio + 10;
+  }
+
+  goalSave.disabled = true;
+  goalSave.textContent = "Saving…";
+  let res;
+  try {
+    if (state.editingGoalId) {
+      res = await supabase.from("i_goals").update(payload).eq("id", state.editingGoalId).select().maybeSingle();
+    } else {
+      res = await supabase.from("i_goals").insert(payload).select().maybeSingle();
+    }
+  } catch (err) {
+    res = { error: { message: err?.message || String(err) } };
+  }
+  goalSave.disabled = false;
+  goalSave.textContent = state.editingGoalId ? "Update goal" : "Save goal";
+
+  if (res?.error) {
+    console.error("[goal save] failed:", res.error, "payload:", payload);
+    showGoalFormError(prettyLedgerError(res.error.message));
+    showToast(`Save failed: ${stripHtml(prettyLedgerError(res.error.message))}`, "error");
+    return;
+  }
+  showToast(state.editingGoalId ? "Goal updated" : "Goal saved", "success");
+  await fetchGoals();
+  resetGoalForm();
+});
+
+function showGoalFormError(msg) {
+  goalFormError.innerHTML = msg;
+  goalFormError.classList.remove("hidden");
+  goalFormError.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function openGoalEdit(g) {
+  state.editingGoalId = g.id;
+  goalFormTitle.textContent = "Edit goal";
+  goalType.value = g.type;
+  goalEmoji.value = g.emoji || "";
+  goalName.value = g.name;
+  goalTargetAmount.value = g.target_amount != null ? Number(g.target_amount).toFixed(2) : "";
+  goalTargetMonths.value = g.target_months ?? 3;
+  goalDeadline.value = g.deadline || "";
+  goalNote.value = g.note || "";
+  goalSave.textContent = "Update goal";
+  refreshGoalFormForType();
+  goalForm.classList.remove("hidden");
+  goalForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetGoalForm() {
+  state.editingGoalId = null;
+  goalForm.reset();
+  goalForm.classList.add("hidden");
+  goalFormTitle.textContent = "New goal";
+  goalSave.textContent = "Save goal";
+  goalFormError.classList.add("hidden");
+  refreshGoalFormForType();
+}
+
+// ---- Contribution form ------------------------------------------------------
+function refreshGoalContribTargetOptions() {
+  if (!goalContribTarget) return;
+  const active = state.goals.filter((g) => g.status === "ACTIVE")
+    .sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  goalContribTarget.innerHTML = active.length === 0
+    ? `<option value="">— no active goals —</option>`
+    : active.map((g) => `<option value="${g.id}">${escapeHtml(g.emoji || "💰")} ${escapeHtml(g.name)}</option>`).join("");
+}
+
+function refreshContribUI() {
+  const isSpecific = goalContribMode.value === "SPECIFIC";
+  goalContribTargetField.classList.toggle("hidden", !isSpecific);
+  refreshContribPreview();
+}
+goalContribMode.addEventListener("change", refreshContribUI);
+goalContribAmount.addEventListener("input", refreshContribPreview);
+
+function refreshContribPreview() {
+  const amount = parseFloat(goalContribAmount.value);
+  if (!Number.isFinite(amount) || amount <= 0) { goalContribPreview.textContent = ""; return; }
+  if (goalContribMode.value === "SPECIFIC") {
+    const g = state.goals.find((x) => x.id === goalContribTarget.value);
+    goalContribPreview.textContent = g ? `→ all ${formatETB(amount)} to ${g.name}` : "";
+    return;
+  }
+  // Auto preview
+  const splits = waterfallPlan(amount);
+  if (splits.length === 0) {
+    goalContribPreview.textContent = "→ no active goals to receive this";
+    return;
+  }
+  goalContribPreview.textContent = "→ " + splits.map((s) => {
+    const g = state.goals.find((x) => x.id === s.goalId);
+    return `${formatETB(s.amount)} → ${g?.emoji || ""}${g?.name || "?"}`;
+  }).join(", ");
+}
+
+function waterfallPlan(amount) {
+  let remaining = amount;
+  const out = [];
+  const active = state.goals.filter((g) => g.status === "ACTIVE")
+    .sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  for (const g of active) {
+    if (remaining <= 0) break;
+    const need = goalShortfall(g);
+    if (need <= 0) continue;
+    const alloc = Math.min(remaining, need);
+    out.push({ goalId: g.id, amount: alloc });
+    remaining -= alloc;
+  }
+  // Leftover goes to the LAST active goal (so nothing is dropped).
+  if (remaining > 0 && active.length > 0) {
+    const last = active[active.length - 1];
+    const existing = out.find((x) => x.goalId === last.id);
+    if (existing) existing.amount += remaining;
+    else out.push({ goalId: last.id, amount: remaining });
+  }
+  return out;
+}
+
+goalContribToggle.addEventListener("click", () => {
+  goalContribForm.classList.toggle("hidden");
+  refreshGoalContribTargetOptions();
+  // Default date today.
+  if (!goalContribDate.value) goalContribDate.value = new Date().toISOString().slice(0, 10);
+  refreshContribUI();
+});
+goalContribCancel.addEventListener("click", () => {
+  goalContribForm.classList.add("hidden");
+  goalContribError.classList.add("hidden");
+  goalContribForm.reset();
+  goalContribPreview.textContent = "";
+});
+
+goalContribForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  goalContribError.classList.add("hidden");
+  if (!state.userId) { showContribError("Not signed in."); return; }
+  const amount = parseFloat(goalContribAmount.value);
+  if (!Number.isFinite(amount) || amount <= 0) { showContribError("Enter a positive amount."); return; }
+
+  const dateIso = goalContribDate.value
+    ? new Date(goalContribDate.value).toISOString()
+    : new Date().toISOString();
+  const note = goalContribNote.value.trim() || null;
+
+  let splits;
+  if (goalContribMode.value === "SPECIFIC") {
+    const id = goalContribTarget.value;
+    if (!id) { showContribError("Pick a goal first."); return; }
+    splits = [{ goalId: id, amount }];
+  } else {
+    splits = waterfallPlan(amount);
+    if (splits.length === 0) { showContribError("No active goals to receive this."); return; }
+  }
+
+  goalContribSave.disabled = true;
+  goalContribSave.textContent = "Saving…";
+  const rows = splits.map((s) => ({
+    user_id: state.userId,
+    goal_id: s.goalId,
+    amount: s.amount,
+    contributed_at: dateIso,
+    note,
+  }));
+  const { error } = await supabase.from("i_goal_contributions").insert(rows);
+  goalContribSave.disabled = false;
+  goalContribSave.textContent = "Log save";
+
+  if (error) {
+    console.error("[goal contribution] failed:", error, rows);
+    showContribError(prettyLedgerError(error.message));
+    showToast(`Save failed: ${stripHtml(prettyLedgerError(error.message))}`, "error");
+    return;
+  }
+
+  // Auto-mark any goal whose lifetime saved >= target.
+  await autoMarkAchieved();
+
+  showToast(`Logged ${formatETB(amount)} across ${splits.length} goal${splits.length === 1 ? "" : "s"}`, "success");
+  await fetchGoals();
+  goalContribForm.classList.add("hidden");
+  goalContribForm.reset();
+  goalContribPreview.textContent = "";
+});
+
+function showContribError(msg) {
+  goalContribError.innerHTML = msg;
+  goalContribError.classList.remove("hidden");
+  goalContribError.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function autoMarkAchieved() {
+  // Refresh contributions first so the sum is accurate.
+  const { data } = await supabase.from("i_goal_contributions").select("*").eq("user_id", state.userId);
+  if (data) state.goalContributions = data;
+  for (const g of state.goals.filter((x) => x.status === "ACTIVE" && x.type !== "RECURRING")) {
+    const target = goalTarget(g);
+    if (target > 0 && sumContributions(g.id) >= target) {
+      await supabase.from("i_goals").update({ status: "ACHIEVED", achieved_at: new Date().toISOString() }).eq("id", g.id);
+    }
+  }
+}
+
+function openContribForSpecificGoal(g) {
+  goalContribForm.classList.remove("hidden");
+  refreshGoalContribTargetOptions();
+  goalContribMode.value = "SPECIFIC";
+  goalContribTarget.value = g.id;
+  if (!goalContribDate.value) goalContribDate.value = new Date().toISOString().slice(0, 10);
+  refreshContribUI();
+  goalContribForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  goalContribAmount.focus();
+}
+
+goalHistoryToggle.addEventListener("click", () => {
+  state.goalHistoryOpen = !state.goalHistoryOpen;
+  goalHistoryList.classList.toggle("hidden", !state.goalHistoryOpen);
+  goalHistoryToggle.textContent = state.goalHistoryOpen ? "Hide" : "Show";
+});
+
+// ============================================================================
+// Notion-style view switchers (Ledger / Income / Goals)
+// ============================================================================
+const ledgerViewSwitch     = $("ledger-view-switch");
+const ledgerCardsView      = $("ledger-cards-view");
+const ledgerTableView      = $("ledger-table-view");
+const ledgerCalendarView   = $("ledger-calendar-view");
+const ledgerTableTbody     = $("ledger-table-tbody");
+const ledgerTableCount     = $("ledger-table-count");
+const ledgerCalendarTitle  = $("ledger-calendar-title");
+const ledgerCalendar       = $("ledger-calendar");
+
+const incomeViewSwitch     = $("income-view-switch");
+const incomeCardsView      = $("income-cards-view");
+const incomeTableView      = $("income-table-view");
+const incomeCalendarView   = $("income-calendar-view");
+const incomeTableTbody     = $("income-table-tbody");
+const incomeTableCount     = $("income-table-count");
+const incomeCalendarTitle  = $("income-calendar-title");
+const incomeCalendar       = $("income-calendar");
+
+const goalsViewSwitch      = $("goals-view-switch");
+const goalsCardsView       = $("goals-cards-view");
+const goalsTableView       = $("goals-table-view");
+const goalsProgressView    = $("goals-progress-view");
+const goalsTableTbody      = $("goals-table-tbody");
+const goalsTableCount      = $("goals-table-count");
+const goalsProgressGrid    = $("goals-progress-grid");
+
+function bindViewSwitch(switchEl, key, applyFn) {
+  if (!switchEl) return;
+  switchEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".view-switch-pill");
+    if (!btn) return;
+    state[key] = btn.dataset.view;
+    switchEl.querySelectorAll(".view-switch-pill").forEach((p) =>
+      p.classList.toggle("active", p.dataset.view === state[key]));
+    applyFn();
+  });
+}
+bindViewSwitch(ledgerViewSwitch, "ledgerListView", applyLedgerListView);
+bindViewSwitch(incomeViewSwitch, "incomeListView", applyIncomeListView);
+bindViewSwitch(goalsViewSwitch,  "goalsListView",  applyGoalsListView);
+
+// Calendar nav buttons (shared markup pattern: data-cal-nav inside the view).
+function bindCalendarNav(viewEl, key, render) {
+  if (!viewEl) return;
+  viewEl.querySelectorAll("[data-cal-nav]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const dir = btn.dataset.calNav;
+      const cur = new Date(state[key]);
+      if (dir === "prev")  cur.setMonth(cur.getMonth() - 1);
+      if (dir === "next")  cur.setMonth(cur.getMonth() + 1);
+      if (dir === "today") cur.setTime(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime());
+      state[key] = new Date(cur.getFullYear(), cur.getMonth(), 1).getTime();
+      render();
+    });
+  });
+}
+bindCalendarNav(ledgerCalendarView, "ledgerCalCursor", renderLedgerCalendar);
+bindCalendarNav(incomeCalendarView, "incomeCalCursor", renderIncomeCalendar);
+
+// ---- Appliers — pick which view is visible and render it -------------------
+function applyLedgerListView() {
+  ledgerCardsView.classList.toggle("hidden",    state.ledgerListView !== "cards");
+  ledgerTableView.classList.toggle("hidden",    state.ledgerListView !== "table");
+  ledgerCalendarView.classList.toggle("hidden", state.ledgerListView !== "calendar");
+  if (state.ledgerListView === "table")    renderLedgerTable();
+  if (state.ledgerListView === "calendar") renderLedgerCalendar();
+}
+function applyIncomeListView() {
+  incomeCardsView.classList.toggle("hidden",    state.incomeListView !== "cards");
+  incomeTableView.classList.toggle("hidden",    state.incomeListView !== "table");
+  incomeCalendarView.classList.toggle("hidden", state.incomeListView !== "calendar");
+  if (state.incomeListView === "table")    renderIncomeTable();
+  if (state.incomeListView === "calendar") renderIncomeCalendar();
+}
+function applyGoalsListView() {
+  goalsCardsView.classList.toggle("hidden",    state.goalsListView !== "cards");
+  goalsTableView.classList.toggle("hidden",    state.goalsListView !== "table");
+  goalsProgressView.classList.toggle("hidden", state.goalsListView !== "progress");
+  if (state.goalsListView === "table")    renderGoalsTable();
+  if (state.goalsListView === "progress") renderGoalsProgress();
+}
+
+// ---- Ledger: Table ----------------------------------------------------------
+function renderLedgerTable() {
+  const all = [...state.ledger].sort((a, b) => {
+    if (a.status !== b.status) return a.status === "ACTIVE" ? -1 : 1;
+    return sortByDue(a, b);
+  });
+  ledgerTableCount.textContent = `${all.length} total`;
+  ledgerTableTbody.innerHTML = all.length === 0
+    ? `<tr><td colspan="6" class="muted">Nothing here yet.</td></tr>`
+    : all.map((e) => {
+        const overdue = e.status === "ACTIVE" && isOverdue(e.due_date);
+        const status = e.status === "ACTIVE" ? (overdue ? "overdue" : "active")
+                     : e.status === "SETTLED" ? "settled" : "archived";
+        const balanceClass = e.direction === "I_OWE" ? "amount-out" : "amount-in";
+        const directionLabel = e.direction === "I_OWE" ? "I owe" : "Owed to me";
+        const typeLabel = e.type === "RECURRING" ? `Recurring (${cadenceLabel(e.cadence, e.interval_days)})` : "IOU";
+        return `
+          <tr>
+            <td><strong>${escapeHtml(e.counterparty)}</strong>${e.note ? `<div class="muted small">${escapeHtml(e.note)}</div>` : ""}</td>
+            <td><span class="tag">${escapeHtml(typeLabel)}</span></td>
+            <td>${escapeHtml(directionLabel)}</td>
+            <td>${e.due_date ? escapeHtml(formatDueDate(e.due_date)) : '<span class="muted">—</span>'}</td>
+            <td class="right ${balanceClass}">${formatETB(Number(e.balance))}</td>
+            <td><span class="status-pill ${status}">${status.toUpperCase()}</span></td>
+          </tr>
+        `;
+      }).join("");
+}
+
+// ---- Income: Table ---------------------------------------------------------
+function renderIncomeTable() {
+  const all = [...state.income].sort((a, b) => {
+    if (a.status !== b.status) return a.status === "ACTIVE" ? -1 : 1;
+    if (a.type !== b.type)     return a.type === "RECURRING" ? -1 : 1;
+    return sortByDueIncome(a, b);
+  });
+  incomeTableCount.textContent = `${all.length} total`;
+  incomeTableTbody.innerHTML = all.length === 0
+    ? `<tr><td colspan="6" class="muted">Nothing here yet.</td></tr>`
+    : all.map((e) => {
+        const overdue = e.type === "RECURRING" && e.status === "ACTIVE" && isOverdue(e.occurs_on);
+        const status = e.status !== "ACTIVE" ? "archived"
+                     : overdue ? "overdue" : "active";
+        const cadence = e.type === "RECURRING" ? cadenceLabel(e.cadence, e.interval_days) : "—";
+        const date = e.occurs_on ? formatDueDate(e.occurs_on) : "—";
+        return `
+          <tr>
+            <td><strong>${escapeHtml(e.source)}</strong>${e.note ? `<div class="muted small">${escapeHtml(e.note)}</div>` : ""}</td>
+            <td><span class="tag">${e.type === "RECURRING" ? "Recurring" : "One-off"}</span></td>
+            <td>${escapeHtml(cadence)}</td>
+            <td>${escapeHtml(date)}</td>
+            <td class="right amount-in">+ ${formatETB(Number(e.amount))}</td>
+            <td><span class="status-pill ${status}">${status.toUpperCase()}</span></td>
+          </tr>
+        `;
+      }).join("");
+}
+
+// ---- Goals: Table ----------------------------------------------------------
+function renderGoalsTable() {
+  const all = [...state.goals].sort((a, b) => {
+    if (a.status !== b.status) return a.status === "ACTIVE" ? -1 : 1;
+    return (a.priority ?? 100) - (b.priority ?? 100);
+  });
+  goalsTableCount.textContent = `${all.length} total`;
+  goalsTableTbody.innerHTML = all.length === 0
+    ? `<tr><td colspan="6" class="muted">No goals yet.</td></tr>`
+    : all.map((g) => {
+        const target = goalTarget(g);
+        const saved  = sumContributions(g.id);
+        const pct    = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
+        const status = g.status === "ACTIVE" ? goalStatus(g) : g.status.toLowerCase();
+        const typeLabel = g.type === "DATE_BOUND" ? "Date-bound"
+                        : g.type === "OPEN_ENDED" ? "Open-ended"
+                        : "Recurring";
+        return `
+          <tr>
+            <td><strong>${escapeHtml(g.emoji || "💰")} ${escapeHtml(g.name)}</strong></td>
+            <td><span class="tag">${typeLabel}</span></td>
+            <td class="right amount-in">${formatETB(saved)}</td>
+            <td class="right">${target > 0 ? formatETB(target) : '<span class="muted">—</span>'}</td>
+            <td>
+              <span class="mini-bar"><span style="width: ${pct.toFixed(0)}%"></span></span>
+              <span class="muted small">${pct.toFixed(0)}%</span>
+            </td>
+            <td><span class="status-pill ${status}">${status.toUpperCase().replace("-", " ")}</span></td>
+          </tr>
+        `;
+      }).join("");
+}
+
+// ---- Goals: Progress wall --------------------------------------------------
+function renderGoalsProgress() {
+  const active = state.goals.filter((g) => g.status === "ACTIVE")
+    .sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  if (active.length === 0) {
+    goalsProgressGrid.innerHTML = `<p class="muted">No active goals.</p>`;
+    return;
+  }
+  goalsProgressGrid.innerHTML = active.map((g) => {
+    const target = goalTarget(g);
+    const saved  = sumContributions(g.id);
+    const pct    = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
+    const st     = goalStatus(g);
+    const r = 60, c = 2 * Math.PI * r;
+    const dash = (pct / 100) * c;
+    const ringColor = st === "behind" ? "var(--coral)" : "var(--green-income)";
+    const trackColor = "rgba(255, 255, 255, 0.08)";
+    const cardClass = `goal-progress-card ${st === "behind" ? "behind" : st === "achieved" ? "achieved" : ""}`;
+    return `
+      <div class="${cardClass}">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="${r}" fill="none" stroke="${trackColor}" stroke-width="12"/>
+            <circle cx="70" cy="70" r="${r}" fill="none" stroke="${ringColor}" stroke-width="12"
+                    stroke-linecap="round" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${(c - dash).toFixed(2)}"/>
+          </svg>
+          <div class="ring-pct">
+            <span>${pct.toFixed(0)}%</span>
+            <span class="meta">${st.toUpperCase().replace("-", " ")}</span>
+          </div>
+        </div>
+        <div class="name-row"><span class="emoji">${escapeHtml(g.emoji || "💰")}</span>${escapeHtml(g.name)}</div>
+        <div class="meta-row">${formatETB(saved)} of ${target > 0 ? formatETB(target) : "—"}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+// ---- Calendar — shared layout helper ---------------------------------------
+/**
+ * Render a month calendar into `container`.
+ * @param {HTMLElement} container - the .calendar-grid element.
+ * @param {HTMLElement} titleEl   - element to set the "Month YYYY" title in.
+ * @param {number}      cursorMs  - epoch ms of the 1st of the month to show.
+ * @param {(date: Date) => Array<{label, klass, title}>} chipsForDay - returns up to N chips per cell.
+ */
+function renderMonthCalendar(container, titleEl, cursorMs, chipsForDay) {
+  const cursor = new Date(cursorMs);
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  titleEl.textContent = cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+  const firstDayOfMonth = new Date(year, month, 1);
+  const startWeekday = firstDayOfMonth.getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
+  const todayKey = todayKeyOf(new Date());
+
+  let html = ["S", "M", "T", "W", "T", "F", "S"]
+    .map((l) => `<div class="calendar-day-label">${l}</div>`)
+    .join("");
+
+  // Total 42 cells (6 rows × 7 cols) — fills nicely.
+  for (let i = 0; i < 42; i++) {
+    let cellDate, isOther;
+    if (i < startWeekday) {
+      cellDate = new Date(year, month - 1, prevMonthDays - (startWeekday - 1 - i));
+      isOther = true;
+    } else if (i - startWeekday < daysInMonth) {
+      cellDate = new Date(year, month, i - startWeekday + 1);
+      isOther = false;
+    } else {
+      cellDate = new Date(year, month + 1, i - startWeekday - daysInMonth + 1);
+      isOther = true;
+    }
+    const isToday = todayKeyOf(cellDate) === todayKey;
+    const chips = chipsForDay(cellDate) || [];
+    const visibleChips = chips.slice(0, 3);
+    const extra = chips.length - visibleChips.length;
+    const klasses = ["calendar-cell"];
+    if (isOther) klasses.push("other-month");
+    if (isToday) klasses.push("today");
+    html += `<div class="${klasses.join(" ")}">
+      <span class="day-num">${cellDate.getDate()}</span>
+      ${visibleChips.map((c) =>
+        `<span class="day-chip ${c.klass}" title="${escapeHtml(c.title || "")}">${escapeHtml(c.label)}</span>`
+      ).join("")}
+      ${extra > 0 ? `<span class="day-overflow">+ ${extra} more</span>` : ""}
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function todayKeyOf(d) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+// ---- Ledger: Calendar ------------------------------------------------------
+function renderLedgerCalendar() {
+  renderMonthCalendar(
+    ledgerCalendar,
+    ledgerCalendarTitle,
+    state.ledgerCalCursor,
+    (date) => {
+      const key = todayKeyOf(date);
+      return state.ledger
+        .filter((e) => e.status === "ACTIVE" && e.due_date && todayKeyOf(new Date(e.due_date)) === key)
+        .map((e) => {
+          const overdue = isOverdue(e.due_date);
+          const klass = overdue ? "overdue" : (e.direction === "I_OWE" ? "owe" : "lent");
+          const sign = e.direction === "I_OWE" ? "-" : "+";
+          return {
+            label: `${sign} ${e.counterparty.slice(0, 14)} · ${formatNumber(Number(e.balance))}`,
+            klass,
+            title: `${e.counterparty}: ${e.direction === "I_OWE" ? "I owe" : "owed to me"} ${formatETB(Number(e.balance))}${overdue ? " — OVERDUE" : ""}`,
+          };
+        });
+    }
+  );
+}
+
+// ---- Income: Calendar ------------------------------------------------------
+function renderIncomeCalendar() {
+  renderMonthCalendar(
+    incomeCalendar,
+    incomeCalendarTitle,
+    state.incomeCalCursor,
+    (date) => {
+      const key = todayKeyOf(date);
+      const chips = [];
+      // Tracked recurring income — expected dates.
+      for (const e of state.income) {
+        if (e.status !== "ACTIVE" || !e.occurs_on) continue;
+        if (todayKeyOf(new Date(e.occurs_on)) !== key) continue;
+        const overdue = e.type === "RECURRING" && isOverdue(e.occurs_on);
+        chips.push({
+          label: `${e.source.slice(0, 14)} · ${formatNumber(Number(e.amount))}`,
+          klass: overdue ? "overdue" : "income",
+          title: `${e.source}: ${e.type === "RECURRING" ? "expected" : "received"} ${formatETB(Number(e.amount))}`,
+        });
+      }
+      return chips;
+    }
+  );
+}
 
 function setupGreeting(user) {
   const hour = new Date().getHours();
@@ -783,12 +2360,22 @@ function renderHeaderStats(allTxs, inRange, range) {
   let spend = 0, spendCount = 0;
   let income = 0, incomeCount = 0;
   let largestExpense = null;
+  // Per-day expense totals, keyed by yyyy-mm-dd. We want the avg-daily-spend
+  // metric to be "average of the days you actually spent money", not just
+  // "total spend ÷ raw days elapsed" — that way a quiet weekend doesn't drag
+  // your daily average to nothing.
+  const dailyTotals = new Map();
 
   for (const tx of inRange) {
     if (EXPENSE_TYPES.has(tx.type)) {
       spend += tx.amount;
       spendCount++;
       if (!largestExpense || tx.amount > largestExpense.amount) largestExpense = tx;
+      const d = new Date(tx.occurred_at);
+      if (!Number.isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        dailyTotals.set(key, (dailyTotals.get(key) || 0) + tx.amount);
+      }
     } else if (tx.type === "CREDIT") {
       income += tx.amount;
       incomeCount++;
@@ -796,8 +2383,12 @@ function renderHeaderStats(allTxs, inRange, range) {
   }
 
   const net = income - spend;
-  const days = periodDays(state.period, range);
-  const avgDaily = spend / days;
+  // Sum of daily totals ÷ count of distinct days with spend.
+  // (Sum is mathematically the same as `spend`, but doing it via dailyTotals
+  // makes the intent explicit and matches the sub-line copy below.)
+  const sumOfDailyTotals = [...dailyTotals.values()].reduce((s, v) => s + v, 0);
+  const daysWithSpend = dailyTotals.size;
+  const avgDaily = daysWithSpend > 0 ? sumOfDailyTotals / daysWithSpend : 0;
   const savingsRate = income > 0 ? ((income - spend) / income) * 100 : null;
 
   statBalance.textContent       = formatETB(totalBalance);
@@ -817,7 +2408,9 @@ function renderHeaderStats(allTxs, inRange, range) {
     : `${savingsRate >= 0 ? "saving" : "overspending"} ${formatPercent(savingsRate)}`;
 
   statAvgDaily.textContent = formatETB(avgDaily);
-  statAvgDailySub.textContent = `over ${days} day${days === 1 ? "" : "s"}`;
+  statAvgDailySub.textContent = daysWithSpend === 0
+    ? "no spending days"
+    : `over ${daysWithSpend} day${daysWithSpend === 1 ? "" : "s"} with spend`;
 
   if (largestExpense) {
     statLargest.textContent = formatETB(largestExpense.amount);

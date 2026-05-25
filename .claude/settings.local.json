@@ -59,7 +59,13 @@
       "Bash(xargs -I{} ls -la \"{}\")",
       "Bash(sort -k5 -n -r)",
       "Bash(awk '{printf \"%8s  %s\\\\n\", $5, $9}')",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(pbcopy)",
+      "Bash(ANDROID_SERIAL=R9ZY90E6MMJ ./gradlew :app:installDebug --console=plain)",
+      "Bash(adb -s R9ZY90E6MMJ shell am start -n com.financeapp/.MainActivity)",
+      "Bash(awk -F: '$1 > 462 && $1 < 600 {print \"Lend:\", $1}; $1 > 930 && $1 < 1100 {print \"Inc:\", $1}; $1 > 1491 && $1 < 1700 {print \"Goal:\", $1}')",
+      "Bash(awk 'NR>=930 && NR<=1010 && /^}/' \"/Users/nahu/Documents/05_CODEX/07. FINANCE LORE/2. second version/finance_app/Web/app.js\")",
+      "Bash(awk 'NR>=1491 && NR<=1700 && /^}/' \"/Users/nahu/Documents/05_CODEX/07. FINANCE LORE/2. second version/finance_app/Web/app.js\")"
     ]
   }
 }

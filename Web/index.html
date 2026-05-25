@@ -55,6 +55,14 @@
             Ledger
             <span id="ledger-badge" class="view-tab-badge hidden">0</span>
           </button>
+          <button class="view-tab" data-view="income" role="tab">
+            Income
+            <span id="income-badge" class="view-tab-badge income-badge hidden">0</span>
+          </button>
+          <button class="view-tab" data-view="goals" role="tab">
+            Goals
+            <span id="goals-badge" class="view-tab-badge goals-badge hidden">0</span>
+          </button>
         </div>
 
         <!-- Period selector (shared across views) -->
@@ -370,13 +378,20 @@
                 <label class="field" id="ledger-cadence-field">
                   <span class="label">Cadence</span>
                   <select id="ledger-cadence">
-                    <option value="MONTHLY">Monthly</option>
+                    <option value="MONTHLY">Monthly (calendar)</option>
                     <option value="WEEKLY">Weekly</option>
+                    <option value="BIWEEKLY">Bi-weekly (every 14 days)</option>
+                    <option value="EVERY_30_DAYS">Every 30 days</option>
                     <option value="QUARTERLY">Quarterly</option>
                     <option value="YEARLY">Yearly</option>
+                    <option value="CUSTOM">Custom — every N days</option>
                   </select>
                 </label>
               </div>
+              <label class="field hidden" id="ledger-interval-field">
+                <span class="label">Every N days</span>
+                <input type="number" id="ledger-interval-days" min="1" step="1" placeholder="e.g. 10" />
+              </label>
               <label class="field">
                 <span class="label">Note (optional)</span>
                 <input type="text" id="ledger-note" placeholder="What's this for?" />
@@ -389,8 +404,15 @@
             </form>
           </section>
 
-          <!-- Two columns: borrow vs lend -->
-          <section class="grid grid-2">
+          <!-- View switcher (Cards / Table / Calendar) -->
+          <div class="view-switch" id="ledger-view-switch">
+            <button type="button" class="view-switch-pill active" data-view="cards">Cards</button>
+            <button type="button" class="view-switch-pill" data-view="table">Table</button>
+            <button type="button" class="view-switch-pill" data-view="calendar">Calendar</button>
+          </div>
+
+          <!-- Cards view (default): borrow vs lend in 2 columns -->
+          <section class="grid grid-2" id="ledger-cards-view">
             <div class="card">
               <header class="section-header">
                 <h3>Money I owe</h3>
@@ -411,6 +433,42 @@
             </div>
           </section>
 
+          <!-- Table view -->
+          <section class="card hidden" id="ledger-table-view">
+            <header class="section-header">
+              <h3>All entries</h3>
+              <span class="muted small" id="ledger-table-count">—</span>
+            </header>
+            <div class="table-wrap">
+              <table class="tx-table">
+                <thead>
+                  <tr>
+                    <th>Counterparty</th>
+                    <th>Type</th>
+                    <th>Direction</th>
+                    <th>Due</th>
+                    <th class="right">Balance</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="ledger-table-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Calendar view -->
+          <section class="card hidden" id="ledger-calendar-view">
+            <header class="section-header">
+              <h3 id="ledger-calendar-title">—</h3>
+              <div class="calendar-nav">
+                <button type="button" class="btn-ghost" data-cal-nav="prev">‹</button>
+                <button type="button" class="btn-ghost" data-cal-nav="today">Today</button>
+                <button type="button" class="btn-ghost" data-cal-nav="next">›</button>
+              </div>
+            </header>
+            <div id="ledger-calendar" class="calendar-grid"></div>
+          </section>
+
           <!-- Settled / Archived (collapsed by default) -->
           <section class="card">
             <header class="section-header">
@@ -419,6 +477,344 @@
             </header>
             <div id="ledger-closed-list" class="ledger-list hidden">
               <p class="muted">Nothing settled yet.</p>
+            </div>
+          </section>
+        </section>
+
+        <!-- ===== Income view (recurring + one-off) ===== -->
+        <section id="income-view" class="view dashboard-view hidden">
+          <!-- Hero stats -->
+          <section class="grid grid-3 stat-grid">
+            <div class="card stat-card">
+              <p class="label">Income <span class="muted small" id="income-period-label">this month</span></p>
+              <p class="big-number income" id="income-actual">—</p>
+              <p class="muted small" id="income-actual-sub">received so far</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Expected Recurring</p>
+              <p class="big-number teal" id="income-expected">—</p>
+              <p class="muted small" id="income-expected-sub">tracked recurring sources</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Variance vs Expected</p>
+              <p class="big-number" id="income-variance">—</p>
+              <p class="muted small" id="income-variance-sub">received − expected</p>
+            </div>
+          </section>
+
+          <!-- Detected suggestions -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Suggested recurring incomes</h3>
+              <span class="muted small" id="income-sugg-count">scanning your CREDIT history…</span>
+            </header>
+            <div id="income-suggestions" class="income-suggestions">
+              <p class="muted">Looking for patterns…</p>
+            </div>
+          </section>
+
+          <!-- Add entry -->
+          <section class="card ledger-add">
+            <header class="section-header">
+              <h3 id="income-form-title">New income</h3>
+              <button type="button" id="income-form-toggle" class="btn-ghost">+ Add</button>
+            </header>
+            <form id="income-form" class="ledger-form hidden" autocomplete="off">
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Type</span>
+                  <select id="income-type">
+                    <option value="ONEOFF">One-off</option>
+                    <option value="RECURRING">Recurring</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="label">Amount (ETB)</span>
+                  <input type="number" id="income-amount" required min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+                </label>
+              </div>
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Source</span>
+                  <input type="text" id="income-source" required placeholder="e.g. Salary, Mom, Freelance gig" />
+                </label>
+                <label class="field" id="income-cadence-field">
+                  <span class="label">Cadence</span>
+                  <select id="income-cadence">
+                    <option value="MONTHLY">Monthly (calendar)</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="BIWEEKLY">Bi-weekly (every 14 days)</option>
+                    <option value="EVERY_30_DAYS">Every 30 days</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="YEARLY">Yearly</option>
+                    <option value="CUSTOM">Custom — every N days</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field hidden" id="income-interval-field">
+                <span class="label">Every N days</span>
+                <input type="number" id="income-interval-days" min="1" step="1" placeholder="e.g. 10" />
+              </label>
+              <label class="field">
+                <span class="label" id="income-date-label">Date received</span>
+                <input type="date" id="income-occurs-on" />
+              </label>
+              <label class="field">
+                <span class="label">Note (optional)</span>
+                <input type="text" id="income-note" placeholder="What's this for?" />
+              </label>
+              <div class="ledger-form-actions">
+                <button type="button" id="income-cancel" class="btn-ghost">Cancel</button>
+                <button type="submit" id="income-save" class="btn-primary">Save income</button>
+              </div>
+              <p id="income-form-error" class="error hidden"></p>
+            </form>
+          </section>
+
+          <!-- View switcher (Cards / Table / Calendar) -->
+          <div class="view-switch" id="income-view-switch">
+            <button type="button" class="view-switch-pill active" data-view="cards">Cards</button>
+            <button type="button" class="view-switch-pill" data-view="table">Table</button>
+            <button type="button" class="view-switch-pill" data-view="calendar">Calendar</button>
+          </div>
+
+          <!-- Cards view (default): recurring + one-off in separate sections -->
+          <div id="income-cards-view">
+            <section class="card">
+              <header class="section-header">
+                <h3>Tracked recurring income</h3>
+                <span class="muted small" id="income-recurring-count">—</span>
+              </header>
+              <div id="income-recurring-list" class="ledger-list">
+                <p class="muted">No recurring incomes tracked yet. Confirm a suggestion above or add one manually.</p>
+              </div>
+            </section>
+
+            <section class="card" style="margin-top: 16px;">
+              <header class="section-header">
+                <h3>One-off income</h3>
+                <span class="muted small" id="income-oneoff-count">—</span>
+              </header>
+              <div id="income-oneoff-list" class="ledger-list">
+                <p class="muted">Nothing recorded yet.</p>
+              </div>
+            </section>
+          </div>
+
+          <!-- Table view -->
+          <section class="card hidden" id="income-table-view">
+            <header class="section-header">
+              <h3>All income</h3>
+              <span class="muted small" id="income-table-count">—</span>
+            </header>
+            <div class="table-wrap">
+              <table class="tx-table">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Type</th>
+                    <th>Cadence</th>
+                    <th>Date</th>
+                    <th class="right">Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="income-table-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Calendar view -->
+          <section class="card hidden" id="income-calendar-view">
+            <header class="section-header">
+              <h3 id="income-calendar-title">—</h3>
+              <div class="calendar-nav">
+                <button type="button" class="btn-ghost" data-cal-nav="prev">‹</button>
+                <button type="button" class="btn-ghost" data-cal-nav="today">Today</button>
+                <button type="button" class="btn-ghost" data-cal-nav="next">›</button>
+              </div>
+            </header>
+            <div id="income-calendar" class="calendar-grid"></div>
+          </section>
+        </section>
+
+        <!-- ===== Goals view ===== -->
+        <section id="goals-view" class="view dashboard-view hidden">
+          <!-- Hero stats -->
+          <section class="grid grid-3 stat-grid">
+            <div class="card stat-card">
+              <p class="label">Total Saved</p>
+              <p class="big-number income" id="goals-total-saved">—</p>
+              <p class="muted small" id="goals-total-saved-sub">across all goals</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">On Track</p>
+              <p class="big-number teal" id="goals-on-track">—</p>
+              <p class="muted small" id="goals-on-track-sub">—</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Needed This Month</p>
+              <p class="big-number coral" id="goals-needed">—</p>
+              <p class="muted small" id="goals-needed-sub">to stay on pace</p>
+            </div>
+          </section>
+
+          <!-- Add a contribution -->
+          <section class="card ledger-add">
+            <header class="section-header">
+              <h3>Log a contribution</h3>
+              <button type="button" id="goal-contrib-toggle" class="btn-ghost">+ Save</button>
+            </header>
+            <form id="goal-contrib-form" class="ledger-form hidden" autocomplete="off">
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Amount (ETB)</span>
+                  <input type="number" id="goal-contrib-amount" required min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" />
+                </label>
+                <label class="field">
+                  <span class="label">Date</span>
+                  <input type="date" id="goal-contrib-date" />
+                </label>
+              </div>
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Allocation</span>
+                  <select id="goal-contrib-mode">
+                    <option value="AUTO">Auto — waterfall by priority</option>
+                    <option value="SPECIFIC">Specific goal</option>
+                  </select>
+                </label>
+                <label class="field hidden" id="goal-contrib-target-field">
+                  <span class="label">Goal</span>
+                  <select id="goal-contrib-target"></select>
+                </label>
+              </div>
+              <label class="field">
+                <span class="label">Note (optional)</span>
+                <input type="text" id="goal-contrib-note" placeholder="Where did this money come from?" />
+              </label>
+              <div class="ledger-form-actions">
+                <button type="button" id="goal-contrib-cancel" class="btn-ghost">Cancel</button>
+                <button type="submit" id="goal-contrib-save" class="btn-primary">Log save</button>
+              </div>
+              <p id="goal-contrib-error" class="error hidden"></p>
+              <p id="goal-contrib-preview" class="muted small"></p>
+            </form>
+          </section>
+
+          <!-- Add / edit a goal -->
+          <section class="card ledger-add">
+            <header class="section-header">
+              <h3 id="goal-form-title">New goal</h3>
+              <button type="button" id="goal-form-toggle" class="btn-ghost">+ Add</button>
+            </header>
+            <form id="goal-form" class="ledger-form hidden" autocomplete="off">
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Type</span>
+                  <select id="goal-type">
+                    <option value="DATE_BOUND">Date-bound (save X by Y)</option>
+                    <option value="OPEN_ENDED">Open-ended (e.g. emergency fund)</option>
+                    <option value="RECURRING">Recurring (save X each month)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="label">Emoji</span>
+                  <input type="text" id="goal-emoji" maxlength="4" placeholder="🏠" />
+                </label>
+              </div>
+              <label class="field">
+                <span class="label">Name</span>
+                <input type="text" id="goal-name" required placeholder="e.g. Apartment deposit" />
+              </label>
+
+              <!-- Conditional fields per type -->
+              <div class="ledger-form-row" id="goal-target-row">
+                <label class="field" id="goal-target-amount-field">
+                  <span class="label">Target amount (ETB)</span>
+                  <input type="number" id="goal-target-amount" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+                </label>
+                <label class="field hidden" id="goal-deadline-field">
+                  <span class="label">Deadline</span>
+                  <input type="date" id="goal-deadline" />
+                </label>
+              </div>
+              <label class="field hidden" id="goal-target-months-field">
+                <span class="label">× months of average spend</span>
+                <input type="number" id="goal-target-months" min="1" step="1" value="3" />
+                <span class="muted small" id="goal-target-months-preview"></span>
+              </label>
+
+              <label class="field">
+                <span class="label">Note (optional)</span>
+                <input type="text" id="goal-note" placeholder="What's it for?" />
+              </label>
+              <div class="ledger-form-actions">
+                <button type="button" id="goal-cancel" class="btn-ghost">Cancel</button>
+                <button type="submit" id="goal-save" class="btn-primary">Save goal</button>
+              </div>
+              <p id="goal-form-error" class="error hidden"></p>
+            </form>
+          </section>
+
+          <!-- View switcher (Cards / Table / Progress) -->
+          <div class="view-switch" id="goals-view-switch">
+            <button type="button" class="view-switch-pill active" data-view="cards">Cards</button>
+            <button type="button" class="view-switch-pill" data-view="table">Table</button>
+            <button type="button" class="view-switch-pill" data-view="progress">Progress</button>
+          </div>
+
+          <!-- Cards view (default) -->
+          <section class="card" id="goals-cards-view">
+            <header class="section-header">
+              <h3>Your goals</h3>
+              <span class="muted small" id="goals-count">—</span>
+            </header>
+            <div id="goals-list" class="goals-list">
+              <p class="muted">No goals yet. Tap + Add above to create one.</p>
+            </div>
+          </section>
+
+          <!-- Table view -->
+          <section class="card hidden" id="goals-table-view">
+            <header class="section-header">
+              <h3>All goals</h3>
+              <span class="muted small" id="goals-table-count">—</span>
+            </header>
+            <div class="table-wrap">
+              <table class="tx-table">
+                <thead>
+                  <tr>
+                    <th>Goal</th>
+                    <th>Type</th>
+                    <th class="right">Saved</th>
+                    <th class="right">Target</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="goals-table-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Progress gallery view -->
+          <section class="card hidden" id="goals-progress-view">
+            <header class="section-header">
+              <h3>Progress wall</h3>
+              <span class="muted small">large ring chart per goal</span>
+            </header>
+            <div id="goals-progress-grid" class="goals-progress-grid"></div>
+          </section>
+
+          <!-- Contribution history -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Recent contributions</h3>
+              <button type="button" id="goal-history-toggle" class="btn-ghost">Show</button>
+            </header>
+            <div id="goal-history-list" class="ledger-list hidden">
+              <p class="muted">No contributions yet.</p>
             </div>
           </section>
         </section>
