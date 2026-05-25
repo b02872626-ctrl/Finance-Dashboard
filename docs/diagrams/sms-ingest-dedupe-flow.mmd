@@ -1,0 +1,35 @@
+flowchart TD
+    A["Incoming SMS or history import"] --> B["SmsIngestService reads financial inbox"]
+    B --> C["For each SMS, TransactionRepository.ingestDetailed"]
+    C --> D{"Tracked financial sender?"}
+
+    D -- "No" --> Z["Ignore message"]
+    D -- "Yes" --> E["Save raw_sms row using body hash"]
+    E --> F{"Raw body already exists?"}
+    F -- "Yes" --> G{"Existing parsed transaction exists?"}
+    G -- "Yes" --> H["Return duplicate body"]
+    G -- "No" --> I["Continue parse attempt"]
+
+    F -- "No" --> I
+    I --> J["Run SmsParserEngine"]
+    J --> K{"Parsed as known financial transaction?"}
+    K -- "No" --> L["Keep raw SMS only for later training"]
+    K -- "Yes" --> M{"Reference number already stored?"}
+
+    M -- "Yes" --> N["Return duplicate ref"]
+    M -- "No" --> O{"Near-duplicate sender, amount, and time?"}
+    O -- "Yes" --> P["Return near duplicate"]
+    O -- "No" --> Q["Insert local transaction row"]
+
+    L --> R["Count pending raw messages and transactions"]
+    Q --> R
+    H --> R
+    N --> R
+    P --> R
+
+    R --> S{"Pending sync items > 0?"}
+    S -- "No" --> T["Finish without cloud sync"]
+    S -- "Yes" --> U["Enqueue Supabase WorkManager sync"]
+    U --> V{"Internet available?"}
+    V -- "No" --> W["Show offline queued notification"]
+    V -- "Yes" --> X["Sync runs in background"]

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "landing-page",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "--listen",
+        "4321",
+        "/Users/nahu/Documents/05_CODEX/07. FINANCE LORE/2. second version/finance_app"
+      ],
+      "port": 4321
+    }
+  ]
+}

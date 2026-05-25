@@ -1,0 +1,27 @@
+flowchart TD
+    A["App launches"] --> B["MainActivity creates database and repositories"]
+    B --> C["Render AppNavigation"]
+    B --> D["Bootstrap background Supabase sync"]
+    B --> E{"SMS permissions granted?"}
+
+    E -- "No" --> F["Request READ_SMS, RECEIVE_SMS, and notifications"]
+    F --> G{"READ_SMS granted?"}
+    G -- "No" --> H["Wait for user action"]
+    G -- "Yes" --> I["Start SmsIngestService"]
+
+    E -- "Yes" --> I
+
+    C --> J{"Supabase session exists?"}
+    J -- "No" --> K["Show email/password sign-in screen"]
+    K --> L{"Sign-in successful?"}
+    L -- "No" --> K
+    L -- "Yes" --> M{"User name saved?"}
+
+    J -- "Yes" --> M
+    M -- "No" --> N["Show onboarding name form"]
+    N --> O["Save display name"]
+    O --> P["Open main app shell"]
+
+    M -- "Yes" --> P
+    P --> Q["Dashboard, Accounts, History, Analytics, Profile"]
+    D --> R["Schedule catch-up sync if pending local data exists"]

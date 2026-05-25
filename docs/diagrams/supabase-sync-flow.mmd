@@ -1,0 +1,35 @@
+﻿flowchart TD
+    A["SMS arrives or history import runs"] --> B{"Sender is tracked financial sender?"}
+    B -- "No" --> Z["Ignore message"]
+    B -- "Yes" --> C["Save raw SMS locally in app DB"]
+    C --> D["Parse SMS into transaction data"]
+    D --> E{"Valid financial transaction?"}
+    E -- "No" --> F["Keep raw SMS only for training sync"]
+    E -- "Yes" --> G["Save transaction locally"]
+
+    F --> H{"User signed in to Supabase?"}
+    G --> H
+
+    H -- "No" --> I["Keep data queued locally"]
+    H -- "Yes" --> J{"Internet available?"}
+
+    J -- "No" --> K["Queue pending sync locally"]
+    K --> L["Show pending/offline sync notification"]
+    L --> M["Retry when network returns"]
+
+    J -- "Yes" --> N["Enqueue WorkManager sync job"]
+    M --> N
+
+    N --> O["Upsert i_users"]
+    O --> P["Upsert i_banks"]
+    P --> Q["Upload i_raw_data"]
+    Q --> R["Upload i_transactions"]
+
+    R --> S{"Sync successful?"}
+    S -- "No" --> T["Keep unsynced locally and retry later"]
+    S -- "Yes" --> U["Mark local raw SMS and transactions as synced"]
+    U --> V["Show sync complete notification if it was pending offline"]
+
+    W["Background fallback checks"] --> N
+    W1["~1 minute follow-up chain"] --> W
+    W2["15 minute periodic fallback"] --> W

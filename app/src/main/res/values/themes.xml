@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FinanceApp" parent="android:Theme.Material.NoActionBar">
+        <!-- Page background shines through the transparent system bars. -->
+        <item name="android:windowBackground">#0E1614</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">#0E1614</item>
+        <!-- Light icons in the status / nav bars against the dark background. -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,28 @@
+flowchart TD
+    A["Tracked financial SMS"] --> B{"Lottery or obvious spam?"}
+    B -- "Yes" --> Z["Ignore message"]
+    B -- "No" --> C["Try parsers in priority order"]
+
+    C --> D{"BOA credit or debit?"}
+    D -- "Yes" --> P1["Bank of Abyssinia parser extracts fields"]
+    D -- "No" --> E{"Awash credit or debit?"}
+    E -- "Yes" --> P2["Awash parser extracts fields"]
+    E -- "No" --> F{"Dashen credit or debit?"}
+    F -- "Yes" --> P3["Dashen parser extracts fields"]
+    F -- "No" --> G{"CBE credit, transfer, or debit?"}
+    G -- "Yes" --> P4["CBE parser extracts fields"]
+    G -- "No" --> H{"Telebirr credit, payment, transfer, airtime, penalty, or withdrawal?"}
+    H -- "Yes" --> P5["Telebirr parser extracts fields"]
+    H -- "No" --> I["Fallback to UnknownBankParser"]
+
+    P1 --> J["Normalize amount, type, balance, counterparty, ref, and date"]
+    P2 --> J
+    P3 --> J
+    P4 --> J
+    P5 --> J
+    I --> J
+
+    J --> K{"Receipt link already parsed?"}
+    K -- "Yes" --> L["Return TransactionEntity"]
+    K -- "No" --> M["Extract first non-Google-Forms URL from raw body"]
+    M --> L

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finance Lore</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="root">
+      <!-- ===== Login view ===== -->
+      <section id="login-view" class="view login-view">
+        <div class="brand-block">
+          <h1>Finance Lore</h1>
+          <p class="muted">Sign in with the same account you use in the Android app.</p>
+        </div>
+
+        <form id="login-form" class="card login-card" autocomplete="on">
+          <label class="field">
+            <span class="label">Email</span>
+            <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+          </label>
+          <label class="field">
+            <span class="label">Password</span>
+            <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••" />
+          </label>
+
+          <div id="login-error" class="error hidden"></div>
+
+          <button type="submit" id="login-btn" class="btn-primary">Sign in</button>
+          <button type="button" id="retry-btn" class="btn-secondary hidden">Try again</button>
+        </form>
+
+        <p class="footer muted small">Designed for privacy · Local processing on Android · Supabase for sync.</p>
+      </section>
+
+      <!-- ===== Authenticated shell (wraps Dashboard + Category Analysis) ===== -->
+      <section id="auth-shell" class="view auth-shell hidden">
+        <header class="dashboard-header">
+          <div>
+            <p class="muted small" id="greeting">Welcome back,</p>
+            <h2 id="user-name">…</h2>
+          </div>
+          <div class="header-actions">
+            <button id="refresh-btn" class="btn-ghost" title="Refresh data">Refresh</button>
+            <button id="logout-btn" class="btn-ghost" title="Sign out">Log out</button>
+          </div>
+        </header>
+
+        <!-- View tabs -->
+        <div id="view-tabs" class="view-tabs" role="tablist">
+          <button class="view-tab active" data-view="dashboard" role="tab">Dashboard</button>
+          <button class="view-tab" data-view="categories" role="tab">Category Analysis</button>
+          <button class="view-tab" data-view="ledger" role="tab">
+            Ledger
+            <span id="ledger-badge" class="view-tab-badge hidden">0</span>
+          </button>
+        </div>
+
+        <!-- Period selector (shared across views) -->
+        <div id="period-bar" class="period-bar" role="tablist" aria-label="Period">
+          <button class="period-pill active" data-period="month" role="tab">This Month</button>
+          <button class="period-pill" data-period="last-month" role="tab">Last Month</button>
+          <button class="period-pill" data-period="30d" role="tab">30 Days</button>
+          <button class="period-pill" data-period="90d" role="tab">90 Days</button>
+          <button class="period-pill" data-period="year" role="tab">This Year</button>
+          <button class="period-pill" data-period="all" role="tab">All Time</button>
+        </div>
+
+        <!-- ===== Dashboard view ===== -->
+        <section id="dashboard-view" class="view dashboard-view">
+          <!-- 6 stat cards -->
+          <section class="grid grid-3 stat-grid">
+            <div class="card stat-card">
+              <p class="label">Total Balance</p>
+              <p class="big-number teal" id="stat-balance">—</p>
+              <p class="muted small" id="stat-balance-sub">across all accounts</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Spend <span id="stat-period-label-1" class="muted small">this month</span></p>
+              <p class="big-number coral" id="stat-month-spend">—</p>
+              <p class="muted small" id="stat-month-spend-sub">—</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Income <span id="stat-period-label-2" class="muted small">this month</span></p>
+              <p class="big-number income" id="stat-month-income">—</p>
+              <p class="muted small" id="stat-month-income-sub">—</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Net Cashflow</p>
+              <p class="big-number" id="stat-net">—</p>
+              <p class="muted small" id="stat-net-sub">income − spend</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Avg Daily Spend</p>
+              <p class="big-number teal" id="stat-avg-daily">—</p>
+              <p class="muted small" id="stat-avg-daily-sub">—</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Largest Expense</p>
+              <p class="big-number coral" id="stat-largest">—</p>
+              <p class="muted small" id="stat-largest-sub">—</p>
+            </div>
+          </section>
+
+          <!-- Charts row -->
+          <section class="grid grid-2">
+            <div class="card chart-card">
+              <header class="section-header">
+                <h3>Daily Spending</h3>
+                <span class="muted small" id="daily-chart-window">last 30 days</span>
+              </header>
+              <div id="daily-chart" class="chart"></div>
+            </div>
+            <div class="card chart-card">
+              <header class="section-header">
+                <h3>Income vs Expense</h3>
+                <span class="muted small">last 12 months</span>
+              </header>
+              <div id="monthly-chart" class="chart"></div>
+              <div class="chart-legend">
+                <span class="dot income-dot"></span><span class="muted small">Income</span>
+                <span class="dot coral-dot"></span><span class="muted small">Expense</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Day-of-week heatmap -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Day-of-week pattern</h3>
+              <span class="muted small">average spend per weekday</span>
+            </header>
+            <div id="weekday-strip" class="weekday-strip"></div>
+          </section>
+
+          <!-- Accounts -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Accounts</h3>
+              <span class="muted small" id="accounts-count">—</span>
+            </header>
+            <div id="accounts-list" class="accounts-list">
+              <p class="muted">Loading…</p>
+            </div>
+          </section>
+
+          <!-- Categories + top counterparties side by side -->
+          <section class="grid grid-2">
+            <div class="card">
+              <header class="section-header">
+                <h3>Spend by Category</h3>
+                <span class="muted small">categorised expenses</span>
+              </header>
+              <div id="category-list" class="category-list">
+                <p class="muted">No categorised data yet.</p>
+              </div>
+            </div>
+            <div class="card">
+              <header class="section-header">
+                <h3>Top Counterparties</h3>
+                <span class="muted small">top 10 by spend</span>
+              </header>
+              <div id="counterparty-list" class="counterparty-list">
+                <p class="muted">No data yet.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Recurring spend -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Recurring Spend</h3>
+              <span class="muted small">counterparties seen 3+ times this period</span>
+            </header>
+            <div id="recurring-list" class="recurring-list">
+              <p class="muted">No recurring patterns detected yet.</p>
+            </div>
+          </section>
+
+          <!-- Transactions with controls -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Transactions</h3>
+              <span class="muted small" id="tx-count">—</span>
+            </header>
+            <div class="tx-controls">
+              <input type="search" id="tx-search" placeholder="Search counterparty, bank, ref…" autocomplete="off" />
+              <select id="tx-type-filter">
+                <option value="">All types</option>
+                <option value="CREDIT">Credit</option>
+                <option value="DEBIT">Debit</option>
+                <option value="PAYMENT">Payment</option>
+                <option value="TRANSFER_OUT">Transfer</option>
+                <option value="UNKNOWN">Unknown</option>
+              </select>
+              <button type="button" id="csv-btn" class="btn-secondary csv-btn">Export CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table id="tx-table" class="tx-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Counterparty</th>
+                    <th>Bank</th>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th class="right">Amount</th>
+                    <th class="right">Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="tx-tbody">
+                  <tr><td colspan="7" class="muted">Loading transactions…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ===== Category Analysis view ===== -->
+        <section id="categories-view" class="view dashboard-view hidden">
+          <!-- Hero stats -->
+          <section class="grid grid-3 stat-grid">
+            <div class="card stat-card">
+              <p class="label">Categorised Spend</p>
+              <p class="big-number coral" id="cat-total">—</p>
+              <p class="muted small" id="cat-total-sub">—</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Top Category</p>
+              <p class="big-number teal" id="cat-top-name">—</p>
+              <p class="muted small" id="cat-top-sub">—</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Uncategorised</p>
+              <p class="big-number" id="cat-uncategorised">—</p>
+              <p class="muted small" id="cat-uncategorised-sub">expenses missing a tag</p>
+            </div>
+          </section>
+
+          <!-- Donut + 12-month stack -->
+          <section class="grid grid-2">
+            <div class="card chart-card">
+              <header class="section-header">
+                <h3>Distribution</h3>
+                <span class="muted small">this period</span>
+              </header>
+              <div id="cat-donut" class="chart cat-donut"></div>
+              <div id="cat-donut-legend" class="donut-legend"></div>
+            </div>
+            <div class="card chart-card">
+              <header class="section-header">
+                <h3>12-month Trend</h3>
+                <span class="muted small">stacked by category</span>
+              </header>
+              <div id="cat-trend" class="chart"></div>
+              <div id="cat-trend-legend" class="donut-legend"></div>
+            </div>
+          </section>
+
+          <!-- Per-category cards -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Categories</h3>
+              <span class="muted small" id="cat-list-sub">tap one to see its transactions</span>
+            </header>
+            <div id="cat-cards" class="cat-cards">
+              <p class="muted">No categorised data yet.</p>
+            </div>
+          </section>
+
+          <!-- Category detail (transactions for the selected category) -->
+          <section id="cat-detail" class="card hidden">
+            <header class="section-header">
+              <h3 id="cat-detail-title">—</h3>
+              <button type="button" id="cat-detail-close" class="btn-ghost">Close</button>
+            </header>
+            <div class="grid grid-3 stat-grid">
+              <div class="card stat-card">
+                <p class="label">Total</p>
+                <p class="big-number coral" id="cat-detail-total">—</p>
+                <p class="muted small" id="cat-detail-total-sub">—</p>
+              </div>
+              <div class="card stat-card">
+                <p class="label">vs Prior Period</p>
+                <p class="big-number" id="cat-detail-trend">—</p>
+                <p class="muted small" id="cat-detail-trend-sub">—</p>
+              </div>
+              <div class="card stat-card">
+                <p class="label">Avg per Transaction</p>
+                <p class="big-number teal" id="cat-detail-avg">—</p>
+                <p class="muted small" id="cat-detail-avg-sub">—</p>
+              </div>
+            </div>
+            <div class="table-wrap" style="margin-top: 16px;">
+              <table class="tx-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Counterparty</th>
+                    <th>Bank</th>
+                    <th class="right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody id="cat-detail-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ===== Ledger view (IOUs + recurring commitments) ===== -->
+        <section id="ledger-view" class="view dashboard-view hidden">
+          <!-- Hero stat strip -->
+          <section class="grid grid-3 stat-grid">
+            <div class="card stat-card">
+              <p class="label">I Owe</p>
+              <p class="big-number coral" id="ledger-i-owe">—</p>
+              <p class="muted small" id="ledger-i-owe-sub">no debts recorded</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Owed to Me</p>
+              <p class="big-number income" id="ledger-owed-to-me">—</p>
+              <p class="muted small" id="ledger-owed-to-me-sub">nothing outstanding</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Net Position</p>
+              <p class="big-number" id="ledger-net">—</p>
+              <p class="muted small" id="ledger-net-sub">—</p>
+            </div>
+          </section>
+
+          <!-- Add entry -->
+          <section class="card ledger-add">
+            <header class="section-header">
+              <h3 id="ledger-form-title">New entry</h3>
+              <button type="button" id="ledger-form-toggle" class="btn-ghost">+ Add</button>
+            </header>
+            <form id="ledger-form" class="ledger-form hidden" autocomplete="off">
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Type</span>
+                  <select id="ledger-type">
+                    <option value="IOU">IOU (one-off)</option>
+                    <option value="RECURRING">Recurring commitment</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="label">Direction</span>
+                  <select id="ledger-direction">
+                    <option value="I_OWE">I owe</option>
+                    <option value="OWED_TO_ME">Owed to me</option>
+                  </select>
+                </label>
+              </div>
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Counterparty</span>
+                  <input type="text" id="ledger-counterparty" required placeholder="e.g. Beselam, Landlord, Spotify" />
+                </label>
+                <label class="field">
+                  <span class="label">Amount (ETB)</span>
+                  <input type="number" id="ledger-amount" required min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+                </label>
+              </div>
+              <div class="ledger-form-row">
+                <label class="field">
+                  <span class="label">Due date</span>
+                  <input type="date" id="ledger-due" />
+                </label>
+                <label class="field" id="ledger-cadence-field">
+                  <span class="label">Cadence</span>
+                  <select id="ledger-cadence">
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="YEARLY">Yearly</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field">
+                <span class="label">Note (optional)</span>
+                <input type="text" id="ledger-note" placeholder="What's this for?" />
+              </label>
+              <div class="ledger-form-actions">
+                <button type="button" id="ledger-cancel" class="btn-ghost">Cancel</button>
+                <button type="submit" id="ledger-save" class="btn-primary">Save entry</button>
+              </div>
+              <p id="ledger-form-error" class="error hidden"></p>
+            </form>
+          </section>
+
+          <!-- Two columns: borrow vs lend -->
+          <section class="grid grid-2">
+            <div class="card">
+              <header class="section-header">
+                <h3>Money I owe</h3>
+                <span class="muted small" id="ledger-owe-count">—</span>
+              </header>
+              <div id="ledger-owe-list" class="ledger-list">
+                <p class="muted">Nothing here. Tap + Add when you take a loan or rent comes up.</p>
+              </div>
+            </div>
+            <div class="card">
+              <header class="section-header">
+                <h3>Owed to me</h3>
+                <span class="muted small" id="ledger-lent-count">—</span>
+              </header>
+              <div id="ledger-lent-list" class="ledger-list">
+                <p class="muted">No outstanding loans out yet.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Settled / Archived (collapsed by default) -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Closed entries</h3>
+              <button type="button" id="ledger-closed-toggle" class="btn-ghost">Show</button>
+            </header>
+            <div id="ledger-closed-list" class="ledger-list hidden">
+              <p class="muted">Nothing settled yet.</p>
+            </div>
+          </section>
+        </section>
+
+        <p class="footer muted small">Connected to Supabase project <code id="project-ref">…</code>.</p>
+
+        <!-- Sticky batch-categorize bar -->
+        <div id="batch-bar" class="batch-bar" aria-hidden="true">
+          <span class="count" id="batch-count">0 selected</span>
+          <div class="category-pills" id="batch-pills"></div>
+          <div class="actions">
+            <button type="button" id="batch-clear" class="clear-btn">Clear</button>
+            <button type="button" id="batch-apply" class="apply-btn" disabled>Apply</button>
+          </div>
+        </div>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

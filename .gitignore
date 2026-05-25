@@ -1,0 +1,14 @@
+# Local machine config / secrets
+local.properties
+
+# Gradle / Android Studio
+.gradle/
+**/build/
+.idea/
+
+# Heap dumps
+*.hprof
+
+
+# Local SQLite snapshots (contain real transaction data)
+*.db
