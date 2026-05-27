@@ -38,6 +38,7 @@ const userNameEl     = $("user-name");
 const greetingEl     = $("greeting");
 const logoutBtn      = $("logout-btn");
 const refreshBtn     = $("refresh-btn");
+const googleSigninBtn= $("google-signin-btn");
 
 // Stat cards
 const statBalance       = $("stat-balance");
@@ -86,6 +87,35 @@ const categoriesView = $("categories-view");
 const ledgerView     = $("ledger-view");
 const incomeView     = $("income-view");
 const goalsView      = $("goals-view");
+const budgetsView    = $("budgets-view");
+
+// Budgets refs
+const budgetsBadge          = $("budgets-badge");
+const budgetsTotalFunded    = $("budgets-total-funded");
+const budgetsTotalFundedSub = $("budgets-total-funded-sub");
+const budgetsTotalSpent     = $("budgets-total-spent");
+const budgetsTotalSpentSub  = $("budgets-total-spent-sub");
+const budgetsTotalRemaining = $("budgets-total-remaining");
+const budgetsTotalRemainingSub = $("budgets-total-remaining-sub");
+const budgetLeftoverSection = $("budget-leftover-section");
+const budgetLeftoverList    = $("budget-leftover-list");
+const budgetForm            = $("budget-form");
+const budgetFormId          = $("budget-form-id");
+const budgetFormTitle       = $("budget-form-title");
+const budgetSubmit          = $("budget-submit");
+const budgetCancel          = $("budget-cancel");
+const budgetNameInput       = $("budget-name");
+const budgetEmojiInput      = $("budget-emoji");
+const budgetAmountInput     = $("budget-amount");
+const budgetCadenceSelect   = $("budget-cadence");
+const budgetIntervalWrapper = $("budget-interval-wrapper");
+const budgetIntervalInput   = $("budget-interval-days");
+const budgetFundingDateInput= $("budget-funding-date");
+const budgetCategoryPicker  = $("budget-category-picker");
+const budgetCategoryHint    = $("budget-category-hint");
+const budgetEmpty           = $("budget-empty");
+const budgetCardGrid        = $("budget-card-grid");
+const budgetsCountLabel     = $("budgets-count-label");
 
 // Goals refs
 const goalsBadge          = $("goals-badge");
@@ -259,6 +289,12 @@ const state = {
   // Cursor for calendar views (first of the visible month).
   ledgerCalCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime(),
   incomeCalCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime(),
+  // Budgets state — fetched on dashboard load; rendered when user opens
+  // the Budgets tab or when a leftover prompt needs surfacing.
+  budgets: [],                       // i_budgets rows
+  budgetCategories: [],              // i_budget_categories rows (budget_id, category)
+  editingBudgetId: null,             // when set, the budget form is editing existing
+  budgetPickedCategories: new Set(), // category names selected in the form
 };
 
 // Defaults match TransactionCategoryCatalog.kt on Android.
@@ -299,7 +335,42 @@ const PERIOD_LABELS = {
 // ----------------------------------------------------------------------------
 loginForm.addEventListener("submit", async (e) => { e.preventDefault(); await attemptLogin(); });
 retryBtn.addEventListener("click", () => { hideError(); retryBtn.classList.add("hidden"); passwordInput.value = ""; passwordInput.focus(); });
-logoutBtn.addEventListener("click", async () => { await supabase.auth.signOut(); });
+googleSigninBtn.addEventListener("click", async () => {
+  hideError();
+  googleSigninBtn.disabled = true;
+  try {
+    // Returning to the current page so the auth-state listener picks up the
+    // new session and switches to the dashboard automatically.
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) {
+      showError(prettyAuthError(error.message));
+      googleSigninBtn.disabled = false;
+    }
+    // On success the browser is redirected to Google; no further code runs here.
+  } catch (e) {
+    showError("Couldn't start Google sign-in. Check your connection and try again.");
+    googleSigninBtn.disabled = false;
+    console.warn("Google OAuth failed:", e);
+  }
+});
+logoutBtn.addEventListener("click", async () => {
+  logoutBtn.disabled = true;
+  try {
+    // scope: "local" clears the session in this browser even if the remote
+    // /auth/v1/logout call fails (expired refresh token, offline, etc).
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) console.warn("signOut error:", error.message);
+  } catch (e) {
+    console.warn("signOut threw:", e);
+  } finally {
+    showLogin();
+    logoutBtn.disabled = false;
+  }
+});
 refreshBtn.addEventListener("click", async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session) await showDashboard(session);
@@ -361,10 +432,12 @@ function switchView(name) {
   ledgerView.classList.toggle("hidden", name !== "ledger");
   incomeView.classList.toggle("hidden", name !== "income");
   goalsView.classList.toggle("hidden", name !== "goals");
+  budgetsView.classList.toggle("hidden", name !== "budgets");
   if (name === "categories") renderCategoriesView();
   if (name === "ledger") renderLedgerView();
   if (name === "income") renderIncomeView();
   if (name === "goals") renderGoalsView();
+  if (name === "budgets") renderBudgetsView();
   // Scroll to top so the user lands above-the-fold on the new view.
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -401,7 +474,7 @@ async function showDashboard(session) {
   const [profileResult, txResult] = await Promise.all([
     supabase.from("i_users").select("name, email").eq("id", userId).maybeSingle(),
     supabase.from("i_transactions")
-      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, ref_num")
+      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, ref_num, predicted_category, category_confidence, review_status, merchant_key")
       .eq("user_id", userId)
       .order("occurred_at", { ascending: false })
       .limit(2000),
@@ -422,6 +495,7 @@ async function showDashboard(session) {
   fetchLedger().catch((e) => console.warn("Ledger fetch failed:", e));
   fetchIncome().catch((e) => console.warn("Income fetch failed:", e));
   fetchGoals().catch((e) => console.warn("Goals fetch failed:", e));
+  fetchBudgets().catch((e) => console.warn("Budgets fetch failed:", e));
 }
 
 // ----------------------------------------------------------------------------
@@ -466,20 +540,25 @@ function renderLedgerView() {
 
   const iOwe       = active.filter((e) => e.direction === "I_OWE");
   const owedToMe   = active.filter((e) => e.direction === "OWED_TO_ME");
-  const iOweTotal     = iOwe.reduce((s, e) => s + Number(e.balance), 0);
-  const owedToMeTotal = owedToMe.reduce((s, e) => s + Number(e.balance), 0);
+  // Stat cards count one-off IOUs only — recurring entries (rent, etc.) inflate
+  // the running totals because each cycle is just another instance of the same
+  // obligation, not new debt.
+  const iOweOneOff     = iOwe.filter((e) => e.type !== "RECURRING");
+  const owedToMeOneOff = owedToMe.filter((e) => e.type !== "RECURRING");
+  const iOweTotal     = iOweOneOff.reduce((s, e) => s + Number(e.balance), 0);
+  const owedToMeTotal = owedToMeOneOff.reduce((s, e) => s + Number(e.balance), 0);
   const net           = owedToMeTotal - iOweTotal;
-  const overdueCount  = active.filter((e) => isOverdue(e.due_date)).length;
+  const overdueCount  = active.filter((e) => e.type !== "RECURRING" && isOverdue(e.due_date)).length;
 
   ledgerIOwe.textContent = formatETB(iOweTotal);
-  ledgerIOweSub.textContent = iOwe.length === 0
+  ledgerIOweSub.textContent = iOweOneOff.length === 0
     ? "no debts recorded"
-    : `${iOwe.length} entr${iOwe.length === 1 ? "y" : "ies"} · ${overdueOf(iOwe)} overdue`;
+    : `${iOweOneOff.length} entr${iOweOneOff.length === 1 ? "y" : "ies"} · ${overdueOf(iOweOneOff)} overdue`;
 
   ledgerOwedToMe.textContent = formatETB(owedToMeTotal);
-  ledgerOwedToMeSub.textContent = owedToMe.length === 0
+  ledgerOwedToMeSub.textContent = owedToMeOneOff.length === 0
     ? "nothing outstanding"
-    : `${owedToMe.length} entr${owedToMe.length === 1 ? "y" : "ies"} · ${overdueOf(owedToMe)} overdue`;
+    : `${owedToMeOneOff.length} entr${owedToMeOneOff.length === 1 ? "y" : "ies"} · ${overdueOf(owedToMeOneOff)} overdue`;
 
   ledgerNet.textContent = (net >= 0 ? "+ " : "- ") + formatNumberAbs(net);
   ledgerNet.classList.remove("coral", "income");
@@ -2343,7 +2422,101 @@ function rerender() {
   renderMonthlyChart(txs);
   renderWeekdayStrip(inRange);
   renderTxTable();
+  renderDailyReviewCard(txs);
+  rerenderBudgets();
   if (state.view === "categories") renderCategoriesView();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Daily Review entry card (read-only). Mirrors the variants from the Android
+// DailyReviewCard composable: empty / fresh / partial / done.
+//
+// Computed off today's transactions, not the period filter — the queue is
+// always "today's reviews", regardless of the dashboard's selected window.
+// ─────────────────────────────────────────────────────────────────────────────
+function renderDailyReviewCard(allTxs) {
+  const card        = document.getElementById("daily-review-card");
+  const eyebrowEl   = document.getElementById("dr-eyebrow");
+  const titleEl     = document.getElementById("dr-title");
+  const bodyEl      = document.getElementById("dr-body");
+  const progressEl  = document.getElementById("dr-progress");
+  const trackEl     = progressEl ? progressEl.parentElement : null;
+  const metaLeftEl  = document.getElementById("dr-meta-left");
+  const metaRightEl = document.getElementById("dr-meta-right");
+  const chipTextEl  = document.getElementById("dr-chip-text");
+  if (!card || !titleEl) return;
+
+  // Today's bounds in local time.
+  const now   = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const end   = start + 86_400_000 - 1;
+
+  const today = (allTxs || []).filter((t) => {
+    const ts = Date.parse(t.occurred_at);
+    return Number.isFinite(ts) && ts >= start && ts <= end;
+  });
+
+  card.classList.remove("dr-empty", "dr-partial", "dr-done");
+  card.classList.remove("hidden");
+
+  if (today.length === 0) {
+    card.classList.add("dr-empty");
+    eyebrowEl.textContent  = "Daily Review";
+    titleEl.textContent    = "Nothing to review today";
+    bodyEl.textContent     = "We'll surface the queue here once today's transactions come in.";
+    if (progressEl) progressEl.style.width = "0%";
+    if (trackEl)    trackEl.setAttribute("aria-valuenow", "0");
+    metaLeftEl.textContent  = "0 transactions today";
+    metaRightEl.textContent = "Open mobile app to review";
+    if (chipTextEl) chipTextEl.textContent = "↻";
+    return;
+  }
+
+  let pending = 0, confirmed = 0, changed = 0, skipped = 0;
+  for (const t of today) {
+    const status = (t.review_status || "PENDING").toUpperCase();
+    if      (status === "PENDING")   pending++;
+    else if (status === "CONFIRMED") confirmed++;
+    else if (status === "CHANGED")   changed++;
+    else if (status === "SKIPPED")   skipped++;
+  }
+  const total = today.length;
+  const done  = confirmed + changed + skipped;
+  const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  if (pending === 0) {
+    // Done
+    card.classList.add("dr-done");
+    eyebrowEl.textContent = "Daily Review";
+    titleEl.textContent   = "Today is clean";
+    const detail = [];
+    if (confirmed > 0) detail.push(`${confirmed} confirmed`);
+    if (changed   > 0) detail.push(`${changed} changed`);
+    if (skipped   > 0) detail.push(`${skipped} skipped`);
+    bodyEl.textContent = `All ${total} transactions reviewed${detail.length ? ". " + detail.join(", ") : ""}.`;
+    if (chipTextEl) chipTextEl.textContent = "✓";
+  } else if (done === 0) {
+    // Fresh
+    card.classList.add("dr-partial");
+    eyebrowEl.textContent = "Daily Review";
+    titleEl.textContent   = "Review today's transactions";
+    bodyEl.textContent    = `${total} transaction${total === 1 ? "" : "s"} need confirmation. Open the mobile app to swipe through them.`;
+    if (chipTextEl) chipTextEl.textContent = "→";
+  } else {
+    // Partial
+    card.classList.add("dr-partial");
+    eyebrowEl.textContent = "Daily Review";
+    titleEl.textContent   = "Keep going on today's review";
+    bodyEl.textContent    = `${pending} of ${total} still need confirmation. Continue in the mobile app.`;
+    if (chipTextEl) chipTextEl.textContent = "→";
+  }
+
+  if (progressEl) progressEl.style.width = `${pct}%`;
+  if (trackEl)    trackEl.setAttribute("aria-valuenow", String(pct));
+  metaLeftEl.textContent  = `${done} of ${total} reviewed`;
+  metaRightEl.textContent = pending === 0
+    ? `Last reviewed today`
+    : `Open on mobile to review`;
 }
 
 function renderHeaderStats(allTxs, inRange, range) {
@@ -2642,9 +2815,12 @@ async function applyBatchCategory() {
   batchApply.disabled = true;
   batchApply.textContent = "Applying…";
 
+  // Also mark these rows as reviewed so the Daily Review queue on mobile
+  // doesn't keep asking the user to categorize them. CONFIRMED is correct
+  // because the user explicitly picked this category on the web side.
   const { error, count } = await supabase
     .from("i_transactions")
-    .update({ category }, { count: "exact" })
+    .update({ category, review_status: "CONFIRMED" }, { count: "exact" })
     .eq("user_id", state.userId)
     .in("counterparty", counterparties);
 
@@ -2658,7 +2834,10 @@ async function applyBatchCategory() {
 
   // Optimistically update local state so the UI reflects the change immediately.
   for (const tx of state.allTxs) {
-    if (counterparties.includes((tx.counterparty || "").trim())) tx.category = category;
+    if (counterparties.includes((tx.counterparty || "").trim())) {
+      tx.category = category;
+      tx.review_status = "CONFIRMED";
+    }
   }
   state.selectedCps.clear();
   state.pickedCategory = null;
@@ -3295,3 +3474,477 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
+
+// =============================================================================
+// Budgets — envelope-style funded budgets that auto-refund on a cadence and
+// prompt the user to send unspent leftover to a savings goal.
+//
+// Data model (see supabase/add_budgets.sql):
+//   i_budgets             — one row per envelope
+//   i_budget_categories   — many-to-many: budget ↔ category
+//
+// Cycle math lives entirely client-side. `funding_date` is the original
+// anchor; we step forward in `cadence` units to find the cycle that
+// contains today. The "previous cycle leftover" prompt is gated by
+// `last_cycle_handled_at`: once the user dismisses or saves a leftover,
+// we bump that column to the cycle_end and don't ask again.
+// =============================================================================
+
+const BUDGET_CATEGORIES = [
+  "Food", "Coffee and refreshments", "Transport", "Bills", "Shopping", "Health",
+  "Drinks and fun", "Entertainment", "Rent", "Fees", "Loan",
+  "Transfer", "Income", "Other",
+];
+
+const BUDGET_EXPENSE_TYPES = new Set(["DEBIT", "TRANSFER_OUT", "PAYMENT"]);
+
+// ─── Fetch + state hydration ───────────────────────────────────────────────
+async function fetchBudgets() {
+  if (!state.userId) return;
+  const [bRes, cRes] = await Promise.all([
+    supabase.from("i_budgets")
+      .select("id, name, emoji, fund_amount, cadence, interval_days, funding_date, last_cycle_handled_at, status, created_at, updated_at")
+      .eq("user_id", state.userId)
+      .order("created_at", { ascending: false }),
+    supabase.from("i_budget_categories")
+      .select("budget_id, category")
+      .eq("user_id", state.userId),
+  ]);
+  if (bRes.error) {
+    console.warn("Budgets fetch error:", bRes.error);
+    state.budgets = [];
+  } else {
+    state.budgets = bRes.data || [];
+  }
+  if (cRes.error) {
+    console.warn("Budget categories fetch error:", cRes.error);
+    state.budgetCategories = [];
+  } else {
+    state.budgetCategories = cRes.data || [];
+  }
+  renderBudgetsBadge();
+  // If the user is already on the Budgets tab, refresh now.
+  if (state.view === "budgets") renderBudgetsView();
+}
+
+function categoriesForBudget(budgetId) {
+  return state.budgetCategories
+    .filter((r) => r.budget_id === budgetId)
+    .map((r) => r.category);
+}
+
+// ─── Cycle math ─────────────────────────────────────────────────────────────
+/** Step forward one cycle from [date] given a cadence. Returns Date. */
+function advanceCycleStart(date, cadence, intervalDays) {
+  const d = new Date(date);
+  switch ((cadence || "MONTHLY").toUpperCase()) {
+    case "WEEKLY":        d.setDate(d.getDate() + 7); break;
+    case "BIWEEKLY":      d.setDate(d.getDate() + 14); break;
+    case "EVERY_30_DAYS": d.setDate(d.getDate() + 30); break;
+    case "QUARTERLY":     d.setMonth(d.getMonth() + 3); break;
+    case "YEARLY":        d.setFullYear(d.getFullYear() + 1); break;
+    case "CUSTOM": {
+      const n = Number(intervalDays);
+      d.setDate(d.getDate() + (Number.isFinite(n) && n > 0 ? n : 30));
+      break;
+    }
+    case "MONTHLY":
+    default:              d.setMonth(d.getMonth() + 1); break;
+  }
+  return d;
+}
+
+/** Returns { prevStart, prevEnd, curStart, curEnd } around today. */
+function cycleBounds(budget, today = new Date()) {
+  const anchor = new Date(budget.funding_date);
+  // Walk forward until cycle_end exceeds today.
+  let curStart = new Date(anchor);
+  let curEnd = advanceCycleStart(curStart, budget.cadence, budget.interval_days);
+  while (curEnd <= today) {
+    curStart = curEnd;
+    curEnd = advanceCycleStart(curStart, budget.cadence, budget.interval_days);
+  }
+  // Previous cycle ended at curStart.
+  const prevEnd = new Date(curStart);
+  // Step back one cycle from prevEnd to find prevStart. We approximate by
+  // counting days between anchor and curStart and stepping anchor forward
+  // again — safer than reversing month math.
+  let prevStart = new Date(anchor);
+  let probe = advanceCycleStart(prevStart, budget.cadence, budget.interval_days);
+  while (probe < prevEnd) {
+    prevStart = probe;
+    probe = advanceCycleStart(prevStart, budget.cadence, budget.interval_days);
+  }
+  return { prevStart, prevEnd, curStart, curEnd };
+}
+
+/** Sum of expense amounts whose category is in [cats] AND occurred in [start, end). */
+function spentInCycle(cats, start, end) {
+  if (!cats.length) return 0;
+  const startMs = start.getTime();
+  const endMs   = end.getTime();
+  const set = new Set(cats.map((c) => c.toLowerCase()));
+  let sum = 0;
+  for (const tx of state.allTxs) {
+    if (!BUDGET_EXPENSE_TYPES.has(tx.type)) continue;
+    const c = (tx.category || "").toLowerCase();
+    if (!c || !set.has(c)) continue;
+    const ts = Date.parse(tx.occurred_at);
+    if (!Number.isFinite(ts) || ts < startMs || ts >= endMs) continue;
+    sum += Number(tx.amount) || 0;
+  }
+  return sum;
+}
+
+/** Composite snapshot used by every budget render path. */
+function computeBudgetSnapshot(budget, today = new Date()) {
+  const cats = categoriesForBudget(budget.id);
+  const { prevStart, prevEnd, curStart, curEnd } = cycleBounds(budget, today);
+  const fundAmount = Number(budget.fund_amount) || 0;
+  const spentCurrent = spentInCycle(cats, curStart, curEnd);
+  const remaining    = fundAmount - spentCurrent;
+  const spentPrev    = spentInCycle(cats, prevStart, prevEnd);
+  const leftoverPrev = fundAmount - spentPrev;
+  const totalCycleMs = curEnd.getTime() - curStart.getTime();
+  const elapsedMs    = Math.max(0, today.getTime() - curStart.getTime());
+  const daysLeft     = Math.max(0, Math.ceil((curEnd.getTime() - today.getTime()) / 86_400_000));
+  const dailyPace    = elapsedMs > 0 ? spentCurrent / (elapsedMs / 86_400_000) : 0;
+  // The leftover prompt fires only when:
+  //   1. There's a previous cycle (curStart > anchor)
+  //   2. There was money left over (positive)
+  //   3. The user hasn't already handled this cycle
+  const handledIso = budget.last_cycle_handled_at || "";
+  const prevEndIso = prevEnd.toISOString().slice(0, 10);
+  const anchorDate = new Date(budget.funding_date);
+  const hasPrevCycle = curStart.getTime() > anchorDate.getTime();
+  const leftoverPending = hasPrevCycle && leftoverPrev > 0 && prevEndIso > handledIso;
+  return {
+    cats, fundAmount, spentCurrent, remaining,
+    prevStart, prevEnd, curStart, curEnd,
+    leftoverPrev, leftoverPending, daysLeft, dailyPace,
+  };
+}
+
+// ─── Badge + hero stats ────────────────────────────────────────────────────
+function renderBudgetsBadge() {
+  if (!budgetsBadge) return;
+  const active = state.budgets.filter((b) => b.status === "ACTIVE");
+  const overCount = active.reduce((n, b) => {
+    const s = computeBudgetSnapshot(b);
+    return n + (s.remaining < 0 ? 1 : 0);
+  }, 0);
+  const pendingLeftovers = active.reduce((n, b) => {
+    const s = computeBudgetSnapshot(b);
+    return n + (s.leftoverPending ? 1 : 0);
+  }, 0);
+  const badgeCount = overCount + pendingLeftovers;
+  budgetsBadge.classList.toggle("hidden", badgeCount === 0);
+  budgetsBadge.textContent = String(badgeCount);
+}
+
+function renderBudgetsHero() {
+  const active = state.budgets.filter((b) => b.status === "ACTIVE");
+  let totalFunded = 0, totalSpent = 0;
+  for (const b of active) {
+    const s = computeBudgetSnapshot(b);
+    totalFunded += s.fundAmount;
+    totalSpent  += s.spentCurrent;
+  }
+  const remaining = totalFunded - totalSpent;
+  budgetsTotalFunded.textContent     = formatETB(totalFunded);
+  budgetsTotalFundedSub.textContent  = `${active.length} active envelope${active.length === 1 ? "" : "s"}`;
+  budgetsTotalSpent.textContent      = formatETB(totalSpent);
+  budgetsTotalSpentSub.textContent   = totalFunded > 0
+    ? `${Math.round((totalSpent / totalFunded) * 100)}% of funded`
+    : "—";
+  budgetsTotalRemaining.textContent  = formatETB(remaining);
+  budgetsTotalRemainingSub.textContent = remaining < 0
+    ? "over budget"
+    : "left in active cycles";
+}
+
+// ─── Form (create / edit) ──────────────────────────────────────────────────
+function renderBudgetCategoryPicker() {
+  const selected = state.budgetPickedCategories;
+  budgetCategoryPicker.innerHTML = BUDGET_CATEGORIES
+    .map((c) => {
+      const on = selected.has(c);
+      return `<button type="button" class="category-pill ${on ? "active" : ""}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`;
+    })
+    .join("");
+  budgetCategoryPicker.querySelectorAll(".category-pill").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const c = btn.dataset.cat;
+      if (selected.has(c)) selected.delete(c);
+      else selected.add(c);
+      renderBudgetCategoryPicker();
+    });
+  });
+  budgetCategoryHint.textContent = selected.size > 0
+    ? `${selected.size} category${selected.size === 1 ? "" : "ies"} selected`
+    : "Pick at least one. Expenses in these categories will deduct from the envelope.";
+}
+
+function resetBudgetForm() {
+  state.editingBudgetId = null;
+  state.budgetPickedCategories = new Set();
+  budgetFormId.value = "";
+  budgetFormTitle.textContent = "Create a budget";
+  budgetSubmit.textContent = "Create budget";
+  budgetCancel.classList.add("hidden");
+  budgetNameInput.value = "";
+  budgetEmojiInput.value = "";
+  budgetAmountInput.value = "";
+  budgetCadenceSelect.value = "MONTHLY";
+  budgetIntervalInput.value = "";
+  budgetIntervalWrapper.classList.add("hidden");
+  budgetFundingDateInput.value = new Date().toISOString().slice(0, 10);
+  renderBudgetCategoryPicker();
+}
+
+function loadBudgetIntoForm(b) {
+  state.editingBudgetId = b.id;
+  state.budgetPickedCategories = new Set(categoriesForBudget(b.id));
+  budgetFormId.value = b.id;
+  budgetFormTitle.textContent = `Edit ${b.name}`;
+  budgetSubmit.textContent = "Save changes";
+  budgetCancel.classList.remove("hidden");
+  budgetNameInput.value = b.name;
+  budgetEmojiInput.value = b.emoji || "";
+  budgetAmountInput.value = b.fund_amount;
+  budgetCadenceSelect.value = b.cadence || "MONTHLY";
+  budgetIntervalInput.value = b.interval_days || "";
+  budgetIntervalWrapper.classList.toggle("hidden", b.cadence !== "CUSTOM");
+  budgetFundingDateInput.value = b.funding_date;
+  renderBudgetCategoryPicker();
+  budgetNameInput.focus();
+  window.scrollTo({ top: budgetForm.getBoundingClientRect().top + window.scrollY - 80, behavior: "smooth" });
+}
+
+if (budgetCadenceSelect) {
+  budgetCadenceSelect.addEventListener("change", () => {
+    budgetIntervalWrapper.classList.toggle("hidden", budgetCadenceSelect.value !== "CUSTOM");
+  });
+}
+if (budgetCancel) {
+  budgetCancel.addEventListener("click", () => resetBudgetForm());
+}
+if (budgetForm) {
+  budgetForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = budgetNameInput.value.trim();
+    const emoji = budgetEmojiInput.value.trim() || null;
+    const fundAmount = Number(budgetAmountInput.value);
+    const cadence = budgetCadenceSelect.value;
+    const intervalDays = cadence === "CUSTOM" ? Number(budgetIntervalInput.value) || null : null;
+    const fundingDate = budgetFundingDateInput.value;
+    const cats = [...state.budgetPickedCategories];
+    if (!name || !Number.isFinite(fundAmount) || fundAmount <= 0 || !fundingDate || cats.length === 0) {
+      showToast("Fill in name, amount, funding date, and pick at least one category.", "error");
+      return;
+    }
+    const id = state.editingBudgetId;
+    try {
+      if (id) {
+        const { error } = await supabase.from("i_budgets")
+          .update({
+            name, emoji, fund_amount: fundAmount, cadence, interval_days: intervalDays,
+            funding_date: fundingDate,
+          })
+          .eq("id", id);
+        if (error) throw error;
+        // Replace category set: delete old, insert new.
+        await supabase.from("i_budget_categories").delete().eq("budget_id", id);
+        if (cats.length > 0) {
+          await supabase.from("i_budget_categories").insert(
+            cats.map((c) => ({ budget_id: id, user_id: state.userId, category: c }))
+          );
+        }
+        showToast(`${name} updated`, "success");
+      } else {
+        const { data, error } = await supabase.from("i_budgets")
+          .insert({
+            user_id: state.userId, name, emoji,
+            fund_amount: fundAmount, cadence, interval_days: intervalDays,
+            funding_date: fundingDate,
+          })
+          .select("id").single();
+        if (error) throw error;
+        const newId = data.id;
+        await supabase.from("i_budget_categories").insert(
+          cats.map((c) => ({ budget_id: newId, user_id: state.userId, category: c }))
+        );
+        showToast(`${name} created`, "success");
+      }
+    } catch (err) {
+      showToast(`Save failed: ${err.message}`, "error");
+      return;
+    }
+    resetBudgetForm();
+    await fetchBudgets();
+  });
+}
+
+async function deleteBudget(id) {
+  const b = state.budgets.find((x) => x.id === id);
+  if (!b) return;
+  if (!confirm(`Delete ${b.name}? This won't remove transactions.`)) return;
+  const { error } = await supabase.from("i_budgets").delete().eq("id", id);
+  if (error) { showToast(`Delete failed: ${error.message}`, "error"); return; }
+  showToast(`${b.name} deleted`, "success");
+  await fetchBudgets();
+}
+
+// ─── Leftover-prompt handlers ──────────────────────────────────────────────
+async function handleLeftoverSkip(budget) {
+  const snap = computeBudgetSnapshot(budget);
+  const prevEndIso = snap.prevEnd.toISOString().slice(0, 10);
+  const { error } = await supabase.from("i_budgets")
+    .update({ last_cycle_handled_at: prevEndIso })
+    .eq("id", budget.id);
+  if (error) { showToast(`Couldn't dismiss: ${error.message}`, "error"); return; }
+  showToast(`Leftover dismissed`, "success");
+  await fetchBudgets();
+}
+
+async function handleLeftoverToGoal(budget, goalId) {
+  const snap = computeBudgetSnapshot(budget);
+  const prevEndIso = snap.prevEnd.toISOString().slice(0, 10);
+  const amount = Math.max(0, Number(snap.leftoverPrev.toFixed(2)));
+  if (!goalId || amount <= 0) { showToast("Pick a goal first.", "error"); return; }
+  // 1. Insert a contribution
+  const contribRes = await supabase.from("i_goal_contributions").insert({
+    user_id: state.userId, goal_id: goalId, amount,
+    note: `Leftover from ${budget.name} (cycle ${snap.prevStart.toISOString().slice(0,10)}—${prevEndIso})`,
+  });
+  if (contribRes.error) { showToast(`Couldn't save: ${contribRes.error.message}`, "error"); return; }
+  // 2. Mark this cycle handled
+  const budgetRes = await supabase.from("i_budgets")
+    .update({ last_cycle_handled_at: prevEndIso }).eq("id", budget.id);
+  if (budgetRes.error) { showToast(`Saved, but couldn't mark cycle handled: ${budgetRes.error.message}`, "error"); }
+  showToast(`Saved ${formatETB(amount)} to your goal`, "success");
+  // Refresh both budgets and goals.
+  await Promise.all([fetchBudgets(), fetchGoals()]);
+}
+
+// ─── Render ────────────────────────────────────────────────────────────────
+function renderBudgetsView() {
+  renderBudgetsHero();
+  // Leftover prompts at top
+  const active = state.budgets.filter((b) => b.status === "ACTIVE");
+  const pending = active
+    .map((b) => ({ b, s: computeBudgetSnapshot(b) }))
+    .filter((p) => p.s.leftoverPending);
+  if (pending.length === 0) {
+    budgetLeftoverSection.classList.add("hidden");
+  } else {
+    budgetLeftoverSection.classList.remove("hidden");
+    budgetLeftoverList.innerHTML = pending.map((p) => renderLeftoverRow(p.b, p.s)).join("");
+    // Wire each row's actions
+    budgetLeftoverList.querySelectorAll("[data-leftover-action]").forEach((el) => {
+      const id = el.dataset.budgetId;
+      const b = state.budgets.find((x) => x.id === id);
+      if (!b) return;
+      if (el.dataset.leftoverAction === "skip") {
+        el.addEventListener("click", () => handleLeftoverSkip(b));
+      } else if (el.dataset.leftoverAction === "save") {
+        el.addEventListener("click", () => {
+          const select = budgetLeftoverList.querySelector(`[data-leftover-goal-for="${id}"]`);
+          const goalId = select?.value;
+          if (!goalId) { showToast("Pick a goal first.", "error"); return; }
+          handleLeftoverToGoal(b, goalId);
+        });
+      }
+    });
+  }
+  // Active budget cards
+  if (active.length === 0) {
+    budgetEmpty.classList.remove("hidden");
+    budgetCardGrid.classList.add("hidden");
+    budgetCardGrid.innerHTML = "";
+  } else {
+    budgetEmpty.classList.add("hidden");
+    budgetCardGrid.classList.remove("hidden");
+    budgetCardGrid.innerHTML = active.map((b) => renderBudgetCard(b)).join("");
+    budgetCardGrid.querySelectorAll("[data-budget-edit]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const b = state.budgets.find((x) => x.id === el.dataset.budgetEdit);
+        if (b) loadBudgetIntoForm(b);
+      });
+    });
+    budgetCardGrid.querySelectorAll("[data-budget-delete]").forEach((el) => {
+      el.addEventListener("click", () => deleteBudget(el.dataset.budgetDelete));
+    });
+  }
+  budgetsCountLabel.textContent = `${active.length} active`;
+  if (!state.editingBudgetId) resetBudgetForm();
+}
+
+function renderLeftoverRow(budget, snap) {
+  const amountText = formatETB(snap.leftoverPrev);
+  const goals = (state.goals || []).filter((g) => g.status === "ACTIVE");
+  const goalOptions = goals.length > 0
+    ? goals.map((g) => `<option value="${escapeHtml(g.id)}">${escapeHtml(`${g.emoji || ""} ${g.name}`.trim())}</option>`).join("")
+    : `<option value="" disabled>No active goals yet</option>`;
+  return `
+    <div class="budget-leftover-row">
+      <div class="leftover-text">
+        <strong>${escapeHtml(budget.name)}</strong> ended its cycle with
+        <strong>${amountText}</strong> unspent.
+        <div class="muted small">${snap.prevStart.toISOString().slice(0,10)} → ${snap.prevEnd.toISOString().slice(0,10)}</div>
+      </div>
+      <div class="leftover-actions">
+        <select data-leftover-goal-for="${escapeHtml(budget.id)}">${goalOptions}</select>
+        <button type="button" data-leftover-action="save" data-budget-id="${escapeHtml(budget.id)}" class="primary" ${goals.length === 0 ? "disabled" : ""}>Send</button>
+        <button type="button" data-leftover-action="skip" data-budget-id="${escapeHtml(budget.id)}">Skip</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderBudgetCard(budget) {
+  const snap = computeBudgetSnapshot(budget);
+  const pct = snap.fundAmount > 0 ? Math.min(100, (snap.spentCurrent / snap.fundAmount) * 100) : 0;
+  const overshoot = snap.remaining < 0;
+  const klass = overshoot ? "budget-over" : pct >= 75 ? "budget-warn" : "";
+  const remainingText = overshoot
+    ? `Over by ${formatETB(Math.abs(snap.remaining))}`
+    : `${formatETB(snap.remaining)} left`;
+  const dailyHint = snap.dailyPace > 0
+    ? `${formatETB(snap.dailyPace)}/day pace`
+    : `not started this cycle`;
+  const refundIn = snap.daysLeft === 0
+    ? `refunds today`
+    : `${snap.daysLeft} day${snap.daysLeft === 1 ? "" : "s"} until refunding`;
+  const cats = snap.cats.map((c) => `<span class="budget-category-chip">${escapeHtml(c)}</span>`).join("");
+  return `
+    <div class="budget-card ${klass}">
+      <div class="budget-card-header">
+        <div class="budget-card-title">
+          <span class="budget-emoji">${escapeHtml(budget.emoji || "💰")}</span>
+          <span class="budget-name">${escapeHtml(budget.name)}</span>
+        </div>
+        <span class="budget-cadence-tag">${escapeHtml(cadenceLabel(budget.cadence, budget.interval_days))}</span>
+      </div>
+      <div class="budget-remaining">${remainingText}</div>
+      <div class="budget-remaining-sub">of ${formatETB(snap.fundAmount)} funded · ${formatETB(snap.spentCurrent)} spent</div>
+      <div class="budget-progress-track"><div class="budget-progress-fill" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="budget-meta">
+        <span>${refundIn}</span>
+        <span>${dailyHint}</span>
+      </div>
+      <div class="budget-categories">${cats}</div>
+      <div class="budget-card-actions">
+        <button type="button" data-budget-edit="${escapeHtml(budget.id)}">Edit</button>
+        <button type="button" data-budget-delete="${escapeHtml(budget.id)}">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+// Re-render the badge whenever transactions change (since spend → remaining).
+function rerenderBudgets() {
+  renderBudgetsBadge();
+  if (state.view === "budgets") renderBudgetsView();
+}
+

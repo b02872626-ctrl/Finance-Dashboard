@@ -156,6 +156,45 @@ input:focus, select:focus { border-color: var(--coral); }
   font-size: 13px;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--footer-grey);
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin: 4px 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #ffffff;
+  color: #1f1f1f;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  border-radius: 999px;
+  padding: 13px 22px;
+  transition: transform .08s ease, filter .15s ease;
+}
+.btn-google:hover { filter: brightness(.96); }
+.btn-google:active { transform: scale(.99); }
+.btn-google:disabled { opacity: .6; cursor: progress; }
+.btn-google .google-logo { width: 18px; height: 18px; flex-shrink: 0; }
+
 .footer {
   text-align: center;
   margin: 16px 0 0;
@@ -1347,3 +1386,319 @@ code {
 .toast.visible { opacity: 1; transform: translateX(-50%) translateY(-6px); }
 .toast.success { border-color: var(--green-income); color: var(--green-income); }
 .toast.error { border-color: var(--coral); color: var(--coral); }
+
+/* =============================================================================
+   Daily Review summary card — read-only on web (full swipe queue is mobile only).
+   Variants driven by JS classes on #daily-review-card:
+     .dr-empty    → "Nothing to review", muted
+     .dr-partial  → default look, mint progress fill
+     .dr-done     → mint-tinted card with checkmark chip
+   ========================================================================== */
+.daily-review-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 22px 24px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+}
+.daily-review-card.hidden { display: none; }
+.daily-review-card .dr-text { min-width: 0; }
+.daily-review-card .dr-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--body-muted);
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+}
+.daily-review-card .dr-title {
+  margin: 0 0 6px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--headline);
+  line-height: 1.25;
+}
+.daily-review-card .dr-body {
+  margin: 0 0 14px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.daily-review-card .dr-progress-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.daily-review-card .dr-progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--green-income);
+  border-radius: 999px;
+  transition: width .35s ease;
+}
+.daily-review-card .dr-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.daily-review-card .dr-chip {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(127, 227, 203, 0.12);
+  color: var(--headline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Variants — toggled via JS */
+.daily-review-card.dr-done {
+  background: linear-gradient(180deg, rgba(76, 212, 149, 0.10) 0%, var(--card-bg) 70%);
+  border-color: rgba(76, 212, 149, 0.32);
+}
+.daily-review-card.dr-done .dr-eyebrow { color: var(--green-income); }
+.daily-review-card.dr-done .dr-chip {
+  background: var(--green-income);
+  color: var(--page-bg);
+}
+.daily-review-card.dr-empty .dr-chip {
+  background: rgba(183, 179, 172, 0.10);
+  color: var(--body-muted);
+}
+.daily-review-card.dr-empty .dr-progress-track { visibility: hidden; }
+
+/* =============================================================================
+   Budgets view — envelope-style funded budgets.
+     .budget-card    one envelope; progress bar fills mint → amber → coral
+     .budget-grid    responsive grid of cards (1col on small, 2col on wide)
+     .budget-leftover-row prompts user to save unspent leftover to a goal
+   ========================================================================== */
+.view-tab-badge.budgets-badge { background: #7FE3CB; color: var(--page-bg); }
+
+.budget-category-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0;
+}
+.budget-category-picker .category-pill {
+  cursor: pointer;
+  border: 1px solid var(--tile-border);
+  background: var(--tile-bg);
+  color: var(--body-muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  user-select: none;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.budget-category-picker .category-pill.active {
+  background: var(--headline);
+  color: var(--page-bg);
+  border-color: var(--headline);
+}
+
+.budget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.budget-card {
+  background: var(--card-bg);
+  border: 1px solid var(--tile-border);
+  border-radius: 18px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.budget-card .budget-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+.budget-card .budget-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.budget-card .budget-emoji {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.budget-card .budget-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--headline);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.budget-card .budget-cadence-tag {
+  font-size: 11px;
+  color: var(--body-muted);
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  padding: 3px 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.budget-card .budget-remaining {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--green-income);
+  margin-top: 4px;
+}
+.budget-card.budget-warn .budget-remaining { color: #FFB45A; }
+.budget-card.budget-over .budget-remaining { color: var(--coral); }
+.budget-card .budget-remaining-sub {
+  font-size: 12px;
+  color: var(--body-muted);
+}
+.budget-card .budget-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.budget-card .budget-progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--green-income);
+  border-radius: 999px;
+  transition: width .35s ease, background .2s;
+}
+.budget-card.budget-warn .budget-progress-fill { background: #FFB45A; }
+.budget-card.budget-over .budget-progress-fill { background: var(--coral); }
+.budget-card .budget-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--body-muted);
+}
+.budget-card .budget-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+.budget-card .budget-category-chip {
+  font-size: 10.5px;
+  color: var(--body-muted);
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.budget-card .budget-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.budget-card .budget-card-actions button {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--tile-border);
+  color: var(--body-muted);
+  padding: 7px 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.budget-card .budget-card-actions button:hover {
+  color: var(--headline);
+  border-color: var(--headline);
+}
+
+/* Leftover-prompt rows */
+.budget-leftover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--tile-border);
+  flex-wrap: wrap;
+}
+.budget-leftover-row:last-child { border-bottom: none; }
+.budget-leftover-row .leftover-text {
+  flex: 1;
+  min-width: 200px;
+}
+.budget-leftover-row .leftover-text strong { color: var(--green-income); }
+.budget-leftover-row .leftover-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.budget-leftover-row .leftover-actions select {
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--headline);
+  padding: 7px 10px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+}
+.budget-leftover-row .leftover-actions button {
+  background: transparent;
+  border: 1px solid var(--tile-border);
+  color: var(--body-muted);
+  padding: 7px 14px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.budget-leftover-row .leftover-actions button.primary {
+  background: var(--green-income);
+  border-color: var(--green-income);
+  color: var(--page-bg);
+  font-weight: 600;
+}
+
+/* Auto-refund flash toast (transient) */
+.budget-refund-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card-bg);
+  border: 1px solid var(--green-income);
+  color: var(--green-income);
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 110;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.budget-refund-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-6px);
+}
+
+/* Helpers shared by the budget form */
+.form-narrow input { max-width: 80px; }
+.form-row-full { display: block; }
+.form-full { display: block; width: 100%; }
+.empty-state { padding: 20px 4px; }

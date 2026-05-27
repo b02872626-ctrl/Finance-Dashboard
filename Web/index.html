@@ -29,6 +29,18 @@
 
           <button type="submit" id="login-btn" class="btn-primary">Sign in</button>
           <button type="button" id="retry-btn" class="btn-secondary hidden">Try again</button>
+
+          <div class="auth-divider"><span>or</span></div>
+
+          <button type="button" id="google-signin-btn" class="btn-google">
+            <svg class="google-logo" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.79 2.71v2.26h2.9c1.7-1.56 2.69-3.87 2.69-6.61z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.19l-2.9-2.26c-.81.54-1.83.86-3.06.86-2.36 0-4.36-1.59-5.07-3.73H.95v2.34A9 9 0 0 0 9 18z"/>
+              <path fill="#FBBC05" d="M3.93 10.68A5.4 5.4 0 0 1 3.64 9c0-.58.1-1.15.29-1.68V4.98H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.02l2.98-2.34z"/>
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A8.97 8.97 0 0 0 9 0 9 9 0 0 0 .95 4.98l2.98 2.34C4.64 5.18 6.64 3.58 9 3.58z"/>
+            </svg>
+            <span>Continue with Google</span>
+          </button>
         </form>
 
         <p class="footer muted small">Designed for privacy · Local processing on Android · Supabase for sync.</p>
@@ -63,6 +75,10 @@
             Goals
             <span id="goals-badge" class="view-tab-badge goals-badge hidden">0</span>
           </button>
+          <button class="view-tab" data-view="budgets" role="tab">
+            Budgets
+            <span id="budgets-badge" class="view-tab-badge budgets-badge hidden">0</span>
+          </button>
         </div>
 
         <!-- Period selector (shared across views) -->
@@ -77,6 +93,29 @@
 
         <!-- ===== Dashboard view ===== -->
         <section id="dashboard-view" class="view dashboard-view">
+          <!-- Daily Review summary (read-only on web; full swipe queue lives on mobile) -->
+          <section
+            id="daily-review-card"
+            class="card daily-review-card hidden"
+            aria-label="Daily Review summary"
+          >
+            <div class="dr-text">
+              <span class="dr-eyebrow" id="dr-eyebrow">Daily Review</span>
+              <h3 class="dr-title" id="dr-title">Review today's transactions</h3>
+              <p class="dr-body muted" id="dr-body">—</p>
+              <div class="dr-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="dr-progress-fill" id="dr-progress"></div>
+              </div>
+              <div class="dr-meta">
+                <span id="dr-meta-left" class="muted small">—</span>
+                <span id="dr-meta-right" class="muted small">Open on mobile to review</span>
+              </div>
+            </div>
+            <div class="dr-chip" id="dr-chip" aria-hidden="true">
+              <span id="dr-chip-text">↻</span>
+            </div>
+          </section>
+
           <!-- 6 stat cards -->
           <section class="grid grid-3 stat-grid">
             <div class="card stat-card">
@@ -816,6 +855,107 @@
             <div id="goal-history-list" class="ledger-list hidden">
               <p class="muted">No contributions yet.</p>
             </div>
+          </section>
+        </section>
+
+        <!-- ===== Budgets view ===== -->
+        <section id="budgets-view" class="view dashboard-view hidden">
+          <!-- Hero stats -->
+          <section class="grid grid-3 stat-grid">
+            <div class="card stat-card">
+              <p class="label">Total Funded</p>
+              <p class="big-number teal" id="budgets-total-funded">—</p>
+              <p class="muted small" id="budgets-total-funded-sub">across all envelopes</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Spent This Cycle</p>
+              <p class="big-number coral" id="budgets-total-spent">—</p>
+              <p class="muted small" id="budgets-total-spent-sub">—</p>
+            </div>
+            <div class="card stat-card">
+              <p class="label">Remaining</p>
+              <p class="big-number income" id="budgets-total-remaining">—</p>
+              <p class="muted small" id="budgets-total-remaining-sub">—</p>
+            </div>
+          </section>
+
+          <!-- Pending leftover prompts — one per budget cycle the user hasn't handled yet -->
+          <section id="budget-leftover-section" class="card hidden" aria-label="Unspent budget leftovers">
+            <header class="section-header">
+              <h3>Cycle ended — save the leftover?</h3>
+              <span class="muted small">From the last funding cycle</span>
+            </header>
+            <div id="budget-leftover-list"></div>
+          </section>
+
+          <!-- Create / edit budget form -->
+          <section class="card">
+            <header class="section-header">
+              <h3 id="budget-form-title">Create a budget</h3>
+              <span class="muted small">Envelope-style — funds reset each cycle, leftover saves to a goal</span>
+            </header>
+            <form id="budget-form" class="ledger-form">
+              <input type="hidden" id="budget-form-id" />
+              <div class="form-row">
+                <label>
+                  Name
+                  <input id="budget-name" type="text" placeholder="Food, Transport, Coffee…" required />
+                </label>
+                <label class="form-narrow">
+                  Emoji
+                  <input id="budget-emoji" type="text" placeholder="🥗" maxlength="4" />
+                </label>
+                <label>
+                  Fund amount
+                  <input id="budget-amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="5000.00" required />
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  Cadence
+                  <select id="budget-cadence" required>
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="BIWEEKLY">Bi-weekly</option>
+                    <option value="EVERY_30_DAYS">Every 30 days</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="YEARLY">Yearly</option>
+                    <option value="CUSTOM">Custom (every N days)</option>
+                  </select>
+                </label>
+                <label id="budget-interval-wrapper" class="hidden">
+                  Every N days
+                  <input id="budget-interval-days" type="number" inputmode="numeric" min="1" placeholder="14" />
+                </label>
+                <label>
+                  Funding date
+                  <input id="budget-funding-date" type="date" required />
+                </label>
+              </div>
+              <div class="form-row form-row-full">
+                <label class="form-full">
+                  Categories that drain this envelope
+                  <div id="budget-category-picker" class="category-pills budget-category-picker" role="group" aria-label="Categories"></div>
+                  <p class="muted small" id="budget-category-hint">Pick at least one. Expenses in these categories will deduct from the envelope.</p>
+                </label>
+              </div>
+              <div class="form-actions">
+                <button type="button" id="budget-cancel" class="ghost-btn hidden">Cancel</button>
+                <button type="submit" id="budget-submit" class="primary-btn">Create budget</button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Active budget cards -->
+          <section class="card">
+            <header class="section-header">
+              <h3>Active envelopes</h3>
+              <span class="muted small" id="budgets-count-label">0 active</span>
+            </header>
+            <div id="budget-empty" class="empty-state">
+              <p class="muted">No budgets yet. Create one above to start tracking.</p>
+            </div>
+            <div id="budget-card-grid" class="budget-grid hidden"></div>
           </section>
         </section>
 
