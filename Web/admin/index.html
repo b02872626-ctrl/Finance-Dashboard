@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finance Lore — Admin</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main id="root">
+      <!-- ===== Login view ===== -->
+      <section id="login-view" class="view login-view hidden">
+        <div class="brand-block">
+          <h1>Finance Lore <span class="badge-admin">Admin</span></h1>
+          <p class="muted">Restricted area. Sign in with the admin account.</p>
+        </div>
+
+        <div class="card login-card">
+          <div id="login-error" class="error hidden"></div>
+          <button type="button" id="google-signin-btn" class="btn-google">
+            <svg class="google-logo" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.79 2.71v2.26h2.9c1.7-1.56 2.69-3.87 2.69-6.61z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.19l-2.9-2.26c-.81.54-1.83.86-3.06.86-2.36 0-4.36-1.59-5.07-3.73H.95v2.34A9 9 0 0 0 9 18z"/>
+              <path fill="#FBBC05" d="M3.93 10.68A5.4 5.4 0 0 1 3.64 9c0-.58.1-1.15.29-1.68V4.98H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.02l2.98-2.34z"/>
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A8.97 8.97 0 0 0 9 0 9 9 0 0 0 .95 4.98l2.98 2.34C4.64 5.18 6.64 3.58 9 3.58z"/>
+            </svg>
+            <span>Continue with Google</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== Access denied view ===== -->
+      <section id="denied-view" class="view denied-view hidden">
+        <div class="card denied-card">
+          <h2>Access denied</h2>
+          <p class="muted">
+            You're signed in as <span id="denied-email" class="mono"></span>,
+            which isn't on the admin allowlist.
+          </p>
+          <button type="button" id="denied-logout-btn" class="btn-secondary">Sign out</button>
+        </div>
+      </section>
+
+      <!-- ===== Admin shell ===== -->
+      <section id="admin-shell" class="view admin-shell hidden">
+        <header class="dashboard-header">
+          <div>
+            <p class="muted small">Signed in as <span id="admin-email" class="mono"></span></p>
+            <h2>Admin <span class="badge-admin">Live</span></h2>
+          </div>
+          <div class="header-actions">
+            <button id="refresh-btn" class="btn-ghost" title="Refresh data">Refresh</button>
+            <button id="logout-btn" class="btn-ghost" title="Sign out">Sign out</button>
+          </div>
+        </header>
+
+        <!-- Top-level stat cards -->
+        <section class="stats-grid">
+          <div class="stat-card">
+            <p class="stat-label">Users</p>
+            <p class="stat-value" id="stat-users">—</p>
+            <p class="stat-sub muted small" id="stat-users-sub">total accounts</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">New (7d)</p>
+            <p class="stat-value" id="stat-new-7d">—</p>
+            <p class="stat-sub muted small" id="stat-new-7d-sub">signups last 7 days</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Total time</p>
+            <p class="stat-value" id="stat-total-time">—</p>
+            <p class="stat-sub muted small" id="stat-total-time-sub">across all users</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Sessions</p>
+            <p class="stat-value" id="stat-total-sessions">—</p>
+            <p class="stat-sub muted small" id="stat-total-sessions-sub">all-time</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Avg session</p>
+            <p class="stat-value" id="stat-avg-session">—</p>
+            <p class="stat-sub muted small" id="stat-avg-session-sub">duration</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Active now</p>
+            <p class="stat-value" id="stat-active-now">—</p>
+            <p class="stat-sub muted small" id="stat-active-now-sub">heartbeat &lt; 2 min</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">DAU (today)</p>
+            <p class="stat-value" id="stat-dau">—</p>
+            <p class="stat-sub muted small" id="stat-dau-sub">distinct users today</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">WAU (7d)</p>
+            <p class="stat-value" id="stat-wau">—</p>
+            <p class="stat-sub muted small" id="stat-wau-sub">distinct last 7 days</p>
+          </div>
+        </section>
+
+        <!-- Charts -->
+        <section class="charts-grid">
+          <div class="card chart-card chart-wide">
+            <header class="card-header">
+              <h3>Activity — last 30 days</h3>
+              <span class="muted small" id="chart-daily-sub">sessions per day</span>
+            </header>
+            <div class="chart" id="chart-daily"></div>
+          </div>
+          <div class="card chart-card">
+            <header class="card-header">
+              <h3>Hour of day</h3>
+              <span class="muted small">UTC offset: local</span>
+            </header>
+            <div class="chart" id="chart-hour"></div>
+          </div>
+          <div class="card chart-card">
+            <header class="card-header">
+              <h3>Day of week</h3>
+              <span class="muted small">sessions</span>
+            </header>
+            <div class="chart" id="chart-weekday"></div>
+          </div>
+          <div class="card chart-card chart-wide">
+            <header class="card-header">
+              <h3>Top users — total time</h3>
+              <span class="muted small">top 10</span>
+            </header>
+            <div class="chart" id="chart-top-users"></div>
+          </div>
+        </section>
+
+        <!-- Users table -->
+        <section class="card users-card">
+          <header class="card-header">
+            <h3>Users</h3>
+            <div class="users-toolbar">
+              <input type="search" id="users-search" placeholder="Search email or name…" />
+              <select id="users-sort">
+                <option value="last_session_at">Last seen</option>
+                <option value="total_seconds">Total time</option>
+                <option value="session_count">Sessions</option>
+                <option value="txn_count">Transactions</option>
+                <option value="account_created_at">Signed up</option>
+              </select>
+            </div>
+          </header>
+          <div class="users-table-wrap">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Signed up</th>
+                  <th>Last seen</th>
+                  <th class="num">Sessions</th>
+                  <th class="num">Total time</th>
+                  <th class="num">Txns</th>
+                  <th class="num">SMS</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody">
+                <tr><td colspan="7" class="muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <!-- ===== User drill-in pane ===== -->
+      <aside id="drill-pane" class="drill-pane hidden" aria-hidden="true">
+        <div class="drill-backdrop" data-drill-close></div>
+        <div class="drill-content">
+          <header class="drill-header">
+            <div>
+              <p class="muted small" id="drill-email">…</p>
+              <h2 id="drill-name">User</h2>
+            </div>
+            <button type="button" class="btn-ghost" data-drill-close>Close</button>
+          </header>
+          <div class="drill-stats">
+            <div><span class="muted small">Total time</span><strong id="drill-total-time">—</strong></div>
+            <div><span class="muted small">Sessions</span><strong id="drill-session-count">—</strong></div>
+            <div><span class="muted small">Avg session</span><strong id="drill-avg-session">—</strong></div>
+            <div><span class="muted small">Last seen</span><strong id="drill-last-seen">—</strong></div>
+            <div><span class="muted small">Transactions</span><strong id="drill-txns">—</strong></div>
+            <div><span class="muted small">SMS captured</span><strong id="drill-raw">—</strong></div>
+          </div>
+          <h3 class="drill-section-title">Session timeline</h3>
+          <div class="drill-sessions" id="drill-sessions">
+            <p class="muted">Loading…</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="admin.js"></script>
+  </body>
+</html>

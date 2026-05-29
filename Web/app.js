@@ -321,14 +321,112 @@ const PERIOD_LABELS = {
 // ----------------------------------------------------------------------------
 (async function init() {
   const { data: { session } } = await supabase.auth.getSession();
-  if (session) await showDashboard(session);
-  else showLogin();
+  if (session) {
+    await showDashboard(session);
+    startSessionTracking(session);
+  } else {
+    showLogin();
+  }
 
   supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (session) await showDashboard(session);
-    else showLogin();
+    if (session) {
+      await showDashboard(session);
+      startSessionTracking(session);
+    } else {
+      endSessionBeacon();
+      stopSessionTracking();
+      showLogin();
+    }
   });
 })();
+
+// ----------------------------------------------------------------------------
+// Session tracking — feeds the admin dashboard's time-spent metrics.
+// Inserts one row in i_sessions per page lifetime, heartbeats every 30s, and
+// best-effort writes ended_at on tab close via fetch keepalive.
+// ----------------------------------------------------------------------------
+let _sessionRow = null;
+let _sessionToken = null;
+let _heartbeatTimer = null;
+
+async function startSessionTracking(session) {
+  if (_sessionRow) return;
+  _sessionToken = session.access_token;
+  const { data, error } = await supabase
+    .from("i_sessions")
+    .insert({
+      user_id: session.user.id,
+      client: "web",
+      user_agent: (navigator.userAgent || "").slice(0, 500),
+    })
+    .select()
+    .maybeSingle();
+  if (error || !data) {
+    if (error && !/relation .* does not exist/i.test(error.message)) {
+      console.warn("Session insert failed:", error.message);
+    }
+    return;
+  }
+  _sessionRow = data;
+  _heartbeatTimer = setInterval(sendHeartbeat, 30_000);
+  window.addEventListener("beforeunload", endSessionBeacon);
+  window.addEventListener("pagehide", endSessionBeacon);
+  document.addEventListener("visibilitychange", onSessionVisibility);
+}
+
+async function sendHeartbeat() {
+  if (!_sessionRow) return;
+  const startedAt = new Date(_sessionRow.started_at).getTime();
+  const duration = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+  const { error } = await supabase
+    .from("i_sessions")
+    .update({
+      last_heartbeat_at: new Date().toISOString(),
+      duration_seconds: duration,
+    })
+    .eq("id", _sessionRow.id);
+  if (error) console.warn("Session heartbeat failed:", error.message);
+}
+
+function onSessionVisibility() {
+  if (document.visibilityState === "hidden") sendHeartbeat();
+}
+
+// keepalive lets the request outlive the page unload — sendBeacon would be
+// the canonical choice, but PostgREST needs the Authorization header and
+// sendBeacon does not let us set custom headers.
+function endSessionBeacon() {
+  if (!_sessionRow || !_sessionToken) return;
+  const startedAt = new Date(_sessionRow.started_at).getTime();
+  const nowIso = new Date().toISOString();
+  const payload = JSON.stringify({
+    ended_at: nowIso,
+    last_heartbeat_at: nowIso,
+    duration_seconds: Math.max(0, Math.round((Date.now() - startedAt) / 1000)),
+  });
+  try {
+    fetch(`${SUPABASE_URL}/rest/v1/i_sessions?id=eq.${_sessionRow.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON,
+        "Authorization": `Bearer ${_sessionToken}`,
+        "Prefer": "return=minimal",
+      },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  } catch (_) { /* page may be tearing down */ }
+}
+
+function stopSessionTracking() {
+  if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null; }
+  window.removeEventListener("beforeunload", endSessionBeacon);
+  window.removeEventListener("pagehide", endSessionBeacon);
+  document.removeEventListener("visibilitychange", onSessionVisibility);
+  _sessionRow = null;
+  _sessionToken = null;
+}
 
 // ----------------------------------------------------------------------------
 // Login / Logout
