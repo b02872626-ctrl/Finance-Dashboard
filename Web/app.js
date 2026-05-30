@@ -64,6 +64,13 @@ const txTbody        = $("tx-tbody");
 const txCount        = $("tx-count");
 const txSearch       = $("tx-search");
 const txTypeFilter   = $("tx-type-filter");
+const txCategoryFilter = $("tx-category-filter");
+const txBankFilter   = $("tx-bank-filter");
+const txDateFrom     = $("tx-date-from");
+const txDateTo       = $("tx-date-to");
+const txMinAmount    = $("tx-min-amount");
+const txMaxAmount    = $("tx-max-amount");
+const txClearFilters = $("tx-clear-filters");
 const csvBtn         = $("csv-btn");
 const categoryList   = $("category-list");
 const counterpartyList = $("counterparty-list");
@@ -267,6 +274,12 @@ const state = {
   period: "month",
   search: "",
   typeFilter: "",
+  categoryFilter: "",
+  bankFilter: "",
+  dateFrom: "",      // ISO date string yyyy-mm-dd, "" means no lower bound
+  dateTo: "",        // same, no upper bound when ""
+  minAmount: "",     // numeric string, "" means no lower bound
+  maxAmount: "",     // same
   userId: null,
   selectedCps: new Set(),  // counterparties picked for batch categorization
   pickedCategory: null,    // chosen category for the next Apply
@@ -556,6 +569,21 @@ if (catDetailClose) {
 // ----------------------------------------------------------------------------
 txSearch.addEventListener("input", () => { state.search = txSearch.value.trim().toLowerCase(); renderTxTable(); });
 txTypeFilter.addEventListener("change", () => { state.typeFilter = txTypeFilter.value; renderTxTable(); });
+txCategoryFilter.addEventListener("change", () => { state.categoryFilter = txCategoryFilter.value; renderTxTable(); });
+txBankFilter.addEventListener("change", () => { state.bankFilter = txBankFilter.value; renderTxTable(); });
+txDateFrom.addEventListener("change", () => { state.dateFrom = txDateFrom.value; renderTxTable(); });
+txDateTo.addEventListener("change", () => { state.dateTo = txDateTo.value; renderTxTable(); });
+txMinAmount.addEventListener("input", () => { state.minAmount = txMinAmount.value; renderTxTable(); });
+txMaxAmount.addEventListener("input", () => { state.maxAmount = txMaxAmount.value; renderTxTable(); });
+txClearFilters.addEventListener("click", () => {
+  state.search = ""; state.typeFilter = ""; state.categoryFilter = "";
+  state.bankFilter = ""; state.dateFrom = ""; state.dateTo = "";
+  state.minAmount = ""; state.maxAmount = "";
+  txSearch.value = ""; txTypeFilter.value = ""; txCategoryFilter.value = "";
+  txBankFilter.value = ""; txDateFrom.value = ""; txDateTo.value = "";
+  txMinAmount.value = ""; txMaxAmount.value = "";
+  renderTxTable();
+});
 csvBtn.addEventListener("click", exportCsv);
 
 // ----------------------------------------------------------------------------
@@ -590,6 +618,7 @@ async function showDashboard(session) {
 
   state.allTxs = txResult.data || [];
   state.userId = userId;
+  populateTxFilterOptions(state.allTxs);
   renderBatchPills();
   rerender();
   // Fire-and-forget ledger + income + goals fetches so the dashboard renders immediately.
@@ -3117,16 +3146,68 @@ function renderTxTable() {
 }
 
 function applyTxFilters(txs) {
-  const q = state.search;
-  const t = state.typeFilter;
+  const q   = state.search;
+  const t   = state.typeFilter;
+  const cat = state.categoryFilter;
+  const bnk = state.bankFilter;
+  // Date bounds — parse once. Empty string means no bound on that side.
+  const fromMs = state.dateFrom ? Date.parse(state.dateFrom) : null;
+  // dateTo is inclusive — bump to end-of-day so a tx at 23:59 of that day matches.
+  const toMs   = state.dateTo   ? Date.parse(state.dateTo) + 86_400_000 - 1 : null;
+  // Amount bounds — empty/NaN means no bound.
+  const minA = state.minAmount === "" ? null : Number(state.minAmount);
+  const maxA = state.maxAmount === "" ? null : Number(state.maxAmount);
   return txs.filter((tx) => {
     if (t && tx.type !== t) return false;
+    if (cat) {
+      if (cat === "__UNCATEGORISED__") {
+        if (tx.category && tx.category.trim() !== "") return false;
+      } else if (tx.category !== cat) {
+        return false;
+      }
+    }
+    if (bnk && tx.bank_name !== bnk) return false;
+    if (fromMs != null || toMs != null) {
+      const txMs = tx.occurred_at ? Date.parse(tx.occurred_at) : NaN;
+      if (Number.isNaN(txMs)) return false;
+      if (fromMs != null && txMs < fromMs) return false;
+      if (toMs   != null && txMs > toMs)   return false;
+    }
+    if (minA != null || maxA != null) {
+      const a = Number(tx.amount);
+      if (Number.isNaN(a)) return false;
+      if (minA != null && a < minA) return false;
+      if (maxA != null && a > maxA) return false;
+    }
     if (q) {
       const blob = `${tx.counterparty || ""} ${tx.bank_name || ""} ${tx.sender || ""} ${tx.ref_num || ""} ${tx.category || ""}`.toLowerCase();
       if (!blob.includes(q)) return false;
     }
     return true;
   });
+}
+
+// Fills the Category and Bank dropdowns from the unique values present in the
+// currently-loaded transactions. Idempotent — preserves the user's current
+// selection if that value is still in the new option list.
+function populateTxFilterOptions(txs) {
+  const cats  = new Set();
+  const banks = new Set();
+  for (const tx of txs) {
+    if (tx.category && tx.category.trim()) cats.add(tx.category);
+    if (tx.bank_name && tx.bank_name.trim()) banks.add(tx.bank_name);
+  }
+  const fillSelect = (sel, items, allLabel, extra = []) => {
+    const prev = sel.value;
+    const sorted = [...items].sort((a, b) => a.localeCompare(b));
+    sel.innerHTML = `<option value="">${allLabel}</option>`
+      + extra.map(([v, l]) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`).join("")
+      + sorted.map((x) => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join("");
+    // Restore selection if still valid (else reset to "All").
+    if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  };
+  fillSelect(txCategoryFilter, cats,  "All categories", [["__UNCATEGORISED__", "(uncategorised)"]]);
+  fillSelect(txBankFilter,     banks, "All banks");
 }
 
 function renderTxRow(tx) {

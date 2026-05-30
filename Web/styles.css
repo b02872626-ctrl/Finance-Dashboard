@@ -426,6 +426,9 @@ input:focus, select:focus { border-color: var(--coral); }
 }
 .tx-controls input[type="search"] { flex: 1; min-width: 220px; }
 .tx-controls select { min-width: 150px; }
+.tx-controls input[type="date"] { min-width: 150px; }
+.tx-controls input[type="number"] { min-width: 130px; max-width: 160px; }
+.tx-controls-row2 { margin-top: -4px; }
 .csv-btn { padding: 12px 18px; font-size: 13px; }
 
 .table-wrap { overflow-x: auto; }

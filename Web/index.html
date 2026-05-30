@@ -247,6 +247,19 @@
               </select>
               <button type="button" id="csv-btn" class="btn-secondary csv-btn">Export CSV</button>
             </div>
+            <div class="tx-controls tx-controls-row2">
+              <select id="tx-category-filter" title="Filter by category">
+                <option value="">All categories</option>
+              </select>
+              <select id="tx-bank-filter" title="Filter by bank">
+                <option value="">All banks</option>
+              </select>
+              <input type="date" id="tx-date-from" title="From date" />
+              <input type="date" id="tx-date-to" title="To date" />
+              <input type="number" id="tx-min-amount" placeholder="Min amount" min="0" step="0.01" />
+              <input type="number" id="tx-max-amount" placeholder="Max amount" min="0" step="0.01" />
+              <button type="button" id="tx-clear-filters" class="btn-ghost">Clear</button>
+            </div>
             <div class="table-wrap">
               <table id="tx-table" class="tx-table">
                 <thead>
