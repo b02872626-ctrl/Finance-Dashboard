@@ -83,6 +83,7 @@ const toastEl        = $("toast");
 // Auth shell + view tabs (dashboardView is already declared above)
 const authShell      = $("auth-shell");
 const viewTabs       = $("view-tabs");
+const transactionsView = $("transactions-view");
 const categoriesView = $("categories-view");
 const ledgerView     = $("ledger-view");
 const incomeView     = $("income-view");
@@ -526,11 +527,13 @@ function switchView(name) {
   state.view = name;
   viewTabs.querySelectorAll(".view-tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
   dashboardView.classList.toggle("hidden", name !== "dashboard");
+  transactionsView.classList.toggle("hidden", name !== "transactions");
   categoriesView.classList.toggle("hidden", name !== "categories");
   ledgerView.classList.toggle("hidden", name !== "ledger");
   incomeView.classList.toggle("hidden", name !== "income");
   goalsView.classList.toggle("hidden", name !== "goals");
   budgetsView.classList.toggle("hidden", name !== "budgets");
+  if (name === "transactions") renderTxTable();
   if (name === "categories") renderCategoriesView();
   if (name === "ledger") renderLedgerView();
   if (name === "income") renderIncomeView();
