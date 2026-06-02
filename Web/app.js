@@ -873,7 +873,23 @@ function attachLedgerEntryHandlers() {
       const input = ledgerView.querySelector(`.pay-amount[data-id="${id}"]`);
       const amount = parseFloat(input.value);
       if (!Number.isFinite(amount) || amount <= 0) return;
-      await logRepayment(id, amount);
+      // Lock the row while the round-trip is in flight so the user can't
+      // double-fire (which on a flaky network could insert two repayments).
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = "Paying…";
+      if (input) input.disabled = true;
+      try {
+        await logRepayment(id, amount);
+      } finally {
+        // Re-enable only if the row still exists; the render after a
+        // successful payment will replace the markup entirely.
+        if (document.body.contains(btn)) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+          if (input) input.disabled = false;
+        }
+      }
     });
   });
   ledgerView.querySelectorAll(".cancel-pay").forEach((btn) => {
@@ -1062,44 +1078,74 @@ async function logRepayment(entryId, amount) {
   const newBalance = Math.max(0, currentBalance - amount);
   const fullyPaid = newBalance === 0;
 
-  const { error: repError } = await supabase.from("i_ledger_repayments").insert({
-    entry_id: entryId,
-    user_id:  state.userId,
-    amount:   Math.min(amount, currentBalance),
-  });
-  if (repError) { showToast(`Couldn't record payment: ${repError.message}`, "error"); return; }
-
-  const updates = { balance: newBalance };
-  if (fullyPaid) {
-    updates.status = "SETTLED";
-    updates.settled_at = new Date().toISOString();
-  }
-  const { error: upError } = await supabase.from("i_ledger_entries").update(updates).eq("id", entryId);
-  if (upError) { showToast(`Couldn't update entry: ${upError.message}`, "error"); return; }
-
-  // Auto-roll a recurring entry on full payment.
-  if (fullyPaid && entry.type === "RECURRING") {
-    const nextDue = nextDueDate(entry.due_date, entry.cadence, entry.interval_days);
-    await supabase.from("i_ledger_entries").insert({
-      user_id:     state.userId,
-      type:        "RECURRING",
-      direction:   entry.direction,
-      counterparty: entry.counterparty,
-      principal:   entry.principal,
-      balance:     entry.principal,
-      due_date:    nextDue,
-      cadence:     entry.cadence,
-      interval_days: entry.interval_days,
-      parent_id:   entry.id,
-      note:        entry.note,
+  // Wrap the whole sequence so a NETWORK error (which Supabase JS surfaces
+  // as a thrown TypeError "Failed to fetch" / ERR_NETWORK_CHANGED on Chrome
+  // when Wi-Fi flips, VPN toggles, etc.) doesn't fall through silently.
+  // After ANY failure we refetch the ledger so the UI matches what's
+  // actually persisted server-side — protects against the half-state where
+  // the repayment insert succeeded but the entry update failed.
+  try {
+    const { error: repError } = await supabase.from("i_ledger_repayments").insert({
+      entry_id: entryId,
+      user_id:  state.userId,
+      amount:   Math.min(amount, currentBalance),
     });
-    showToast(`Paid. Next ${cadenceLabel(entry.cadence, entry.interval_days)} entry queued for ${formatDueDate(nextDue)}.`, "success");
-  } else {
-    showToast(fullyPaid ? "Settled in full" : "Payment recorded", "success");
-  }
+    if (repError) {
+      showToast(`Couldn't record payment: ${repError.message}`, "error");
+      await fetchLedger().catch(() => {});
+      return;
+    }
 
-  state.payingId = null;
-  await fetchLedger();
+    const updates = { balance: newBalance };
+    if (fullyPaid) {
+      updates.status = "SETTLED";
+      updates.settled_at = new Date().toISOString();
+    }
+    const { error: upError } = await supabase.from("i_ledger_entries").update(updates).eq("id", entryId);
+    if (upError) {
+      // Repayment row landed but the parent entry didn't update — refetch
+      // so the UI shows the truth (likely an inconsistent state on server).
+      showToast(`Payment saved but entry update failed: ${upError.message}. Refreshing…`, "error");
+      await fetchLedger().catch(() => {});
+      return;
+    }
+
+    // Auto-roll a recurring entry on full payment.
+    if (fullyPaid && entry.type === "RECURRING") {
+      const nextDue = nextDueDate(entry.due_date, entry.cadence, entry.interval_days);
+      await supabase.from("i_ledger_entries").insert({
+        user_id:     state.userId,
+        type:        "RECURRING",
+        direction:   entry.direction,
+        counterparty: entry.counterparty,
+        principal:   entry.principal,
+        balance:     entry.principal,
+        due_date:    nextDue,
+        cadence:     entry.cadence,
+        interval_days: entry.interval_days,
+        parent_id:   entry.id,
+        note:        entry.note,
+      });
+      showToast(`Paid. Next ${cadenceLabel(entry.cadence, entry.interval_days)} entry queued for ${formatDueDate(nextDue)}.`, "success");
+    } else {
+      showToast(fullyPaid ? "Settled in full" : "Payment recorded", "success");
+    }
+
+    state.payingId = null;
+    await fetchLedger();
+  } catch (e) {
+    console.warn("logRepayment threw:", e);
+    const offline = !navigator.onLine;
+    const msg = offline
+      ? "You're offline — payment not saved. Reconnect and try again."
+      : (/Failed to fetch|NetworkError|ERR_NETWORK|ERR_INTERNET/i.test(String(e))
+          ? "Network hiccup — payment not saved. Check your connection and try again."
+          : `Couldn't save payment: ${e?.message || e}`);
+    showToast(msg, "error");
+    // Pull authoritative state from server so UI doesn't lie. Best-effort —
+    // if THIS also fails offline, the toast above is the user's signal.
+    await fetchLedger().catch(() => {});
+  }
 }
 
 function nextDueDate(currentIso, cadence, intervalDays) {
