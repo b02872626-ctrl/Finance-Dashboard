@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Finance Lore</title>
     <link rel="stylesheet" href="styles.css" />
+    <script>
+      // Pre-paint: pick the right starting view by checking localStorage
+      // synchronously. Stops the login page from flashing on refresh when
+      // the user already has a valid Supabase session cached.
+      // The token key Supabase JS v2 uses is `sb-<project-ref>-auth-token`.
+      (function () {
+        try {
+          var hasSession = false;
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf("sb-") === 0 && k.indexOf("-auth-token") !== -1) {
+              hasSession = true;
+              break;
+            }
+          }
+          // Inject a class on <html> the stylesheet can target before paint.
+          document.documentElement.classList.add(hasSession ? "boot-authed" : "boot-anon");
+        } catch (_) { /* localStorage unavailable — default markup wins */ }
+      })();
+    </script>
   </head>
   <body>
     <main id="root">

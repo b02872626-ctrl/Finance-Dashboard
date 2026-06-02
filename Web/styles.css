@@ -44,6 +44,18 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* Pre-paint visibility hint set by the inline <head> script. When a cached
+   Supabase session exists in localStorage, the script adds `boot-authed`
+   to <html> *before first paint*, which immediately hides the login view
+   and reveals the auth-shell skeleton — eliminates the brief "login peek"
+   on refresh. The async getSession() in app.js then removes the boot class
+   so the normal .hidden system takes over (and an invalid cached token can
+   correctly fall back to login). `.boot-anon` is set when no token is
+   cached; no CSS override needed since the default markup already has
+   login visible + auth-shell .hidden. */
+.boot-authed #login-view { display: none !important; }
+.boot-authed #auth-shell { display: flex !important; }
+
 .muted { color: var(--body-muted); }
 .small { font-size: 12px; }
 

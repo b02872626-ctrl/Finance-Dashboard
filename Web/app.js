@@ -339,6 +339,10 @@ const PERIOD_LABELS = {
 // ----------------------------------------------------------------------------
 (async function init() {
   const { data: { session } } = await supabase.auth.getSession();
+  // Drop the pre-paint visibility hint applied by the inline <head> script —
+  // from here on the normal .hidden class drives visibility, so an invalid
+  // cached token can correctly fall back to the login view.
+  document.documentElement.classList.remove("boot-authed", "boot-anon");
   if (session) {
     await showDashboard(session);
     startSessionTracking(session);
