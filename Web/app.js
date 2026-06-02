@@ -3286,22 +3286,24 @@ function openTxDetail(txId) {
   if (!tx) return;
   const outgoing = EXPENSE_TYPES.has(tx.type);
   const amountClass = outgoing ? "amount-out" : "amount-in";
-  const amountText = `${outgoing ? "-" : "+"} ${formatNumber(tx.amount)} ETB`;
+  const directionIcon = outgoing ? "↘" : "↗";
+  const directionLabel = outgoing ? "Sent to" : "Received from";
+  const counterparty = tx.counterparty || tx.sender || "—";
+  const occurredMs = tx.occurred_at ? Date.parse(tx.occurred_at) : NaN;
+  const occurredDate = Number.isFinite(occurredMs) ? new Date(occurredMs) : null;
+  const absoluteWhen = occurredDate
+    ? `${occurredDate.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${occurredDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+    : "—";
+  const relativeWhen = occurredDate ? formatRelativeTime(occurredMs) : "";
 
-  // Build the field list. Skip null/empty values so the modal doesn't look
-  // ragged when a column is missing for this row. Keep id last as a small
-  // monospaced footer — it's useful for debugging but not the main attraction.
+  // Field rows (everything except the hero stuff already above).
   const rows = [];
   const add = (label, value, valueClass = "") => {
     if (value == null || value === "") return;
     rows.push({ label, value, valueClass });
   };
-  add("Date", formatDate(tx.occurred_at) + (tx.occurred_at ? ` · ${new Date(tx.occurred_at).toLocaleTimeString()}` : ""));
-  add("Counterparty", tx.counterparty || tx.sender);
-  if (tx.sender && tx.sender !== tx.counterparty) add("Sender", tx.sender);
   add("Bank", tx.bank_name);
   add("Type", prettyType(tx.type));
-  add("Amount", amountText, amountClass);
   add("Balance after", tx.balance != null ? `${formatNumber(tx.balance)} ETB` : null);
   add("Category", tx.category);
   if (tx.predicted_category && tx.predicted_category !== tx.category) {
@@ -3312,8 +3314,95 @@ function openTxDetail(txId) {
   add("Review status", tx.review_status);
   add("Reference", tx.ref_num);
   add("Merchant key", tx.merchant_key);
+  if (tx.sender && tx.sender !== tx.counterparty) add("Sender", tx.sender);
+
+  // ── Recent activity with this counterparty ─────────────────────────────
+  // Match by counterparty OR merchant_key (catches normalised variations).
+  const cpKey = (tx.counterparty || tx.sender || "").trim().toLowerCase();
+  const mKey  = (tx.merchant_key || "").trim();
+  const related = state.allTxs.filter((other) => {
+    if (other.id === tx.id) return false;
+    const otherCp = (other.counterparty || other.sender || "").trim().toLowerCase();
+    if (cpKey && otherCp === cpKey) return true;
+    if (mKey && other.merchant_key === mKey) return true;
+    return false;
+  });
+  // Last 30-day rollup for the summary line.
+  const THIRTY_D = 30 * 86_400_000;
+  const cutoff = (occurredMs || Date.now()) - THIRTY_D;
+  const relatedRecent = related.filter((r) => Date.parse(r.occurred_at) >= cutoff);
+  const relatedSpend = relatedRecent
+    .filter((r) => EXPENSE_TYPES.has(r.type))
+    .reduce((s, r) => s + Number(r.amount || 0), 0);
+  const relatedTop = related.slice(0, 5);
+
+  const relatedHtml = related.length === 0 ? "" : `
+    <div class="tx-detail-section">
+      <h4 class="tx-detail-section-title">Recent activity with ${escapeHtml(counterparty)}</h4>
+      <p class="tx-detail-section-meta muted small">
+        ${relatedRecent.length} transaction${relatedRecent.length === 1 ? "" : "s"} in the last 30 days · ${formatETB(relatedSpend)} spent
+      </p>
+      <ul class="tx-related-list">
+        ${relatedTop.map((r) => {
+          const o = EXPENSE_TYPES.has(r.type);
+          const acls = o ? "amount-out" : "amount-in";
+          return `<li>
+            <span class="tx-related-date muted small">${escapeHtml(formatDate(r.occurred_at))}</span>
+            <span class="tx-related-cat muted small">${escapeHtml(r.category || "—")}</span>
+            <span class="tx-related-amt ${acls}">${o ? "-" : "+"} ${escapeHtml(formatNumber(r.amount))}</span>
+          </li>`;
+        }).join("")}
+      </ul>
+      <button type="button" class="btn-ghost tx-detail-filter-btn" data-cp="${escapeHtml(counterparty)}">
+        Show all in Transactions tab
+      </button>
+    </div>
+  `;
+
+  // ── Insights (what % of this month's category / total spend) ──────────
+  let insightsHtml = "";
+  if (outgoing && Number.isFinite(occurredMs)) {
+    const month = occurredDate.getMonth();
+    const year  = occurredDate.getFullYear();
+    let monthCatSpend = 0;
+    let monthTotalSpend = 0;
+    let monthRank = 0;        // 1-indexed rank by amount descending among month's expenses
+    const monthExpenses = [];
+    for (const t of state.allTxs) {
+      if (!EXPENSE_TYPES.has(t.type)) continue;
+      const ts = Date.parse(t.occurred_at);
+      if (!Number.isFinite(ts)) continue;
+      const d = new Date(ts);
+      if (d.getMonth() !== month || d.getFullYear() !== year) continue;
+      monthTotalSpend += Number(t.amount || 0);
+      if (tx.category && t.category === tx.category) monthCatSpend += Number(t.amount || 0);
+      monthExpenses.push(Number(t.amount || 0));
+    }
+    monthExpenses.sort((a, b) => b - a);
+    monthRank = monthExpenses.indexOf(Number(tx.amount)) + 1;
+    const pctMonth = monthTotalSpend > 0 ? (Number(tx.amount) / monthTotalSpend) * 100 : 0;
+    const pctCat   = monthCatSpend > 0 ? (Number(tx.amount) / monthCatSpend) * 100 : 0;
+    const ord = ordinal(monthRank);
+    const monthLabel = occurredDate.toLocaleDateString(undefined, { month: "long" });
+    insightsHtml = `
+      <div class="tx-detail-section">
+        <h4 class="tx-detail-section-title">In context · ${escapeHtml(monthLabel)}</h4>
+        <ul class="tx-insight-list muted small">
+          <li>${ord} largest expense this month</li>
+          <li>${pctMonth.toFixed(1)}% of monthly spend</li>
+          ${tx.category && pctCat > 0 ? `<li>${pctCat.toFixed(1)}% of <strong>${escapeHtml(tx.category)}</strong> spend this month</li>` : ""}
+        </ul>
+      </div>
+    `;
+  }
 
   txDetailBody.innerHTML = `
+    <div class="tx-detail-hero ${amountClass}">
+      <div class="tx-detail-direction">${directionIcon}</div>
+      <div class="tx-detail-amount-big">${outgoing ? "-" : "+"} ${escapeHtml(formatNumber(tx.amount))} <span class="tx-detail-currency">ETB</span></div>
+      <div class="tx-detail-cp muted">${escapeHtml(directionLabel)} <strong>${escapeHtml(counterparty)}</strong></div>
+      <div class="tx-detail-when muted small">${escapeHtml(absoluteWhen)}${relativeWhen ? ` · ${escapeHtml(relativeWhen)}` : ""}</div>
+    </div>
     <div class="tx-detail-grid">
       ${rows.map((r) => `
         <div class="tx-detail-label">${escapeHtml(r.label)}</div>
@@ -3322,8 +3411,60 @@ function openTxDetail(txId) {
       <div class="tx-detail-label">Row id</div>
       <div class="tx-detail-value"><span class="muted-id">${escapeHtml(String(tx.id))}</span></div>
     </div>
+    ${relatedHtml}
+    ${insightsHtml}
   `;
+
+  // Wire the "Show all in Transactions tab" button — switches view, sets the
+  // search box, closes the modal.
+  const filterBtn = txDetailBody.querySelector(".tx-detail-filter-btn");
+  if (filterBtn) {
+    filterBtn.addEventListener("click", () => {
+      const cp = filterBtn.dataset.cp || "";
+      // Use the counterparty string as the search term (matches the existing
+      // search behavior — case-insensitive `includes` across counterparty/
+      // sender/bank/ref/category).
+      state.search = cp.toLowerCase();
+      txSearch.value = cp;
+      closeTxDetail();
+      switchView("transactions");
+    });
+  }
+
   txDetailBackdrop.classList.remove("hidden");
+}
+
+// Returns "3 hours ago", "yesterday", "5 days ago", "2 months ago" etc.
+// from a millisecond timestamp. Forward-dated timestamps say "in N…".
+function formatRelativeTime(ms) {
+  const diff = Date.now() - ms;
+  const future = diff < 0;
+  const abs = Math.abs(diff);
+  const min = 60_000, hr = 3_600_000, day = 86_400_000;
+  let value, unit;
+  if (abs < min) return future ? "in a moment" : "just now";
+  if (abs < hr)        { value = Math.round(abs / min); unit = value === 1 ? "minute" : "minutes"; }
+  else if (abs < day)  { value = Math.round(abs / hr);  unit = value === 1 ? "hour"   : "hours"; }
+  else if (abs < 30 * day) {
+    value = Math.round(abs / day);
+    if (value === 1) return future ? "tomorrow" : "yesterday";
+    unit = "days";
+  }
+  else if (abs < 365 * day) { value = Math.round(abs / (30 * day));  unit = value === 1 ? "month" : "months"; }
+  else                       { value = Math.round(abs / (365 * day)); unit = value === 1 ? "year"  : "years"; }
+  return future ? `in ${value} ${unit}` : `${value} ${unit} ago`;
+}
+
+// "1st", "2nd", "3rd", "4th", … ordinal suffix for monthly-rank insight.
+function ordinal(n) {
+  if (n <= 0) return String(n);
+  const lastTwo = n % 100;
+  const lastOne = n % 10;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  if (lastOne === 1) return `${n}st`;
+  if (lastOne === 2) return `${n}nd`;
+  if (lastOne === 3) return `${n}rd`;
+  return `${n}th`;
 }
 
 function closeTxDetail() {

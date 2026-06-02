@@ -1771,6 +1771,93 @@ code {
 .tx-detail-value.amount-in  { color: var(--green-income); font-weight: 600; }
 .tx-detail-value .muted-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--footer-grey); }
 
+/* Hero block at the top of the modal */
+.tx-detail-hero {
+  text-align: center;
+  padding: 12px 0 20px;
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: 18px;
+  position: relative;
+}
+.tx-detail-direction {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+.tx-detail-hero.amount-out .tx-detail-direction { color: var(--coral); }
+.tx-detail-hero.amount-in  .tx-detail-direction { color: var(--green-income); }
+.tx-detail-amount-big {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+.tx-detail-hero.amount-out .tx-detail-amount-big { color: var(--coral); }
+.tx-detail-hero.amount-in  .tx-detail-amount-big { color: var(--green-income); }
+.tx-detail-currency {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+.tx-detail-cp { font-size: 14px; margin-bottom: 4px; }
+.tx-detail-cp strong { color: var(--headline); font-weight: 600; }
+.tx-detail-when { font-size: 11px; }
+
+/* Sections (Recent activity, In context) */
+.tx-detail-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--divider);
+}
+.tx-detail-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--body-muted);
+  margin: 0 0 8px;
+}
+.tx-detail-section-meta { margin: 0 0 12px; }
+.tx-related-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tx-related-list li {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.tx-related-amt { font-weight: 600; }
+.tx-related-amt.amount-out { color: var(--coral); }
+.tx-related-amt.amount-in  { color: var(--green-income); }
+.tx-detail-filter-btn {
+  width: 100%;
+  padding: 8px 14px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.tx-insight-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tx-insight-list li { line-height: 1.5; }
+.tx-insight-list strong { color: var(--headline); font-weight: 600; }
+
 /* Make rows in the transactions table feel clickable */
 .tx-table tbody tr { cursor: pointer; transition: background .12s ease; }
 .tx-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
