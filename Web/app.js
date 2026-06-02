@@ -2664,10 +2664,36 @@ function setupGreeting(user) {
 // Period helpers
 // ----------------------------------------------------------------------------
 function periodRange(period, now = new Date()) {
-  const start = new Date(now);
+  // 30d / 90d / all are calendar-agnostic — rolling windows.
+  if (period === "30d") return { start: now.getTime() - 30 * 864e5, end: now.getTime() };
+  if (period === "90d") return { start: now.getTime() - 90 * 864e5, end: now.getTime() };
+  if (period === "all") return { start: 0, end: now.getTime() };
+
+  // Ethiopian: this month / last month / this year use EC boundaries.
+  if (state.calendar === "ethiopian") {
+    const today = gregorianToEthiopian(now);
+    const startOfThisEcMonth = ethiopianToGregorian(today.year, today.month, 1).getTime();
+    switch (period) {
+      case "month":
+        return { start: startOfThisEcMonth, end: now.getTime() };
+      case "last-month": {
+        const prev = prevEthiopianMonth(today.year, today.month);
+        const start = ethiopianToGregorian(prev.year, prev.month, 1).getTime();
+        // End: 1ms before the first of this EC month.
+        return { start, end: startOfThisEcMonth - 1 };
+      }
+      case "year": {
+        // 1 Meskerem (month 1) of the current EC year through now.
+        const start = ethiopianToGregorian(today.year, 1, 1).getTime();
+        return { start, end: now.getTime() };
+      }
+    }
+  }
+
+  // Gregorian fallback — original behaviour.
   switch (period) {
     case "month": {
-      start.setDate(1); start.setHours(0, 0, 0, 0);
+      const start = new Date(now); start.setDate(1); start.setHours(0, 0, 0, 0);
       return { start: start.getTime(), end: now.getTime() };
     }
     case "last-month": {
@@ -2675,14 +2701,11 @@ function periodRange(period, now = new Date()) {
       const e = new Date(now.getFullYear(), now.getMonth(), 1) - 1;
       return { start: s.getTime(), end: e };
     }
-    case "30d":  return { start: now.getTime() - 30 * 864e5, end: now.getTime() };
-    case "90d":  return { start: now.getTime() - 90 * 864e5, end: now.getTime() };
     case "year": {
       const s = new Date(now.getFullYear(), 0, 1);
       return { start: s.getTime(), end: now.getTime() };
     }
-    case "all":
-    default:     return { start: 0, end: now.getTime() };
+    default: return { start: 0, end: now.getTime() };
   }
 }
 
@@ -3179,21 +3202,15 @@ function renderDailyChart(allTxs) {
 
 function renderMonthlyChart(allTxs) {
   // Last 12 months, side-by-side income + expense bars.
+  // Calendar-aware: when state.calendar === "ethiopian", buckets are EC
+  // months (13-month year, Pagume → Meskerem wrap); otherwise Gregorian.
   const months = 12;
   const now = new Date();
-  const buckets = Array.from({ length: months }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
-    return { d, income: 0, expense: 0 };
-  });
-
-  const monthIndex = (date) => {
-    const monthsBack = (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
-    return (months - 1) - monthsBack;
-  };
+  const buckets = buildMonthBuckets(now, months).map((b) => ({ ...b, income: 0, expense: 0 }));
   for (const tx of allTxs) {
     const ts = Date.parse(tx.occurred_at);
     if (!Number.isFinite(ts)) continue;
-    const idx = monthIndex(new Date(ts));
+    const idx = bucketIndexForDate(new Date(ts), buckets);
     if (idx < 0 || idx >= months) continue;
     if (EXPENSE_TYPES.has(tx.type)) buckets[idx].expense += tx.amount;
     else if (tx.type === "CREDIT") buckets[idx].income += tx.amount;
@@ -3478,20 +3495,28 @@ function openTxDetail(txId) {
   `;
 
   // ── Insights (what % of this month's category / total spend) ──────────
+  // Calendar-aware: when state.calendar === "ethiopian", "this month" means
+  // the Ethiopian month the transaction fell in, not the Gregorian month.
   let insightsHtml = "";
   if (outgoing && Number.isFinite(occurredMs)) {
-    const month = occurredDate.getMonth();
-    const year  = occurredDate.getFullYear();
+    const useEC = state.calendar === "ethiopian";
+    const txMonthKey = useEC
+      ? (() => { const e = gregorianToEthiopian(occurredDate); return `${e.year}-${e.month}`; })()
+      : `${occurredDate.getFullYear()}-${occurredDate.getMonth()}`;
+    const sameMonth = (d) => {
+      if (useEC) { const e = gregorianToEthiopian(d); return `${e.year}-${e.month}` === txMonthKey; }
+      return `${d.getFullYear()}-${d.getMonth()}` === txMonthKey;
+    };
     let monthCatSpend = 0;
     let monthTotalSpend = 0;
-    let monthRank = 0;        // 1-indexed rank by amount descending among month's expenses
+    let monthRank = 0;
     const monthExpenses = [];
     for (const t of state.allTxs) {
       if (!EXPENSE_TYPES.has(t.type)) continue;
       const ts = Date.parse(t.occurred_at);
       if (!Number.isFinite(ts)) continue;
       const d = new Date(ts);
-      if (d.getMonth() !== month || d.getFullYear() !== year) continue;
+      if (!sameMonth(d)) continue;
       monthTotalSpend += Number(t.amount || 0);
       if (tx.category && t.category === tx.category) monthCatSpend += Number(t.amount || 0);
       monthExpenses.push(Number(t.amount || 0));
@@ -3501,7 +3526,9 @@ function openTxDetail(txId) {
     const pctMonth = monthTotalSpend > 0 ? (Number(tx.amount) / monthTotalSpend) * 100 : 0;
     const pctCat   = monthCatSpend > 0 ? (Number(tx.amount) / monthCatSpend) * 100 : 0;
     const ord = ordinal(monthRank);
-    const monthLabel = occurredDate.toLocaleDateString(undefined, { month: "long" });
+    const monthLabel = useEC
+      ? ETHIOPIAN_MONTHS[gregorianToEthiopian(occurredDate).month - 1]
+      : occurredDate.toLocaleDateString(undefined, { month: "long" });
     insightsHtml = `
       <div class="tx-detail-section">
         <h4 class="tx-detail-section-title">In context · ${escapeHtml(monthLabel)}</h4>
@@ -3930,10 +3957,8 @@ function renderCategoryTrend(orderedCategoryNames) {
   // Build 12-month per-category totals.
   const months = 12;
   const now = new Date();
-  const buckets = Array.from({ length: months }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
-    return { d, totals: new Map() };
-  });
+  // Calendar-aware bucketing — same EC/Gregorian switch as renderMonthlyChart.
+  const buckets = buildMonthBuckets(now, months).map((b) => ({ ...b, totals: new Map() }));
 
   for (const tx of state.allTxs) {
     if (!EXPENSE_TYPES.has(tx.type)) continue;
@@ -3941,9 +3966,7 @@ function renderCategoryTrend(orderedCategoryNames) {
     if (!cat) continue;
     const ts = Date.parse(tx.occurred_at);
     if (!Number.isFinite(ts)) continue;
-    const d = new Date(ts);
-    const monthsBack = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    const idx = (months - 1) - monthsBack;
+    const idx = bucketIndexForDate(new Date(ts), buckets);
     if (idx < 0 || idx >= months) continue;
     buckets[idx].totals.set(cat, (buckets[idx].totals.get(cat) || 0) + tx.amount);
   }
@@ -4081,6 +4104,68 @@ function gregorianToEthiopian(date) {
   const ethMonth = Math.floor(n / 30) + 1;
   const ethDay   = (n % 30) + 1;
   return { year: ethYear, month: ethMonth, day: ethDay };
+}
+
+// Inverse: Ethiopian (year, month 1-13, day 1-30) → Gregorian Date at 00:00.
+// Used to translate EC period boundaries back into a millisecond range so
+// the existing tx-filter code (which compares occurred_at to start/end) can
+// keep using simple numeric comparisons.
+function ethiopianToGregorian(ethYear, ethMonth, ethDay) {
+  // Ethiopian → JDN. Verified: (1, 1, 1) EC → 1724221 = 29 Aug 8 AD Julian.
+  // (2000, 1, 1) EC → 2454356 = 12 Sept 2007 Gregorian.
+  const jdn = 1723856 + 365 * ethYear + Math.floor(ethYear / 4)
+            + 30 * (ethMonth - 1) + (ethDay - 1);
+  // JDN → Gregorian (Richards's algorithm).
+  const a = jdn + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor((146097 * b) / 4);
+  const d = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d) / 4);
+  const mm = Math.floor((5 * e + 2) / 153);
+  const gDay   = e - Math.floor((153 * mm + 2) / 5) + 1;
+  const gMonth = mm + 3 - 12 * Math.floor(mm / 10);
+  const gYear  = 100 * b + d - 4800 + Math.floor(mm / 10);
+  return new Date(gYear, gMonth - 1, gDay);
+}
+
+// Returns the previous Ethiopian (year, month) pair, wrapping correctly
+// across Pagume (month 13) → Meskerem (month 1).
+function prevEthiopianMonth(ethYear, ethMonth) {
+  let m = ethMonth - 1;
+  let y = ethYear;
+  if (m < 1) { m = 13; y -= 1; }
+  return { year: y, month: m };
+}
+
+// Calendar-aware month buckets used by the 12-month charts. Returns the most
+// recent `count` months in chronological order. Each bucket carries `d` (the
+// Gregorian Date of the 1st of that month) plus identity fields the index
+// lookup uses. The caller adds metric fields (income/expense/totals/etc).
+function buildMonthBuckets(now, count) {
+  if (state.calendar === "ethiopian") {
+    const today = gregorianToEthiopian(now);
+    return Array.from({ length: count }, (_, i) => {
+      // Walk back (count - 1 - i) EC months from current EC year/month.
+      let m = today.month - (count - 1 - i);
+      let y = today.year;
+      while (m < 1) { m += 13; y -= 1; }
+      return { d: ethiopianToGregorian(y, m, 1), ecYear: y, ecMonth: m };
+    });
+  }
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (count - 1 - i), 1);
+    return { d, gYear: d.getFullYear(), gMonth: d.getMonth() };
+  });
+}
+
+// Given a transaction's date and the bucket array, return the index it
+// belongs to, or -1 if outside the chart window.
+function bucketIndexForDate(date, buckets) {
+  if (state.calendar === "ethiopian") {
+    const e = gregorianToEthiopian(date);
+    return buckets.findIndex((b) => b.ecYear === e.year && b.ecMonth === e.month);
+  }
+  return buckets.findIndex((b) => b.gYear === date.getFullYear() && b.gMonth === date.getMonth());
 }
 
 // "25 Ginbot 2018" or with time "25 Ginbot 2018 · 14:32".
