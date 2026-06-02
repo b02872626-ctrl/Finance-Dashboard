@@ -1705,3 +1705,106 @@ code {
 .form-row-full { display: block; }
 .form-full { display: block; width: 100%; }
 .empty-state { padding: 20px 4px; }
+
+/* ====== Transaction detail modal ====== */
+.tx-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+}
+.tx-modal {
+  background: var(--card-bg);
+  border: 1px solid var(--tile-border);
+  border-radius: 18px;
+  max-width: 520px;
+  width: 100%;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.tx-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--divider);
+}
+.tx-modal-header h3 { font-size: 16px; }
+.tx-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--headline);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 999px;
+  transition: background .15s ease;
+}
+.tx-modal-close:hover { background: rgba(255, 255, 255, 0.08); }
+.tx-modal-body { padding: 18px 22px 22px; }
+.tx-detail-grid {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 10px 16px;
+  align-items: baseline;
+}
+.tx-detail-label {
+  color: var(--footer-grey);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.tx-detail-value {
+  color: var(--headline);
+  font-size: 14px;
+  word-break: break-word;
+}
+.tx-detail-value.amount-out { color: var(--coral); font-weight: 600; }
+.tx-detail-value.amount-in  { color: var(--green-income); font-weight: 600; }
+.tx-detail-value .muted-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--footer-grey); }
+
+/* Make rows in the transactions table feel clickable */
+.tx-table tbody tr { cursor: pointer; transition: background .12s ease; }
+.tx-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.tx-table tbody tr.is-empty { cursor: default; }
+.tx-table tbody tr.is-empty:hover { background: transparent; }
+
+/* ====== Chart hover tooltip ====== */
+.chart-tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(20, 17, 15, 0.96);
+  color: var(--headline);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--tile-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  z-index: 1001;
+  transform: translate(12px, 12px);  /* offset from cursor */
+}
+.chart-tooltip .tip-swatch {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  margin-right: 7px;
+  vertical-align: -1px;
+}
+.chart-tooltip .tip-meta {
+  color: var(--body-muted);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* Highlight the segment currently being hovered. */
+[data-tip]:hover { filter: brightness(1.12); }

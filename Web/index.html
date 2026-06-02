@@ -989,6 +989,20 @@
         </div>
 
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+        <!-- Floating tooltip for chart hovers (donut, stacked bar, etc.) -->
+        <div id="chart-tooltip" class="chart-tooltip hidden" role="tooltip" aria-hidden="true"></div>
+
+        <!-- ===== Transaction detail modal ===== -->
+        <div id="tx-detail-backdrop" class="tx-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="tx-detail-title">
+          <div class="tx-modal" role="document">
+            <header class="tx-modal-header">
+              <h3 id="tx-detail-title">Transaction details</h3>
+              <button type="button" id="tx-detail-close" class="tx-modal-close" aria-label="Close details">×</button>
+            </header>
+            <div id="tx-detail-body" class="tx-modal-body"></div>
+          </div>
+        </div>
       </section>
     </main>
 

@@ -72,6 +72,10 @@ const txMinAmount    = $("tx-min-amount");
 const txMaxAmount    = $("tx-max-amount");
 const txClearFilters = $("tx-clear-filters");
 const csvBtn         = $("csv-btn");
+const txDetailBackdrop = $("tx-detail-backdrop");
+const txDetailBody     = $("tx-detail-body");
+const txDetailClose    = $("tx-detail-close");
+const chartTooltip     = $("chart-tooltip");
 const categoryList   = $("category-list");
 const counterpartyList = $("counterparty-list");
 const recurringList  = $("recurring-list");
@@ -484,8 +488,52 @@ logoutBtn.addEventListener("click", async () => {
   }
 });
 refreshBtn.addEventListener("click", async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) await showDashboard(session);
+  // Targeted re-fetch instead of re-running the entire showDashboard so we
+  // can show clear loading state, surface errors, and avoid the
+  // "early-return-on-tx-error" trap that hides every section.
+  refreshBtn.disabled = true;
+  const originalLabel = refreshBtn.textContent;
+  refreshBtn.textContent = "Refreshing…";
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      showToast("Not signed in.", "error");
+      return;
+    }
+    const before = state.allTxs.length;
+    const { data, error } = await supabase
+      .from("i_transactions")
+      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, ref_num, predicted_category, category_confidence, review_status, merchant_key")
+      .eq("user_id", session.user.id)
+      .order("occurred_at", { ascending: false })
+      .limit(2000);
+    if (error) {
+      console.warn("Refresh failed:", error);
+      showToast(`Refresh failed: ${error.message}`, "error");
+      return;
+    }
+    state.allTxs = data || [];
+    populateTxFilterOptions(state.allTxs);
+    rerender();
+    // Also kick the ledger/income/goals/budgets re-fetches so those tabs are fresh too.
+    fetchLedger().catch((e) => console.warn("Ledger refetch:", e));
+    fetchIncome().catch((e) => console.warn("Income refetch:", e));
+    fetchGoals().catch((e) => console.warn("Goals refetch:", e));
+    fetchBudgets().catch((e) => console.warn("Budgets refetch:", e));
+    const delta = state.allTxs.length - before;
+    const msg = delta > 0
+      ? `Refreshed · ${delta} new transaction${delta === 1 ? "" : "s"}`
+      : delta < 0
+        ? `Refreshed · ${Math.abs(delta)} fewer rows (filtered or deleted upstream)`
+        : `Refreshed · no new transactions`;
+    showToast(msg, "success");
+  } catch (e) {
+    console.warn("Refresh threw:", e);
+    showToast("Refresh failed unexpectedly. Check the console.", "error");
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = originalLabel;
+  }
 });
 
 async function attemptLogin() {
@@ -3090,8 +3138,11 @@ function renderGroupedBarChartSvg(groups, { colors, max }) {
     const groupX = pad.l + gi * (groupW + groupGap);
     const x = groupX + vi * (barW + 2);
     const y = pad.t + innerH - h;
-    return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${Math.max(0, h).toFixed(2)}" rx="2" fill="${colors[vi]}">
-      <title>${escapeHtml(g.label)} · ${vi === 0 ? "Income" : "Expense"}: ${formatETB(v)}</title>
+    const seriesLabel = vi === 0 ? "Income" : "Expense";
+    const tip = `${escapeHtml(seriesLabel)}|${escapeHtml(formatETB(v))}|${escapeHtml(g.label)}`;
+    return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${Math.max(0, h).toFixed(2)}" rx="2" fill="${colors[vi]}"
+      data-tip="${tip}" data-tip-color="${colors[vi]}">
+      <title>${escapeHtml(g.label)} · ${seriesLabel}: ${formatETB(v)}</title>
     </rect>`;
   })).join("");
 
@@ -3215,7 +3266,7 @@ function renderTxRow(tx) {
   const amount = `${outgoing ? "-" : "+"} ${formatNumber(tx.amount)}`;
   const amountClass = outgoing ? "amount-out" : "amount-in";
   return `
-    <tr>
+    <tr data-tx-id="${escapeHtml(String(tx.id))}">
       <td>${formatDate(tx.occurred_at)}</td>
       <td>${escapeHtml(tx.counterparty || tx.sender || "—")}</td>
       <td>${escapeHtml(tx.bank_name || "—")}</td>
@@ -3226,6 +3277,114 @@ function renderTxRow(tx) {
     </tr>
   `;
 }
+
+// ----------------------------------------------------------------------------
+// Transaction detail modal — opens on row click, shows every field on the row.
+// ----------------------------------------------------------------------------
+function openTxDetail(txId) {
+  const tx = state.allTxs.find((x) => String(x.id) === String(txId));
+  if (!tx) return;
+  const outgoing = EXPENSE_TYPES.has(tx.type);
+  const amountClass = outgoing ? "amount-out" : "amount-in";
+  const amountText = `${outgoing ? "-" : "+"} ${formatNumber(tx.amount)} ETB`;
+
+  // Build the field list. Skip null/empty values so the modal doesn't look
+  // ragged when a column is missing for this row. Keep id last as a small
+  // monospaced footer — it's useful for debugging but not the main attraction.
+  const rows = [];
+  const add = (label, value, valueClass = "") => {
+    if (value == null || value === "") return;
+    rows.push({ label, value, valueClass });
+  };
+  add("Date", formatDate(tx.occurred_at) + (tx.occurred_at ? ` · ${new Date(tx.occurred_at).toLocaleTimeString()}` : ""));
+  add("Counterparty", tx.counterparty || tx.sender);
+  if (tx.sender && tx.sender !== tx.counterparty) add("Sender", tx.sender);
+  add("Bank", tx.bank_name);
+  add("Type", prettyType(tx.type));
+  add("Amount", amountText, amountClass);
+  add("Balance after", tx.balance != null ? `${formatNumber(tx.balance)} ETB` : null);
+  add("Category", tx.category);
+  if (tx.predicted_category && tx.predicted_category !== tx.category) {
+    add("Predicted", `${tx.predicted_category}${tx.category_confidence != null ? ` · ${Math.round(tx.category_confidence * 100)}% confidence` : ""}`);
+  } else if (tx.predicted_category && tx.category_confidence != null) {
+    add("Confidence", `${Math.round(tx.category_confidence * 100)}%`);
+  }
+  add("Review status", tx.review_status);
+  add("Reference", tx.ref_num);
+  add("Merchant key", tx.merchant_key);
+
+  txDetailBody.innerHTML = `
+    <div class="tx-detail-grid">
+      ${rows.map((r) => `
+        <div class="tx-detail-label">${escapeHtml(r.label)}</div>
+        <div class="tx-detail-value ${r.valueClass}">${escapeHtml(String(r.value))}</div>
+      `).join("")}
+      <div class="tx-detail-label">Row id</div>
+      <div class="tx-detail-value"><span class="muted-id">${escapeHtml(String(tx.id))}</span></div>
+    </div>
+  `;
+  txDetailBackdrop.classList.remove("hidden");
+}
+
+function closeTxDetail() {
+  txDetailBackdrop.classList.add("hidden");
+  txDetailBody.innerHTML = "";
+}
+
+// Row click → open detail. Delegated on tbody so it survives re-renders.
+txTbody.addEventListener("click", (e) => {
+  const tr = e.target.closest("tr[data-tx-id]");
+  if (!tr) return;
+  openTxDetail(tr.dataset.txId);
+});
+
+txDetailClose.addEventListener("click", closeTxDetail);
+txDetailBackdrop.addEventListener("click", (e) => {
+  // Click on backdrop (but not on the modal content) closes.
+  if (e.target === txDetailBackdrop) closeTxDetail();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !txDetailBackdrop.classList.contains("hidden")) {
+    closeTxDetail();
+  }
+});
+
+// ----------------------------------------------------------------------------
+// Chart hover tooltip — single floating element, delegated mousemove/leave on
+// the document so it works across every SVG segment that carries data-tip.
+//
+// data-tip format: "primary|value|meta" — pipe-separated because attribute
+// values can't contain DOM, and parsing is trivial. data-tip-color carries
+// the matching swatch colour so the tooltip mirrors the segment.
+// ----------------------------------------------------------------------------
+function showChartTip(e, tipped) {
+  const parts = tipped.dataset.tip.split("|");
+  const primary = parts[0] || "";
+  const value   = parts[1] || "";
+  const meta    = parts[2] || "";
+  const color   = tipped.dataset.tipColor || "transparent";
+  chartTooltip.innerHTML = `
+    <span class="tip-swatch" style="background:${color}"></span>
+    <strong>${primary}</strong>${value ? ` · ${value}` : ""}${meta ? `<span class="tip-meta">${meta}</span>` : ""}
+  `;
+  chartTooltip.style.left = `${e.clientX}px`;
+  chartTooltip.style.top  = `${e.clientY}px`;
+  chartTooltip.classList.remove("hidden");
+}
+
+function hideChartTip() {
+  chartTooltip.classList.add("hidden");
+}
+
+document.addEventListener("mousemove", (e) => {
+  // Walk up to find the nearest element with data-tip — works for SVG <path>
+  // and <rect> children of <svg> charts.
+  const tipped = e.target.closest && e.target.closest("[data-tip]");
+  if (tipped) showChartTip(e, tipped);
+  else hideChartTip();
+});
+
+document.addEventListener("mouseleave", hideChartTip);
 
 function exportCsv() {
   const rows = applyTxFilters(state.allTxs);
@@ -3486,8 +3645,10 @@ function renderCategoryDonut(sortedCats, total) {
     const largeArc = sweep > Math.PI ? 1 : 0;
     const color = CAT_PALETTE[i % CAT_PALETTE.length];
     // Stroke-arc path so we get a donut without filling the centre.
+    const tip = `${escapeHtml(name)}|${escapeHtml(formatETB(data.total))}|${(slicePct * 100).toFixed(0)}%`;
     return `<path d="M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}"
-      fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="butt">
+      fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="butt"
+      data-tip="${tip}" data-tip-color="${color}">
       <title>${escapeHtml(name)}: ${formatETB(data.total)} (${(slicePct * 100).toFixed(0)}%)</title>
     </path>`;
   }).join("");
@@ -3564,8 +3725,11 @@ function renderCategoryTrend(orderedCategoryNames) {
       const h = (v / max) * innerH;
       yCursor -= h;
       const color = CAT_PALETTE[ci % CAT_PALETTE.length];
-      return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${yCursor.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${color}">
-        <title>${escapeHtml(b.d.toLocaleDateString(undefined, { month: "short", year: "numeric" }))} · ${escapeHtml(c)}: ${formatETB(v)}</title>
+      const monthLabel = b.d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+      const tip = `${escapeHtml(c)}|${escapeHtml(formatETB(v))}|${escapeHtml(monthLabel)}`;
+      return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${yCursor.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${color}"
+        data-tip="${tip}" data-tip-color="${color}">
+        <title>${escapeHtml(monthLabel)} · ${escapeHtml(c)}: ${formatETB(v)}</title>
       </rect>`;
     }).join("");
   }).join("");
