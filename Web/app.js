@@ -38,6 +38,7 @@ const userNameEl     = $("user-name");
 const greetingEl     = $("greeting");
 const logoutBtn      = $("logout-btn");
 const refreshBtn     = $("refresh-btn");
+const calendarToggle = document.querySelector(".calendar-toggle");
 const googleSigninBtn= $("google-signin-btn");
 
 // Stat cards
@@ -278,6 +279,10 @@ const state = {
   period: "month",
   search: "",
   typeFilter: "",
+  calendar: (() => {
+    try { return localStorage.getItem("financeLore.calendar") || "gregorian"; }
+    catch (_) { return "gregorian"; }
+  })(),
   categoryFilter: "",
   bankFilter: "",
   dateFrom: "",      // ISO date string yyyy-mm-dd, "" means no lower bound
@@ -338,6 +343,14 @@ const PERIOD_LABELS = {
 // Boot
 // ----------------------------------------------------------------------------
 (async function init() {
+  // Restore the saved calendar preference so the toggle starts on the right
+  // button (and so any pre-render formatters use the correct system).
+  if (calendarToggle) {
+    calendarToggle.querySelectorAll(".calendar-toggle-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.cal === state.calendar);
+    });
+  }
+
   // Swap the em-dash placeholders for shimmering skeleton bars before any
   // data fetches kick off, so the user sees "something is loading" instead
   // of a wall of "—" when they refresh on a slow network. Render functions
@@ -893,6 +906,7 @@ function renderLedgerEntry(e) {
 function formatDueDate(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
+  if (state.calendar === "ethiopian") return formatEthiopianDate(d);
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
@@ -3188,7 +3202,7 @@ function renderMonthlyChart(allTxs) {
   const max = Math.max(1, ...buckets.flatMap((b) => [b.income, b.expense]));
   monthlyChart.innerHTML = renderGroupedBarChartSvg(
     buckets.map((b) => ({
-      label: b.d.toLocaleDateString(undefined, { month: "short" }),
+      label: formatChartMonth(b.d),
       values: [b.income, b.expense],
     })),
     { colors: ["var(--green-income)", "var(--coral)"], max }
@@ -3394,7 +3408,9 @@ function openTxDetail(txId) {
   const occurredMs = tx.occurred_at ? Date.parse(tx.occurred_at) : NaN;
   const occurredDate = Number.isFinite(occurredMs) ? new Date(occurredMs) : null;
   const absoluteWhen = occurredDate
-    ? `${occurredDate.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${occurredDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+    ? (state.calendar === "ethiopian"
+        ? `${occurredDate.toLocaleDateString(undefined, { weekday: "short" })}, ${formatEthiopianDate(occurredDate, { withTime: true })}`
+        : `${occurredDate.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${occurredDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`)
     : "—";
   const relativeWhen = occurredDate ? formatRelativeTime(occurredMs) : "";
 
@@ -3968,7 +3984,9 @@ function renderCategoryTrend(orderedCategoryNames) {
       const h = (v / max) * innerH;
       yCursor -= h;
       const color = CAT_PALETTE[ci % CAT_PALETTE.length];
-      const monthLabel = b.d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+      const monthLabel = state.calendar === "ethiopian"
+        ? `${formatChartMonth(b.d)} ${gregorianToEthiopian(b.d).year}`
+        : b.d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
       const tip = `${escapeHtml(c)}|${escapeHtml(formatETB(v))}|${escapeHtml(monthLabel)}`;
       return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${yCursor.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${color}"
         data-tip="${tip}" data-tip-color="${color}">
@@ -3979,7 +3997,7 @@ function renderCategoryTrend(orderedCategoryNames) {
 
   const labels = buckets.map((b, gi) => {
     const x = pad.l + gi * (barW + gap) + barW / 2;
-    return `<text x="${x.toFixed(2)}" y="${(H - 6).toFixed(2)}" class="chart-axis-label" text-anchor="middle">${escapeHtml(b.d.toLocaleDateString(undefined, { month: "short" }))}</text>`;
+    return `<text x="${x.toFixed(2)}" y="${(H - 6).toFixed(2)}" class="chart-axis-label" text-anchor="middle">${escapeHtml(formatChartMonth(b.d))}</text>`;
   }).join("");
 
   catTrend.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${segs}${labels}</svg>`;
@@ -4017,9 +4035,98 @@ function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
+  if (state.calendar === "ethiopian") return formatEthiopianDate(d, { withTime: true });
   return d.toLocaleString(undefined, {
     day: "numeric", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit"
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Ethiopian calendar (Ge'ez calendar) support
+//
+// The Ethiopian year has 13 months: 12 of 30 days plus Pagume (5 or 6 days).
+// New Year falls on Sept 11 Gregorian (Sept 12 in years preceding leap years).
+// Today (2 Jun 2026 Gregorian) ≈ 25 Ginbot 2018 EC.
+//
+// Conversion goes Gregorian → Julian Day Number → Ethiopian. The JDN of
+// 1 Meskerem 1 EC (Amete Alem epoch) is 1723856.
+// ----------------------------------------------------------------------------
+const ETHIOPIAN_MONTHS = [
+  "Meskerem", "Tikimt", "Hidar", "Tahsas", "Tir", "Yekatit",
+  "Megabit", "Miazia", "Ginbot", "Sene", "Hamle", "Nehase", "Pagume",
+];
+
+function gregorianToEthiopian(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  // Gregorian → JDN
+  const a  = Math.floor((14 - m) / 12);
+  const yy = y + 4800 - a;
+  const mm = m + 12 * a - 3;
+  const jdn = d
+    + Math.floor((153 * mm + 2) / 5)
+    + 365 * yy
+    + Math.floor(yy / 4)
+    - Math.floor(yy / 100)
+    + Math.floor(yy / 400)
+    - 32045;
+  // JDN → Ethiopian (Amete Alem epoch 1723856)
+  const r = (jdn - 1723856) % 1461;
+  const n = (r % 365) + 365 * Math.floor(r / 1460);
+  const ethYear  = 4 * Math.floor((jdn - 1723856) / 1461)
+                 + Math.floor(r / 365)
+                 - Math.floor(r / 1460);
+  const ethMonth = Math.floor(n / 30) + 1;
+  const ethDay   = (n % 30) + 1;
+  return { year: ethYear, month: ethMonth, day: ethDay };
+}
+
+// "25 Ginbot 2018" or with time "25 Ginbot 2018 · 14:32".
+function formatEthiopianDate(date, { withTime = false, includeYear = true, monthOnly = false } = {}) {
+  const e = gregorianToEthiopian(date);
+  const monthName = ETHIOPIAN_MONTHS[e.month - 1] || `M${e.month}`;
+  if (monthOnly) return monthName;
+  const base = `${e.day} ${monthName}${includeYear ? ` ${e.year}` : ""}`;
+  if (!withTime) return base;
+  const time = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${base} · ${time}`;
+}
+
+// Calendar-aware month label for charts (e.g. "May" or "Ginbot").
+function formatChartMonth(date) {
+  if (state.calendar === "ethiopian") {
+    return ETHIOPIAN_MONTHS[gregorianToEthiopian(date).month - 1];
+  }
+  return date.toLocaleDateString(undefined, { month: "short" });
+}
+
+function setCalendar(calId) {
+  if (calId !== "ethiopian") calId = "gregorian";
+  state.calendar = calId;
+  try { localStorage.setItem("financeLore.calendar", calId); } catch (_) {}
+  // Visually mark the active button.
+  if (calendarToggle) {
+    calendarToggle.querySelectorAll(".calendar-toggle-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.cal === calId);
+    });
+  }
+  // Re-render everything that displays dates. rerender() repaints the
+  // dashboard (charts, tx table, etc.); the secondary tabs each have their
+  // own render fn we call directly when present.
+  if (state.allTxs && state.allTxs.length) rerender();
+  if (typeof renderLedgerView   === "function" && !ledgerView.classList.contains("hidden"))   renderLedgerView();
+  if (typeof renderIncomeView   === "function" && !incomeView.classList.contains("hidden"))   renderIncomeView();
+  if (typeof renderGoalsView    === "function" && !goalsView.classList.contains("hidden"))    renderGoalsView();
+  if (typeof renderBudgetsView  === "function" && !budgetsView.classList.contains("hidden")) renderBudgetsView();
+}
+
+if (calendarToggle) {
+  calendarToggle.addEventListener("click", (e) => {
+    const btn = e.target.closest(".calendar-toggle-btn");
+    if (!btn) return;
+    setCalendar(btn.dataset.cal);
   });
 }
 
@@ -4030,7 +4137,9 @@ function formatRelativeDate(ts) {
   if (days === 1) return "yesterday";
   if (days < 7) return `${days} days ago`;
   if (days < 31) return `${Math.floor(days / 7)} week${Math.floor(days / 7) === 1 ? "" : "s"} ago`;
-  return new Date(ts).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const d = new Date(ts);
+  if (state.calendar === "ethiopian") return formatEthiopianDate(d, { includeYear: false });
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 function prettyType(type) {
