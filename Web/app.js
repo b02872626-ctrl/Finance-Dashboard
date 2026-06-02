@@ -338,6 +338,16 @@ const PERIOD_LABELS = {
 // Boot
 // ----------------------------------------------------------------------------
 (async function init() {
+  // Swap the em-dash placeholders for shimmering skeleton bars before any
+  // data fetches kick off, so the user sees "something is loading" instead
+  // of a wall of "—" when they refresh on a slow network. Render functions
+  // later overwrite via textContent, which removes the skeleton element
+  // entirely — no per-element cleanup needed.
+  installLoadingSkeletons();
+  // Subscribe stat updates to a tiny "just-rendered" pop animation so the
+  // numbers feel alive when fresh data lands.
+  installStatPopOnUpdate();
+
   const { data: { session } } = await supabase.auth.getSession();
   // Drop the pre-paint visibility hint applied by the inline <head> script —
   // from here on the normal .hidden class drives visibility, so an invalid
@@ -361,6 +371,48 @@ const PERIOD_LABELS = {
     }
   });
 })();
+
+// ----------------------------------------------------------------------------
+// Loading skeletons + stat-update pop animation
+// ----------------------------------------------------------------------------
+function installLoadingSkeletons() {
+  // Replace any plain "—" content inside .big-number with a shimmer pill.
+  // .stat-card-compact narrows the pill so smaller stats don't get an
+  // unrealistically wide skeleton.
+  document.querySelectorAll(".big-number").forEach((el) => {
+    const t = el.textContent.trim();
+    if (t === "—" || t === "" || t === "–") {
+      el.innerHTML = '<span class="num-skel"></span>';
+    }
+  });
+}
+
+// Triggers a brief pop animation whenever a .big-number's content changes
+// from a skeleton/em-dash to a real value (or between two values, e.g. on
+// refresh). Uses MutationObserver to avoid having to refactor every
+// statXxx.textContent = ... call site.
+function installStatPopOnUpdate() {
+  // No-op if the browser lacks MutationObserver (only matters for very old
+  // browsers — the animation is purely cosmetic, app still works without).
+  if (typeof MutationObserver !== "function") return;
+  document.querySelectorAll(".big-number").forEach((el) => {
+    let lastText = el.textContent.trim();
+    const obs = new MutationObserver(() => {
+      const next = el.textContent.trim();
+      // Skip animation when we're transitioning into the skeleton placeholder
+      // itself (no visible text) or when value didn't actually change.
+      if (next === lastText) return;
+      if (el.querySelector(".num-skel")) { lastText = next; return; }
+      lastText = next;
+      // Restart the keyframe animation by toggling the class off then on.
+      el.classList.remove("just-rendered");
+      // Force reflow so the animation actually replays on re-add.
+      void el.offsetWidth;
+      el.classList.add("just-rendered");
+    });
+    obs.observe(el, { childList: true, characterData: true, subtree: true });
+  });
+}
 
 // ----------------------------------------------------------------------------
 // Session tracking — feeds the admin dashboard's time-spent metrics.
