@@ -35,7 +35,10 @@ const deniedView  = $("denied-view");
 const adminShell  = $("admin-shell");
 const drillPane   = $("drill-pane");
 
-const googleBtn      = $("google-signin-btn");
+const loginForm      = $("login-form");
+const loginEmail     = $("login-email");
+const loginPassword  = $("login-password");
+const loginBtn       = $("login-btn");
 const loginError     = $("login-error");
 const deniedEmail    = $("denied-email");
 const deniedLogout   = $("denied-logout-btn");
@@ -124,24 +127,34 @@ async function showAdmin(session) {
 // ----------------------------------------------------------------------------
 // Auth handlers
 // ----------------------------------------------------------------------------
-googleBtn.addEventListener("click", async () => {
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
   hideLoginError();
-  googleBtn.disabled = true;
-  try {
-    const redirectTo = window.location.origin + window.location.pathname;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo },
-    });
-    if (error) {
-      showLoginError(error.message || "Couldn't start Google sign-in.");
-      googleBtn.disabled = false;
-    }
-  } catch (e) {
-    showLoginError("Couldn't start Google sign-in.");
-    googleBtn.disabled = false;
+  setLoginBusy(true);
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  setLoginBusy(false);
+  if (error) {
+    showLoginError(prettyAuthError(error.message));
+    loginPassword.focus();
+    loginPassword.select();
   }
+  // On success, onAuthStateChange routes us to admin / denied automatically.
 });
+
+function setLoginBusy(busy) {
+  loginBtn.disabled = busy;
+  loginBtn.textContent = busy ? "Signing in…" : "Sign in";
+}
+
+function prettyAuthError(raw) {
+  if (!raw) return "Sign-in failed.";
+  if (/invalid login credentials/i.test(raw)) return "Wrong email or password.";
+  if (/email not confirmed/i.test(raw))       return "Confirm your email before signing in.";
+  if (/network/i.test(raw))                   return "Network error — check your connection and retry.";
+  return raw;
+}
 
 deniedLogout.addEventListener("click", async () => {
   await supabase.auth.signOut({ scope: "local" }).catch(() => {});

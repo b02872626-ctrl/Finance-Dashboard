@@ -20,7 +20,8 @@ class DashenDebitParser : BankParser {
     private val balanceRe  = Regex("""current\s+balance\s+is\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
 
     override fun canParse(sender: String, body: String): Boolean =
-        sender.equals("DashenBank", ignoreCase = true) &&
+        (sender.equals("DashenBank", ignoreCase = true) ||
+         sender.equals("Dashen",     ignoreCase = true)) &&
         body.contains("debited with ETB", ignoreCase = true)
 
     override fun parse(sms: SmsMessage): TransactionEntity? {

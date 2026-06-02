@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,10 +51,13 @@ import com.financeapp.R
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.parsing.TransactionType
 import com.financeapp.sms.SmsIngestService
+import com.financeapp.ui.components.DailyReviewCard
 import com.financeapp.ui.theme.AppBackground
 import com.financeapp.ui.theme.AppBlue
 import com.financeapp.ui.theme.CoralPrimary
 import com.financeapp.ui.theme.PureWhite
+import com.financeapp.ui.theme.pressScale
+import com.financeapp.ui.theme.rememberTactileSource
 import com.financeapp.viewmodel.DashboardViewModel
 import com.financeapp.viewmodel.WeekActivityPoint
 import java.text.SimpleDateFormat
@@ -98,12 +103,20 @@ fun DashboardScreen(
     onAccountsClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onQuickFilterClick: (String?) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onStartDailyReview: () -> Unit = {},
+    onStartOlderReview: () -> Unit = {}
 ) {
     val state = vm.state.collectAsState().value
     val context = LocalContext.current
-    var balanceVisible by rememberSaveable { mutableStateOf(true) }
-    var visibleDayGroups by rememberSaveable { mutableStateOf(1) }
+    // Privacy-first default: hide the running balance on every fresh launch
+    // (one tap to reveal). rememberSaveable keeps the user's choice within
+    // a session, but it resets to hidden when the process is killed/relaunched.
+    var balanceVisible by rememberSaveable { mutableStateOf(false) }
+    // Show a few day groups on Home by default (V2 testers reported the
+    // History section looked empty when capped at 1). The "See more" footer
+    // navigates to the full History tab — no in-page pagination.
+    var visibleDayGroups by rememberSaveable { mutableStateOf(3) }
 
     val pullRefreshState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
     if (pullRefreshState.isRefreshing) {
@@ -148,8 +161,27 @@ fun DashboardScreen(
                     totalBalance = totalBalance,
                     weekActivity = state.weekActivity,
                     balanceVisible = balanceVisible,
-                    onToggleVisibility = { balanceVisible = !balanceVisible },
-                    onViewAllClick = onAccountsClick
+                    onToggleVisibility = { balanceVisible = !balanceVisible }
+                )
+            }
+
+            // V2 single review-CTA card. Replaces the prior two-card setup
+            // (Daily Review status card + "Catch up on older transactions"
+            // link) with one card matching the V2 mock:
+            //   "Review today's transactions"
+            //   "N transactions need confirmation"          [→ coral arrow]
+            //
+            // State routing:
+            //  - today.pending > 0          → Today CTA, tap → onStartDailyReview
+            //  - today done but older > 0   → Older CTA, tap → onStartOlderReview
+            //  - everything reviewed        → "All caught up" tile (no arrow)
+            item {
+                DailyReviewCard(
+                    snapshot = state.dailyReview,
+                    olderPending = state.olderPendingCount,
+                    onStartToday = onStartDailyReview,
+                    onStartOlder = onStartOlderReview,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -167,13 +199,10 @@ fun DashboardScreen(
                     HomeDaySection(group = group, onTxClick = onTxClick)
                 }
 
-                if (visibleDayGroups < homeGroups.size) {
-                    item {
-                        SeeMorePill(onClick = {
-                            visibleDayGroups = (visibleDayGroups + 1).coerceAtMost(homeGroups.size)
-                        })
-                    }
-                }
+                // "See more" footer — routes to the full History tab.
+                // Always shown, even when fewer day groups exist than the
+                // visible cap (gives a consistent terminus to the scroll).
+                item { SeeMoreFooter(onClick = onHistoryClick) }
             }
         }
 
@@ -201,38 +230,46 @@ private fun HomeHeader(userName: String, onSettingsClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(top = 4.dp),
+            // Extra breathing room below the OEM status bar — Samsung's
+            // status icons are heavy and butt right up against the greeting
+            // on plain statusBarsPadding alone.
+            .padding(top = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(text = greeting, color = Headline, fontSize = 13.sp)
+            Text(text = greeting, color = Headline, fontSize = 14.sp)
             Spacer(Modifier.height(2.dp))
             Text(
                 text = if (userName.isBlank()) "Welcome" else userName,
                 color = Headline,
-                fontSize = 22.sp,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.SemiBold,
-                lineHeight = 26.sp
+                lineHeight = 30.sp
             )
         }
+        // V2 design: settings gear in a rounded-square tile (vs the
+        // previous round profile avatar). Material Outlined Settings to
+        // keep the strokes crisp on dark bg.
+        val gearIx = rememberTactileSource()
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .pressScale(gearIx)
+                .clip(RoundedCornerShape(14.dp))
                 .background(CardBg)
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = gearIx,
                     indication = null,
                     onClick = onSettingsClick
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_profile_dark),
-                contentDescription = "Profile",
+                imageVector = Icons.Filled.Settings,
+                contentDescription = "Settings",
                 tint = Headline,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(26.dp)
             )
         }
     }
@@ -246,15 +283,17 @@ private fun TotalBalanceCard(
     totalBalance: Double,
     weekActivity: List<WeekActivityPoint>,
     balanceVisible: Boolean,
-    onToggleVisibility: () -> Unit,
-    onViewAllClick: () -> Unit
+    onToggleVisibility: () -> Unit
 ) {
+    // V2 hero treatment: coral background, white-on-coral headline + bars.
+    // "View all" link and divider removed per V2 design — accounts deck is
+    // reached via the bottom-nav Accounts tab instead.
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(CardBg)
-            .padding(horizontal = 18.dp, vertical = 18.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(Coral)
+            .padding(horizontal = 22.dp, vertical = 26.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -262,67 +301,75 @@ private fun TotalBalanceCard(
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Total Balance", color = Headline, fontSize = 13.sp)
-                Spacer(Modifier.height(4.dp))
+                Text(text = "Total Balance", color = PureWhite.copy(alpha = 0.92f), fontSize = 14.sp)
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = if (balanceVisible) "ETB ${moneyShort(totalBalance)}" else "ETB ••••••",
-                    color = Coral,
-                    fontSize = 30.sp,
+                    color = PureWhite,
+                    fontSize = 44.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp
+                    letterSpacing = (-1.0).sp,
+                    lineHeight = 48.sp
                 )
-                Spacer(Modifier.height(2.dp))
-                Text(text = "All accounts", color = FooterGrey, fontSize = 12.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(text = "All accounts", color = PureWhite.copy(alpha = 0.78f), fontSize = 13.sp)
             }
 
+            val eyeIx = rememberTactileSource()
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(44.dp)
+                    .pressScale(eyeIx)
                     .clip(CircleShape)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = eyeIx,
                         indication = null,
                         onClick = onToggleVisibility
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_eye_dark),
-                    contentDescription = if (balanceVisible) "Hide balance" else "Show balance",
-                    tint = Headline,
-                    modifier = Modifier.size(38.dp)
-                )
+                // 150ms crossfade between open-eye (when hidden) and eye-off
+                // (when visible). The icon represents the ACTION on tap, not
+                // the current state. Crossfade — not instant swap — because
+                // the swap IS triggered by user input (interactive feedback,
+                // not decoration).
+                androidx.compose.animation.Crossfade(
+                    targetState = balanceVisible,
+                    animationSpec = androidx.compose.animation.core.tween(150),
+                    label = "eyeIconCrossfade"
+                ) { visible ->
+                    Icon(
+                        painter = painterResource(
+                            id = if (visible) R.drawable.ic_eye_off_dark
+                                 else R.drawable.ic_eye_dark
+                        ),
+                        contentDescription = if (visible) "Hide balance" else "Show balance",
+                        tint = PureWhite,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(24.dp))
 
-        WeeklyBarChart(weekActivity)
-
-        Spacer(Modifier.height(14.dp))
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(Color(0x227FE3CB)))
-        Spacer(Modifier.height(12.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onViewAllClick
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "View all", color = Headline, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        }
+        // White solid bars on coral — see V2 design.
+        WeeklyBarChart(
+            points = weekActivity,
+            barColor = PureWhite.copy(alpha = 0.55f),
+            highlightColor = PureWhite,
+            labelColor = PureWhite.copy(alpha = 0.78f)
+        )
     }
 }
 
 @Composable
-private fun WeeklyBarChart(points: List<WeekActivityPoint>) {
+private fun WeeklyBarChart(
+    points: List<WeekActivityPoint>,
+    barColor: Color = BarGrey,
+    highlightColor: Color = PureWhite.copy(alpha = 0.92f),
+    labelColor: Color = BodyMuted
+) {
     val pts = if (points.isEmpty()) {
         // Visual fallback so the card looks right on a fresh install.
         listOf(
@@ -345,34 +392,65 @@ private fun WeeklyBarChart(points: List<WeekActivityPoint>) {
     }
     val maxAmount = pts.maxOf { it.amount }.coerceAtLeast(1.0)
 
+    // V2 mock: taller bars (~150dp), wider columns, pill TOP only (flat
+    // bottom so the bar sits on the baseline). Top corners use 50% rounding
+    // (= bar_width / 2) which gives a full half-circle dome regardless of
+    // bar height. Bottom corners are 0 so the bar visually grounds.
+    //
+    // Future-day rule: today is e.g. Tuesday → only S, M, T render. Days
+    // after today (W, T, F, S) are blank (no placeholder bar), since we
+    // can't have spending data for days that haven't happened. Days at or
+    // before today with zero amount also stay blank (real zero, not a 20%
+    // floor that fakes activity).
+    val barCap = RoundedCornerShape(
+        topStartPercent = 100, topEndPercent = 100,
+        bottomStartPercent = 0, bottomEndPercent = 0
+    )
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(110.dp),
+                .height(150.dp),
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             pts.forEachIndexed { i, p ->
-                val ratio = (p.amount / maxAmount).coerceIn(0.25, 1.0)
+                val isFuture = i > todayIndex
+                val hasData  = p.amount > 0.0
+                val ratio    = (p.amount / maxAmount).coerceIn(0.0, 1.0)
                 val isHighlight = i == todayIndex
-                Box(
-                    modifier = Modifier
-                        .width(22.dp)
-                        .height((100 * ratio).dp)
-                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                        .background(if (isHighlight) PureWhite.copy(alpha = 0.92f) else BarGrey)
-                )
+
+                if (isFuture || !hasData) {
+                    // Reserve the column width so labels stay aligned, but
+                    // render no bar — empty/future days are visually silent.
+                    Spacer(modifier = Modifier.width(32.dp))
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .width(32.dp)
+                            .height((140 * ratio).dp.coerceAtLeast(14.dp))
+                            .clip(barCap)
+                            .background(if (isHighlight) highlightColor else barColor)
+                    )
+                }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            pts.forEach { p ->
-                Box(modifier = Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                    Text(text = p.label, color = BodyMuted, fontSize = 12.sp)
+            pts.forEachIndexed { i, p ->
+                val isFuture = i > todayIndex
+                Box(modifier = Modifier.width(32.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = p.label,
+                        // Future days get a dimmer label so they don't compete
+                        // visually with active days.
+                        color = if (isFuture) labelColor.copy(alpha = 0.45f) else labelColor,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
@@ -410,13 +488,15 @@ private fun BanksSection(
 
 @Composable
 private fun BankCard(name: String, balance: Double, onClick: () -> Unit) {
+    val ix = rememberTactileSource()
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale(ix)
             .clip(RoundedCornerShape(18.dp))
             .background(CardBg)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = ix,
                 indication = null,
                 onClick = onClick
             )
@@ -607,14 +687,28 @@ private fun HomeTransactionRow(tx: TransactionEntity, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = tx.bankName,
-                color = FooterGrey,
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Spacer(Modifier.height(3.dp))
+            // Subtitle line: bank name, dot separator, then category pill
+            // when the txn has been categorized. The pill is missing for
+            // PENDING/uncategorized rows — that's intentional, signals
+            // "needs review" to the eye without a separate badge.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = tx.bankName,
+                    color = FooterGrey,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                tx.category?.takeIf { it.isNotBlank() }?.let { cat ->
+                    Text(
+                        text = "  •  ",
+                        color = FooterGrey,
+                        fontSize = 11.sp
+                    )
+                    com.financeapp.ui.components.CategoryPill(category = cat)
+                }
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
@@ -699,5 +793,42 @@ private fun moneyShort(amount: Double): String = String.format(Locale.US, "%,.2f
 private fun signedShort(amount: Double): String {
     val a = moneyShort(abs(amount))
     return if (amount < 0) "-$a" else "+$a"
+}
+
+// OlderPendingLink removed in V2 — the single DailyReviewCard now handles
+// the older-pending state when today is clean.
+
+/**
+ * "See more →" footer rendered after the last visible day group. Tapping
+ * navigates to the full History tab. Sized to be a clear terminal element
+ * without competing with the cards above it.
+ */
+@Composable
+private fun SeeMoreFooter(onClick: () -> Unit) {
+    val rowBg     = Color(0xFF231E1A)
+    val text      = Color(0xFFF5F2EB)
+    val coral     = Color(0xFFFB5D53)
+    val ix        = rememberTactileSource()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressScale(ix)
+            .clip(RoundedCornerShape(16.dp))
+            .background(rowBg)
+            .clickable(
+                interactionSource = ix,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            "See more",
+            color = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold
+        )
+        Text("→", color = coral, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    }
 }
 

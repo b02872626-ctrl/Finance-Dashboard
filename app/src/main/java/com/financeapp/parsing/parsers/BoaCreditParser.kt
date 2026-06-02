@@ -21,7 +21,9 @@ class BoaCreditParser : BankParser {
     private val refRe     = Regex("""[?&]trx=([A-Z0-9]+)""", RegexOption.IGNORE_CASE)
 
     override fun canParse(sender: String, body: String): Boolean =
-        sender.equals("BOA", ignoreCase = true) &&
+        // BOA SMS arrive from either short-code "BOA" or display "Abyssinia"
+        (sender.equals("BOA", ignoreCase = true) ||
+         sender.equals("Abyssinia", ignoreCase = true)) &&
         body.contains("credited with", ignoreCase = true)
 
     override fun parse(sms: SmsMessage): TransactionEntity? {

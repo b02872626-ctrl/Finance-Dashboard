@@ -24,6 +24,8 @@ class TelebirrCreditParser : BankParser {
     private val fromBankRe  = Regex("""from\s+(.+?)\s+to\s+(?:your\s+)?telebirr\s+Account""", RegexOption.IGNORE_CASE)
     // Peer form: "from Abel Abebe(2519****8602)  on 20/10/2025" (parenthetical phone optional)
     private val fromPeerRe  = Regex("""from\s+([^()\n]+?)\s*\(?2519[\d*]+\)?\s+on\s+\d{2}/\d{2}/\d{4}""", RegexOption.IGNORE_CASE)
+    // Stable counterparty identifier — phone token "2519****8602" anywhere in body.
+    private val peerPhoneRe = Regex("""(251[\d*]{8,12})""")
     private val accountRe   = Regex("""Account\s+(\d+)""", RegexOption.IGNORE_CASE)
     private val balanceRe   = Regex("""current\s+(?:E-Money\s+Account\s+)?balance\s+is\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
 
@@ -50,13 +52,27 @@ class TelebirrCreditParser : BankParser {
                 }
             }
 
-            val counterparty = fromBankRe.find(body)?.groupValues?.get(1)?.trim()
-                ?: fromPeerRe.find(body)?.groupValues?.get(1)?.trim()
+            val bankSource = fromBankRe.find(body)?.groupValues?.get(1)?.trim()
+            val peerSource = fromPeerRe.find(body)?.groupValues?.get(1)?.trim()
+            val isInternalBankTransfer = bankSource != null && peerSource == null
+            val txType =
+                if (isInternalBankTransfer) TransactionType.INTERNAL_TRANSFER.name
+                else TransactionType.CREDIT.name
+            val counterparty = if (isInternalBankTransfer) {
+                shortenBankCounterparty("from", bankSource!!)
+            } else {
+                peerSource ?: bankSource
+            }
+
+            // P2P only — lift the (2519****XXXX) phone into counterpartyId so
+            // the same person matches across spelling variants in future SMS.
+            val counterpartyId = if (isInternalBankTransfer) null
+                                 else peerPhoneRe.find(body)?.groupValues?.get(1)
 
             TransactionEntity(
                 sender        = sms.sender,
                 bankName      = "Telebirr",
-                type          = TransactionType.CREDIT.name,
+                type          = txType,
                 amount        = amount,
                 balance       = ParserUtils.parseAmount(balanceRe.find(body)?.groupValues?.get(1)),
                 counterparty  = counterparty,
@@ -65,8 +81,21 @@ class TelebirrCreditParser : BankParser {
                 dateTime      = ts,
                 serviceCharge = null, vat = null, disasterFund = null, totalCharged = null,
                 currency      = "ETB",
-                rawBody       = body
+                rawBody       = body,
+                counterpartyId = counterpartyId
             )
         } catch (e: Exception) { null }
+    }
+
+    /** Same helper as TelebirrTransferParser — pretty short form for chips. */
+    private fun shortenBankCounterparty(direction: String, raw: String): String {
+        val cleaned = raw
+            .replace(Regex("""\s+account\s+number\s+""", RegexOption.IGNORE_CASE), " ")
+            .replace("Commercial Bank of Ethiopia", "CBE", ignoreCase = true)
+            .replace("Bank of Abyssinia", "BOA", ignoreCase = true)
+            .replace("Awash Bank", "Awash", ignoreCase = true)
+            .replace("Dashen Bank", "Dashen", ignoreCase = true)
+            .trim()
+        return "$direction $cleaned"
     }
 }

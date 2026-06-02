@@ -16,6 +16,7 @@ import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.sms.SmsIngestService
+import com.financeapp.sms.SmsIngestWorker
 import com.financeapp.ui.navigation.AppNavigation
 import com.financeapp.ui.theme.FinanceAppTheme
 import kotlinx.coroutines.launch
@@ -67,6 +68,20 @@ class MainActivity : ComponentActivity() {
         }
         if (hasSmsAccess) {
             SmsIngestService.start(this)
+        }
+
+        // Auto-rescan the inbox when the user has just upgraded to a newer
+        // app version. The new build may contain parser improvements (e.g.
+        // beta3's CBE "successfully transferred" support) that can now parse
+        // historical SMS rows beta2 silently rejected. Without this, the
+        // user has to manually pull-to-refresh to backfill — and many never
+        // realize they need to.
+        val currentVersion = BuildConfig.VERSION_CODE
+        if (settingsRepo.getLastIngestedVersion() < currentVersion) {
+            if (hasSmsAccess) {
+                SmsIngestWorker.enqueue(this)
+            }
+            settingsRepo.setLastIngestedVersion(currentVersion)
         }
     }
 

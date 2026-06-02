@@ -4,29 +4,24 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import com.financeapp.data.db.AppDatabase
-import com.financeapp.data.repository.TransactionRepository
-import com.financeapp.parsing.SmsMessage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 /**
- * Listens for incoming SMS and immediately runs them through the ingest pipeline.
- * Uses a SupervisorJob scope so one failure doesn't cancel other ingestions.
+ * Listens for incoming SMS and triggers a background scan of the inbox.
+ *
+ * We do NOT parse the broadcast PDU directly — Android's unified content
+ * provider normalizes encoding + timestamps + multi-part SMS, so re-reading
+ * from there is more reliable than handling raw network PDUs.
+ *
+ * We enqueue a WorkManager job (not [SmsIngestService.start]) because
+ * `startForegroundService()` from a background BroadcastReceiver is
+ * disallowed on Android 12+ — the call silently fails and ingestion never
+ * runs. WorkManager handles background scheduling correctly across all
+ * Android versions and is the modern recommended path.
  */
 class SmsReceiver : BroadcastReceiver() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
-
-        // Instead of manually parsing messy raw network PDUs (which can cause
-        // string/timestamp variations vs the Android unified content provider, 
-        // leading to duplicate transactions), we simply trigger the ingest 
-        // service which safely reads the synchronized database.
-        SmsIngestService.start(context)
+        SmsIngestWorker.enqueue(context)
     }
 }

@@ -1,9 +1,12 @@
 package com.financeapp.data.repository
 
+import androidx.room.withTransaction
+import com.financeapp.data.categorize.CategoryPredictor
 import com.financeapp.data.db.AppDatabase
 import com.financeapp.data.db.CounterpartyAggregate
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.RawSmsEntity
+import com.financeapp.data.model.ReviewStatus
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.model.TransactionCategoryCatalog
 import com.financeapp.parsing.ParserUtils
@@ -17,10 +20,12 @@ import kotlinx.coroutines.flow.map
 /**
  * Repository — single source of truth for all financial data.
  */
-class TransactionRepository(db: AppDatabase) {
+class TransactionRepository(private val db: AppDatabase) {
 
     private val txnDao = db.transactionDao()
     private val rawDao = db.rawSmsDao()
+    private val ruleDao = db.categoryRuleDao()
+    private val predictor = CategoryPredictor(ruleDao)
 
     fun getAllTransactions(): Flow<List<TransactionEntity>> =
         txnDao.getAllTransactions()
@@ -78,6 +83,141 @@ class TransactionRepository(db: AppDatabase) {
             category = TransactionCategoryCatalog.normalize(category)
         )
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Daily Review queue
+    // ─────────────────────────────────────────────────────────────────────
+
+    fun getTodayPendingReview(nowMs: Long = System.currentTimeMillis()): Flow<List<TransactionEntity>> {
+        val (fromMs, toMs) = todayBounds(nowMs)
+        return txnDao.getPendingBetween(fromMs, toMs)
+    }
+
+    /** Every PENDING row in history, newest first — for the "older" queue. */
+    fun getAllPendingReview(): Flow<List<TransactionEntity>> =
+        txnDao.getAllPendingReview()
+
+    /** PENDING rows from before today — used to surface the backlog count on Home. */
+    fun countOlderPendingReview(nowMs: Long = System.currentTimeMillis()): Flow<Int> {
+        val (fromMs, _) = todayBounds(nowMs)
+        return txnDao.countOlderPendingReview(fromMs)
+    }
+
+    suspend fun snapshotTodayPendingReview(nowMs: Long = System.currentTimeMillis()): List<TransactionEntity> {
+        val (fromMs, toMs) = todayBounds(nowMs)
+        return txnDao.snapshotPendingBetween(fromMs, toMs)
+    }
+
+    fun countTodayByReviewStatus(status: String, nowMs: Long = System.currentTimeMillis()): Flow<Int> {
+        val (fromMs, toMs) = todayBounds(nowMs)
+        return txnDao.countByStatusBetween(status, fromMs, toMs)
+    }
+
+    suspend fun latestTransactionMs(): Long? = txnDao.latestTransactionMs()
+
+    /**
+     * Confirm / change a single review. Decides automatically whether the
+     * result is CONFIRMED (user accepted prediction) or CHANGED (user
+     * picked something different) based on whether [category] == the row's
+     * predictedCategory.
+     *
+     * When [applyToSimilar] is true, the user has explicitly opted into
+     * recategorizing **every** transaction with the same merchant_key —
+     * past + present + future. We overwrite historical rows (including
+     * previously-CONFIRMED ones) because the popup made the scope explicit.
+     */
+    suspend fun applyReviewedCategory(
+        id: Long,
+        category: String,
+        applyToSimilar: Boolean
+    ) {
+        val canonical = TransactionCategoryCatalog.normalize(category)
+        val tx = txnDao.getById(id) ?: return
+        val status =
+            if (tx.predictedCategory == canonical) ReviewStatus.CONFIRMED
+            else ReviewStatus.CHANGED
+
+        if (applyToSimilar && !tx.merchantKey.isNullOrBlank()) {
+            // Aggressive overwrite — every row with this merchant_key now
+            // takes the new category. Then upsert/refresh the rule so all
+            // future SMS from this merchant auto-categorize the same way.
+            txnDao.applyCategoryToAllForMerchant(tx.merchantKey, canonical)
+            val identifier = tx.counterpartyId?.takeIf { it.isNotBlank() }
+            val existingRule = ruleDao.getByKey(tx.merchantKey)
+            if (existingRule == null) {
+                // First rule for this merchant — bind it to the stable
+                // identifier when we have one (Telebirr phone, A/C No.) so
+                // future spelling variants still match.
+                ruleDao.upsert(
+                    com.financeapp.data.model.CategoryRuleEntity(
+                        merchantKey = tx.merchantKey,
+                        category = canonical,
+                        identifier = identifier
+                    )
+                )
+            } else if (existingRule.category == canonical) {
+                ruleDao.bumpMatchCount(tx.merchantKey)
+                // Late-bind identifier if the original rule was name-only and
+                // we've since seen the same merchant via Telebirr (phone known).
+                if (existingRule.identifier == null && identifier != null) {
+                    ruleDao.upsert(existingRule.copy(identifier = identifier, isSynced = false))
+                }
+            } else {
+                ruleDao.updateRule(tx.merchantKey, canonical)
+                if (identifier != null) {
+                    val refreshed = ruleDao.getByKey(tx.merchantKey)
+                    if (refreshed != null && refreshed.identifier != identifier) {
+                        ruleDao.upsert(refreshed.copy(identifier = identifier, isSynced = false))
+                    }
+                }
+            }
+        } else {
+            // Single-row update — leave the rule and historical rows alone.
+            txnDao.applyReviewedCategory(id, canonical, status)
+        }
+    }
+
+    /** Count of ALL transactions sharing a merchant_key (any reviewStatus). */
+    suspend fun countTransactionsByMerchantKey(merchantKey: String): Int =
+        txnDao.countTransactionsByMerchantKey(merchantKey)
+
+    /**
+     * One-shot backfill: pre-migration rows have merchantKey = null because
+     * the column was added without recomputing keys from counterparty. This
+     * walks rows missing a key and fills them in using MerchantKey.normalize.
+     *
+     * Wrapped in a single Room transaction so writes commit together —
+     * 3,000+ individual UPDATEs become one batched flush, ~50× faster.
+     * Returns the number of rows updated. Safe to call repeatedly — only
+     * touches rows where merchantKey is still null.
+     */
+    suspend fun backfillMissingMerchantKeys(): Int {
+        val rows = txnDao.getRowsMissingMerchantKey()
+        if (rows.isEmpty()) return 0
+        var updated = 0
+        db.withTransaction {
+            for (row in rows) {
+                val key = com.financeapp.data.categorize.MerchantKey
+                    .normalize(row.counterparty) ?: continue
+                txnDao.setMerchantKey(row.id, key)
+                updated++
+            }
+        }
+        return updated
+    }
+
+    suspend fun skipReview(id: Long) {
+        txnDao.updateReviewStatus(id, ReviewStatus.SKIPPED)
+    }
+
+    suspend fun markNotATransaction(id: Long) {
+        txnDao.updateReviewStatus(id, ReviewStatus.NOT_A_TXN)
+    }
+
+    /** Reset a review row to PENDING — used by the Undo snackbar. */
+    suspend fun undoReview(id: Long) {
+        txnDao.updateReviewStatus(id, ReviewStatus.PENDING)
+    }
+
     suspend fun clearAllData() {
         txnDao.clear()
         rawDao.clear()
@@ -118,6 +258,30 @@ class TransactionRepository(db: AppDatabase) {
         txnDao.markSynced(ids)
     }
 
+    /** Pull-sync surface: only rows with no pending local edits. */
+    suspend fun getSyncedTransactions(): List<TransactionEntity> =
+        txnDao.getSyncedTransactions()
+
+    /**
+     * Adopt cloud-side category/review-status for a local row. Used by the
+     * Web→Mobile pull-sync. Returns 1 if the row was updated, 0 otherwise.
+     */
+    suspend fun applyRemoteState(
+        id: Long,
+        category: String?,
+        reviewStatus: String,
+        predictedCategory: String?,
+        categoryConfidence: Double?,
+        merchantKey: String?
+    ): Int = txnDao.applyRemoteState(
+        id = id,
+        category = category,
+        reviewStatus = reviewStatus,
+        predictedCategory = predictedCategory,
+        categoryConfidence = categoryConfidence,
+        merchantKey = merchantKey
+    )
+
     suspend fun markRawMessagesSynced(ids: List<Long>) {
         if (ids.isEmpty()) return
         rawDao.markSynced(ids)
@@ -148,16 +312,42 @@ class TransactionRepository(db: AppDatabase) {
             }
         }
 
-        val entity = SmsParserEngine.parse(sms) ?: return IngestDetailedResult(IngestResult.IGNORED)
-        if (entity.type == TransactionType.UNKNOWN.name) return IngestDetailedResult(IngestResult.IGNORED)
+        val parsed = SmsParserEngine.parse(sms) ?: return IngestDetailedResult(IngestResult.IGNORED)
+        if (parsed.type == TransactionType.UNKNOWN.name) return IngestDetailedResult(IngestResult.IGNORED)
 
-        if (!entity.refNumber.isNullOrBlank()) {
-            val existing = txnDao.findByRefNumber(entity.refNumber)
+        if (!parsed.refNumber.isNullOrBlank()) {
+            val existing = txnDao.findByRefNumber(parsed.refNumber)
             if (existing != null) return IngestDetailedResult(IngestResult.DUPLICATE_REF)
         }
 
-        val nearDup = txnDao.findNearDuplicate(entity.sender, entity.amount, entity.dateTime)
+        val nearDup = txnDao.findNearDuplicate(parsed.sender, parsed.amount, parsed.dateTime)
         if (nearDup != null) return IngestDetailedResult(IngestResult.DUPLICATE_NEAR)
+
+        // Daily Review: predict category at parse time so the queue can show
+        // a suggestion immediately.
+        //
+        // Auto-confirm path: when the user has explicitly taught us "Legacy
+        // Ata = Loan" via the Apply-to-all popup (i.e. a row in
+        // i_category_rules with that merchant_key), the predictor returns
+        // source = USER_RULE. There's no value in re-asking the user — they
+        // already gave us the answer. We skip Daily Review entirely for
+        // these rows and stamp them as CONFIRMED at insert time.
+        //
+        // Seed-matches (KALDIS → Coffee) and type-fallbacks (CREDIT → Income)
+        // are NOT auto-confirmed — those are app-side guesses, not user
+        // decisions, so they still surface for confirmation. A single swipe-
+        // right on a seed-matched row upgrades it to a user rule, after
+        // which future SMS from that merchant auto-confirm too.
+        val prediction = predictor.predict(parsed.merchantKey, parsed.counterpartyId, parsed.type)
+        val autoConfirm = prediction.source == CategoryPredictor.Source.USER_RULE
+                          && prediction.category != null
+        val entity = parsed.copy(
+            predictedCategory  = prediction.category,
+            categoryConfidence = prediction.confidence.takeIf { it > 0.0 },
+            category           = if (autoConfirm) prediction.category else null,
+            reviewStatus       = if (autoConfirm) ReviewStatus.CONFIRMED
+                                 else ReviewStatus.PENDING
+        )
 
         val insertedId = txnDao.insert(entity)
         return if (insertedId > 0) {

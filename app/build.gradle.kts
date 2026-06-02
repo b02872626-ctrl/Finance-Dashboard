@@ -24,8 +24,8 @@ android {
         applicationId = "com.financeapp"
         minSdk = 23
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 14
+        versionName = "1.0.0-beta13"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Supabase config (set these in local.properties; do not commit secrets)
@@ -46,6 +46,25 @@ android {
         )
     }
 
+    // Release-signing config — paths + creds come from local.properties so
+    // they stay out of the repo. The keystore itself lives at
+    // ~/.keystores/finance-lore-release.jks (gitignored by being outside the
+    // project entirely). Falls back to a no-op block if the props are absent
+    // so a clean checkout can still produce a debug build.
+    signingConfigs {
+        create("release") {
+            val keystorePath  = localProperties.getProperty("keystore.path", "")
+            val keystorePwd   = localProperties.getProperty("keystore.password", "")
+            val keystoreAlias = localProperties.getProperty("keystore.alias", "")
+            if (keystorePath.isNotBlank() && keystorePwd.isNotBlank() && keystoreAlias.isNotBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePwd
+                keyAlias = keystoreAlias
+                keyPassword = keystorePwd
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -53,6 +72,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Only attach the signing config when the keystore is actually
+            // configured — otherwise Gradle will fail on a clean checkout
+            // that hasn't been set up with `keystore.path` in local.properties.
+            val keystorePath = localProperties.getProperty("keystore.path", "")
+            if (keystorePath.isNotBlank() && file(keystorePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

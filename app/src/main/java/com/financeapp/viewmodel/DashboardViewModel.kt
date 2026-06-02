@@ -2,6 +2,7 @@ package com.financeapp.viewmodel
 
 import androidx.lifecycle.*
 import com.financeapp.data.db.MonthlyAggregate
+import com.financeapp.data.model.ReviewStatus
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.parsing.TransactionType
@@ -27,6 +28,21 @@ data class WeekActivityPoint(
 
 enum class ChartTimeRange { MONTHS, YEARS }
 
+/** Today's Daily Review summary, surfaced on Home as DailyReviewCard. */
+data class DailyReviewSnapshot(
+    val pending: Int = 0,
+    val confirmed: Int = 0,
+    val changed: Int = 0,
+    val skipped: Int = 0,
+    val latestTransactionMs: Long? = null
+) {
+    val total: Int get() = pending + confirmed + changed + skipped
+    val done: Int   get() = confirmed + changed
+    val isEmpty: Boolean   get() = total == 0
+    val isDone:  Boolean   get() = total > 0 && pending == 0
+    val isFresh: Boolean   get() = total > 0 && done == 0
+}
+
 data class DashboardState(
     val accountBalances: List<AccountSummary> = emptyList(),
     val monthIncome: Double  = 0.0,
@@ -36,6 +52,9 @@ data class DashboardState(
     val weekActivity: List<WeekActivityPoint> = emptyList(),
     val chartData: List<MonthlyAggregate> = emptyList(),
     val chartRange: ChartTimeRange = ChartTimeRange.MONTHS,
+    val dailyReview: DailyReviewSnapshot = DailyReviewSnapshot(),
+    /** PENDING rows older than today — drives the "review older" Home link. */
+    val olderPendingCount: Int = 0,
     val isLoading: Boolean = true
 )
 
@@ -51,11 +70,31 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
         viewModelScope.launch {
             val monthStart = startOfMonth()
 
+            // Today's Daily Review counts feed the entry card on Home.
+            val pendingFlow   = repo.countTodayByReviewStatus(ReviewStatus.PENDING)
+            val confirmedFlow = repo.countTodayByReviewStatus(ReviewStatus.CONFIRMED)
+            val changedFlow   = repo.countTodayByReviewStatus(ReviewStatus.CHANGED)
+            val skippedFlow   = repo.countTodayByReviewStatus(ReviewStatus.SKIPPED)
+            val olderFlow     = repo.countOlderPendingReview()
+            val reviewFlow    = combine(
+                pendingFlow, confirmedFlow, changedFlow, skippedFlow, olderFlow
+            ) { pending, confirmed, changed, skipped, older ->
+                DailyReviewSnapshot(
+                    pending             = pending,
+                    confirmed           = confirmed,
+                    changed             = changed,
+                    skipped             = skipped,
+                    latestTransactionMs = null   // filled in below from `all`
+                ) to older
+            }
+
             combine(
                 repo.getRecentTransactions(40),
                 repo.getAllTransactions(),
-                _chartRange
-            ) { recent, all, range ->
+                _chartRange,
+                reviewFlow
+            ) { recent, all, range, reviewWithOlder ->
+                val (review, olderPending) = reviewWithOlder
                 val aggregatedData = aggregateData(all, range)
                 val accountBalances = buildAccountBalances(all)
                 val monthIncome  = all.filter {
@@ -82,6 +121,10 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
                     weekActivity      = buildWeekActivity(all),
                     chartData         = aggregatedData,
                     chartRange        = range,
+                    dailyReview       = review.copy(
+                        latestTransactionMs = all.maxOfOrNull { it.dateTime }
+                    ),
+                    olderPendingCount = olderPending,
                     isLoading         = false
                 )
             }.collect { _state.value = it }

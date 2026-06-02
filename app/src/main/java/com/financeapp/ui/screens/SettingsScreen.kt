@@ -117,8 +117,74 @@ fun SettingsScreen(
             )
         }
 
+        item {
+            CalendarTogglePill(
+                current = vm.calendarSystem.collectAsState().value,
+                onToggle = { vm.toggleCalendarSystem() }
+            )
+        }
+
         item { LogoutPill(onClick = { vm.signOut() }) }
     }
+}
+
+/**
+ * Two-state toggle pill for Gregorian ↔ Ethiopian calendar display.
+ * Affects date rendering across History, Daily Review, transaction detail.
+ * Time stays 24h Gregorian regardless — Ethiopian dawn-anchored time is a
+ * separate decision.
+ */
+@Composable
+private fun CalendarTogglePill(current: String, onToggle: () -> Unit) {
+    val isEthiopian = current == "ETHIOPIAN"
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(50))
+            .background(CardBg)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onToggle
+            )
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(text = "Calendar", color = Headline, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = if (isEthiopian) "Ethiopian (Meskerem, Tikimt…)" else "Gregorian (Jan, Feb…)",
+                color = BodyMuted, fontSize = 11.sp
+            )
+        }
+        // Inline two-pill segmented control
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color(0xFF1A1612))
+                .padding(3.dp)
+        ) {
+            SegmentedOption(text = "GR", active = !isEthiopian)
+            SegmentedOption(text = "ET", active = isEthiopian)
+        }
+    }
+}
+
+@Composable
+private fun SegmentedOption(text: String, active: Boolean) {
+    Text(
+        text = text,
+        color = if (active) Color(0xFF231E1A) else BodyMuted,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (active) Headline else Color.Transparent)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    )
 }
 
 // ---------------------------------------------------------------------------

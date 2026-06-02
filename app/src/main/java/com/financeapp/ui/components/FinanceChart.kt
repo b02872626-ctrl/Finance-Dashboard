@@ -49,13 +49,8 @@ fun MonthlyBarChart(
     if (data.isEmpty()) return
     val maxValue = data.maxOf { maxOf(it.totalIncome, it.totalExpense) }.coerceAtLeast(1.0)
 
-    var isLoaded by remember { mutableStateOf(false) }
-    val animProgress by animateFloatAsState(
-        targetValue = if (isLoaded) 1f else 0f,
-        animationSpec = tween(durationMillis = 150),
-        label = "chartReveal"
-    )
-    LaunchedEffect(Unit) { isLoaded = true }
+    // Reveal animation removed — chart paints fully on first composition.
+    val animProgress = 1f
 
     var touchX by remember { mutableStateOf<Float?>(null) }
     var chartWidth by remember { mutableStateOf(0f) }

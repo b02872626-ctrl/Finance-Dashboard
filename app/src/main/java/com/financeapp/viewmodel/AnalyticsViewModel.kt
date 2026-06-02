@@ -180,12 +180,36 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), InsightsState())
 
-    /** Computes a per-category drill-down for the [category] argument. */
+    /**
+     * Per-category drill-down state, memoized by category name so repeated
+     * `categoryDetail(name)` calls return the SAME StateFlow. Without the
+     * cache, every recomposition would spin up a fresh StateFlow that
+     * briefly emits its empty default value before the real data lands —
+     * visible to the user as a flicker between empty + loaded states.
+     */
+    private val categoryDetailFlows =
+        java.util.concurrent.ConcurrentHashMap<String, StateFlow<CategoryDetailState>>()
+
     fun categoryDetail(category: String): StateFlow<CategoryDetailState> =
-        repo.getAllTransactions()
-            .map { all -> buildCategoryDetail(all, category) }
-            .flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoryDetailState(category = category))
+        categoryDetailFlows.getOrPut(category) {
+            repo.getAllTransactions()
+                .map { all ->
+                    runCatching { buildCategoryDetail(all, category) }
+                        .getOrElse {
+                            // Don't let a bad row crash the screen — fall
+                            // back to an empty state with the category name
+                            // so the user at least sees the header.
+                            android.util.Log.e("AnalyticsVM", "buildCategoryDetail failed", it)
+                            CategoryDetailState(category = category, isLoading = false)
+                        }
+                }
+                .flowOn(Dispatchers.Default)
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(5000),
+                    CategoryDetailState(category = category)
+                )
+        }
 
     private fun buildInsights(all: List<TransactionEntity>): InsightsState {
         val expenses = all.filter { it.type in EXPENSE_TYPES }

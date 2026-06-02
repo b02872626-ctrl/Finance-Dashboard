@@ -34,7 +34,19 @@ class SmsIngestService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIF_ID, buildNotification("Scanning SMS history…"))
+        // Android 14+ requires a foregroundServiceType arg on startForeground.
+        // The manifest already declares `android:foregroundServiceType="dataSync"`;
+        // pass the matching constant so the OS doesn't throw
+        // MissingForegroundServiceTypeException.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIF_ID,
+                buildNotification("Scanning SMS history…"),
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            startForeground(NOTIF_ID, buildNotification("Scanning SMS history…"))
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

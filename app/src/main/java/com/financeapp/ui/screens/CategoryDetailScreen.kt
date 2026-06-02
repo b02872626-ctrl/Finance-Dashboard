@@ -71,7 +71,12 @@ fun CategoryDetailScreen(
     onBack: () -> Unit,
     onAddTransaction: () -> Unit
 ) {
-    val state by vm.categoryDetail(category).collectAsState()
+    // `categoryDetail(category)` returns a new StateFlow per call, so
+    // remember it across recompositions — otherwise each recomposition
+    // creates a fresh flow that briefly emits the empty initial state
+    // before real data arrives, causing a visible empty/loaded flicker.
+    val stateFlow = remember(category) { vm.categoryDetail(category) }
+    val state by stateFlow.collectAsState()
     val grouped = remember(state.transactions) { buildDayGroups(state.transactions) }
 
     Column(
@@ -327,8 +332,27 @@ private fun CatRow(tx: TransactionEntity) {
                 color = Headline, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(2.dp))
-            Text(text = tx.bankName, color = FooterGrey, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(3.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = tx.bankName,
+                    color = FooterGrey, fontSize = 11.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                // Category pill here is technically redundant (the parent
+                // page IS the category) but rendering it keeps row visuals
+                // consistent with Home/History — and surfaces it when the
+                // row was retagged to a different category before the
+                // page refreshes.
+                tx.category?.takeIf { it.isNotBlank() }?.let { cat ->
+                    Text(
+                        text = "  •  ",
+                        color = FooterGrey,
+                        fontSize = 11.sp
+                    )
+                    com.financeapp.ui.components.CategoryPill(category = cat)
+                }
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(

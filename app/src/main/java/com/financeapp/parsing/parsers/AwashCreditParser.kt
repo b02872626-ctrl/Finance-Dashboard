@@ -21,7 +21,10 @@ class AwashCreditParser : BankParser {
     private val dateRe     = Regex("""on\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})""", RegexOption.IGNORE_CASE)
 
     override fun canParse(sender: String, body: String): Boolean =
-        sender.equals("Awash Bank", ignoreCase = true) &&
+        // Awash SMS arrive under "Awash Bank" (legacy), "AwashBank" (no space), or "AWASH" (short)
+        (sender.equals("Awash Bank", ignoreCase = true) ||
+         sender.equals("AwashBank",  ignoreCase = true) ||
+         sender.equals("AWASH",      ignoreCase = true)) &&
         body.contains("Credited with ETB", ignoreCase = true)
 
     override fun parse(sms: SmsMessage): TransactionEntity? {

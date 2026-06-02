@@ -28,6 +28,30 @@ class SettingsRepository(context: Context) {
     fun setNotifications(enabled: Boolean) = prefs.edit().putBoolean("notifications", enabled).apply()
     fun notificationsEnabledSync(): Boolean = prefs.getBoolean("notifications", true)
 
+    /**
+     * Highest [BuildConfig.VERSION_CODE] we've completed an ingest scan with.
+     * MainActivity compares this against the current versionCode on launch
+     * and re-runs the scan if the user just installed a new build that has
+     * parser improvements over the previous one. This is what fixes the
+     * "I installed beta3 but my old missing CBE rows are still missing"
+     * complaint — beta3's relaxed parser now catches rows that beta2's
+     * parse() rejected, but it can only do that if we re-scan the inbox.
+     */
+    fun getLastIngestedVersion(): Int = prefs.getInt(KEY_LAST_INGESTED_VERSION, 0)
+    fun setLastIngestedVersion(code: Int) =
+        prefs.edit().putInt(KEY_LAST_INGESTED_VERSION, code).apply()
+
+    /**
+     * Date display preference: "GREGORIAN" (default) or "ETHIOPIAN".
+     * Time is always 24-hour Gregorian for now — the Ethiopian dawn-anchored
+     * 12-hour clock is a separate decision (would need explicit opt-in to
+     * avoid confusing users who write timestamps in 24h Gregorian habit).
+     */
+    fun getCalendarSystem(): String = prefs.getString(KEY_CALENDAR_SYSTEM, "GREGORIAN") ?: "GREGORIAN"
+    fun setCalendarSystem(value: String) =
+        prefs.edit().putString(KEY_CALENDAR_SYSTEM, value).apply()
+    fun calendarSystemFlow(): Flow<String> = prefFlow(KEY_CALENDAR_SYSTEM, "GREGORIAN")
+
     fun getSupabaseSession(): SupabaseSession? {
         val accessToken = prefs.getString(KEY_SUPABASE_ACCESS_TOKEN, "") ?: ""
         val refreshToken = prefs.getString(KEY_SUPABASE_REFRESH_TOKEN, "") ?: ""
@@ -168,6 +192,8 @@ class SettingsRepository(context: Context) {
 
     private companion object {
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+        const val KEY_LAST_INGESTED_VERSION = "last_ingested_version"
+        const val KEY_CALENDAR_SYSTEM = "calendar_system"
         const val KEY_SUPABASE_ACCESS_TOKEN = "supabase_access_token"
         const val KEY_SUPABASE_REFRESH_TOKEN = "supabase_refresh_token"
         const val KEY_SUPABASE_USER_ID = "supabase_user_id"

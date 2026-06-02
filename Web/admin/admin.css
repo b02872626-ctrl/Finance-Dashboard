@@ -87,6 +87,42 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
 .brand-block p { margin: 8px 0 0; }
 .login-card { display: flex; flex-direction: column; gap: 16px; }
 
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field .label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  color: var(--headline);
+  text-transform: uppercase;
+}
+.field input {
+  background: var(--inner-dark);
+  color: var(--headline);
+  border: 1px solid var(--tile-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+.field input:focus { border-color: var(--headline); }
+.field input::placeholder { color: var(--footer-grey); }
+
+.btn-primary {
+  background: var(--headline);
+  color: var(--page-bg);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-primary[disabled] { opacity: 0.6; cursor: default; }
+
 .denied-view { max-width: 460px; margin: 80px auto 0; }
 .denied-card { text-align: center; display: flex; flex-direction: column; gap: 16px; align-items: center; }
 .denied-card .mono { color: var(--headline); }

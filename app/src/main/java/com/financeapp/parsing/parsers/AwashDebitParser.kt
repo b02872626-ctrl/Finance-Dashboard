@@ -19,7 +19,9 @@ class AwashDebitParser : BankParser {
     private val balanceRe  = Regex("""balance\s+now\s+is\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
 
     override fun canParse(sender: String, body: String): Boolean =
-        sender.equals("Awash Bank", ignoreCase = true) &&
+        (sender.equals("Awash Bank", ignoreCase = true) ||
+         sender.equals("AwashBank",  ignoreCase = true) ||
+         sender.equals("AWASH",      ignoreCase = true)) &&
         body.contains("Debited with ETB", ignoreCase = true)
 
     override fun parse(sms: SmsMessage): TransactionEntity? {

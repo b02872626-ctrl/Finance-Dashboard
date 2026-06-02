@@ -18,6 +18,32 @@ import org.junit.Test
 class SmsParserTest {
 
     @Test
+    fun `CBE new 'successfully transferred' format extracts counterparty from parens`() {
+        // Real corpus sample of the post-mid-2026 CBE transfer SMS that the
+        // older "transfered" parser silently rejected. Tests the relaxed
+        // canParse + the toNewRe regex + the Disaster Recovery alt label.
+        val sms = SmsMessage(
+            sender = "CBE",
+            body = "Dear  Nahusenay G/amlak Teka You have successfully transferred ETB 250.61 " +
+                "from account 1********4607 to account 1********9258 (Firehiwot Asmelash Belay). " +
+                "Service charge of ETB 0.50 and VAT(15%) of ETB0.08 and Disaster Recovery(5%) of 0.03 " +
+                "with total of ETB250.61 .Your current balance is ETB-243.21.",
+            timestamp = 0L
+        )
+        val tx = SmsParserEngine.parse(sms)
+        assertNotNull(tx)
+        assertEquals(TransactionType.TRANSFER_OUT.name, tx!!.type)
+        assertEquals(250.61, tx.amount, 0.001)
+        assertEquals("Firehiwot Asmelash Belay", tx.counterparty)
+        assertEquals("1********4607", tx.accountNumber)
+        assertEquals(0.50, tx.serviceCharge!!, 0.001)
+        assertEquals(0.08, tx.vat!!, 0.001)
+        assertEquals(0.03, tx.disasterFund!!, 0.001)
+        assertEquals(250.61, tx.totalCharged!!, 0.001)
+        assertEquals(-243.21, tx.balance!!, 0.001)
+    }
+
+    @Test
     fun `CBE credit SMS is parsed correctly`() {
         val sms = SmsMessage(
             sender = "CBE",
@@ -246,9 +272,14 @@ class SmsParserTest {
         )
         val tx = SmsParserEngine.parse(sms)
         assertNotNull(tx)
-        assertEquals(TransactionType.TRANSFER_OUT.name, tx!!.type)
+        // Telebirr → CBE is the user moving their own money between accounts,
+        // so we now tag it as INTERNAL_TRANSFER (not TRANSFER_OUT) so the
+        // dashboard's expense totals don't double-count.
+        assertEquals(TransactionType.INTERNAL_TRANSFER.name, tx!!.type)
         assertEquals(2000.00, tx.amount, 0.001)
-        assertTrue(tx.counterparty!!.contains("Commercial Bank of Ethiopia"))
+        // Counterparty is now shortened to "to CBE 1000439946826" for the chip.
+        assertTrue(tx.counterparty!!.contains("CBE"))
+        assertTrue(tx.counterparty!!.contains("1000439946826"))
         assertEquals("CJJ4K37VOY", tx.refNumber)
         assertEquals(7.83, tx.serviceCharge!!, 0.001)
         assertEquals(1.17, tx.vat!!, 0.001)
@@ -406,6 +437,115 @@ class SmsParserTest {
         val sms = SmsMessage(
             sender = "127",
             body = "Dear customer, you get 1 point and 1 lottery ticket with lottery ID: TL1234567890.",
+            timestamp = 0L
+        )
+        assertNull(SmsParserEngine.parse(sms))
+    }
+
+    @Test
+    fun `Berhan Bank debit SMS extracts amount, account, ref, balance`() {
+        val sms = SmsMessage(
+            sender = "Berhan Bank",
+            body = "Dear NATNAEL GETINET DAGNE; A/C No. *********9067 has been debited " +
+                "ETB100.00 on 21-03-2026 Ref. APPMN01BXYT. Bal. ETB79.94. " +
+                "Receipt: https://transactioninfo.berhanonline.et/ereceipt/99921032026298550.pdf " +
+                "Berhan Stress Free Banking!",
+            timestamp = 0L
+        )
+        val tx = SmsParserEngine.parse(sms)
+        assertNotNull(tx)
+        assertEquals(TransactionType.DEBIT.name, tx!!.type)
+        assertEquals("Berhan Bank", tx.bankName)
+        assertEquals(100.00, tx.amount, 0.001)
+        assertEquals("*********9067", tx.accountNumber)
+        assertEquals("APPMN01BXYT", tx.refNumber)
+        assertEquals(79.94, tx.balance!!, 0.001)
+        // Engine fallback should fill counterparty since the body doesn't name one
+        assertTrue(tx.counterparty!!.contains("Berhan"))
+    }
+
+    @Test
+    fun `Berhan Bank simple credit SMS is CREDIT type with no counterparty`() {
+        val sms = SmsMessage(
+            sender = "Berhan Bank",
+            body = "Dear Natnael, A/C No. 103002XXXXX67 has been credited ETB 16,000 " +
+                "on 23-Mar-2026. Reference is 17742610528660003539. " +
+                "Balance is ETB 16,029.7. To Natnael Getinet . Berhan Stress Free Banking",
+            timestamp = 0L
+        )
+        val tx = SmsParserEngine.parse(sms)
+        assertNotNull(tx)
+        assertEquals(TransactionType.CREDIT.name, tx!!.type)
+        assertEquals(16000.00, tx.amount, 0.001)
+        assertEquals("103002XXXXX67", tx.accountNumber)
+        assertEquals("17742610528660003539", tx.refNumber)
+        assertEquals(16029.7, tx.balance!!, 0.001)
+    }
+
+    @Test
+    fun `Berhan Bank IPS-incoming credit is tagged as INTERNAL_TRANSFER from CBE`() {
+        val sms = SmsMessage(
+            sender = "Berhan Bank",
+            body = "Dear Natnael, A/C No. 103002XXXXX67 has been credited ETB 5,000 " +
+                "on 01-May-2026. Reference is 17776111847890465681. " +
+                "Balance is ETB 5,034.95. Ips_incoming Txn From {cbetetaa__1000482226926} . " +
+                "Berhan Stress Free Banking",
+            timestamp = 0L
+        )
+        val tx = SmsParserEngine.parse(sms)
+        assertNotNull(tx)
+        // Cross-bank IPS = own-account movement, should not count as income
+        assertEquals(TransactionType.INTERNAL_TRANSFER.name, tx!!.type)
+        assertEquals(5000.00, tx.amount, 0.001)
+        assertTrue(tx.counterparty!!.contains("CBE"))
+        assertTrue(tx.counterparty!!.contains("1000482226926"))
+    }
+
+    @Test
+    fun `Berhan Amharic Fayda marketing SMS is ignored`() {
+        val sms = SmsMessage(
+            sender = "Berhan Bank",
+            body = "ለክቡራን ደንበኞቻችን በሙሉ! የኢትዮጵያ ብሔራዊ ባንክ ኅዳር 25 ቀን 2018 ዓ.ም ባወጣው መመርያ ላይ " +
+                "ሁሉም የባንክ ደንበኞች የትኛውንም የባንክ አገልግሎት ለማግኘት እና ሒሳባቸውን ለማንቀሳቀስ የባንክ ሂሳብ ቁጥራቸውን " +
+                "ከብሔራዊ መታወቂያ(ፋይዳ) ጋር እንዲያጣምሩ አሳስቧል። ብርሃን ባንክ",
+            timestamp = 0L
+        )
+        assertNull(SmsParserEngine.parse(sms))
+    }
+
+    @Test
+    fun `CBE 2026 'A debit transaction has occurred' format parses correctly`() {
+        // Real corpus sample of a CBE debit variant introduced ~2026.
+        // Uses "A debit transaction of ETB X has occurred on your account Y"
+        // instead of "your Account Y has been debited with ETB X".
+        // Also uses "Disaster Recovery" not "Disaster Fund" and drops the
+        // "ETB" prefix from some sub-amounts.
+        val sms = SmsMessage(
+            sender = "CBE",
+            body = "Dear Yabsira Endegena Andarge A debit transaction of ETB 15.0. " +
+                "has occurred on your account 1********9408. Service charge of ETB 0.00 " +
+                "and VAT(15%) of 0.0 and Disaster Recovery(5%) of 0.00 with total of ETB15.00 " +
+                ".Your current balance is ETB7.58. Thank you",
+            timestamp = 0L
+        )
+        val tx = SmsParserEngine.parse(sms)
+        assertNotNull(tx)
+        assertEquals(TransactionType.DEBIT.name, tx!!.type)
+        assertEquals(15.0, tx.amount, 0.001)
+        assertEquals("1********9408", tx.accountNumber)
+        assertEquals(0.0, tx.vat!!, 0.001)
+        assertEquals(0.0, tx.disasterFund!!, 0.001)
+        assertEquals(15.00, tx.totalCharged!!, 0.001)
+        assertEquals(7.58, tx.balance!!, 0.001)
+    }
+
+    @Test
+    fun `Berhan English Fayda marketing SMS is ignored`() {
+        val sms = SmsMessage(
+            sender = "Berhan Bank",
+            body = "Dear Customer, In accordance with the directive from the National Bank " +
+                "of Ethiopia, all customers are required to link their Fayda ID to access " +
+                "banking services and continue using their existing accounts. Berhan Bank",
             timestamp = 0L
         )
         assertNull(SmsParserEngine.parse(sms))

@@ -318,27 +318,24 @@ private fun ReadyToImportStep(
     onImport: () -> Unit,
     onReview: () -> Unit
 ) {
-    // Real bank list if available; fall back to the design mock for visual fidelity.
-    val realBanks = remember(transactions) {
+    // Real bank list only — no design-mock fallback. Showing fake placeholder
+    // banks ("Commercial Bank ••• 8291") to a fresh tester is misleading.
+    val banks = remember(transactions) {
         transactions.groupBy { it.bankName }
             .map { (bank, txs) -> bank to (txs.firstOrNull()?.accountNumber ?: "") }
             .take(4)
     }
-    val banks = if (realBanks.size >= 2) realBanks else listOf(
-        "Commercial Bank"   to "1000  ••••  8291",
-        "Bank of Abyssinia" to "90  ••••  1104",
-        "Telebirr"          to "251  ••••  9920",
-        "Awash bank"        to "0924  ••••  9920"
-    )
 
     val toggles = remember(banks) {
         mutableStateMapOf<String, Boolean>().apply {
-            banks.forEachIndexed { i, (name, _) -> put(name, i < 3) } // first 3 ON
+            // Default every detected bank ON. First-time tester with no SMS
+            // scanned yet sees an empty list (handled below).
+            banks.forEach { (name, _) -> put(name, true) }
         }
     }
     val activeCount = toggles.count { it.value }
 
-    val txCount = if (transactions.isNotEmpty()) transactions.size else 1375
+    val txCount = transactions.size
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(

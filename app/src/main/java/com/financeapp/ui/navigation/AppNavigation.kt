@@ -55,6 +55,7 @@ import com.financeapp.ui.screens.DashboardScreen
 import com.financeapp.ui.screens.EditAccountScreen
 import com.financeapp.ui.screens.NotificationPreferencesScreen
 import com.financeapp.ui.screens.OnboardingScreen
+import com.financeapp.ui.screens.ReviewQueueScreen
 import com.financeapp.ui.screens.SettingsScreen
 import com.financeapp.ui.screens.SupabaseAuthScreen
 import com.financeapp.ui.screens.TransactionDetailScreen
@@ -67,6 +68,11 @@ import com.financeapp.viewmodel.BankAnalyticsViewModel
 import com.financeapp.viewmodel.BankAnalyticsViewModelFactory
 import com.financeapp.viewmodel.DashboardViewModel
 import com.financeapp.viewmodel.DashboardViewModelFactory
+import com.financeapp.viewmodel.ReviewQueueViewModel
+import com.financeapp.viewmodel.ReviewQueueViewModelFactory
+import com.financeapp.ui.theme.pressScale
+import com.financeapp.ui.theme.rememberTactileSource
+import com.financeapp.viewmodel.ReviewScope
 import com.financeapp.viewmodel.SettingsViewModel
 import com.financeapp.viewmodel.SettingsViewModelFactory
 import com.financeapp.viewmodel.TransactionsViewModel
@@ -77,6 +83,7 @@ sealed class Screen(val route: String, val label: String, @DrawableRes val iconR
     object Accounts : Screen("accounts", "Accounts", R.drawable.ic_book_dark)
     object Transactions : Screen("transactions", "History", R.drawable.ic_history_dark)
     object Categorize : Screen(SyncNotificationHelper.CATEGORY_ROUTE, "Categorize")
+    object DailyReview : Screen("daily_review", "Daily Review")
     object Analytics : Screen("analytics", "Analytics", R.drawable.ic_anaytics_dark)
     object Profile : Screen("profile", "Profile", R.drawable.ic_profile_dark)
     object AccountSettings : Screen("account_settings", "Account", R.drawable.ic_profile_dark)
@@ -173,6 +180,8 @@ private fun MainNavigation(
     val dashFac = remember { DashboardViewModelFactory(repo) }
     val txFac = remember { TransactionsViewModelFactory(repo) }
     val anlFac = remember { AnalyticsViewModelFactory(repo) }
+    val reviewTodayFac = remember { ReviewQueueViewModelFactory(repo, ReviewScope.TODAY) }
+    val reviewAllFac   = remember { ReviewQueueViewModelFactory(repo, ReviewScope.ALL) }
 
     val dashVm: DashboardViewModel = viewModel(factory = dashFac)
     val txVm: TransactionsViewModel = viewModel(factory = txFac)
@@ -190,6 +199,14 @@ private fun MainNavigation(
         }
     }
 
+    // Provide the user's calendar preference to every composable in the tree.
+    // Any date-rendering site reads `LocalCalendarSystem.current` and
+    // re-renders automatically when the user flips the Settings toggle.
+    val calendarSystem by setVm.calendarSystem.collectAsState()
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.financeapp.util.LocalCalendarSystem provides calendarSystem
+    ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -198,7 +215,13 @@ private fun MainNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            // Per user direction: no enter/exit slide animations between
+            // screens. Routes hard-cut to the new destination.
+            enterTransition    = { androidx.compose.animation.EnterTransition.None },
+            exitTransition     = { androidx.compose.animation.ExitTransition.None },
+            popEnterTransition = { androidx.compose.animation.EnterTransition.None },
+            popExitTransition  = { androidx.compose.animation.ExitTransition.None }
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
@@ -221,7 +244,17 @@ private fun MainNavigation(
                         }
                         navController.navigate(Screen.Transactions.route)
                     },
-                    onSettingsClick = { navController.navigate(Screen.Profile.route) }
+                    onSettingsClick = { navController.navigate(Screen.Profile.route) },
+                    onStartDailyReview = {
+                        navController.navigate(Screen.DailyReview.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onStartOlderReview = {
+                        navController.navigate("${Screen.DailyReview.route}?scope=all") {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
             composable(Screen.Accounts.route) {
@@ -275,7 +308,10 @@ private fun MainNavigation(
                 route = "category_detail/{category}",
                 arguments = listOf(navArgument("category") { type = NavType.StringType })
             ) { backStack ->
-                val category = backStack.arguments?.getString("category") ?: return@composable
+                val raw = backStack.arguments?.getString("category") ?: return@composable
+                // Compose Navigation does NOT auto-decode StringType args, so
+                // "Drinks%20and%20fun" stays encoded otherwise. Decode here.
+                val category = android.net.Uri.decode(raw)
                 CategoryDetailScreen(
                     vm = anlVm,
                     category = category,
@@ -319,6 +355,43 @@ private fun MainNavigation(
                     onDismissBulkSuggestion = { txVm.dismissBulkCategorySuggestion() }
                 )
             }
+            composable(
+                route = "${Screen.DailyReview.route}?scope={scope}",
+                arguments = listOf(
+                    navArgument("scope") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStack ->
+                val scopeArg = backStack.arguments?.getString("scope")
+                val factory = if (scopeArg == "all") reviewAllFac else reviewTodayFac
+                val keyedVm: ReviewQueueViewModel = viewModel(
+                    key = "review_queue_${scopeArg ?: "today"}",
+                    factory = factory
+                )
+                ReviewQueueScreen(
+                    vm = keyedVm,
+                    userName = userName,
+                    customCategories = categories,
+                    onAddCustomCategory = { setVm.addCustomCategory(it) },
+                    onClose = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.DailyReview.route) {
+                val keyedVm: ReviewQueueViewModel = viewModel(
+                    key = "review_queue_today",
+                    factory = reviewTodayFac
+                )
+                ReviewQueueScreen(
+                    vm = keyedVm,
+                    userName = userName,
+                    customCategories = categories,
+                    onAddCustomCategory = { setVm.addCustomCategory(it) },
+                    onClose = { navController.popBackStack() }
+                )
+            }
             composable(Screen.Profile.route) {
                 SettingsScreen(
                     vm = setVm,
@@ -347,6 +420,19 @@ private fun MainNavigation(
         }
 
         if (showBottomBar) {
+            // Fade scrim above the floating nav. Without this, scrolled
+            // content slides under the nav with no opacity transition,
+            // washing out the nav's contrast (testers flagged this — see
+            // the "elements behind the nav bar are making the nav bar lose
+            // contrast" screenshot).
+            //
+            // Implementation: a transparent→pageBg vertical gradient
+            // positioned just above the nav. Content keeps its full color
+            // up to the scrim's top edge, fades out across ~64dp, and is
+            // fully invisible against the page bg by the time it would
+            // physically cross under the nav row.
+            NavBarScrim(pageBg = AppBackground)
+
             FloatingBottomNav(
                 currentRoute = currentRoute,
                 onNavigate = { screen ->
@@ -360,6 +446,46 @@ private fun MainNavigation(
                 }
             )
         }
+    }
+    }  // CompositionLocalProvider — LocalCalendarSystem
+}
+
+/**
+ * Soft fade-to-page-bg gradient that sits BEHIND the floating nav. Earlier
+ * version reserved the nav's footprint with bottom padding, which placed
+ * the fade ABOVE the nav and washed out the last bit of scroll content
+ * (e.g. the "Banks" section header looked dim in the screenshot).
+ *
+ * New positioning: scrim aligned to the bottom of the navigation-bars
+ * inset with NO extra padding, ~140dp tall. Content fades from full
+ * opacity at the scrim's top edge to fully pageBg at the bottom — and
+ * the floating nav row (rendered AFTER this Box) sits on top of the
+ * already-opaque pageBg portion. From the user's perspective the
+ * non-nav content stays crisp; the fade only happens directly under
+ * the nav, where it has to.
+ */
+@Composable
+private fun NavBarScrim(pageBg: androidx.compose.ui.graphics.Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .navigationBarsPadding(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            androidx.compose.ui.graphics.Color.Transparent,
+                            pageBg.copy(alpha = 0.6f),
+                            pageBg
+                        )
+                    )
+                )
+        )
     }
 }
 
@@ -379,8 +505,8 @@ private fun FloatingBottomNav(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .clip(RoundedCornerShape(28.dp))
+                .height(84.dp)
+                .clip(RoundedCornerShape(32.dp))
                 .background(Color(0xFF231E1A))
                 .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -389,18 +515,22 @@ private fun FloatingBottomNav(
             TABS.forEach { screen ->
                 val selected = currentRoute == screen.route ||
                     (screen == Screen.Transactions && currentRoute?.startsWith("transactions") == true)
-
+                val tabIx = rememberTactileSource()
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clickable { onNavigate(screen) },
+                        .size(56.dp)
+                        .pressScale(tabIx)
+                        .clickable(
+                            interactionSource = tabIx,
+                            indication = null
+                        ) { onNavigate(screen) },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painter = painterResource(id = screen.iconRes),
                         contentDescription = screen.label,
                         tint = if (selected) AppBlue else Color(0xFFB7B3AC),
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier.size(34.dp)
                     )
                 }
             }

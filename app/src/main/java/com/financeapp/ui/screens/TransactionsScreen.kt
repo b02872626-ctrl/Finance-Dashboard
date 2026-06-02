@@ -495,14 +495,24 @@ private fun HistoryRow(tx: TransactionEntity, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = tx.bankName,
-                color = FooterGrey,
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Spacer(Modifier.height(3.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = tx.bankName,
+                    color = FooterGrey,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                tx.category?.takeIf { it.isNotBlank() }?.let { cat ->
+                    Text(
+                        text = "  •  ",
+                        color = FooterGrey,
+                        fontSize = 11.sp
+                    )
+                    com.financeapp.ui.components.CategoryPill(category = cat)
+                }
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(

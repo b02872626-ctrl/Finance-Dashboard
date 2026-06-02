@@ -31,6 +31,15 @@ class SettingsViewModel(
     val disabledSenders: StateFlow<Set<String>> = repo.disabledSendersFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), repo.getDisabledSenders())
 
+    /** "GREGORIAN" or "ETHIOPIAN" — drives date rendering across the UI. */
+    val calendarSystem: StateFlow<String> = repo.calendarSystemFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), repo.getCalendarSystem())
+
+    fun toggleCalendarSystem() {
+        val current = repo.getCalendarSystem()
+        repo.setCalendarSystem(if (current == "ETHIOPIAN") "GREGORIAN" else "ETHIOPIAN")
+    }
+
     val categories: StateFlow<List<String>> = repo.customCategoriesFlow()
         .map(TransactionCategoryCatalog::allCategories)
         .stateIn(

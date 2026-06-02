@@ -181,7 +181,14 @@ fun TransactionDetailScreen(
                 tx.refNumber?.takeIf { it.isNotBlank() }?.let {
                     DetailRow(label = "Reference Num", value = it)
                 }
-                DetailRow(label = "Date & time", value = formatDateTime(tx.dateTime))
+                DetailRow(
+                    label = "Date & time",
+                    // Respects the user's Settings → Calendar toggle (Gregorian/Ethiopian).
+                    value = com.financeapp.util.CalendarFormatter.formatLong(
+                        timestampMs = tx.dateTime,
+                        calendarSystem = com.financeapp.util.LocalCalendarSystem.current
+                    )
+                )
                 tx.balance?.let {
                     DetailRow(
                         label = if (outgoing) "Balance after expence" else "Balance after income",

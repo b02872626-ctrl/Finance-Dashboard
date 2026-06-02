@@ -15,6 +15,8 @@ class TelebirrTransferParser : BankParser {
     private val amountRe  = Regex("""transferred\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
     // P2P form: "transferred ETB 30.00 to MUKEREM NUREDIN (2519****6534) on 19/10/2025"
     private val toPeerRe  = Regex("""transferred\s+ETB\s*[\d,.]+\s+to\s+(.+?)\s+on\s+\d{2}/\d{2}/\d{4}""", RegexOption.IGNORE_CASE)
+    // Stable counterparty identifier — phone token "2519****6534" anywhere in body.
+    private val peerPhoneRe = Regex("""(251[\d*]{8,12})""")
     // Bank form: "transferred ETB 2,000.00 successfully from your telebirr account ... to Commercial Bank of Ethiopia account number 100... on 19/10/2025"
     private val toBankRe  = Regex("""to\s+(.+?account\s+number\s+\S+)\s+on\s+\d{2}/\d{2}/\d{4}""", RegexOption.IGNORE_CASE)
     private val dateRe    = Regex("""on\s+(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2}:\d{2})""", RegexOption.IGNORE_CASE)
@@ -38,14 +40,37 @@ class TelebirrTransferParser : BankParser {
             val body = sms.body
             val amount = ParserUtils.parseAmount(amountRe.find(body)?.groupValues?.get(1)) ?: return null
             val dateMatch = dateRe.find(body)
+
+            // Decide between P2P and bank-to-bank. The bank pattern means the
+            // user moved money to one of their own bank accounts — tag as
+            // INTERNAL_TRANSFER so it doesn't double-count as an expense.
+            val peerMatch = toPeerRe.find(body)?.groupValues?.get(1)?.trim()
+            val bankMatch = toBankRe.find(body)?.groupValues?.get(1)?.trim()
+            val isInternalBankTransfer = bankMatch != null && peerMatch == null
+            val txType =
+                if (isInternalBankTransfer) TransactionType.INTERNAL_TRANSFER.name
+                else TransactionType.TRANSFER_OUT.name
+            val counterparty = if (isInternalBankTransfer) {
+                // Shorten "Commercial Bank of Ethiopia account number 100..." to
+                // "to CBE 100..." for display.
+                shortenBankCounterparty("to", bankMatch!!)
+            } else {
+                peerMatch ?: bankMatch
+            }
+
+            // For P2P only: lift the (2519****XXXX) phone into counterpartyId so
+            // future SMS for the same person bind to the same rule across
+            // bank-side spelling variants.
+            val counterpartyId = if (isInternalBankTransfer) null
+                                 else peerPhoneRe.find(body)?.groupValues?.get(1)
+
             TransactionEntity(
                 sender        = sms.sender,
                 bankName      = "Telebirr",
-                type          = TransactionType.TRANSFER_OUT.name,
+                type          = txType,
                 amount        = amount,
                 balance       = ParserUtils.parseAmount(balanceRe.find(body)?.groupValues?.get(1)),
-                counterparty  = (toPeerRe.find(body)?.groupValues?.get(1)
-                                    ?: toBankRe.find(body)?.groupValues?.get(1))?.trim(),
+                counterparty  = counterparty,
                 accountNumber = accountRe.find(body)?.groupValues?.get(1),
                 refNumber     = txnRe.find(body)?.groupValues?.get(1)?.trim(),
                 dateTime      = ParserUtils.parseDateTime(dateMatch?.groupValues?.get(1), dateMatch?.groupValues?.get(2))
@@ -55,8 +80,24 @@ class TelebirrTransferParser : BankParser {
                 disasterFund  = ParserUtils.parseAmount(dfRe.find(body)?.groupValues?.get(1)),
                 totalCharged  = ParserUtils.parseAmount(totalRe.find(body)?.groupValues?.get(1)),
                 currency      = "ETB",
-                rawBody       = body
+                rawBody       = body,
+                counterpartyId = counterpartyId
             )
         } catch (e: Exception) { null }
+    }
+
+    /**
+     * Collapse "Commercial Bank of Ethiopia account number 100…4607" into
+     * "to CBE 100…4607" so the counterparty chip stays readable on small cards.
+     */
+    private fun shortenBankCounterparty(direction: String, raw: String): String {
+        val cleaned = raw
+            .replace(Regex("""\s+account\s+number\s+""", RegexOption.IGNORE_CASE), " ")
+            .replace("Commercial Bank of Ethiopia", "CBE", ignoreCase = true)
+            .replace("Bank of Abyssinia", "BOA", ignoreCase = true)
+            .replace("Awash Bank", "Awash", ignoreCase = true)
+            .replace("Dashen Bank", "Dashen", ignoreCase = true)
+            .trim()
+        return "$direction $cleaned"
     }
 }
