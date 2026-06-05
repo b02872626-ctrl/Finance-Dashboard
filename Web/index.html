@@ -78,8 +78,16 @@
               <button type="button" class="calendar-toggle-btn active" data-cal="gregorian" title="Gregorian calendar">Gregorian</button>
               <button type="button" class="calendar-toggle-btn" data-cal="ethiopian" title="Ethiopian calendar">ኢትዮጵያ</button>
             </div>
-            <button id="refresh-btn" class="btn-ghost" title="Refresh data">Refresh</button>
-            <button id="logout-btn" class="btn-ghost" title="Sign out">Log out</button>
+            <div class="header-menu">
+              <button type="button" id="header-menu-btn" class="hamburger-btn" aria-label="Open menu" aria-haspopup="true" aria-expanded="false">
+                <span></span><span></span><span></span>
+              </button>
+              <div id="header-menu-panel" class="header-menu-panel hidden" role="menu">
+                <button id="feedback-btn"  class="header-menu-item" role="menuitem">Feedback</button>
+                <button id="refresh-btn"   class="header-menu-item" role="menuitem">Refresh</button>
+                <button id="logout-btn"    class="header-menu-item" role="menuitem">Log out</button>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -1025,6 +1033,20 @@
               <button type="button" id="tx-detail-close" class="tx-modal-close" aria-label="Close details">×</button>
             </header>
             <div id="tx-detail-body" class="tx-modal-body"></div>
+          </div>
+        </div>
+
+        <!-- ===== Feedback modal ===== -->
+        <div id="feedback-backdrop" class="tx-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+          <div class="tx-modal feedback-modal" role="document">
+            <header class="tx-modal-header">
+              <div>
+                <h3 id="feedback-title">Help shape Piggy Bank</h3>
+                <p class="muted small">Mostly taps — about 2 minutes. No wrong answers.</p>
+              </div>
+              <button type="button" id="feedback-close" class="tx-modal-close" aria-label="Close feedback">×</button>
+            </header>
+            <div id="feedback-body" class="tx-modal-body"></div>
           </div>
         </div>
       </section>

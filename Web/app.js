@@ -39,6 +39,12 @@ const greetingEl     = $("greeting");
 const logoutBtn      = $("logout-btn");
 const refreshBtn     = $("refresh-btn");
 const calendarToggle = document.querySelector(".calendar-toggle");
+const headerMenuBtn   = $("header-menu-btn");
+const headerMenuPanel = $("header-menu-panel");
+const feedbackBtn     = $("feedback-btn");
+const feedbackBackdrop= $("feedback-backdrop");
+const feedbackBody    = $("feedback-body");
+const feedbackClose   = $("feedback-close");
 const googleSigninBtn= $("google-signin-btn");
 
 // Stat cards
@@ -3671,6 +3677,240 @@ document.addEventListener("mousemove", (e) => {
 });
 
 document.addEventListener("mouseleave", hideChartTip);
+
+// ----------------------------------------------------------------------------
+// Header hamburger menu — wraps Feedback / Refresh / Log out so the header
+// stays clean on smaller widths. The actual Refresh and Log out click
+// handlers live elsewhere (their button IDs are unchanged), this section
+// only manages the dropdown's open/close.
+// ----------------------------------------------------------------------------
+function openHeaderMenu() {
+  headerMenuPanel.classList.remove("hidden");
+  headerMenuBtn.classList.add("open");
+  headerMenuBtn.setAttribute("aria-expanded", "true");
+}
+function closeHeaderMenu() {
+  headerMenuPanel.classList.add("hidden");
+  headerMenuBtn.classList.remove("open");
+  headerMenuBtn.setAttribute("aria-expanded", "false");
+}
+if (headerMenuBtn && headerMenuPanel) {
+  headerMenuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (headerMenuPanel.classList.contains("hidden")) openHeaderMenu();
+    else closeHeaderMenu();
+  });
+  // Clicking any menu item closes the dropdown after firing (the actual
+  // handler — refresh / logout / feedback — runs via the button's own
+  // click listener bound elsewhere).
+  headerMenuPanel.addEventListener("click", (e) => {
+    if (e.target.closest(".header-menu-item")) closeHeaderMenu();
+  });
+  // Click outside closes.
+  document.addEventListener("click", (e) => {
+    if (headerMenuPanel.classList.contains("hidden")) return;
+    if (!e.target.closest(".header-menu")) closeHeaderMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !headerMenuPanel.classList.contains("hidden")) closeHeaderMenu();
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Feedback modal — short tester survey. Same question set as the standalone
+// piggybank-feedback.html, ported to the in-app dark theme. Submission
+// builds a plaintext summary and lets the tester copy it or fire a mailto.
+// ----------------------------------------------------------------------------
+const FEEDBACK_QUESTIONS = [
+  { grp: "Letting it read your SMS" },
+  { id: "perm_feel",   q: "When the app asked to read your SMS, how did you feel?",
+    o: ["Totally fine", "A little hesitant", "Quite worried", "Almost didn't allow it"] },
+
+  { grp: "Trusting the numbers" },
+  { id: "wrong_guess", q: "Did the app ever tag a transaction wrong?",
+    o: ["Never noticed any", "Once or twice", "Fairly often"] },
+  { id: "prefer",      q: "Which way would you actually want it to work?",
+    o: ["Review once a day (now)", "Confirm every transaction", "Fully automatic, no review"] },
+  { id: "trust_total", q: "After about a week, did you trust the total balance?",
+    o: ["Yes — stopped checking", "Mostly", "Still checked my bank too"] },
+
+  { grp: "Did it read your banks?" },
+  { id: "parse",   q: "Did it read your banks & wallets correctly?",
+    o: ["All of them", "Most", "Some were missed"] },
+  { id: "unknown", q: 'Sometimes a message the app couldn\'t read shows as "Unknown." How was it to fix one (tag it yourself)?',
+    o: ["Easy to fix", "Okay", "A bit annoying", "Never saw one"] },
+
+  { grp: "How you used it" },
+  { id: "before",      q: "Before this, how did you track spending?",
+    o: ["I didn't", "Kept it in my head", "Notes / spreadsheet", "Another app"] },
+  { id: "freq",        q: "How often did you open it?",
+    o: ["Daily", "A few times a week", "Weekly", "Rarely"] },
+  { id: "opened_for",  q: "What did you open it for most?",
+    o: ["The balance", "Daily review", "Insights / spending", "History"] },
+  { id: "calendar",    q: "Did you use the Ethiopian (EC) / Gregorian (GC) toggle?",
+    o: ["Yes — kept it on EC", "Tried it once", "Didn't notice it"] },
+
+  { grp: "Overall" },
+  { id: "keep",      q: "Would you keep using it?",
+    o: ["Already do", "Yes", "Maybe", "No"] },
+  { id: "recommend", q: "Would you tell a friend about it?",
+    o: ["Definitely", "Probably", "Probably not"] },
+
+  { grp: "In your words (optional)" },
+  { id: "change",   q: "One thing that annoyed you, or you'd change?", text: true },
+  { id: "sentence", q: "Describe Piggy Bank to a friend in one sentence.",  text: true },
+];
+
+const feedbackAnswers = {};
+
+function renderFeedbackForm() {
+  let n = 0;
+  const parts = [];
+  FEEDBACK_QUESTIONS.forEach((item) => {
+    if (item.grp) { parts.push(`<div class="fb-section-title">${escapeHtml(item.grp)}</div>`); return; }
+    n++;
+    const num = String(n).padStart(2, "0");
+    if (item.text) {
+      parts.push(`
+        <div class="fb-q" data-qid="${escapeHtml(item.id)}">
+          <label class="fb-q-label"><span class="fb-q-num">${num}</span>${escapeHtml(item.q)}</label>
+          <textarea class="fb-textarea" data-qid="${escapeHtml(item.id)}" placeholder="Type a few words…"></textarea>
+        </div>`);
+    } else {
+      const sizeClass = item.o.length === 3 ? " three" : (item.o.length === 1 ? " one" : "");
+      const opts = item.o.map((opt) =>
+        `<button type="button" class="fb-opt" data-val="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`
+      ).join("");
+      parts.push(`
+        <div class="fb-q" data-qid="${escapeHtml(item.id)}">
+          <label class="fb-q-label"><span class="fb-q-num">${num}</span>${escapeHtml(item.q)}</label>
+          <div class="fb-opts${sizeClass}">${opts}</div>
+        </div>`);
+    }
+  });
+  parts.push(`<button type="button" id="fb-submit" class="fb-submit">Submit</button>`);
+  parts.push(`<p id="fb-form-error" class="error hidden" style="margin-top:10px;font-size:13px;"></p>`);
+  feedbackBody.innerHTML = parts.join("");
+
+  // Wire option-pick + textarea handlers.
+  feedbackBody.querySelectorAll(".fb-q").forEach((q) => {
+    const qid = q.dataset.qid;
+    q.querySelectorAll(".fb-opt").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        q.querySelectorAll(".fb-opt").forEach((b) => b.classList.remove("on"));
+        btn.classList.add("on");
+        feedbackAnswers[qid] = btn.dataset.val;
+      });
+    });
+    const ta = q.querySelector(".fb-textarea");
+    if (ta) ta.addEventListener("input", () => { feedbackAnswers[qid] = ta.value.trim(); });
+  });
+  feedbackBody.querySelector("#fb-submit").addEventListener("click", submitFeedback);
+}
+
+async function submitFeedback() {
+  const submitBtn = feedbackBody.querySelector("#fb-submit");
+  const errEl     = feedbackBody.querySelector("#fb-form-error");
+  if (errEl) { errEl.classList.add("hidden"); errEl.textContent = ""; }
+  submitBtn.disabled = true;
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Submitting…";
+
+  try {
+    // Need a user_id to satisfy RLS — fetch the session if state.userId
+    // isn't set yet (happens if the user opens feedback before transactions
+    // have loaded).
+    let userId = state.userId;
+    if (!userId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id || null;
+    }
+    if (!userId) {
+      throw new Error("Not signed in — please sign in again and retry.");
+    }
+    const { error } = await supabase.from("i_feedback").insert({
+      user_id:    userId,
+      user_agent: (navigator.userAgent || "").slice(0, 500),
+      client:     "web",
+      answers:    feedbackAnswers,
+    });
+    if (error) {
+      // Common case: table doesn't exist yet because the migration hasn't
+      // been applied. Show a clear hint.
+      if (/relation .* does not exist/i.test(error.message)) {
+        throw new Error("Feedback table isn't set up yet. Ask the maintainer to run supabase/add_feedback.sql.");
+      }
+      throw new Error(error.message);
+    }
+    showFeedbackSuccess();
+  } catch (e) {
+    console.warn("Feedback submit failed:", e);
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+    if (errEl) {
+      errEl.textContent = `Couldn't submit: ${e?.message || e}`;
+      errEl.classList.remove("hidden");
+    }
+  }
+}
+
+function showFeedbackSuccess() {
+  const summary = buildFeedbackSummary();
+  feedbackBody.innerHTML = `
+    <div class="fb-thanks">
+      <h2>Thank you 🐷</h2>
+      <p>Your feedback was saved. It really helps shape what comes next.</p>
+      <details class="fb-details">
+        <summary class="fb-details-summary">Want a copy of your answers?</summary>
+        <div class="fb-summary">${escapeHtml(summary)}</div>
+        <button type="button" id="fb-copy" class="fb-act-copy" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;font-weight:600;font-size:13px;border:none;cursor:pointer;">Copy answers</button>
+        <span id="fb-copied" class="fb-copied"></span>
+      </details>
+    </div>
+  `;
+  const copyBtn = feedbackBody.querySelector("#fb-copy");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(summary); }
+      catch (_) {
+        const ta = document.createElement("textarea");
+        ta.value = summary; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (__) {}
+        ta.remove();
+      }
+      feedbackBody.querySelector("#fb-copied").textContent = "Copied ✓";
+    });
+  }
+}
+
+function buildFeedbackSummary() {
+  const lines = ["Piggy Bank — tester feedback", ""];
+  let i = 0;
+  FEEDBACK_QUESTIONS.forEach((item) => {
+    if (item.grp) { lines.push(`· ${item.grp.toUpperCase()}`); return; }
+    i++;
+    const a = feedbackAnswers[item.id] || "—";
+    lines.push(`${i}. ${item.q}\n   → ${a}`);
+  });
+  return lines.join("\n");
+}
+
+function openFeedback() {
+  renderFeedbackForm();
+  feedbackBackdrop.classList.remove("hidden");
+}
+function closeFeedback() {
+  feedbackBackdrop.classList.add("hidden");
+  feedbackBody.innerHTML = "";
+}
+if (feedbackBtn) feedbackBtn.addEventListener("click", openFeedback);
+if (feedbackClose) feedbackClose.addEventListener("click", closeFeedback);
+if (feedbackBackdrop) feedbackBackdrop.addEventListener("click", (e) => {
+  if (e.target === feedbackBackdrop) closeFeedback();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && feedbackBackdrop && !feedbackBackdrop.classList.contains("hidden")) closeFeedback();
+});
 
 function exportCsv() {
   const rows = applyTxFilters(state.allTxs);
