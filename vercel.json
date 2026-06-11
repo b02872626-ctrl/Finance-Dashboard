@@ -1,9 +1,11 @@
 {
   "cleanUrls": false,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/admin", "destination": "/admin/", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/", "destination": "/Web/index.html" },
-    { "source": "/admin", "destination": "/Web/admin/index.html" },
     { "source": "/admin/", "destination": "/Web/admin/index.html" },
     { "source": "/admin/:path+", "destination": "/Web/admin/:path+" },
     { "source": "/:path+", "destination": "/Web/:path+" }
