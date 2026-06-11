@@ -175,7 +175,7 @@ function hideLoginError() { loginError.classList.add("hidden"); }
 // Data loading
 // ----------------------------------------------------------------------------
 async function loadOverview() {
-  usersTbody.innerHTML = `<tr><td colspan="7" class="muted">Loading…</td></tr>`;
+  usersTbody.innerHTML = `<tr><td colspan="8" class="muted">Loading…</td></tr>`;
   setChartsLoading();
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -183,7 +183,7 @@ async function loadOverview() {
     supabase.from("admin_user_overview").select("*"),
     supabase
       .from("i_sessions")
-      .select("user_id, client, started_at, last_heartbeat_at, ended_at, duration_seconds")
+      .select("user_id, client, app_version, started_at, last_heartbeat_at, ended_at, duration_seconds")
       .gte("started_at", thirtyDaysAgo)
       .order("started_at", { ascending: false })
       .limit(10000),
@@ -193,12 +193,29 @@ async function loadOverview() {
     const hint = /relation .* does not exist/i.test(usersRes.error.message)
       ? `Schema is out of date — run <code>supabase/add_admin_sessions.sql</code> in the Supabase SQL editor.`
       : escapeHtml(usersRes.error.message);
-    usersTbody.innerHTML = `<tr><td colspan="7" class="muted">${hint}</td></tr>`;
+    usersTbody.innerHTML = `<tr><td colspan="8" class="muted">${hint}</td></tr>`;
     setChartsEmpty(hint);
     return;
   }
   state.users = usersRes.data || [];
   state.sessions = sessionsRes.error ? [] : (sessionsRes.data || []);
+
+  // Derive latest app_version per user from the 30-day session log. Sessions
+  // are ordered started_at DESC, so the first hit per user_id wins. We carry
+  // the client too so the table can show e.g. "web-beta17" vs "android-beta17".
+  // Users with no recent session keep app_version = null and render "—".
+  const latestByUser = new Map();
+  for (const s of state.sessions) {
+    if (latestByUser.has(s.user_id)) continue;
+    if (!s.app_version) continue;
+    latestByUser.set(s.user_id, { version: s.app_version, client: s.client });
+  }
+  for (const u of state.users) {
+    const v = latestByUser.get(u.id);
+    u.app_version = v ? v.version : null;
+    u.last_client = v ? v.client : null;
+  }
+
   renderStats();
   renderUsers();
   renderCharts();
@@ -256,7 +273,7 @@ function renderUsers() {
   filtered.sort((a, b) => compareRows(a, b, state.sort));
 
   if (!filtered.length) {
-    usersTbody.innerHTML = `<tr><td colspan="7" class="muted">No users match.</td></tr>`;
+    usersTbody.innerHTML = `<tr><td colspan="8" class="muted">No users match.</td></tr>`;
     return;
   }
 
@@ -274,6 +291,7 @@ function renderUsers() {
         </td>
         <td>${formatDate(u.account_created_at)}</td>
         <td>${formatRelative(u.last_session_at) || formatRelative(u.last_sign_in_at) || '—'}</td>
+        <td>${formatVersionCell(u)}</td>
         <td class="num">${(u.session_count || 0).toLocaleString()}</td>
         <td class="num">${formatDuration(u.total_seconds || 0)}</td>
         <td class="num">${(u.txn_count || 0).toLocaleString()}</td>
@@ -561,6 +579,30 @@ document.addEventListener("click", (e) => {
 // ----------------------------------------------------------------------------
 // Formatters
 // ----------------------------------------------------------------------------
+// Renders the per-user Version cell. Strings like "web-beta17" or
+// "android-beta17" get split into a small "WEB"/"ANDROID" client tag plus
+// the version label so the column is scannable. Unknown / missing values
+// render as a muted em-dash.
+function formatVersionCell(u) {
+  const v = u.app_version;
+  if (!v) return '<span class="muted">—</span>';
+  // Common patterns: "web-beta17", "android-1.0.0-beta17", "web-1.2.3"
+  let client = u.last_client || "";
+  let label = v;
+  const dash = v.indexOf("-");
+  if (dash > 0) {
+    const head = v.slice(0, dash).toLowerCase();
+    if (head === "web" || head === "android" || head === "ios") {
+      client = head;
+      label = v.slice(dash + 1);
+    }
+  }
+  const clientPill = client
+    ? `<span class="version-client version-client-${escapeAttr(client)}">${escapeHtml(client.toUpperCase())}</span>`
+    : "";
+  return `<span class="version-cell">${clientPill}<code class="version-label">${escapeHtml(label)}</code></span>`;
+}
+
 function formatDuration(seconds) {
   const s = Math.max(0, Math.round(Number(seconds) || 0));
   if (s < 60) return `${s}s`;

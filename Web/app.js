@@ -17,6 +17,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL  = "https://sadbxjnmcgzwtjbqqhbk.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhZGJ4am5tY2d6d3RqYnFxaGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzg1NzcsImV4cCI6MjA5MDIxNDU3N30.aXA5I5CD--DjpnsbrHPZLebAmITNSDVmYDo1mkj3Gz4";
 
+// Bump this each release. Matches the Android versionName convention so the
+// admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
+const APP_VERSION = "web-beta17";
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: true, autoRefreshToken: true },
 });
@@ -450,6 +454,7 @@ async function startSessionTracking(session) {
     .insert({
       user_id: session.user.id,
       client: "web",
+      app_version: APP_VERSION,
       user_agent: (navigator.userAgent || "").slice(0, 500),
     })
     .select()
