@@ -409,18 +409,11 @@ private fun WeeklyBarChart(
     highlightColor: Color = PureWhite.copy(alpha = 0.92f),
     labelColor: Color = BodyMuted
 ) {
-    val pts = if (points.isEmpty()) {
-        // Visual fallback so the card looks right on a fresh install.
-        listOf(
-            WeekActivityPoint("S", 350.0),
-            WeekActivityPoint("M", 720.0),
-            WeekActivityPoint("T", 480.0),
-            WeekActivityPoint("W", 690.0),
-            WeekActivityPoint("T", 540.0),
-            WeekActivityPoint("F", 600.0),
-            WeekActivityPoint("S", 240.0)
-        )
-    } else points
+    // Fresh install: render the 7 day labels with no bars rather than
+    // invented spending.
+    val pts = points.ifEmpty {
+        listOf("S", "M", "T", "W", "T", "F", "S").map { WeekActivityPoint(it, 0.0) }
+    }
 
     val todayIndex = remember {
         when (Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {

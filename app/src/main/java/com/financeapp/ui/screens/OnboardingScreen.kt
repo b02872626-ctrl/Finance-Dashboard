@@ -580,17 +580,19 @@ private fun AllSetStep(transactions: List<TransactionEntity>, onGoDashboard: () 
         TransactionType.TRANSFER_OUT.name,
         TransactionType.PAYMENT.name
     )
-    val txCount = if (transactions.isNotEmpty()) transactions.size else 1375
+    // No design-mock fallbacks here: with nothing imported the stat cards
+    // are replaced by an honest "nothing yet" card.
+    val txCount = transactions.size
     val topMerchant = remember(transactions) {
         transactions
             .filter { it.type in expenseTypes }
             .groupBy { (it.counterparty ?: "").trim().takeIf(String::isNotBlank) ?: it.bankName }
             .maxByOrNull { (_, txs) -> txs.sumOf { it.amount } }
             ?.key
-            ?: "Kaldis Coffee"
     }
     val monthly = remember(transactions) { computeMonthly(transactions, expenseTypes) }
-    val avg = if (monthly.values.any { it > 0 }) monthly.values.average() else 12_400.0
+    val hasSpending = monthly.values.any { it > 0 }
+    val avg = if (hasSpending) monthly.values.average() else 0.0
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -609,7 +611,8 @@ private fun AllSetStep(transactions: List<TransactionEntity>, onGoDashboard: () 
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Your financial identity has been\nmeticulously curated. Here is a brief\nlook at your journey so far.",
+                text = if (txCount > 0) "Here's a first look at what we found\nin your bank messages."
+                       else "We didn't find any bank messages yet.\nNew ones will show up automatically.",
                 color = BodyMuted,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
@@ -618,8 +621,23 @@ private fun AllSetStep(transactions: List<TransactionEntity>, onGoDashboard: () 
 
             Spacer(Modifier.height(20.dp))
 
+            if (txCount == 0) {
+                StatCard {
+                    Text("Nothing imported yet", color = Headline, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Finance Lore reads SMS from supported banks and Telebirr. As soon as " +
+                            "one arrives, it appears on your dashboard. You can also add a " +
+                            "transaction by hand with the + button.",
+                        color = BodyMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+
             // Card 1 — Activity overview
-            StatCard {
+            if (txCount > 0) StatCard {
                 Text("Activity overview", color = FooterGrey, fontSize = 13.sp)
                 Spacer(Modifier.height(10.dp))
                 Text(
@@ -640,7 +658,7 @@ private fun AllSetStep(transactions: List<TransactionEntity>, onGoDashboard: () 
             Spacer(Modifier.height(14.dp))
 
             // Card 2 — Frequent Merchant
-            StatCard {
+            if (topMerchant != null) StatCard {
                 Text("Frequent Merchant", color = FooterGrey, fontSize = 13.sp)
                 Spacer(Modifier.height(10.dp))
                 Text(
@@ -661,7 +679,7 @@ private fun AllSetStep(transactions: List<TransactionEntity>, onGoDashboard: () 
             Spacer(Modifier.height(14.dp))
 
             // Card 3 — Monthly Lifestyle (chart + spent line)
-            StatCard {
+            if (hasSpending) StatCard {
                 Text("Monthly Lifestyle", color = FooterGrey, fontSize = 13.sp)
                 Spacer(Modifier.height(14.dp))
                 MonthlyBarChart(monthly)
@@ -720,17 +738,9 @@ private fun StatCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun MonthlyBarChart(monthly: LinkedHashMap<String, Double>) {
-    val pairs = if (monthly.isEmpty() || monthly.values.all { it <= 0 }) {
-        // Design mock so the chart renders meaningfully on first install.
-        linkedMapOf(
-            "Nov" to 5_500.0,
-            "Dec" to 6_200.0,
-            "Jan" to 7_000.0,
-            "Feb" to 13_500.0,
-            "Mar" to 7_400.0,
-            "April" to 8_900.0
-        )
-    } else monthly
+    // Only rendered when there is real spending (see AllSetStep).
+    val pairs = monthly
+    if (pairs.isEmpty()) return
 
     val maxValue = pairs.values.max().coerceAtLeast(1.0)
     val highlightKey = pairs.maxByOrNull { it.value }?.key
