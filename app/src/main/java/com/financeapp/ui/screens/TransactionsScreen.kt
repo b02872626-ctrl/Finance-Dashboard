@@ -100,6 +100,7 @@ fun TransactionsScreen(vm: TransactionsViewModel, onTxClick: (Long) -> Unit) {
     val filter by vm.filter.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     var isExporting by remember { mutableStateOf(false) }
     val exportLauncher =
@@ -193,8 +194,10 @@ fun TransactionsScreen(vm: TransactionsViewModel, onTxClick: (Long) -> Unit) {
                 HistoryCard(
                     searchQuery = filter.searchQuery,
                     activeType = filter.type,
+                    activePeriod = filter.period,
                     onSearchChange = { vm.setSearch(it) },
                     onTypeChange = { vm.setType(it) },
+                    onPeriodChange = { focusManager.clearFocus(); vm.setPeriod(it) },
                     onCalendarClick = { showDatePicker = true },
                     onDownloadClick = {
                         val ts = SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())
@@ -283,8 +286,10 @@ private data class HistoryChip(val label: String, val type: String?)
 private fun HistoryCard(
     searchQuery: String,
     activeType: String?,
+    activePeriod: com.financeapp.ui.components.HistoryPeriod?,
     onSearchChange: (String) -> Unit,
     onTypeChange: (String?) -> Unit,
+    onPeriodChange: (com.financeapp.ui.components.HistoryPeriod) -> Unit,
     onCalendarClick: () -> Unit,
     onDownloadClick: () -> Unit,
     isExporting: Boolean
@@ -321,41 +326,11 @@ private fun HistoryCard(
 
         Spacer(Modifier.height(14.dp))
 
-        // Search field (clickable text-display style; tap funnels into typed search)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(50))
-                .background(InnerDark)
-                .padding(horizontal = 16.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_search_dark),
-                contentDescription = "Search",
-                tint = Coral,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(10.dp))
-            // Inline editable text using BasicTextField so the design stays clean.
-            androidx.compose.foundation.text.BasicTextField(
-                value = searchQuery,
-                onValueChange = onSearchChange,
-                singleLine = true,
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    color = Headline,
-                    fontSize = 13.sp
-                ),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(Coral),
-                modifier = Modifier.weight(1f),
-                decorationBox = { inner ->
-                    if (searchQuery.isEmpty()) {
-                        Text(text = "Search by name, bank, date ...", color = FooterGrey, fontSize = 13.sp)
-                    }
-                    inner()
-                }
-            )
-        }
+        com.financeapp.ui.components.HistorySearchField(
+            query = searchQuery,
+            onQueryChange = onSearchChange,
+            placeholder = "Search by name, bank, category ..."
+        )
 
         Spacer(Modifier.height(12.dp))
 
@@ -383,6 +358,9 @@ private fun HistoryCard(
                 }
             }
         }
+
+        Spacer(Modifier.height(10.dp))
+        com.financeapp.ui.components.PeriodChips(selected = activePeriod, onSelect = onPeriodChange)
     }
 }
 

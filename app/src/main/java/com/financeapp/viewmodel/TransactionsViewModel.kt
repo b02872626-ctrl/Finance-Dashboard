@@ -4,6 +4,7 @@ import androidx.lifecycle.*
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.parsing.TransactionType
+import com.financeapp.ui.components.HistoryPeriod
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,7 +16,9 @@ data class TransactionsFilter(
     val type: String?               = null,
     val fromMs: Long                = 0L,
     val toMs: Long                  = Long.MAX_VALUE,
-    val searchQuery: String         = ""
+    val searchQuery: String         = "",
+    /** Quick period chip; null while a custom calendar date is applied. */
+    val period: HistoryPeriod?      = HistoryPeriod.ALL
 )
 
 data class DayGroup(
@@ -68,7 +71,10 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
     fun setSearch(q: String)   { _filter.update { it.copy(searchQuery = q) } }
     fun setSender(s: String?)  { _filter.update { it.copy(sender = s) } }
     fun setType(t: String?)    { _filter.update { it.copy(type = t) } }
-    fun setDateFilter(fromMs: Long, toMs: Long) { _filter.update { it.copy(fromMs = fromMs, toMs = toMs) } }
+    fun setDateFilter(fromMs: Long, toMs: Long) { _filter.update { it.copy(fromMs = fromMs, toMs = toMs, period = null) } }
+    fun setPeriod(p: HistoryPeriod) {
+        _filter.update { it.copy(fromMs = p.fromMs(), toMs = Long.MAX_VALUE, period = p) }
+    }
     fun clearFilters()         { _filter.value = TransactionsFilter() }
 
     fun updateCategory(id: Long, category: String?, allowBulkSuggestion: Boolean = false) {
@@ -117,7 +123,8 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
     private fun matchesSearch(tx: TransactionEntity, q: String): Boolean =
         tx.counterparty?.contains(q, ignoreCase = true) == true ||
             tx.refNumber?.contains(q, ignoreCase = true) == true ||
-            tx.bankName.contains(q, ignoreCase = true)
+            tx.bankName.contains(q, ignoreCase = true) ||
+            tx.category?.contains(q, ignoreCase = true) == true
 
     private suspend fun maybeSuggestBulkCategory(id: Long, category: String?) {
         val normalizedCategory = category?.trim().orEmpty()

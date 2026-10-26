@@ -4,6 +4,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.platform.LocalFocusManager
+import com.financeapp.ui.components.HistoryPeriod
+import com.financeapp.ui.components.HistorySearchField
+import com.financeapp.ui.components.PeriodChips
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -88,9 +93,24 @@ fun BankAnalyticsScreen(
         return
     }
 
-    var visibleCount by rememberSaveable(state.bankName) { mutableIntStateOf(8) }
-    val visibleTxns = state.transactions.take(visibleCount)
-    val net = visibleTxns.sumOf { netValue(it) }
+    var query by rememberSaveable(state.bankName) { mutableStateOf("") }
+    var period by rememberSaveable(state.bankName) { mutableStateOf(HistoryPeriod.ALL) }
+    val filteredTxns = remember(state.transactions, query, period) {
+        val fromMs = period.fromMs()
+        val q = query.trim()
+        state.transactions.filter { tx ->
+            tx.dateTime >= fromMs && (q.isEmpty() ||
+                tx.counterparty?.contains(q, ignoreCase = true) == true ||
+                tx.category?.contains(q, ignoreCase = true) == true ||
+                tx.refNumber?.contains(q, ignoreCase = true) == true)
+        }
+    }
+    val isFiltering = query.isNotBlank() || period != HistoryPeriod.ALL
+    var visibleCount by rememberSaveable(state.bankName, query, period) { mutableIntStateOf(8) }
+    val visibleTxns = filteredTxns.take(visibleCount)
+    // Net covers the whole filtered period, not just the rows paged in.
+    val net = remember(filteredTxns) { filteredTxns.sumOf { netValue(it) } }
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
@@ -145,6 +165,17 @@ fun BankAnalyticsScreen(
             }
 
             item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    HistorySearchField(
+                        query = query,
+                        onQueryChange = { query = it },
+                        placeholder = "Search this account ..."
+                    )
+                    PeriodChips(selected = period, onSelect = { focusManager.clearFocus(); period = it })
+                }
+            }
+
+            item {
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DividerCol))
             }
 
@@ -157,14 +188,19 @@ fun BankAnalyticsScreen(
                             .background(CardBg)
                             .padding(20.dp)
                     ) {
-                        Text(text = "No activity recorded for this account.", color = BodyMuted, fontSize = 13.sp)
+                        Text(
+                            text = if (isFiltering) "No transactions match this search or period."
+                                   else "No activity recorded for this account.",
+                            color = BodyMuted,
+                            fontSize = 13.sp
+                        )
                     }
                 }
             } else {
                 items(visibleTxns, onTxClick)
-                if (visibleCount < state.transactions.size) {
+                if (visibleCount < filteredTxns.size) {
                     item {
-                        LoadMorePill(onClick = { visibleCount = (visibleCount + 10).coerceAtMost(state.transactions.size) })
+                        LoadMorePill(onClick = { visibleCount = (visibleCount + 10).coerceAtMost(filteredTxns.size) })
                     }
                 }
             }
