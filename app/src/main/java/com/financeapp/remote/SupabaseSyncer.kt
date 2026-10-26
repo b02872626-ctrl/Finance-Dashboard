@@ -81,19 +81,7 @@ class SupabaseSyncer(private val context: Context) {
     private suspend fun pullRemoteStates(repo: TransactionRepository): Int {
         val cfg = SupabaseConfigProvider.fromBuildConfig() ?: return 0
         val settingsRepo = SettingsRepository(context)
-        var session = settingsRepo.getSupabaseSession() ?: return 0
-
-        if (session.isExpired()) {
-            val refreshed = SupabaseAuthClient(cfg).refresh(session.refreshToken)
-            session = SupabaseSession(
-                accessToken = refreshed.accessToken,
-                refreshToken = refreshed.refreshToken,
-                userId = refreshed.userId,
-                email = refreshed.email,
-                expiresAtMs = System.currentTimeMillis() + refreshed.expiresInSeconds * 1000L
-            )
-            settingsRepo.setSupabaseSession(session)
-        }
+        val session = ensureFreshSession(settingsRepo, cfg) ?: return 0
 
         val client = SupabaseRestClient(cfg, session.accessToken)
         // Last 90 days bounds the bandwidth without missing anything fresh.
@@ -148,20 +136,11 @@ class SupabaseSyncer(private val context: Context) {
 
         try {
             val settingsRepo = SettingsRepository(context)
-            var session = settingsRepo.getSupabaseSession()
-                ?: return@withContext SupabaseSyncResult.SkippedNotSignedIn
-
-            if (session.isExpired()) {
-                val refreshed = SupabaseAuthClient(cfg).refresh(session.refreshToken)
-                session = SupabaseSession(
-                    accessToken = refreshed.accessToken,
-                    refreshToken = refreshed.refreshToken,
-                    userId = refreshed.userId,
-                    email = refreshed.email,
-                    expiresAtMs = System.currentTimeMillis() + refreshed.expiresInSeconds * 1000L
-                )
-                settingsRepo.setSupabaseSession(session)
+            if (settingsRepo.getSupabaseSession() == null) {
+                return@withContext SupabaseSyncResult.SkippedNotSignedIn
             }
+            val session = ensureFreshSession(settingsRepo, cfg)
+                ?: return@withContext SupabaseSyncResult.SkippedNotSignedIn
 
             val userId = session.userId
             val client = SupabaseRestClient(cfg, session.accessToken)
@@ -191,5 +170,52 @@ class SupabaseSyncer(private val context: Context) {
                     e is SSLException
             )
         }
+    }
+
+    /**
+     * Returns the current session, refreshing it first if expired. If the
+     * refresh token itself is dead (already used / revoked — this happens
+     * when two sync passes race to refresh the same token, or the user
+     * signed out elsewhere), every future sync would otherwise retry the
+     * same doomed token forever with no visible error. Instead we clear the
+     * stored session here so the app falls back to the sign-in screen next
+     * time it's opened, and the caller treats this like "not signed in".
+     */
+    private suspend fun ensureFreshSession(
+        settingsRepo: SettingsRepository,
+        cfg: SupabaseConfig
+    ): SupabaseSession? {
+        val session = settingsRepo.getSupabaseSession() ?: return null
+        if (!session.isExpired()) return session
+
+        return try {
+            val refreshed = SupabaseAuthClient(cfg).refresh(session.refreshToken)
+            val newSession = SupabaseSession(
+                accessToken = refreshed.accessToken,
+                refreshToken = refreshed.refreshToken,
+                userId = refreshed.userId,
+                email = refreshed.email,
+                expiresAtMs = System.currentTimeMillis() + refreshed.expiresInSeconds * 1000L
+            )
+            settingsRepo.setSupabaseSession(newSession)
+            newSession
+        } catch (e: Exception) {
+            if (isDeadRefreshToken(e)) {
+                ErrorLogRepository.fromContext(context)
+                    .log("Supabase refresh token dead — forcing re-login", e)
+                settingsRepo.clearSupabaseSession()
+                null
+            } else {
+                throw e
+            }
+        }
+    }
+
+    private fun isDeadRefreshToken(e: Exception): Boolean {
+        val msg = e.message ?: return false
+        return msg.contains("refresh_token_already_used") ||
+            msg.contains("refresh_token_not_found") ||
+            msg.contains("invalid_grant") ||
+            (msg.contains("Supabase auth failed (400)") && msg.contains("Invalid Refresh Token"))
     }
 }

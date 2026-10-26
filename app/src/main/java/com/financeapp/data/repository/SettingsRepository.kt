@@ -156,6 +156,52 @@ class SettingsRepository(context: Context) {
         return normalized
     }
 
+    /**
+     * Recent-categories list — populated every time the user actually
+     * picks a category (in Daily Review, the picker sheet, or via Add
+     * Transaction). Stored as a comma-separated string so order is
+     * preserved (StringSet would lose it). Capped at [RECENT_CAP] entries.
+     *
+     * The picker sheet's "Recent" chip row reads from here so it reflects
+     * what the user *actually* uses, not a hardcoded ["Food","Transport","Transfer"].
+     */
+    fun getRecentCategories(): List<String> {
+        val raw = prefs.getString(KEY_RECENT_CATEGORIES, "") ?: ""
+        if (raw.isBlank()) return emptyList()
+        return raw.split(RECENT_SEPARATOR)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .take(RECENT_CAP)
+    }
+
+    /**
+     * Push a category to the front of the recent list. Dedupes (existing
+     * entry is moved to position 0, not duplicated) and caps at [RECENT_CAP].
+     * Empty / blank names are silently ignored.
+     */
+    fun pushRecentCategory(category: String) {
+        val normalized = TransactionCategoryCatalog.normalize(category)
+        if (normalized.isBlank()) return
+        val current = getRecentCategories().toMutableList()
+        // Drop existing case-insensitive match — we'll re-add at the front.
+        current.removeAll { it.equals(normalized, ignoreCase = true) }
+        current.add(0, normalized)
+        val capped = current.take(RECENT_CAP)
+        prefs.edit()
+            .putString(KEY_RECENT_CATEGORIES, capped.joinToString(RECENT_SEPARATOR.toString()))
+            .apply()
+    }
+
+    fun recentCategoriesFlow(): Flow<List<String>> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, k ->
+            if (k == KEY_RECENT_CATEGORIES) trySend(getRecentCategories())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        trySend(getRecentCategories())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
     fun markPendingSyncNotification() {
         prefs.edit().putBoolean(KEY_PENDING_SYNC_NOTIFICATION, true).apply()
     }
@@ -202,5 +248,10 @@ class SettingsRepository(context: Context) {
         const val KEY_PENDING_SYNC_NOTIFICATION = "pending_sync_notification"
         const val KEY_DISABLED_SENDERS = "disabled_senders"
         const val KEY_CUSTOM_CATEGORIES = "custom_categories"
+        const val KEY_RECENT_CATEGORIES = "recent_categories"
+        /** Max length of the recents row in the picker (kept tight to fit on one line). */
+        const val RECENT_CAP = 6
+        /** Char-class-free separator so it never collides with category names. */
+        const val RECENT_SEPARATOR = '' // ASCII record-separator
     }
 }

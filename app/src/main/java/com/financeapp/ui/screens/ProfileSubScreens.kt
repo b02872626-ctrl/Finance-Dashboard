@@ -382,14 +382,14 @@ fun AccountSecurityScreen(
                     DeviceRow(
                         iconRes = R.drawable.ic_phone_device,
                         title = "Surface laptop 4 - Wind...",
-                        subtitle = "Finance Lore - A.A Eth.",
+                        subtitle = "Piggy Bank - A.A Eth.",
                         isThisDevice = false
                     )
                     ThinDivider()
                     DeviceRow(
                         iconRes = R.drawable.ic_pc_device,
                         title = "Samsung S22",
-                        subtitle = "Finance Lore - A.A Eth.",
+                        subtitle = "Piggy Bank - A.A Eth.",
                         isThisDevice = true
                     )
                 }

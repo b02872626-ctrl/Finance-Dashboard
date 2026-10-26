@@ -87,6 +87,7 @@ sealed class Screen(val route: String, val label: String, @DrawableRes val iconR
     object Analytics : Screen("analytics", "Analytics", R.drawable.ic_anaytics_dark)
     object Profile : Screen("profile", "Profile", R.drawable.ic_profile_dark)
     object AccountSettings : Screen("account_settings", "Account", R.drawable.ic_profile_dark)
+    object AddTransaction : Screen("add_transaction", "Add transaction")
 }
 
 private val TABS = listOf(
@@ -187,6 +188,11 @@ private fun MainNavigation(
     val txVm: TransactionsViewModel = viewModel(factory = txFac)
     val anlVm: AnalyticsViewModel = viewModel(factory = anlFac)
     val categories by setVm.categories.collectAsState()
+    // Real recent-picks for the picker sheet "Recent" row — pushed by repo
+    // every time the user confirms a category.
+    val recentCategories by remember(settingsRepo) {
+        settingsRepo.recentCategoriesFlow()
+    }.collectAsState(initial = settingsRepo.getRecentCategories())
     val todayUncategorized by txVm.todayUncategorizedTransactions.collectAsState()
     val bulkSuggestion by txVm.bulkCategorySuggestion.collectAsState()
 
@@ -254,7 +260,20 @@ private fun MainNavigation(
                         navController.navigate("${Screen.DailyReview.route}?scope=all") {
                             launchSingleTop = true
                         }
+                    },
+                    onAddTransactionClick = {
+                        navController.navigate(Screen.AddTransaction.route)
                     }
+                )
+            }
+            composable(Screen.AddTransaction.route) {
+                val addVm: com.financeapp.viewmodel.AddTransactionViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                    factory = com.financeapp.viewmodel.AddTransactionViewModelFactory(repo)
+                )
+                com.financeapp.ui.screens.AddTransactionScreen(
+                    vm = addVm,
+                    onSaved = { navController.popBackStack() },
+                    onClose = { navController.popBackStack() }
                 )
             }
             composable(Screen.Accounts.route) {
@@ -375,6 +394,7 @@ private fun MainNavigation(
                     vm = keyedVm,
                     userName = userName,
                     customCategories = categories,
+                    recentCategories = recentCategories,
                     onAddCustomCategory = { setVm.addCustomCategory(it) },
                     onClose = { navController.popBackStack() }
                 )
@@ -388,6 +408,7 @@ private fun MainNavigation(
                     vm = keyedVm,
                     userName = userName,
                     customCategories = categories,
+                    recentCategories = recentCategories,
                     onAddCustomCategory = { setVm.addCustomCategory(it) },
                     onClose = { navController.popBackStack() }
                 )

@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Piggy Bank launcher background — solid near-black so the coral pig +
+    grey character details from the foreground both read with high
+    contrast at any size. Hex #121414 matches the dark accent color in
+    design/branding/Asset 1.svg, so the icon and any extracted brand
+    artwork stay in palette.
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#0A0E1B" />
+    <solid android:color="#121414" />
 </shape>

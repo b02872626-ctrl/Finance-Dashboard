@@ -122,7 +122,12 @@ fun TransactionDetailScreen(
                 Text(text = "Transaction Details", color = Headline, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
 
-            // Hero card — category / amount / bank · account
+            // Hero card — category pill / amount / bank · account
+            //
+            // Category gets a colored CategoryPillBold on the top row paired
+            // with a small "Edit" hint to the right. The whole card is still
+            // tappable (opens the picker sheet), but the dedicated visual
+            // affordance is now discoverable instead of a buried muted text.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -135,8 +140,20 @@ fun TransactionDetailScreen(
                     )
                     .padding(horizontal = 20.dp, vertical = 22.dp)
             ) {
-                Text(text = category, color = BodyMuted, fontSize = 14.sp)
-                Spacer(Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    com.financeapp.ui.components.CategoryPillBold(category = category)
+                    Text(
+                        text = "Edit ›",
+                        color = BodyMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = "${moneyShort(tx.amount)} ETB",
                     color = Headline,

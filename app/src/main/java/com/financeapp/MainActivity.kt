@@ -46,8 +46,10 @@ class MainActivity : ComponentActivity() {
         pendingRoute = intent?.getStringExtra(EXTRA_DESTINATION_ROUTE)
 
         val db   = AppDatabase.getInstance(this)
-        val repo = TransactionRepository(db)
         val settingsRepo = SettingsRepository(this)
+        // Repo gets settings so it can push category picks onto the
+        // recents list for the picker sheet's "Recent" row.
+        val repo = TransactionRepository(db, settings = settingsRepo)
         refreshPermissionState()
 
         setContent {

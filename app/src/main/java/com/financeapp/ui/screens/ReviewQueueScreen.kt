@@ -86,6 +86,7 @@ fun ReviewQueueScreen(
     vm: ReviewQueueViewModel,
     userName: String,
     customCategories: List<String>,
+    recentCategories: List<String>,
     onAddCustomCategory: (String) -> Unit,
     onClose: () -> Unit
 ) {
@@ -274,6 +275,7 @@ fun ReviewQueueScreen(
                     merchant = current.counterparty ?: "this merchant",
                     currentCategory = current.category ?: current.predictedCategory,
                     categories = categories,
+                    recentCategories = recentCategories,
                     applySimilar = state.applyToSimilar,
                     onApplySimilarChange = { vm.toggleApplyToSimilar() },
                     onPick = { vm.pickCategory(it, advance = true) },

@@ -105,7 +105,8 @@ fun DashboardScreen(
     onQuickFilterClick: (String?) -> Unit,
     onSettingsClick: () -> Unit,
     onStartDailyReview: () -> Unit = {},
-    onStartOlderReview: () -> Unit = {}
+    onStartOlderReview: () -> Unit = {},
+    onAddTransactionClick: () -> Unit = {}
 ) {
     val state = vm.state.collectAsState().value
     val context = LocalContext.current
@@ -153,7 +154,11 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item {
-                HomeHeader(userName = userName, onSettingsClick = onSettingsClick)
+                HomeHeader(
+                    userName = userName,
+                    onSettingsClick = onSettingsClick,
+                    onAddTransactionClick = onAddTransactionClick
+                )
             }
 
             item {
@@ -219,7 +224,11 @@ fun DashboardScreen(
 // Header
 // ---------------------------------------------------------------------------
 @Composable
-private fun HomeHeader(userName: String, onSettingsClick: () -> Unit) {
+private fun HomeHeader(
+    userName: String,
+    onSettingsClick: () -> Unit,
+    onAddTransactionClick: () -> Unit = {}
+) {
     val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
     val greeting = when {
         hour < 12 -> "Good morning"
@@ -251,26 +260,53 @@ private fun HomeHeader(userName: String, onSettingsClick: () -> Unit) {
         // V2 design: settings gear in a rounded-square tile (vs the
         // previous round profile avatar). Material Outlined Settings to
         // keep the strokes crisp on dark bg.
-        val gearIx = rememberTactileSource()
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .pressScale(gearIx)
-                .clip(RoundedCornerShape(14.dp))
-                .background(CardBg)
-                .clickable(
-                    interactionSource = gearIx,
-                    indication = null,
-                    onClick = onSettingsClick
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Settings,
-                contentDescription = "Settings",
-                tint = Headline,
-                modifier = Modifier.size(26.dp)
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Coral "+" tile — primary discovery point for manual entries.
+            // Coral fill picks out the action from the dark gear next to it
+            // and matches the brand accent used on the hero card + CTAs.
+            val addIx = rememberTactileSource()
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .pressScale(addIx)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Coral)
+                    .clickable(
+                        interactionSource = addIx,
+                        indication = null,
+                        onClick = onAddTransactionClick
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "+",
+                    color = PureWhite,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            val gearIx = rememberTactileSource()
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .pressScale(gearIx)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardBg)
+                    .clickable(
+                        interactionSource = gearIx,
+                        indication = null,
+                        onClick = onSettingsClick
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = Headline,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
         }
     }
 }

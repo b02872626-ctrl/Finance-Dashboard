@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.financeapp.data.model.TransactionCategoryCatalog
 import com.financeapp.data.model.TransactionEntity
+import com.financeapp.ui.theme.categoryColor
+import com.financeapp.ui.theme.onCategoryColor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -120,6 +122,7 @@ fun CategoryPickerSheet(
     merchant: String,
     currentCategory: String?,
     categories: List<String>,
+    recentCategories: List<String>,
     applySimilar: Boolean,
     onApplySimilarChange: (Boolean) -> Unit,
     onPick: (String) -> Unit,
@@ -133,7 +136,15 @@ fun CategoryPickerSheet(
         else categories.filter { it.contains(query, ignoreCase = true) }
     }
     val firstWord = merchant.split(' ').firstOrNull() ?: merchant
-    val recent = listOf("Food", "Transport", "Transfer").filter { it in categories }
+    // Real recents — falls back to a sensible starter trio on a fresh
+    // install so the row isn't empty before the user has picked anything.
+    val recent = remember(recentCategories, categories) {
+        val real = recentCategories.filter { c ->
+            categories.any { it.equals(c, ignoreCase = true) }
+        }
+        if (real.isNotEmpty()) real
+        else listOf("Food", "Transport", "Transfer").filter { it in categories }
+    }
 
     // Custom-category input dialog. Opens when user taps the "Add custom"
     // row OR submits an empty search. Closes on save/cancel/back.
@@ -241,24 +252,13 @@ fun CategoryPickerSheet(
                 if (query.isBlank()) {
                     if (recent.isNotEmpty()) {
                         item {
-                            Text("Recent", color = TextMute, fontSize = 12.sp,
-                                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 6.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                recent.forEach { c ->
-                                    Text(
-                                        c,
-                                        color = if (currentCategory == c) Color(0xFF231E1A) else TextPrimary,
-                                        fontSize = 13.sp,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(50))
-                                            .background(if (currentCategory == c) TextPrimary else CardBg)
-                                            .border(1.dp, BorderCol, RoundedCornerShape(50))
-                                            .clickable { onPick(c) }
-                                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                                    )
-                                }
-                            }
-                            Spacer(Modifier.height(10.dp))
+                            SectionLabel("Recent")
+                            CategoryPillGrid(
+                                items = recent,
+                                selected = currentCategory,
+                                onPick = onPick
+                            )
+                            Spacer(Modifier.height(14.dp))
                         }
                     }
 
@@ -266,17 +266,13 @@ fun CategoryPickerSheet(
                         val visible = groupCats.filter { it in categories }
                         if (visible.isNotEmpty()) {
                             item {
-                                Text(
-                                    groupLabel,
-                                    color = TextMute, fontSize = 12.sp,
-                                    modifier = Modifier.padding(start = 6.dp, top = 8.dp, bottom = 8.dp)
+                                SectionLabel(groupLabel)
+                                CategoryPillGrid(
+                                    items = visible,
+                                    selected = currentCategory,
+                                    onPick = onPick
                                 )
-                            }
-                            items(visible) { c ->
-                                CategoryRow(
-                                    label = c, selected = currentCategory == c,
-                                    onClick = { onPick(c) }
-                                )
+                                Spacer(Modifier.height(14.dp))
                             }
                         }
                     }
@@ -286,19 +282,22 @@ fun CategoryPickerSheet(
                     val custom = categories.filter { it !in sectionedSet }
                     if (custom.isNotEmpty()) {
                         item {
-                            Text(
-                                "Custom",
-                                color = TextMute, fontSize = 12.sp,
-                                modifier = Modifier.padding(start = 6.dp, top = 8.dp, bottom = 8.dp)
+                            SectionLabel("Custom")
+                            CategoryPillGrid(
+                                items = custom,
+                                selected = currentCategory,
+                                onPick = onPick
                             )
-                        }
-                        items(custom) { c ->
-                            CategoryRow(label = c, selected = currentCategory == c, onClick = { onPick(c) })
+                            Spacer(Modifier.height(14.dp))
                         }
                     }
                 } else {
-                    items(filtered) { c ->
-                        CategoryRow(label = c, selected = currentCategory == c, onClick = { onPick(c) })
+                    item {
+                        CategoryPillGrid(
+                            items = filtered,
+                            selected = currentCategory,
+                            onPick = onPick
+                        )
                     }
                 }
 
@@ -327,6 +326,75 @@ fun CategoryPickerSheet(
                     Text("Updates rule for $firstWord", color = TextMute, fontSize = 11.5.sp)
                 }
                 Toggle(on = applySimilar, onToggle = { onApplySimilarChange(!applySimilar) })
+            }
+        }
+    }
+}
+
+/**
+ * Section header inside the category picker — "Recent", "Spending", etc.
+ * Compact, muted, padded.
+ */
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text,
+        color = TextMute, fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(start = 6.dp, top = 4.dp, bottom = 10.dp)
+    )
+}
+
+/**
+ * Wrap-grid of category pills — replaces the old vertical CategoryRow list.
+ * Pills lay out 3 per row (Column + chunked) so we don't pull in the
+ * experimental FlowRow API. Each pill is colored by [categoryColor] so
+ * categories are scannable at a glance.
+ *
+ * Selection state: the active pill goes from tinted (alpha 0.18) to solid
+ * fill with on-color text. Non-selected pills retain the muted tint.
+ */
+@Composable
+private fun CategoryPillGrid(
+    items: List<String>,
+    selected: String?,
+    onPick: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { label ->
+                    val isSelected = selected?.equals(label, ignoreCase = true) == true
+                    val accent = categoryColor(label)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(
+                                if (isSelected) accent
+                                else accent.copy(alpha = 0.18f)
+                            )
+                            .border(
+                                width = if (isSelected) 0.dp else 1.dp,
+                                color = accent.copy(alpha = if (isSelected) 0f else 0.35f),
+                                shape = RoundedCornerShape(999.dp)
+                            )
+                            .clickable { onPick(label) }
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            color = if (isSelected) onCategoryColor(accent) else accent,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+                }
+                // Pad the last row to a full 3 cells so pills don't stretch
+                // across remaining width when the row is short (1 or 2 items).
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

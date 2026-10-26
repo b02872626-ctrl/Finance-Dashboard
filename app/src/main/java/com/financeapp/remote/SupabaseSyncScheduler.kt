@@ -51,18 +51,31 @@ object SupabaseSyncScheduler {
     }
 
     fun bootstrap(context: Context) {
-        // Safety periodic fallback (15 min)
-        val periodicRequest = androidx.work.PeriodicWorkRequestBuilder<SupabaseSyncWorker>(
+        // Safety periodic fallback (15 min). Uses SupabaseSyncTriggerWorker,
+        // NOT SupabaseSyncWorker directly — the trigger worker only calls
+        // enqueue() on the deduplicated "supabase_sync" chain, so this timer
+        // can never run syncPendingData() concurrently with the 1-minute
+        // chain and race on refreshing the same session (see
+        // SupabaseSyncTriggerWorker's kdoc for why that mattered).
+        val periodicRequest = androidx.work.PeriodicWorkRequestBuilder<SupabaseSyncTriggerWorker>(
             15, TimeUnit.MINUTES
         ).setConstraints(
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         ).build()
 
+        // Name bumped to "_v2": devices updating from an older build already
+        // have a periodic entry under "_periodic" pointing at the old
+        // (buggy) worker persisted in WorkManager's own database — KEEP
+        // would leave that stale entry running forever since it never
+        // matches this new definition. A fresh name forces every device
+        // onto the corrected worker on next launch.
         WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
-            "${UNIQUE_WORK_NAME}_periodic",
+            "${UNIQUE_WORK_NAME}_periodic_v2",
             androidx.work.ExistingPeriodicWorkPolicy.KEEP,
             periodicRequest
         )
+        WorkManager.getInstance(context.applicationContext)
+            .cancelUniqueWork("${UNIQUE_WORK_NAME}_periodic")
 
         // Starting the 1-minute chain immediately
         enqueue(context)
