@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Download Finance Lore</title>
+  <meta name="description" content="Download the Finance Lore Android app: your bank and Telebirr SMS turned into a clear picture of your money." />
+  <style>
+    /* Same tokens as Web/styles.css and privacy.html. */
+    :root {
+      --page-bg: #0E1614;
+      --card-bg: #231E1A;
+      --inner-dark: #15110F;
+      --headline: #7FE3CB;
+      --coral: #FB5D53;
+      --body: #E6E1D8;
+      --body-muted: #B7B3AC;
+      --divider: rgba(127, 227, 203, 0.15);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--page-bg); color: var(--body); }
+    body {
+      font-family: "Google Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 40px 16px 80px; }
+    h1 { color: var(--headline); font-size: 36px; line-height: 1.15; margin: 0 0 8px; }
+    h2 { color: var(--headline); font-size: 20px; margin: 36px 0 10px; }
+    p, li { color: var(--body); }
+    a { color: var(--headline); }
+    .lead { color: var(--body-muted); font-size: 17px; margin: 0 0 28px; }
+    .card { background: var(--card-bg); border-radius: 22px; padding: 22px 20px; }
+    .download {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; min-height: 56px; border-radius: 999px;
+      background: var(--coral); color: #fff; font-size: 18px; font-weight: 600;
+      text-decoration: none;
+    }
+    .download:active { transform: scale(0.98); }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; margin-top: 12px; color: var(--body-muted); font-size: 14px; }
+    .note { margin-top: 14px; font-size: 14px; color: var(--body-muted); text-align: center; }
+    .desktop-only { display: none; }
+    .is-desktop .desktop-only { display: block; }
+    .url {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: var(--inner-dark); border-radius: 12px; padding: 10px 12px;
+      word-break: break-all; color: var(--headline);
+    }
+    ol, ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    .perm { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .perm div { background: var(--card-bg); border-radius: 16px; padding: 14px 16px; }
+    .perm strong { color: var(--headline); }
+    .muted { color: var(--body-muted); font-size: 14px; }
+    code.hash {
+      display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px; background: var(--inner-dark); border-radius: 12px; padding: 10px 12px;
+      word-break: break-all; color: var(--body-muted);
+    }
+    hr { border: 0; border-top: 1px solid var(--divider); margin: 40px 0 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Finance Lore</h1>
+    <p class="lead">Your bank and Telebirr SMS, turned into a clear picture of where your money goes. Free, for Android.</p>
+
+    <div class="card">
+      <!-- Update APK_URL, version, size and SHA-256 together for each release. -->
+      <a class="download" id="download"
+         href="https://github.com/b02872626-ctrl/Finance-Dashboard/releases/download/v1.0.0/FinanceLore-1.0.0.apk"
+         download>
+        Download for Android
+      </a>
+      <div class="meta">
+        <span>Version 1.0.0</span><span>5.1 MB</span><span>Android 6.0 or newer</span>
+      </div>
+      <p class="note">Already using a test version? Install this over it — your data stays.</p>
+      <div class="desktop-only">
+        <p class="muted" style="margin:16px 0 6px">On a computer? Open this page on your Android phone instead:</p>
+        <div class="url" id="page-url">finance-dashboard-two-virid.vercel.app/download.html</div>
+      </div>
+    </div>
+
+    <h2>How to install</h2>
+    <p class="muted">Finance Lore isn't on the Play Store yet, so Android asks you to confirm the install. It takes a minute.</p>
+    <ol>
+      <li>Tap <strong>Download for Android</strong> and wait for it to finish.</li>
+      <li>Open the file from your notifications or your <strong>Downloads</strong> / <strong>My Files</strong> app.</li>
+      <li>If Android says it can't install apps from this source, tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser, then go back.</li>
+      <li>Tap <strong>Install</strong>. If Google Play Protect shows a warning about an unknown app, tap <strong>More details → Install anyway</strong>.</li>
+      <li>Open Finance Lore, sign in, and allow SMS access so it can read your bank messages.</li>
+    </ol>
+    <p class="muted">On Samsung phones the setting is under <strong>Settings → Apps → ⋮ → Special access → Install unknown apps</strong>. You can turn it off again after installing.</p>
+
+    <h2>What it asks for, and why</h2>
+    <div class="perm">
+      <div><strong>SMS</strong><br />To read messages from banks and mobile-money services like CBE, Telebirr, Awash and Dashen. Other messages are skipped — never stored or uploaded.</div>
+      <div><strong>Notifications</strong><br />A reminder to review new transactions. You can turn this off in the app.</div>
+      <div><strong>Internet</strong><br />To sync your transactions to your account so they're on the web dashboard and safe if you change phones.</div>
+    </div>
+    <p class="muted" style="margin-top:14px">Finance Lore never asks for your bank PIN or password, and can't move money. Read the full <a href="privacy.html">privacy policy</a>.</p>
+
+    <h2>Check the file (optional)</h2>
+    <p class="muted">The SHA-256 fingerprint of <code>FinanceLore-1.0.0.apk</code> is:</p>
+    <code class="hash">aac5d80d3e4f0f879ac76eee5cc87e17f11d6eb8dbae36d5f93ac376543deb72</code>
+
+    <hr />
+    <p class="muted">Problems installing or a bank message it didn't read? Email <a href="mailto:nahusenaygebreamlak@gmail.com">nahusenaygebreamlak@gmail.com</a>, or use Settings → Support in the app.</p>
+    <p class="muted">Already have the app? <a href="./">Open the web dashboard</a>.</p>
+  </main>
+  <script>
+    // Show the "open this on your phone" hint to desktop visitors only.
+    if (!/Android/i.test(navigator.userAgent)) {
+      document.documentElement.classList.add("is-desktop");
+    }
+  </script>
+</body>
+</html>
