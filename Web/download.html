@@ -64,72 +64,11 @@
     .scribble { position: relative; display: inline-block; }
     .scribble svg { position: absolute; }
     .hero p { margin: 0; font-size: 22px; line-height: 1.45; color: var(--ink-soft); max-width: 30ch; }
-    .hero-phone { flex: 1 1 340px; display: flex; justify-content: center; position: relative; padding: 40px 0; perspective: 1600px; }
+    .hero-phone { flex: 1 1 340px; display: flex; justify-content: center; position: relative; padding: 40px 0; }
 
     /* Phone mock-up (illustrative data) */
-    /* CSS 3D phones: a tilted stage (JS sets --rx/--ry on desktop), a float
-       wrapper, and two phones with stacked layers for thickness. */
-    .stage {
-      --rx: 8deg; --ry: -20deg; --s: 1; --x: 70px; --lift: 0px; --gx: 30%; --gy: 20%; --px: 0px; --py: 0px;
-      position: relative; z-index: 1; width: 300px; height: 600px;
-      transform-style: preserve-3d;
-      transform: translateX(var(--x)) translateY(var(--lift)) scale(var(--s)) rotateX(var(--rx)) rotateY(var(--ry));
-      cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
-    }
-    .float { position: absolute; inset: 0; transform-style: preserve-3d; animation: float 7s ease-in-out infinite; }
-    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-    .phone {
-      position: absolute; top: 0; left: 0; width: 300px; height: 600px;
-      background: #121211; border-radius: 46px; padding: 10px; border: 2px solid var(--night-line);
-      transform-style: preserve-3d;
-    }
-    /* Edge thickness: two darker copies of the body behind the face. */
-    .phone::before, .phone::after {
-      content: ""; position: absolute; inset: -2px; border-radius: 46px; pointer-events: none;
-      background: linear-gradient(135deg, #4a4740, #0c0c0b 60%);
-    }
-    .phone::before { transform: translateZ(-6px); }
-    .phone::after { transform: translateZ(-12px); background: #0a0a09; }
-    .phone-front { transform: translateZ(60px) rotateZ(-3deg); }
-    /* Back phone peeks out on the left. Dimmed with an overlay, not filter:
-       a filter flattens preserve-3d and the edge layers would paint over it. */
-    .phone-back { transform: translate3d(calc(-190px + var(--px)), calc(-30px + var(--py)), -140px) rotateZ(-7deg); }
-    .stage.dragging { cursor: grabbing; }
-    .phone-back .screen::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; background: rgba(0,0,0,0.22); pointer-events: none; }
-    .screen {
-      position: relative; height: 100%; overflow: hidden; background: #0E1614;
-      border-radius: 36px; padding: 28px 16px 14px; display: flex; flex-direction: column; gap: 14px; color: #EDEAE3;
-    }
-    /* Glass glare: a fixed sheen plus a hotspot that follows the cursor (--gx/--gy). */
-    .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 3;
-      background:
-        radial-gradient(circle at var(--gx) var(--gy), rgba(255,255,255,0.22), rgba(255,255,255,0.06) 22%, transparent 48%),
-        linear-gradient(115deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 28%, transparent 46%);
-      mix-blend-mode: screen; }
-    .nav { margin-top: auto; display: flex; justify-content: space-around; align-items: center; background: #2C2A25; border-radius: 22px; height: 46px; }
-    .nav i { width: 16px; height: 16px; border-radius: 5px; border: 2px solid #6F6B63; display: block; }
-    .nav i.on { border-color: #9FE0CF; }
-    .ground {
-      position: absolute; left: 50%; bottom: 6px; width: 360px; height: 60px; margin-left: -180px;
-      background: radial-gradient(closest-side, rgba(28,28,25,0.30), transparent); filter: blur(6px);
-      animation: ground 7s ease-in-out infinite;
-    }
-    @keyframes ground { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.88); opacity: 0.75; } }
-
-    /* Daily Review screen (back phone) */
-    .rv { background: #0F0D0B; gap: 10px; padding-top: 24px; }
-    .rv-head { display: flex; align-items: center; }
-    .rv-back { width: 24px; height: 24px; border-radius: 8px; background: #231E1A; display: flex; align-items: center; justify-content: center; }
-    .rv-progress { display: flex; gap: 3px; } .rv-progress i { flex: 1; height: 3px; border-radius: 2px; background: #2E2A25; display: block; } .rv-progress i.on { background: #7FE3CB; }
-    .rv-card { background: #231E1A; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-    .rv-pill { font-size: 8px; color: #F2A65A; background: #4A2D1E; border-radius: 9px; padding: 3px 8px; }
-    .rv-chip { font-size: 7px; font-weight: 700; color: #4CD495; background: #1F3B2C; border-radius: 9px; padding: 3px 7px; }
-    .rv-guess { display: flex; align-items: center; gap: 8px; background: #2B2520; border-radius: 14px; padding: 8px; }
-    .rv-i { width: 26px; height: 26px; border-radius: 8px; background: #4A2D1E; color: #F2A65A; font-size: 11px; display: flex; align-items: center; justify-content: center; }
-    .rv-change { font-size: 8px; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 4px 8px; color: #F5F2EB; }
-    .rv-chips { display: flex; gap: 5px; margin-top: auto; } .rv-chips span { font-size: 8px; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 5px 8px; color: #F5F2EB; }
-    .rv-skip { flex: 0 0 70px; text-align: center; font-size: 11px; background: #231E1A; border-radius: 14px; padding: 11px 0; color: #F5F2EB; }
-    .rv-confirm { flex: 1; text-align: center; font-size: 11px; font-weight: 700; background: #F3EFE6; color: #231E1A; border-radius: 14px; padding: 11px 0; }
+    .phone { position: relative; z-index: 1; width: 300px; background: #121211; border-radius: 46px; padding: 12px; border: 2px solid var(--night-line); }
+    .screen { border-radius: 34px; padding: 28px 16px 20px; display: flex; flex-direction: column; gap: 14px; color: #EDEAE3; }
     .row { display: flex; justify-content: space-between; align-items: center; }
     .col { display: flex; flex-direction: column; }
     .tile { width: 36px; height: 36px; border-radius: 11px; background: #2C2A25; display: flex; align-items: center; justify-content: center; }
@@ -201,14 +140,10 @@
     .fine .contact { margin: 0; max-width: 56ch; color: var(--night-text); font-size: 16px; }
     .fine .copy { font-size: 15px; color: var(--night-muted); }
 
-
     @media (max-width: 480px) {
       .aside svg { width: 84px; height: 44px; }
-      .hero-phone { padding: 0; height: 520px; }
-      .stage { --s: 0.72; --ry: -16deg; --x: 40px; }
-      .hero-phone .ring { width: 120px !important; left: -12px !important; bottom: -24px !important; }
     }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } .float, .ground { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }
   </style>
 </head>
 <body>
@@ -232,33 +167,8 @@
 
       <div class="hero-phone">
         <img class="deco" src="launch/img/triangle.png" alt="" aria-hidden="true" style="width: 150px; top: -10px; right: -10px; transform: rotate(8deg)" />
-        <img class="deco ring" src="launch/img/ring.png" alt="" aria-hidden="true" style="width: 170px; bottom: -6px; left: -24px; transform: rotate(-10deg); z-index: 2" />
-        <div class="ground" aria-hidden="true"></div>
-        <div class="stage" id="stage">
-         <div class="float">
-          <!-- Back phone: Daily Review (decorative) -->
-          <div class="phone phone-back" aria-hidden="true">
-            <div class="screen rv">
-              <div class="rv-head">
-                <span class="rv-back"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E8C9A0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></span>
-                <span class="col" style="align-items: center; flex: 1"><span style="font-size: 9px; color: #B7B3AC">Daily Review</span><span style="font-size: 12px; color: #F5F2EB">Monday · Oct 26</span></span>
-                <span style="width: 24px"></span>
-              </div>
-              <div class="rv-progress"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
-              <div class="row" style="font-size: 9px; color: #B7B3AC"><span>3 of 8 reviewed</span><span>5 left · ~30s</span></div>
-              <div class="rv-card">
-                <div class="row"><span class="rv-pill">Telebirr</span><span style="font-size: 8px; color: #B7B3AC; margin-right: auto; margin-left: 6px">SMS · 12:36</span><span class="rv-chip">INCOME</span></div>
-                <span style="font-size: 30px; color: #4CD495; letter-spacing: -0.02em">+1,200.00 <span style="font-size: 10px; color: #B7B3AC">ETB</span></span>
-                <span class="col"><span style="font-size: 9px; color: #B7B3AC">From</span><span style="font-size: 16px; color: #F5F2EB">Abebe Kebede</span></span>
-                <div class="rv-guess"><span class="rv-i">I</span><span class="col" style="flex: 1"><span style="font-size: 8px; color: #B7B3AC">Likely</span><span style="font-size: 12px; color: #F5F2EB">Income</span></span><span class="rv-change">Change</span></div>
-                <span style="font-size: 8px; color: #B7B3AC"><b style="color: #7FE3CB">●●</b>● 82% confidence</span>
-              </div>
-              <div class="rv-chips"><span>Food</span><span>Transport</span><span>Bills</span><span>Shopping</span></div>
-              <div class="row" style="gap: 8px"><span class="rv-skip">Skip</span><span class="rv-confirm">✓ Confirm</span></div>
-            </div>
-          </div>
-          <!-- Front phone: Home -->
-          <div class="phone phone-front" role="img" aria-label="Finance Lore home screen showing total balance, a weekly spending chart and bank balances">
+        <img class="deco" src="launch/img/ring.png" alt="" aria-hidden="true" style="width: 170px; bottom: -6px; left: -24px; transform: rotate(-10deg); z-index: 2" />
+        <div class="phone" role="img" aria-label="Finance Lore home screen showing total balance, a weekly spending chart and bank balances">
           <div class="screen">
             <div class="row">
               <div class="col" style="gap: 2px">
@@ -294,10 +204,7 @@
               <div class="bank"><span style="font-size: 9px">Commercial Bank</span><span style="font-size: 17px">9,312.40 <span style="font-size: 9px">ETB</span></span></div>
               <div class="bank"><span style="font-size: 9px">Telebirr</span><span style="font-size: 17px">3,168.10 <span style="font-size: 9px">ETB</span></span></div>
             </div>
-            <div class="nav"><i class="on"></i><i></i><i></i><i></i></div>
           </div>
-          </div>
-         </div>
         </div>
       </div>
     </section>
@@ -395,82 +302,5 @@
     </div>
   </footer>
 
-  <script>
-    // 3D phones: tilt toward the cursor, shine follows it, drag to spin
-    // (mouse or touch), spring back on release. Off for reduced motion.
-    (function () {
-      var stage = document.getElementById("stage");
-      if (!stage || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      var fine = matchMedia("(pointer: fine)").matches;
-      var BASE_RY = parseFloat(getComputedStyle(stage).getPropertyValue("--ry")) || -20;
-      var BASE_RX = 8;
-      // target (t*) and current (c*) values; v* = spin velocity after a drag
-      // aimY/aimX: cursor-driven offset; spin: drag offset that eases back to 0.
-      var aimY = 0, tRx = BASE_RX, cRy = BASE_RY, cRx = BASE_RX, vRy = 0;
-      var tLift = 0, cLift = 0, tgx = 30, tgy = 20, cgx = 30, cgy = 20, tpx = 0, tpy = 0, cpx = 0, cpy = 0;
-      var drag = null, spin = 0, raf = 0;
-      function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-      function aim(x, y) {
-        var r = stage.getBoundingClientRect();
-        // Full effect within ~35% of the window from the phones' centre.
-        var dx = clamp((x - (r.left + r.width / 2)) / (innerWidth * 0.35), -1, 1);
-        var dy = clamp((y - (r.top + r.height / 2)) / (innerHeight * 0.45), -1, 1);
-        aimY = dx * 28; tRx = BASE_RX - dy * 16;
-        tgx = 50 + dx * 45; tgy = 40 + dy * 40;            // shine hotspot
-        tpx = -dx * 26; tpy = -dy * 14;                    // back phone parallax
-        kick();
-      }
-      function tick() {
-        if (!drag) { spin *= 0.9; vRy *= 0.92; }           // spring back after a drag
-        var tRy = BASE_RY + aimY + spin;
-        cRy += (tRy + vRy - cRy) * 0.1; cRx += (tRx - cRx) * 0.1; cLift += (tLift - cLift) * 0.12;
-        cgx += (tgx - cgx) * 0.12; cgy += (tgy - cgy) * 0.12; cpx += (tpx - cpx) * 0.1; cpy += (tpy - cpy) * 0.1;
-        stage.style.setProperty("--ry", cRy.toFixed(2) + "deg");
-        stage.style.setProperty("--rx", cRx.toFixed(2) + "deg");
-        stage.style.setProperty("--lift", cLift.toFixed(1) + "px");
-        stage.style.setProperty("--gx", cgx.toFixed(1) + "%");
-        stage.style.setProperty("--gy", cgy.toFixed(1) + "%");
-        stage.style.setProperty("--px", cpx.toFixed(1) + "px");
-        stage.style.setProperty("--py", cpy.toFixed(1) + "px");
-        var moving = Math.abs(tRy + vRy - cRy) > 0.02 || Math.abs(tRx - cRx) > 0.02 || Math.abs(tLift - cLift) > 0.1 ||
-          Math.abs(spin) > 0.05 || Math.abs(vRy) > 0.05 || Math.abs(tgx - cgx) > 0.1 || Math.abs(tpx - cpx) > 0.1;
-        raf = moving ? requestAnimationFrame(tick) : 0;
-      }
-      function kick() { if (!raf) raf = requestAnimationFrame(tick); }
-
-      if (fine) window.addEventListener("pointermove", function (e) { if (!drag) aim(e.clientX, e.clientY); }, { passive: true });
-      stage.addEventListener("pointerenter", function () { tLift = -10; kick(); });
-      stage.addEventListener("pointerleave", function () { if (!drag) { tLift = 0; kick(); } });
-
-      // Drag to spin (±70°). Touch: only horizontal drags spin; vertical scrolls the page.
-      stage.addEventListener("pointerdown", function (e) {
-        drag = { x: e.clientX, y: e.clientY, spin0: spin, last: e.clientX, t: performance.now(), id: e.pointerId, started: e.pointerType === "mouse" };
-        if (e.pointerType === "mouse") { stage.setPointerCapture(e.pointerId); stage.classList.add("dragging"); }
-      });
-      stage.addEventListener("pointermove", function (e) {
-        if (!drag || e.pointerId !== drag.id) return;
-        var dx = e.clientX - drag.x;
-        if (!drag.started) {                                // touch: decide spin vs scroll
-          if (Math.abs(dx) < 8 && Math.abs(e.clientY - drag.y) < 8) return;
-          if (Math.abs(e.clientY - drag.y) > Math.abs(dx)) { drag = null; return; }
-          drag.started = true; stage.setPointerCapture(e.pointerId); stage.classList.add("dragging");
-        }
-        spin = clamp(drag.spin0 + dx * 0.45, -70, 70);
-        var now = performance.now();
-        vRy = clamp((e.clientX - drag.last) / Math.max(1, now - drag.t) * 6, -12, 12);
-        drag.last = e.clientX; drag.t = now;
-        tgx = 50 + clamp(spin / 70, -1, 1) * 45;
-        kick();
-      });
-      function end(e) {
-        if (!drag || (e && e.pointerId !== drag.id)) return;
-        drag = null; stage.classList.remove("dragging");
-        if (!fine) { tLift = 0; }
-        kick();
-      }
-      stage.addEventListener("pointerup", end);
-      stage.addEventListener("pointercancel", end);
-    })();
-  </script>
 </body>
 </html>
