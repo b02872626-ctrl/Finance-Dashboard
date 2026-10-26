@@ -27,6 +27,7 @@ class SettingsRepository(context: Context) {
     fun getNotifications(): Boolean = prefs.getBoolean("notifications", true)
     fun setNotifications(enabled: Boolean) = prefs.edit().putBoolean("notifications", enabled).apply()
     fun notificationsEnabledSync(): Boolean = prefs.getBoolean("notifications", true)
+    fun notificationsFlow(): Flow<Boolean> = prefFlow("notifications", true)
 
     /**
      * Highest [BuildConfig.VERSION_CODE] we've completed an ingest scan with.

@@ -139,7 +139,7 @@ fun SettingsScreen(
 // back to the sign-in screen; nothing else to do here.
 // ---------------------------------------------------------------------------
 @Composable
-private fun DeleteAccountLink() {
+internal fun DeleteAccountLink() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var confirming by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
@@ -366,8 +366,8 @@ private fun PreferencesList(
         // Lock/safe.svg is a pre-styled tile (already includes background + border + mint stroke).
         PreferenceRow(
             tileVariant = TileVariant.PreStyled(R.drawable.ic_safe),
-            title = "Accounts Security",
-            subtitle = "2FA, Password & Biometrics",
+            title = "Privacy & Data",
+            subtitle = "How your data is handled",
             onClick = onAccountSecurity
         )
         ThinDivider()
@@ -375,7 +375,7 @@ private fun PreferencesList(
         PreferenceRow(
             tileVariant = TileVariant.PreStyled(R.drawable.ic_frame_177),
             title = "Notification Preferences",
-            subtitle = "Alerts, Marketing & SMS",
+            subtitle = "Transaction alerts",
             onClick = onNotifications
         )
         ThinDivider()

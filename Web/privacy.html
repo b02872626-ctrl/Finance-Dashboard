@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy · Finance Lore</title>
+  <meta name="description" content="How the Finance Lore app and web dashboard collect, use and protect your data." />
+  <style>
+    /* Same tokens as Web/styles.css so the page matches the app. */
+    :root {
+      --page-bg: #0E1614;
+      --card-bg: #231E1A;
+      --headline: #7FE3CB;
+      --coral: #FB5D53;
+      --body: #E6E1D8;
+      --body-muted: #B7B3AC;
+      --divider: rgba(127, 227, 203, 0.15);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--page-bg); color: var(--body); }
+    body {
+      font-family: "Google Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    main { max-width: 720px; margin: 0 auto; padding: 40px 16px 80px; }
+    h1 { color: var(--headline); font-size: 32px; line-height: 1.2; margin: 0 0 6px; }
+    h2 { color: var(--headline); font-size: 20px; margin: 36px 0 8px; }
+    p, li { color: var(--body); }
+    .muted { color: var(--body-muted); font-size: 14px; }
+    .summary {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 18px 20px;
+      margin: 24px 0 8px;
+    }
+    .summary ul { margin: 8px 0 0; padding-left: 20px; }
+    ul { padding-left: 22px; }
+    li { margin: 4px 0; }
+    a { color: var(--headline); }
+    hr { border: 0; border-top: 1px solid var(--divider); margin: 40px 0 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="muted">Finance Lore · Effective October 30, 2026</p>
+
+    <div class="summary">
+      <strong>The short version</strong>
+      <ul>
+        <li>The Android app reads SMS from banks and mobile-money services only, to build your transaction history.</li>
+        <li>Your transactions and those bank messages are synced to your Finance Lore account so you can see them on the web and keep them if you change phones.</li>
+        <li>Only you can see your data when signed in. The developer can access it to fix import problems and answer support requests.</li>
+        <li>We don't sell your data, show ads, or share it with anyone for marketing.</li>
+        <li>You can delete your account and all of its data from the app at any time.</li>
+      </ul>
+    </div>
+
+    <h2>Who we are</h2>
+    <p>Finance Lore is an independent app made by Nahusenay Gebreamlak in Ethiopia. If you have any question about this policy or your data, email <a href="mailto:nahusenaygebreamlak@gmail.com">nahusenaygebreamlak@gmail.com</a>.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li><strong>Bank and wallet SMS.</strong> With your permission, the app reads text messages from a fixed list of Ethiopian banks and mobile-money services (for example CBE, Telebirr, Bank of Abyssinia, Awash and Dashen). Messages from anyone else are skipped: they are not stored on your phone by the app and are never uploaded.</li>
+      <li><strong>Transactions.</strong> From those messages the app extracts amounts, dates, balances, fees, reference numbers, the name or masked account of the other party, receipt links, and your own masked account number.</li>
+      <li><strong>Your categories and reviews.</strong> The categories you assign and the rules the app learns from them.</li>
+      <li><strong>Account details.</strong> Your email address, the name you enter, and, if you use Google sign-in, the basic profile Google shares (name and email).</li>
+      <li><strong>Web dashboard usage.</strong> When you use the web dashboard we record session start and end times, the app version and your browser's user-agent, so we can see whether the dashboard is being used and which versions are in use.</li>
+      <li><strong>Feedback.</strong> Answers you choose to give in the in-app feedback survey.</li>
+    </ul>
+    <p>We do not collect your contacts, location, photos, or your personal (non-bank) messages, and we never ask for your bank PIN or password.</p>
+
+    <h2>How we use it</h2>
+    <ul>
+      <li>To show your balances, transaction history, categories and spending insights in the app and on the web dashboard.</li>
+      <li>To keep your data in sync between your phone and the web, and to restore it if you sign in on a new phone.</li>
+      <li>To fix messages the app fails to read correctly and to improve support for more banks.</li>
+      <li>To answer you when you contact support.</li>
+    </ul>
+
+    <h2>Where it is stored and who can see it</h2>
+    <ul>
+      <li><strong>On your phone.</strong> A copy is kept in the app's private storage. It is excluded from Android cloud backups and phone-to-phone transfers. Logging out does not erase it; deleting your account or uninstalling the app does.</li>
+      <li><strong>In the cloud.</strong> Synced data is stored with <a href="https://supabase.com/privacy" rel="noopener">Supabase</a>, our database provider, and is sent over an encrypted (HTTPS) connection. Database rules allow each account to read only its own data.</li>
+      <li><strong>The developer.</strong> The developer's admin account can read synced transactions and bank messages. This access is used only to fix import problems, investigate bugs, and help you when you ask for support.</li>
+      <li><strong>Service providers.</strong> Supabase (database and sign-in), Google (if you choose Google sign-in) and Vercel (hosting the web dashboard) process data only to provide those services.</li>
+    </ul>
+    <p>We don't sell your data, use it for advertising, or share it with anyone else unless the law requires us to.</p>
+
+    <h2>How long we keep it</h2>
+    <p>We keep your data while your account exists. When you delete your account, your account and all of its synced data (transactions, bank messages, categories, sessions and other records) are deleted from our database straight away. Feedback survey answers are kept but are no longer linked to you.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li><strong>Delete your account:</strong> in the app, go to Settings → Delete account. This removes your account and its data from our servers and clears it from your phone.</li>
+      <li><strong>Stop SMS reading:</strong> revoke the SMS permission in your phone's settings, or uninstall the app.</li>
+      <li><strong>Notifications:</strong> turn them off in Settings → Notification Preferences or in your phone's settings.</li>
+      <li><strong>A copy or a correction:</strong> email us and we'll help.</li>
+    </ul>
+
+    <h2>Children</h2>
+    <p>Finance Lore is not intended for children under 13, and we don't knowingly collect their data.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>If we change how we handle your data, we'll update this page and the date at the top. For significant changes we'll also tell you in the app.</p>
+
+    <hr />
+    <p class="muted">Questions? <a href="mailto:nahusenaygebreamlak@gmail.com">nahusenaygebreamlak@gmail.com</a></p>
+  </main>
+</body>
+</html>

@@ -59,6 +59,11 @@ class SettingsViewModel(
         }
     }
 
+    val notificationsEnabled: StateFlow<Boolean> = repo.notificationsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), repo.getNotifications())
+
+    fun setNotificationsEnabled(enabled: Boolean) = repo.setNotifications(enabled)
+
     fun updateUserName(name: String) {
         repo.setUserName(name)
         _userName.value = name

@@ -183,7 +183,7 @@ private fun WelcomeStep(onGetStarted: () -> Unit, onSignIn: () -> Unit) {
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "Your SMS data is processed\nlocally and never shared.",
+                    text = "Only bank messages are read.\nYour data is never sold or shared.",
                     color = BodyMuted,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
@@ -237,7 +237,7 @@ private fun SmsAccessStep(onAllow: () -> Unit) {
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Connect your bank alerts to your dashboard\nfor a seamless financial overview.",
+            text = "We read messages from banks and mobile money\nonly, and sync your transactions to your\naccount so they're on the web too.",
             color = BodyMuted,
             fontSize = 14.sp,
             lineHeight = 21.sp,
@@ -867,7 +867,7 @@ private fun OutlinePillButton(text: String, onClick: () -> Unit) {
 @Composable
 private fun FooterCaption() {
     Text(
-        text = "DESIGNED FOR PRIVACY  ·  LOCAL PROCESSING",
+        text = "DESIGNED FOR PRIVACY  ·  BANK SMS ONLY",
         color = FooterGrey,
         fontSize = 10.sp,
         fontWeight = FontWeight.SemiBold,
