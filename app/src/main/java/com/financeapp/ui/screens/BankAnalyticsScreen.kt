@@ -73,7 +73,11 @@ private val DividerCol = Color(0x1FFFFFFF)
 private val IncomeGreen = Color(0xFF4CD495)
 
 @Composable
-fun BankAnalyticsScreen(vm: BankAnalyticsViewModel, onBack: () -> Unit) {
+fun BankAnalyticsScreen(
+    vm: BankAnalyticsViewModel,
+    onBack: () -> Unit,
+    onTxClick: (Long) -> Unit
+) {
     val state by vm.state.collectAsState()
 
     if (state.isLoading) {
@@ -157,7 +161,7 @@ fun BankAnalyticsScreen(vm: BankAnalyticsViewModel, onBack: () -> Unit) {
                     }
                 }
             } else {
-                items(visibleTxns)
+                items(visibleTxns, onTxClick)
                 if (visibleCount < state.transactions.size) {
                     item {
                         LoadMorePill(onClick = { visibleCount = (visibleCount + 10).coerceAtMost(state.transactions.size) })
@@ -168,10 +172,13 @@ fun BankAnalyticsScreen(vm: BankAnalyticsViewModel, onBack: () -> Unit) {
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.items(txns: List<TransactionEntity>) {
+private fun androidx.compose.foundation.lazy.LazyListScope.items(
+    txns: List<TransactionEntity>,
+    onTxClick: (Long) -> Unit
+) {
     items(items = txns, key = { it.id }) { tx ->
         Column {
-            ActivityRow(tx = tx)
+            ActivityRow(tx = tx, onClick = { onTxClick(tx.id) })
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DividerCol))
         }
     }
@@ -326,7 +333,7 @@ private fun bankInitial(name: String): String =
 // Activity row (same style as History/Home)
 // ---------------------------------------------------------------------------
 @Composable
-private fun ActivityRow(tx: TransactionEntity) {
+private fun ActivityRow(tx: TransactionEntity, onClick: () -> Unit) {
     val outgoing = tx.type != TransactionType.CREDIT.name
     val color = if (outgoing) Coral else IncomeGreen
     val iconRes = if (outgoing) R.drawable.ic_expense else R.drawable.ic_income
@@ -334,6 +341,11 @@ private fun ActivityRow(tx: TransactionEntity) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

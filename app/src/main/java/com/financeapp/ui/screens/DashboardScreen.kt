@@ -101,6 +101,7 @@ fun DashboardScreen(
     userName: String,
     onTxClick: (Long) -> Unit,
     onAccountsClick: () -> Unit,
+    onAccountClick: (bankName: String) -> Unit,
     onHistoryClick: () -> Unit,
     onQuickFilterClick: (String?) -> Unit,
     onSettingsClick: () -> Unit,
@@ -190,7 +191,9 @@ fun DashboardScreen(
                 )
             }
 
-            item { BanksSection(state.accountBalances, onAccountsClick) }
+            if (state.accountBalances.isNotEmpty()) {
+                item { BanksSection(state.accountBalances, onAccountsClick, onAccountClick) }
+            }
 
             item { HistorySection(onHistoryClick = onHistoryClick, onQuickFilterClick = onQuickFilterClick) }
 
@@ -499,20 +502,32 @@ private fun WeeklyBarChart(
 @Composable
 private fun BanksSection(
     accounts: List<com.financeapp.viewmodel.AccountSummary>,
-    onAccountsClick: () -> Unit
+    onAccountsClick: () -> Unit,
+    onAccountClick: (bankName: String) -> Unit
 ) {
     Column {
-        Text(text = "Banks", color = Headline, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "Banks", color = Headline, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            if (accounts.size > 2) {
+                Text(
+                    text = "See all",
+                    color = FooterGrey,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable(onClick = onAccountsClick)
+                )
+            }
+        }
         Spacer(Modifier.height(10.dp))
 
-        val visible = if (accounts.isNotEmpty()) accounts.take(2) else listOf(
-            com.financeapp.viewmodel.AccountSummary("Commercial Bank", "", 939.58, 0),
-            com.financeapp.viewmodel.AccountSummary("Bank of Abyssinia", "", 31.65, 0)
-        )
+        val visible = accounts.take(2)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             visible.forEach { acc ->
                 Box(modifier = Modifier.weight(1f)) {
-                    BankCard(name = acc.bankName, balance = acc.balance, onClick = onAccountsClick)
+                    BankCard(name = acc.bankName, balance = acc.balance, onClick = { onAccountClick(acc.bankName) })
                 }
             }
             if (visible.size == 1) {

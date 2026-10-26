@@ -239,6 +239,9 @@ private fun MainNavigation(
                             launchSingleTop = true
                         }
                     },
+                    onAccountClick = { bankName ->
+                        navController.navigate("bank_analytics/${android.net.Uri.encode(bankName)}")
+                    },
                     onHistoryClick = {
                         txVm.clearFilters()
                         navController.navigate(Screen.Transactions.route)
@@ -279,7 +282,9 @@ private fun MainNavigation(
             composable(Screen.Accounts.route) {
                 AccountsScreen(
                     vm = dashVm,
-                    onAccountClick = { bankName -> navController.navigate("bank_analytics/$bankName") }
+                    onAccountClick = { bankName ->
+                        navController.navigate("bank_analytics/${android.net.Uri.encode(bankName)}")
+                    }
                 )
             }
             composable(
@@ -290,7 +295,11 @@ private fun MainNavigation(
                 val vm: BankAnalyticsViewModel = viewModel(
                     factory = BankAnalyticsViewModelFactory(repo, bankName)
                 )
-                BankAnalyticsScreen(vm = vm, onBack = { navController.popBackStack() })
+                BankAnalyticsScreen(
+                    vm = vm,
+                    onBack = { navController.popBackStack() },
+                    onTxClick = { id -> navController.navigate("detail/$id") }
+                )
             }
             composable(
                 route = "${Screen.Transactions.route}?search={search}",
