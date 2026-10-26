@@ -271,7 +271,7 @@ fun NotificationPreferencesScreen(
                     )
                     ThinDivider()
                     Text(
-                        text = "You can also turn Finance Lore notifications off in your phone's settings.",
+                        text = "You can also turn Kash notifications off in your phone's settings.",
                         color = FooterGrey,
                         fontSize = 12.sp,
                         lineHeight = 17.sp
@@ -317,20 +317,20 @@ fun AccountSecurityScreen(
                     ThinDivider()
                     PrivacyFact(
                         title = "Only bank messages",
-                        body = "Finance Lore reads SMS from banks and mobile-money services it " +
+                        body = "Kash reads SMS from banks and mobile-money services it " +
                             "recognises. Other messages are skipped — never stored or uploaded."
                     )
                     ThinDivider()
                     PrivacyFact(
                         title = "Synced to your account",
                         body = "Your transactions and the original bank SMS are synced to your " +
-                            "Finance Lore account over an encrypted connection, so they show up " +
+                            "Kash account over an encrypted connection, so they show up " +
                             "on the web dashboard and survive a phone change."
                     )
                     ThinDivider()
                     PrivacyFact(
                         title = "Who can see it",
-                        body = "You, when signed in. The Finance Lore developer can also access " +
+                        body = "You, when signed in. The Kash developer can also access " +
                             "synced data to fix import problems and answer support requests. " +
                             "Your data is never sold or shared."
                     )

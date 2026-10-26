@@ -165,7 +165,7 @@ internal fun DeleteAccountLink() {
             title = { Text("Delete your account?", color = Headline, fontWeight = FontWeight.SemiBold) },
             text = {
                 Text(
-                    "This permanently deletes your Finance Lore account and all of your " +
+                    "This permanently deletes your Kash account and all of your " +
                         "synced transactions, categories and settings from our servers, and " +
                         "clears them from this phone.\n\nYour bank SMS messages are not " +
                         "touched. This can't be undone.",

@@ -1,5 +1,5 @@
 // =============================================================================
-// Finance Lore — Web companion
+// Kash — Web companion
 //
 // Single-page app that signs the user into the same Supabase project as the
 // Android app and renders their finance data (accounts, balance, transactions,
@@ -3774,7 +3774,7 @@ const FEEDBACK_QUESTIONS = [
 
   { grp: "In your words (optional)" },
   { id: "change",   q: "One thing that annoyed you, or you'd change?", text: true },
-  { id: "sentence", q: "Describe Piggy Bank to a friend in one sentence.",  text: true },
+  { id: "sentence", q: "Describe Kash to a friend in one sentence.",  text: true },
 ];
 
 const feedbackAnswers = {};
@@ -3900,7 +3900,7 @@ function showFeedbackSuccess() {
 }
 
 function buildFeedbackSummary() {
-  const lines = ["Piggy Bank — tester feedback", ""];
+  const lines = ["Kash — tester feedback", ""];
   let i = 0;
   FEEDBACK_QUESTIONS.forEach((item) => {
     if (item.grp) { lines.push(`· ${item.grp.toUpperCase()}`); return; }
@@ -3953,7 +3953,7 @@ function exportCsv() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `finance-lore-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `kash-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

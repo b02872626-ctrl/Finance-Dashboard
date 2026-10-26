@@ -1,5 +1,5 @@
 -- =============================================================================
--- Admin sessions + admin read policies for Finance Lore.
+-- Admin sessions + admin read policies for Kash.
 --
 -- Adds:
 --   • public.i_sessions          — per-user app sessions (time-spent)

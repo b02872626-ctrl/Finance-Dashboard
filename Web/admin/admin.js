@@ -1,5 +1,5 @@
 // =============================================================================
-// Finance Lore — Admin dashboard.
+// Kash — Admin dashboard.
 //
 // Lists every user of the app with their session/time-spent metrics. The
 // admin gate is enforced on TWO layers:

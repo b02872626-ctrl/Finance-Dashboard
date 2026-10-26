@@ -627,7 +627,7 @@ private fun AllSetStep(transactions: List<TransactionEntity>, onGoDashboard: () 
                     Text("Nothing imported yet", color = Headline, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Finance Lore reads SMS from supported banks and Telebirr. As soon as " +
+                        "Kash reads SMS from supported banks and Telebirr. As soon as " +
                             "one arrives, it appears on your dashboard. You can also add a " +
                             "transaction by hand with the + button.",
                         color = BodyMuted,

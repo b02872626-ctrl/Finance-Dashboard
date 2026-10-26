@@ -578,7 +578,7 @@ private fun openSupportEmail(context: android.content.Context) {
     val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
         data = android.net.Uri.parse("mailto:")
         putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(address))
-        putExtra(android.content.Intent.EXTRA_SUBJECT, "Finance Lore support")
+        putExtra(android.content.Intent.EXTRA_SUBJECT, "Kash support")
         putExtra(android.content.Intent.EXTRA_TEXT, body)
     }
     runCatching { context.startActivity(intent) }.onFailure {
