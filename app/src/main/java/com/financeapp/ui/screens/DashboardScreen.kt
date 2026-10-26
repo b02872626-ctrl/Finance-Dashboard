@@ -1,5 +1,6 @@
 package com.financeapp.ui.screens
 
+import com.financeapp.data.model.netAmount
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -829,8 +830,7 @@ private fun sectionTitleFor(key: String): String {
     }
 }
 
-private fun transactionNetValue(tx: TransactionEntity): Double =
-    if (tx.type == TransactionType.CREDIT.name) tx.amount else -tx.amount
+private fun transactionNetValue(tx: TransactionEntity): Double = tx.netAmount()
 
 private fun moneyShort(amount: Double): String = String.format(Locale.US, "%,.2f", amount)
 

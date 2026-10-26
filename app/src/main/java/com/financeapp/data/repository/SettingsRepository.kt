@@ -1,5 +1,6 @@
 package com.financeapp.data.repository
 
+import com.financeapp.data.model.Spending
 import android.content.Context
 import android.content.SharedPreferences
 import com.financeapp.data.model.TransactionCategoryCatalog
@@ -159,6 +160,9 @@ class SettingsRepository(context: Context) {
         (prefs.getStringSet(KEY_CUSTOM_CATEGORIES, emptySet()) ?: emptySet())
             .map(TransactionCategoryCatalog::normalize)
             .filter { it.isNotBlank() }
+            // Old hand-made self-transfer categories now live in the built-in
+            // Spending.OWN_ACCOUNTS (rows migrated in AppDatabase 9→10).
+            .filter { it.lowercase() !in Spending.LEGACY_OWN_ACCOUNT_NAMES }
             .distinctBy { it.lowercase() }
             .sortedBy { it.lowercase() }
 
@@ -176,6 +180,7 @@ class SettingsRepository(context: Context) {
     fun addCustomCategory(rawName: String): String? {
         val normalized = TransactionCategoryCatalog.normalize(rawName)
         if (normalized.isBlank()) return null
+        if (normalized.lowercase() in Spending.LEGACY_OWN_ACCOUNT_NAMES) return Spending.OWN_ACCOUNTS
 
         val existing = getCustomCategories()
         if (TransactionCategoryCatalog.defaultCategories.any { it.equals(normalized, ignoreCase = true) } ||
@@ -207,6 +212,7 @@ class SettingsRepository(context: Context) {
         return raw.split(RECENT_SEPARATOR)
             .map { it.trim() }
             .filter { it.isNotBlank() }
+            .map { if (it.lowercase() in Spending.LEGACY_OWN_ACCOUNT_NAMES) Spending.OWN_ACCOUNTS else it }
             .distinct()
             .take(RECENT_CAP)
     }

@@ -1,5 +1,6 @@
 package com.financeapp.ui.screens
 
+import com.financeapp.data.model.isSpending
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -585,7 +586,7 @@ private fun AllSetStep(transactions: List<TransactionEntity>, onGoDashboard: () 
     val txCount = transactions.size
     val topMerchant = remember(transactions) {
         transactions
-            .filter { it.type in expenseTypes }
+            .filter { it.isSpending() }
             .groupBy { (it.counterparty ?: "").trim().takeIf(String::isNotBlank) ?: it.bankName }
             .maxByOrNull { (_, txs) -> txs.sumOf { it.amount } }
             ?.key
@@ -792,7 +793,7 @@ private fun computeMonthly(
     val nowMonth = cal.get(Calendar.MONTH)
     val nowYear = cal.get(Calendar.YEAR)
 
-    transactions.filter { it.type in expenseTypes }.forEach { tx ->
+    transactions.filter { it.isSpending() }.forEach { tx ->
         val c = Calendar.getInstance().apply { timeInMillis = tx.dateTime }
         val monthsBack = (nowYear - c.get(Calendar.YEAR)) * 12 + (nowMonth - c.get(Calendar.MONTH))
         if (monthsBack in 0..5) {

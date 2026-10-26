@@ -1,5 +1,7 @@
 package com.financeapp.viewmodel
 
+import com.financeapp.data.model.isIncome
+import com.financeapp.data.model.isSpending
 import androidx.lifecycle.*
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.TransactionEntity
@@ -43,9 +45,9 @@ class BankAnalyticsViewModel(
             
             val totalBalance = bankTxns.maxByOrNull { it.dateTime }?.balance ?: 0.0
             
-            val incomeTxns = bankTxns.filter { it.type == TransactionType.CREDIT.name }
+            val incomeTxns = bankTxns.filter { it.isIncome() }
             val expenseTxns = bankTxns.filter { 
-                it.type in listOf(TransactionType.DEBIT.name, TransactionType.TRANSFER_OUT.name, TransactionType.PAYMENT.name) 
+                it.isSpending() 
             }
             
             val totalIncome = incomeTxns.sumOf { it.amount }
@@ -69,9 +71,9 @@ class BankAnalyticsViewModel(
                 .groupBy { fmt.format(Date(it.dateTime)) }
                 .entries.sortedBy { it.key }
                 .map { (monthStr, txns) ->
-                    val mInc = txns.filter { it.type == TransactionType.CREDIT.name }.sumOf { it.amount }
+                    val mInc = txns.filter { it.isIncome() }.sumOf { it.amount }
                     val mExp = txns.filter { 
-                        it.type in listOf(TransactionType.DEBIT.name, TransactionType.TRANSFER_OUT.name, TransactionType.PAYMENT.name) 
+                        it.isSpending() 
                     }.sumOf { it.amount }
                     MonthlyAggregate(monthStr, mInc, mExp)
                 }

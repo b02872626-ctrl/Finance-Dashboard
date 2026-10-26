@@ -18,7 +18,7 @@ import com.financeapp.data.model.TransactionEntity
         ErrorLogEntity::class,
         CategoryRuleEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -45,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_6_7)
                     .addMigrations(MIGRATION_7_8)
                     .addMigrations(MIGRATION_8_9)
+                    .addMigrations(MIGRATION_9_10)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
@@ -170,6 +171,31 @@ abstract class AppDatabase : RoomDatabase() {
          * counterpartyId. This retroactively unifies the "BESELAM MELESEW" rows
          * with future Telebirr SMS for the same phone.
          */
+        /**
+         * Testers filed self-transfers under hand-made categories ("internal",
+         * "Internal transfer") that the totals didn't understand. Move them to
+         * the built-in Spending.OWN_ACCOUNTS so they drop out of spending, and
+         * mark the rows unsynced so the web dashboard gets the new category.
+         * No schema change.
+         */
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val legacy = com.financeapp.data.model.Spending.LEGACY_OWN_ACCOUNT_NAMES
+                    .joinToString(",") { "'" + it + "'" }
+                val own = com.financeapp.data.model.Spending.OWN_ACCOUNTS
+                db.execSQL(
+                    "UPDATE transactions SET category = ?, isSynced = 0 " +
+                        "WHERE LOWER(TRIM(category)) IN ($legacy)",
+                    arrayOf(own)
+                )
+                db.execSQL(
+                    "UPDATE category_rules SET category = ?, isSynced = 0 " +
+                        "WHERE LOWER(TRIM(category)) IN ($legacy)",
+                    arrayOf(own)
+                )
+            }
+        }
+
         private val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `transactions` ADD COLUMN `counterpartyId` TEXT")

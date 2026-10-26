@@ -1,5 +1,7 @@
 package com.financeapp.viewmodel
 
+import com.financeapp.data.model.isIncome
+import com.financeapp.data.model.isSpending
 import androidx.lifecycle.*
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.ReviewStatus
@@ -98,14 +100,10 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
                 val aggregatedData = aggregateData(all, range)
                 val accountBalances = buildAccountBalances(all)
                 val monthIncome  = all.filter {
-                    (it.type == TransactionType.CREDIT.name) && it.dateTime >= monthStart
+                    (it.isIncome()) && it.dateTime >= monthStart
                 }.sumOf { it.amount }
                 val monthExpenses = all.filter {
-                    it.type in listOf(
-                        TransactionType.DEBIT.name,
-                        TransactionType.TRANSFER_OUT.name,
-                        TransactionType.PAYMENT.name
-                    ) && it.dateTime >= monthStart
+                    it.isSpending() && it.dateTime >= monthStart
                 }.sumOf { it.amount }
 
                 val cal = Calendar.getInstance()
@@ -186,8 +184,8 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
         
         return grouped.map { entry ->
             val lbl = dfLbl.format(java.util.Date(entry.value.first().dateTime))
-            val inc = entry.value.filter { it.type == TransactionType.CREDIT.name }.sumOf { it.amount }
-            val exp = entry.value.filter { it.type in listOf(TransactionType.DEBIT.name, TransactionType.TRANSFER_OUT.name, TransactionType.PAYMENT.name) }.sumOf { it.amount }
+            val inc = entry.value.filter { it.isIncome() }.sumOf { it.amount }
+            val exp = entry.value.filter { it.isSpending() }.sumOf { it.amount }
             MonthlyAggregate(lbl, inc, exp)
         }
     }
@@ -211,11 +209,7 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
                 .asSequence()
                 .filter { transaction ->
                     transaction.dateTime in startMs..endMs &&
-                        transaction.type in listOf(
-                            TransactionType.DEBIT.name,
-                            TransactionType.TRANSFER_OUT.name,
-                            TransactionType.PAYMENT.name
-                        )
+                        transaction.isSpending()
                 }
                 .sumOf { it.amount }
 

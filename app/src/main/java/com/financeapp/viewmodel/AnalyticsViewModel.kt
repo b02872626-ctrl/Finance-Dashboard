@@ -1,5 +1,7 @@
 package com.financeapp.viewmodel
 
+import com.financeapp.data.model.isIncome
+import com.financeapp.data.model.isSpending
 import androidx.lifecycle.*
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.TransactionCategoryCatalog
@@ -94,11 +96,7 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         allTransactions
     ) { monthly, all ->
         val expenses = all.filter {
-            it.type in listOf(
-                TransactionType.DEBIT.name,
-                TransactionType.TRANSFER_OUT.name,
-                TransactionType.PAYMENT.name
-            )
+            it.isSpending()
         }
         val perBank = expenses.groupBy { it.bankName }
             .mapValues { (_, txns) -> txns.sumOf { it.amount } }
@@ -137,18 +135,12 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         allTransactions
     ) { from, to, all ->
         val inRange = all.filter { it.dateTime in from..to }
-        val expenseTypes = listOf(
-            TransactionType.DEBIT.name,
-            TransactionType.TRANSFER_OUT.name,
-            TransactionType.PAYMENT.name
-        )
-        val incomeTypes = listOf(TransactionType.CREDIT.name)
 
-        val income  = inRange.filter { it.type in incomeTypes }.sumOf { it.amount }
-        val expense = inRange.filter { it.type in expenseTypes }.sumOf { it.amount }
+        val income  = inRange.filter { it.isIncome() }.sumOf { it.amount }
+        val expense = inRange.filter { it.isSpending() }.sumOf { it.amount }
         val days    = TimeUnit.MILLISECONDS.toDays(to - from).coerceAtLeast(1).toInt()
 
-        val topBank = inRange.filter { it.type in expenseTypes }
+        val topBank = inRange.filter { it.isSpending() }
             .groupBy { it.bankName }
             .maxByOrNull { it.value.sumOf { t -> t.amount } }?.key ?: "—"
 
@@ -221,7 +213,7 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         }
 
     private fun buildInsights(all: List<TransactionEntity>): InsightsState {
-        val expenses = all.filter { it.type in EXPENSE_TYPES }
+        val expenses = all.filter { it.isSpending() }
 
         val (todayStart, todayEnd) = todayBounds()
         val monthStart = startOfMonth()
@@ -297,7 +289,7 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         val (todayStart, todayEnd) = todayBounds()
         val monthStart = startOfMonth()
 
-        val monthExpenses = all.filter { it.type in EXPENSE_TYPES && it.dateTime >= monthStart }
+        val monthExpenses = all.filter { it.isSpending() && it.dateTime >= monthStart }
         val matchedMonth = monthExpenses.filter {
             it.category?.let(TransactionCategoryCatalog::normalize).equals(normalized, ignoreCase = true)
         }
@@ -340,13 +332,6 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
 
     private fun currentMonthStart(): Long = startOfMonth()
 
-    companion object {
-        private val EXPENSE_TYPES = listOf(
-            TransactionType.DEBIT.name,
-            TransactionType.TRANSFER_OUT.name,
-            TransactionType.PAYMENT.name
-        )
-    }
 }
 
 class AnalyticsViewModelFactory(private val repo: TransactionRepository) :

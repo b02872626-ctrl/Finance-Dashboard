@@ -284,6 +284,16 @@ projectRef.textContent = new URL(SUPABASE_URL).hostname.split(".")[0];
 // ----------------------------------------------------------------------------
 const EXPENSE_TYPES = new Set(["DEBIT", "TRANSFER_OUT", "PAYMENT"]);
 
+// Mirrors app/src/main/java/com/financeapp/data/model/Spending.kt — keep in
+// sync. Money moving between the user's own accounts (parser type
+// INTERNAL_TRANSFER, or filed under "Own accounts") is neither spending nor
+// income, otherwise every CBE → Telebirr top-up would be counted twice.
+const OWN_ACCOUNTS = "Own accounts";
+const isOwnAccountTransfer = (tx) =>
+  tx.type === "INTERNAL_TRANSFER" || (tx.category || "").trim() === OWN_ACCOUNTS;
+const isSpending = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnAccountTransfer(tx);
+const isIncome = (tx) => tx.type === "CREDIT" && !isOwnAccountTransfer(tx);
+
 const state = {
   allTxs: [],     // raw transactions for the signed-in user (most recent first)
   period: "month",
@@ -338,6 +348,7 @@ const DEFAULT_CATEGORIES = [
   "Loan",
   "Drinks and fun",
   "Transport",
+  OWN_ACCOUNTS,
 ];
 
 const PERIOD_LABELS = {
@@ -1320,7 +1331,7 @@ function renderIncomeView() {
   // Period-scoped actual income (from CREDIT transactions in state.allTxs).
   const range = periodRange(state.period);
   const actual = state.allTxs
-    .filter((t) => t.type === "CREDIT")
+    .filter((t) => isIncome(t))
     .filter((t) => {
       const ts = Date.parse(t.occurred_at);
       return Number.isFinite(ts) && ts >= range.start && ts <= range.end;
@@ -1342,7 +1353,7 @@ function renderIncomeView() {
 
   incomePeriodLabel.textContent = PERIOD_LABELS[state.period] || "";
   incomeActual.textContent = formatETB(totalActual);
-  incomeActualSub.textContent = `${state.allTxs.filter((t) => t.type === "CREDIT").length} CREDIT tx tracked total`;
+  incomeActualSub.textContent = `${state.allTxs.filter((t) => isIncome(t)).length} CREDIT tx tracked total`;
 
   incomeExpected.textContent = formatETB(monthlyExpected);
   incomeExpectedSub.textContent = recurring.length === 0
@@ -1411,7 +1422,7 @@ function monthlyEquivalent(amount, cadence, intervalDays) {
 // Detection — strict: same counterparty + ±10% amount + monthly cadence (25-35d)
 // ----------------------------------------------------------------------------
 function detectRecurringIncome() {
-  const credits = state.allTxs.filter((t) => t.type === "CREDIT");
+  const credits = state.allTxs.filter((t) => isIncome(t));
 
   // Group by normalised counterparty.
   const groups = new Map();
@@ -1788,7 +1799,7 @@ function avgMonthlySpend() {
   const cutoff = now - 90 * 864e5;
   const expenseTypes = new Set(["DEBIT", "TRANSFER_OUT", "PAYMENT"]);
   const total = state.allTxs
-    .filter((t) => expenseTypes.has(t.type))
+    .filter((t) => isSpending(t))
     .filter((t) => {
       const ts = Date.parse(t.occurred_at);
       return Number.isFinite(ts) && ts >= cutoff;
@@ -2868,7 +2879,7 @@ function renderHeaderStats(allTxs, inRange, range) {
   const dailyTotals = new Map();
 
   for (const tx of inRange) {
-    if (EXPENSE_TYPES.has(tx.type)) {
+    if (isSpending(tx)) {
       spend += tx.amount;
       spendCount++;
       if (!largestExpense || tx.amount > largestExpense.amount) largestExpense = tx;
@@ -2877,7 +2888,7 @@ function renderHeaderStats(allTxs, inRange, range) {
         const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
         dailyTotals.set(key, (dailyTotals.get(key) || 0) + tx.amount);
       }
-    } else if (tx.type === "CREDIT") {
+    } else if (isIncome(tx)) {
       income += tx.amount;
       incomeCount++;
     }
@@ -2954,7 +2965,7 @@ function renderAccountCard(account) {
 function renderCategoryList(inRange) {
   const byCategory = new Map();
   for (const tx of inRange) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const cat = (tx.category || "").trim();
     if (!cat) continue;
     byCategory.set(cat, (byCategory.get(cat) || 0) + tx.amount);
@@ -2973,7 +2984,7 @@ function renderCategoryList(inRange) {
 function renderCounterparties(inRange) {
   const byCp = new Map();
   for (const tx of inRange) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const cp = (tx.counterparty || "").trim();
     if (!cp) continue;
     const entry = byCp.get(cp) || { total: 0, count: 0 };
@@ -2996,7 +3007,7 @@ function renderCounterparties(inRange) {
 function renderRecurring(inRange) {
   const byCp = new Map();
   for (const tx of inRange) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const cp = (tx.counterparty || "").trim();
     if (!cp) continue;
     const entry = byCp.get(cp) || { total: 0, count: 0, last: 0 };
@@ -3196,7 +3207,7 @@ function renderDailyChart(allTxs) {
   }));
 
   for (const tx of allTxs) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const ts = Date.parse(tx.occurred_at);
     if (!Number.isFinite(ts) || ts < start) continue;
     const idx = Math.floor((ts - start) / 864e5);
@@ -3223,8 +3234,8 @@ function renderMonthlyChart(allTxs) {
     if (!Number.isFinite(ts)) continue;
     const idx = bucketIndexForDate(new Date(ts), buckets);
     if (idx < 0 || idx >= months) continue;
-    if (EXPENSE_TYPES.has(tx.type)) buckets[idx].expense += tx.amount;
-    else if (tx.type === "CREDIT") buckets[idx].income += tx.amount;
+    if (isSpending(tx)) buckets[idx].expense += tx.amount;
+    else if (isIncome(tx)) buckets[idx].income += tx.amount;
   }
 
   const max = Math.max(1, ...buckets.flatMap((b) => [b.income, b.expense]));
@@ -3304,7 +3315,7 @@ function renderWeekdayStrip(inRange) {
   const counts = [0, 0, 0, 0, 0, 0, 0];
   const seenDays = [new Set(), new Set(), new Set(), new Set(), new Set(), new Set(), new Set()];
   for (const tx of inRange) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const ts = Date.parse(tx.occurred_at);
     if (!Number.isFinite(ts)) continue;
     const d = new Date(ts);
@@ -3478,7 +3489,7 @@ function openTxDetail(txId) {
   const cutoff = (occurredMs || Date.now()) - THIRTY_D;
   const relatedRecent = related.filter((r) => Date.parse(r.occurred_at) >= cutoff);
   const relatedSpend = relatedRecent
-    .filter((r) => EXPENSE_TYPES.has(r.type))
+    .filter((r) => isSpending(r))
     .reduce((s, r) => s + Number(r.amount || 0), 0);
   const relatedTop = related.slice(0, 5);
 
@@ -3523,7 +3534,7 @@ function openTxDetail(txId) {
     let monthRank = 0;
     const monthExpenses = [];
     for (const t of state.allTxs) {
-      if (!EXPENSE_TYPES.has(t.type)) continue;
+      if (!isSpending(t)) continue;
       const ts = Date.parse(t.occurred_at);
       if (!Number.isFinite(ts)) continue;
       const d = new Date(ts);
@@ -3965,7 +3976,7 @@ function renderCategoriesView() {
   let uncategorisedCount = 0;
   let totalExpense = 0;
   for (const tx of inRange) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     totalExpense += tx.amount;
     const cat = (tx.category || "").trim();
     if (!cat) { uncategorisedCount++; continue; }
@@ -4063,7 +4074,7 @@ function renderCategoriesView() {
 function aggregateCategoryTotals(allTxs, range) {
   const m = new Map();
   for (const tx of allTxs) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const ts = Date.parse(tx.occurred_at);
     if (!Number.isFinite(ts) || ts < range.start || ts > range.end) continue;
     const cat = (tx.category || "").trim();
@@ -4101,7 +4112,7 @@ function openCategoryDetail(name) {
 
   const range = periodRange(state.period);
   const txs = state.allTxs.filter((t) => {
-    if (!EXPENSE_TYPES.has(t.type)) return false;
+    if (!isSpending(t)) return false;
     if ((t.category || "").trim() !== name) return false;
     const ts = Date.parse(t.occurred_at);
     return Number.isFinite(ts) && ts >= range.start && ts <= range.end;
@@ -4115,7 +4126,7 @@ function openCategoryDetail(name) {
   let trendStr = "no prior data", trendColor = "muted";
   if (prior) {
     const priorTotal = state.allTxs
-      .filter((t) => EXPENSE_TYPES.has(t.type) && (t.category || "").trim() === name)
+      .filter((t) => isSpending(t) && (t.category || "").trim() === name)
       .filter((t) => {
         const ts = Date.parse(t.occurred_at);
         return Number.isFinite(ts) && ts >= prior.start && ts <= prior.end;
@@ -4206,7 +4217,7 @@ function renderCategoryTrend(orderedCategoryNames) {
   const buckets = buildMonthBuckets(now, months).map((b) => ({ ...b, totals: new Map() }));
 
   for (const tx of state.allTxs) {
-    if (!EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const cat = (tx.category || "").trim();
     if (!cat) continue;
     const ts = Date.parse(tx.occurred_at);
@@ -4614,7 +4625,7 @@ function spentInCycle(cats, start, end) {
   const set = new Set(cats.map((c) => c.toLowerCase()));
   let sum = 0;
   for (const tx of state.allTxs) {
-    if (!BUDGET_EXPENSE_TYPES.has(tx.type)) continue;
+    if (!isSpending(tx)) continue;
     const c = (tx.category || "").toLowerCase();
     if (!c || !set.has(c)) continue;
     const ts = Date.parse(tx.occurred_at);

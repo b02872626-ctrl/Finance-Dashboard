@@ -1,5 +1,6 @@
 package com.financeapp.data.db
 
+import com.financeapp.data.model.Spending
 import androidx.room.*
 import com.financeapp.data.model.TransactionEntity
 
@@ -112,6 +113,8 @@ interface TransactionDao {
             SUM(CASE WHEN type IN ('DEBIT','TRANSFER_OUT','PAYMENT') THEN amount ELSE 0.0 END) AS totalExpense
         FROM transactions
         WHERE dateTime >= :fromMs
+          -- Same exclusion as Spending.kt isOwnAccountTransfer()
+          AND COALESCE(category, '') != '${Spending.OWN_ACCOUNTS}'
         GROUP BY month
         ORDER BY month ASC
     """)

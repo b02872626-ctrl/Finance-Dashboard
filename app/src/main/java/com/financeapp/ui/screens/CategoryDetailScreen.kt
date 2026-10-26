@@ -1,5 +1,6 @@
 package com.financeapp.ui.screens
 
+import com.financeapp.data.model.netAmount
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -276,7 +277,7 @@ private data class CatDayGroup(val label: String, val transactions: List<Transac
 
 @Composable
 private fun DaySectionLite(group: CatDayGroup) {
-    val net = group.transactions.sumOf { if (it.type == TransactionType.CREDIT.name) it.amount else -it.amount }
+    val net = group.transactions.sumOf { it.netAmount() }
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),

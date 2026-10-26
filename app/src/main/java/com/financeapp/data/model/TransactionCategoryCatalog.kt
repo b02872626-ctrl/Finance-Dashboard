@@ -28,6 +28,7 @@ object TransactionCategoryCatalog {
         "Loan",
         // Money in/out
         "Transfer",
+        Spending.OWN_ACCOUNTS,
         "Income",
         "Other"
     )
@@ -36,7 +37,7 @@ object TransactionCategoryCatalog {
     val sections: List<Pair<String, List<String>>> = listOf(
         "Common"        to listOf("Food", "Transport", "Bills", "Shopping", "Health", "Coffee and refreshments"),
         "Lifestyle"     to listOf("Drinks and fun", "Entertainment", "Rent", "Fees", "Loan"),
-        "Money in/out"  to listOf("Transfer", "Income", "Other"),
+        "Money in/out"  to listOf("Transfer", Spending.OWN_ACCOUNTS, "Income", "Other"),
     )
 
     fun normalize(raw: String): String =

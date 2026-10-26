@@ -1,5 +1,6 @@
 package com.financeapp.ui.screens
 
+import com.financeapp.data.model.netAmount
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -557,8 +558,7 @@ private fun EmptyState() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-private fun netValue(tx: TransactionEntity): Double =
-    if (tx.type == TransactionType.CREDIT.name) tx.amount else -tx.amount
+private fun netValue(tx: TransactionEntity): Double = tx.netAmount()
 
 private fun moneyShort(amount: Double): String = String.format(Locale.US, "%,.2f", amount)
 

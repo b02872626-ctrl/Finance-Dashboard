@@ -1,5 +1,7 @@
 package com.financeapp.viewmodel
 
+import com.financeapp.data.model.isIncome
+import com.financeapp.data.model.isSpending
 import androidx.lifecycle.*
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.TransactionRepository
@@ -171,13 +173,9 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
             .sortedByDescending { it.key }
             .take(actualLimit)
             .map { (key, txns) ->
-                val income   = txns.filter { it.type == TransactionType.CREDIT.name }.sumOf { it.amount }
+                val income   = txns.filter { it.isIncome() }.sumOf { it.amount }
                 val expenses = txns.filter {
-                    it.type in listOf(
-                        TransactionType.DEBIT.name,
-                        TransactionType.TRANSFER_OUT.name,
-                        TransactionType.PAYMENT.name
-                    )
+                    it.isSpending()
                 }.sumOf { it.amount }
                 DayGroup(
                     dateLabel    = formatLabel(key, dayFmt),
