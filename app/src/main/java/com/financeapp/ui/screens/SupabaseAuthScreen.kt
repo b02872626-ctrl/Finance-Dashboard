@@ -122,7 +122,7 @@ fun SupabaseAuthScreen(
     fun handleGoogleSignIn() {
         val webClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
         if (webClientId.isBlank() || webClientId == "YOUR_GOOGLE_SERVER_CLIENT_ID_HERE") {
-            error = "Google Web Client ID is not configured in local.properties"
+            error = "Google sign-in isn't available right now. Please use email instead."
             return
         }
 
@@ -143,7 +143,7 @@ fun SupabaseAuthScreen(
             try {
                 val activity = findActivity(context)
                 if (activity == null) {
-                    error = "Could not find a valid Activity to launch Sign-In"
+                    error = "Couldn't open Google sign-in. Please try again."
                     isLoading = false
                     return@launch
                 }
@@ -157,7 +157,7 @@ fun SupabaseAuthScreen(
                     
                     val cfg = SupabaseConfigProvider.fromBuildConfig()
                     if (cfg == null) {
-                        error = "Supabase is not configured."
+                        error = "Sign-in isn't available in this version of the app."
                         isLoading = false
                         return@launch
                     }
@@ -188,7 +188,7 @@ fun SupabaseAuthScreen(
                                 onBack()
                             } else {
                                 val ex = authResult.exceptionOrNull()
-                                error = ex?.message ?: "Google sign-in failed on server"
+                                error = friendlyAuthError(ex, "Google sign-in failed. Please try again.")
                                 if (ex != null) {
                                     scope.launch(Dispatchers.IO) {
                                         errorRepo.log("Google sign-in server error", ex)
@@ -199,19 +199,19 @@ fun SupabaseAuthScreen(
                     }
                 } else {
                     isLoading = false
-                    error = "Unexpected credential type"
+                    error = "Google sign-in failed. Please try again."
                 }
             } catch (e: Exception) {
                 isLoading = false
                 val msg = when (e) {
-                    is androidx.credentials.exceptions.GetCredentialCancellationException -> "Sign-in cancelled by user"
-                    is androidx.credentials.exceptions.NoCredentialException -> 
-                        "No Google accounts found. Please sign in to Google in your Android device settings, or check your SHA-1 configuration."
-                    else -> "Google Error: ${e.javaClass.simpleName} - ${e.message}"
+                    is androidx.credentials.exceptions.GetCredentialCancellationException -> "Sign-in cancelled"
+                    is androidx.credentials.exceptions.NoCredentialException ->
+                        "No Google account found on this phone. Add one in Settings → Accounts, or sign in with email."
+                    else -> friendlyAuthError(e, "Google sign-in failed. Please try again.")
                 }
                 error = msg
                 scope.launch(Dispatchers.IO) {
-                    errorRepo.log("Google sign-in failed: $msg", e)
+                    errorRepo.log("Google sign-in failed: ${e.javaClass.simpleName}", e)
                 }
             }
         }
@@ -383,7 +383,7 @@ fun SupabaseAuthScreen(
 
                                 val cfg = SupabaseConfigProvider.fromBuildConfig()
                                 if (cfg == null) {
-                                    error = "Supabase is not configured."
+                                    error = "Sign-in isn't available in this version of the app."
                                     return@Button
                                 }
 
@@ -414,7 +414,7 @@ fun SupabaseAuthScreen(
                                             onBack()
                                         } else {
                                             val ex = result.exceptionOrNull()
-                                            error = ex?.message ?: "Sign-in failed"
+                                            error = friendlyAuthError(ex, "Sign-in failed. Please try again.")
                                             if (ex != null) {
                                                 scope.launch(Dispatchers.IO) {
                                                     errorRepo.log("Supabase sign-in failed", ex)
@@ -472,7 +472,7 @@ fun SupabaseAuthScreen(
 
                                     val cfg = SupabaseConfigProvider.fromBuildConfig()
                                     if (cfg == null) {
-                                        error = "Supabase is not configured."
+                                        error = "Sign-in isn't available in this version of the app."
                                         return@TextButton
                                     }
 
@@ -519,7 +519,7 @@ fun SupabaseAuthScreen(
                                                 }
                                             } else {
                                                 val ex = result.exceptionOrNull()
-                                                error = ex?.message ?: "Sign-up failed"
+                                                error = friendlyAuthError(ex, "Sign-up failed. Please try again.")
                                                 if (ex != null) {
                                                     scope.launch(Dispatchers.IO) {
                                                         errorRepo.log("Supabase sign-up failed", ex)
@@ -547,4 +547,33 @@ private fun findActivity(context: Context): Activity? {
         cur = cur.baseContext
     }
     return null
+}
+
+/**
+ * Maps auth failures to copy a user can act on. The raw exception still goes
+ * to the error log (Settings → Errors) at each call site; it is never shown.
+ */
+private fun friendlyAuthError(e: Throwable?, fallback: String): String {
+    if (e == null) return fallback
+    val causes = generateSequence(e) { it.cause }.toList()
+    if (causes.any {
+            it is java.net.UnknownHostException ||
+                it is java.net.SocketTimeoutException ||
+                it is java.net.ConnectException ||
+                it is javax.net.ssl.SSLException
+        }) {
+        return "No internet connection. Check your connection and try again."
+    }
+    val msg = causes.joinToString(" ") { it.message.orEmpty() }.lowercase()
+    return when {
+        "invalid login credentials" in msg -> "Wrong email or password."
+        "user already registered" in msg || "already been registered" in msg ->
+            "An account with this email already exists. Try signing in instead."
+        "email not confirmed" in msg -> "Please confirm your email first — check your inbox."
+        "password should be" in msg || "weak_password" in msg -> "Password must be at least 6 characters."
+        "invalid email" in msg || "unable to validate email" in msg -> "That email address doesn't look right."
+        "(429)" in msg || "rate limit" in msg -> "Too many attempts. Wait a minute and try again."
+        Regex("""failed \(5\d\d\)""").containsMatchIn(msg) -> "Our server is having trouble. Please try again in a moment."
+        else -> fallback
+    }
 }

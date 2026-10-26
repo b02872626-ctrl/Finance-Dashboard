@@ -565,45 +565,7 @@ private fun CategoriesStep(onContinue: () -> Unit) {
                     trailingArrow = true,
                     textColor = PureWhite
                 )
-                Spacer(Modifier.height(10.dp))
-                AddMoreCategoriesButton(onClick = { /* TODO: open add-category dialog */ })
             }
-        }
-    }
-}
-
-@Composable
-private fun AddMoreCategoriesButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .clip(RoundedCornerShape(50))
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(50))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(26.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF004D44)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("+", color = PureWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = "Add more Categories",
-                color = Headline,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
         }
     }
 }

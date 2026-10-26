@@ -169,6 +169,7 @@ private fun MainNavigation(
     onPendingRouteHandled: () -> Unit
 ) {
     val navController = rememberNavController()
+    val context = androidx.compose.ui.platform.LocalContext.current
     val setVm: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(settingsRepo, repo))
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route
@@ -432,7 +433,7 @@ private fun MainNavigation(
                     onConnectedBanks = {
                         navController.navigate(Screen.Accounts.route) { launchSingleTop = true }
                     },
-                    onSupport = { /* TODO: open help center */ }
+                    onSupport = { openSupportEmail(context) }
                 )
             }
             composable("profile_edit") {
@@ -565,5 +566,26 @@ private fun FloatingBottomNav(
                 }
             }
         }
+    }
+}
+
+/** Settings → Support: pre-filled email with version + device for triage. */
+private fun openSupportEmail(context: android.content.Context) {
+    val address = context.getString(R.string.support_email)
+    val body = "\n\n---\nApp: ${com.financeapp.BuildConfig.VERSION_NAME}" +
+        "\nDevice: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}" +
+        "\nAndroid: ${android.os.Build.VERSION.RELEASE}"
+    val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+        data = android.net.Uri.parse("mailto:")
+        putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(address))
+        putExtra(android.content.Intent.EXTRA_SUBJECT, "Finance Lore support")
+        putExtra(android.content.Intent.EXTRA_TEXT, body)
+    }
+    runCatching { context.startActivity(intent) }.onFailure {
+        android.widget.Toast.makeText(
+            context,
+            "No email app found. Write to us at $address",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
     }
 }

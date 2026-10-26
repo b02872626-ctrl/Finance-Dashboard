@@ -302,7 +302,7 @@ private fun PreferencesList(
         PreferenceRow(
             tileVariant = TileVariant.Glyph(R.drawable.ic_support, tint = GlyphMint),
             title = "Support",
-            subtitle = "Help Center & Direct Chat",
+            subtitle = "Email us — we usually reply within a day",
             onClick = onSupport
         )
         ThinDivider()

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -233,15 +234,29 @@ fun TransactionDetailScreen(
                 }
             }
 
-            // Receipt button (only if there's a URL)
-            tx.receiptLink?.takeIf { it.isNotBlank() }?.let { url ->
-                CoralPill(text = "Open ${tx.bankName.split(" ").first()} receipt") {
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    }.onFailure {
-                        Toast.makeText(context, "Couldn't open receipt link", Toast.LENGTH_SHORT).show()
+            // Receipt (only if there's a URL) + Share side by side. Without a
+            // receipt, Share takes the full width as a secondary pill.
+            val share = { shareTransaction(context, tx) }
+            val receiptUrl = tx.receiptLink?.takeIf { it.isNotBlank() }
+            if (receiptUrl != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    CoralPill(
+                        text = "Open ${tx.bankName.split(" ").first()} receipt",
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(receiptUrl)))
+                        }.onFailure {
+                            Toast.makeText(context, "Couldn't open receipt link", Toast.LENGTH_SHORT).show()
+                        }
                     }
+                    ShareTile(onClick = share)
                 }
+            } else {
+                DarkPill(text = "Share transaction", onClick = share)
             }
 
             // Show / hide original SMS
@@ -311,10 +326,9 @@ private fun DetailRow(
 }
 
 @Composable
-private fun CoralPill(text: String, onClick: () -> Unit) {
+private fun CoralPill(text: String, modifier: Modifier = Modifier.fillMaxWidth(), onClick: () -> Unit) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(54.dp)
             .clip(RoundedCornerShape(50))
             .background(Coral)
@@ -327,6 +341,56 @@ private fun CoralPill(text: String, onClick: () -> Unit) {
     ) {
         Text(text = text, color = PureWhite, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }
+}
+
+@Composable
+private fun ShareTile(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(54.dp)
+            .clip(RoundedCornerShape(50))
+            .background(CardBg)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = androidx.compose.material.icons.Icons.Filled.Share,
+            contentDescription = "Share transaction",
+            tint = Headline,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+/**
+ * Plain-text summary for the system share sheet. Deliberately leaves out
+ * the account balance and full account number.
+ */
+private fun shareTransaction(context: android.content.Context, tx: TransactionEntity) {
+    val amount = "${moneyShort(tx.amount)} ETB"
+    val who = tx.counterparty?.takeIf { it.isNotBlank() }
+    val headline = when {
+        tx.type == TransactionType.CREDIT.name && who != null -> "Received $amount from $who"
+        tx.type == TransactionType.CREDIT.name -> "Received $amount"
+        who != null -> "Paid $amount to $who"
+        else -> "Paid $amount"
+    }
+    val text = buildString {
+        append(headline).append(" via ").append(tx.bankName)
+        append("\n").append(formatDateTime(tx.dateTime))
+        tx.refNumber?.takeIf { it.isNotBlank() }?.let { append("\nRef: ").append(it) }
+        tx.receiptLink?.takeIf { it.isNotBlank() }?.let { append("\nReceipt: ").append(it) }
+    }
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    runCatching { context.startActivity(Intent.createChooser(send, "Share transaction")) }
+        .onFailure { Toast.makeText(context, "Couldn't open share sheet", Toast.LENGTH_SHORT).show() }
 }
 
 @Composable
