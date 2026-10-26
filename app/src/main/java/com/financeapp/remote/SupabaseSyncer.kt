@@ -230,6 +230,7 @@ class SupabaseSyncer(private val context: Context) {
             if (isDeadRefreshToken(e)) {
                 ErrorLogRepository.fromContext(context)
                     .log("Supabase refresh token dead — forcing re-login", e)
+                settingsRepo.markSessionExpired()
                 settingsRepo.clearSupabaseSession()
                 null
             } else {

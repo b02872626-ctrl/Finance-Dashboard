@@ -25,10 +25,15 @@ class SupabaseSyncWorker(
 
         return when (result) {
             SupabaseSyncResult.SkippedNotConfigured,
-            SupabaseSyncResult.SkippedNotSignedIn,
-            SupabaseSyncResult.Noop -> Result.success()
+            SupabaseSyncResult.SkippedNotSignedIn -> Result.success()
+
+            SupabaseSyncResult.Noop -> {
+                settingsRepo.recordSyncSuccess()
+                Result.success()
+            }
 
             is SupabaseSyncResult.Success -> {
+                settingsRepo.recordSyncSuccess()
                 if (settingsRepo.shouldNotifyWhenPendingSyncCompletes()) {
                     if (settingsRepo.notificationsEnabledSync()) {
                         SyncNotificationHelper.notifySynced(
@@ -48,6 +53,12 @@ class SupabaseSyncWorker(
             }
 
             is SupabaseSyncResult.Failed -> {
+                // Copy is shown verbatim in Settings. The 1-minute chain
+                // scheduled above keeps retrying either way.
+                settingsRepo.recordSyncProblem(
+                    if (result.retryable) "Waiting for an internet connection. We'll sync automatically."
+                    else "Sync isn't working right now. We'll keep trying — contact Support if this lasts."
+                )
                 if (result.retryable) Result.retry() else Result.failure()
             }
         }

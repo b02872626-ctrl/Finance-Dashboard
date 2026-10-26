@@ -97,7 +97,13 @@ fun SupabaseAuthScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember {
+        mutableStateOf<String?>(
+            if (settingsRepo.isSessionExpired())
+                "You were signed out because your session expired. Sign in again to keep syncing."
+            else null
+        )
+    }
     var showPassword by remember { mutableStateOf(false) }
 
     val existingSession = remember { settingsRepo.getSupabaseSession() }

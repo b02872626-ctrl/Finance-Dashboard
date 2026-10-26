@@ -73,6 +73,7 @@ class SettingsRepository(context: Context) {
 
     fun setSupabaseSession(session: SupabaseSession) {
         prefs.edit()
+            .putBoolean(KEY_SESSION_EXPIRED, false)
             .putString(KEY_SUPABASE_ACCESS_TOKEN, session.accessToken)
             .putString(KEY_SUPABASE_REFRESH_TOKEN, session.refreshToken)
             .putString(KEY_SUPABASE_USER_ID, session.userId)
@@ -98,6 +99,22 @@ class SettingsRepository(context: Context) {
         prefs.all.keys.filter { it !in keep }.forEach { editor.remove(it) }
         editor.commit()
     }
+
+    // ── Sync status (shown in Settings) ────────────────────────────────────
+    fun recordSyncSuccess() {
+        prefs.edit()
+            .putLong(KEY_LAST_SYNC_OK_MS, System.currentTimeMillis())
+            .putString(KEY_SYNC_PROBLEM, "")
+            .apply()
+    }
+    fun recordSyncProblem(message: String) =
+        prefs.edit().putString(KEY_SYNC_PROBLEM, message).apply()
+    fun lastSyncOkFlow(): Flow<Long> = prefFlow(KEY_LAST_SYNC_OK_MS, 0L)
+    fun syncProblemFlow(): Flow<String> = prefFlow(KEY_SYNC_PROBLEM, "")
+
+    /** Set when sync had to drop a dead session; the sign-in screen explains why. */
+    fun markSessionExpired() = prefs.edit().putBoolean(KEY_SESSION_EXPIRED, true).apply()
+    fun isSessionExpired(): Boolean = prefs.getBoolean(KEY_SESSION_EXPIRED, false)
 
     fun clearSupabaseSession() {
         prefs.edit()
@@ -239,6 +256,7 @@ class SettingsRepository(context: Context) {
                     Boolean::class -> prefs.getBoolean(key, defaultValue as Boolean) as T
                     String::class -> prefs.getString(key, defaultValue as String) as T
                     Int::class -> prefs.getInt(key, defaultValue as Int) as T
+                    Long::class -> prefs.getLong(key, defaultValue as Long) as T
                     else -> defaultValue
                 }
                 trySend(value)
@@ -249,6 +267,7 @@ class SettingsRepository(context: Context) {
             Boolean::class -> prefs.getBoolean(key, defaultValue as Boolean) as T
             String::class -> prefs.getString(key, defaultValue as String) as T
             Int::class -> prefs.getInt(key, defaultValue as Int) as T
+            Long::class -> prefs.getLong(key, defaultValue as Long) as T
             else -> defaultValue
         }
         trySend(initialValue)
@@ -261,6 +280,9 @@ class SettingsRepository(context: Context) {
         const val KEY_CALENDAR_SYSTEM = "calendar_system"
         const val KEY_SUPABASE_ACCESS_TOKEN = "supabase_access_token"
         const val KEY_SUPABASE_REFRESH_TOKEN = "supabase_refresh_token"
+        const val KEY_LAST_SYNC_OK_MS = "last_sync_ok_ms"
+        const val KEY_SYNC_PROBLEM = "sync_problem"
+        const val KEY_SESSION_EXPIRED = "session_expired"
         const val KEY_SUPABASE_USER_ID = "supabase_user_id"
         const val KEY_SUPABASE_EMAIL = "supabase_email"
         const val KEY_SUPABASE_EXPIRES_AT_MS = "supabase_expires_at_ms"
