@@ -64,11 +64,6 @@ class SettingsViewModel(
 
     fun setNotificationsEnabled(enabled: Boolean) = repo.setNotifications(enabled)
 
-    val lastSyncOkMs: StateFlow<Long> = repo.lastSyncOkFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
-    val syncProblem: StateFlow<String> = repo.syncProblemFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-
     fun updateUserName(name: String) {
         repo.setUserName(name)
         _userName.value = name

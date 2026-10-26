@@ -101,13 +101,6 @@ fun SettingsScreen(
         }
 
         item {
-            SyncStatusLine(
-                lastOkMs = vm.lastSyncOkMs.collectAsState().value,
-                problem = vm.syncProblem.collectAsState().value
-            )
-        }
-
-        item {
             Text(
                 text = "Preferences",
                 color = BodyMuted,
@@ -137,39 +130,6 @@ fun SettingsScreen(
         item { LogoutPill(onClick = { vm.signOut() }) }
 
         item { DeleteAccountLink() }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Cloud sync status — "Synced 3 min ago", or the last problem in plain words.
-// Written by SupabaseSyncWorker via SettingsRepository.recordSync*().
-// ---------------------------------------------------------------------------
-@Composable
-private fun SyncStatusLine(lastOkMs: Long, problem: String) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    // Checked on each composition (opening Settings); cheap system call.
-    val online = com.financeapp.remote.NetworkMonitor.isOnline(context)
-    val isProblem = problem.isNotBlank() || !online
-    val text = when {
-        !online -> "You're offline. Your data will sync when you're back online."
-        problem.isNotBlank() -> problem
-        lastOkMs > 0L -> "Synced " + android.text.format.DateUtils.getRelativeTimeSpanString(
-            lastOkMs, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS
-        ).toString().replaceFirstChar { it.lowercase() }
-        else -> "Waiting for first sync…"
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(if (isProblem) Coral else Headline)
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(text = text, color = BodyMuted, fontSize = 13.sp, lineHeight = 18.sp)
     }
 }
 
