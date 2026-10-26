@@ -298,7 +298,8 @@ private fun ProfileHeaderCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             HeaderToolTile(iconRes = R.drawable.ic_edit, contentDescription = "Edit profile", onClick = onEdit)
-            HeaderToolTile(iconRes = R.drawable.ic_frame_177, contentDescription = "Toggle theme", onClick = onToggleTheme)
+            // Theme toggle removed for v1: the app ships dark-only and the
+            // button was never wired to anything.
         }
 
         Spacer(Modifier.height(8.dp))
@@ -380,14 +381,14 @@ private fun PreferencesList(
         )
         ThinDivider()
         PreferenceRow(
-            tileVariant = TileVariant.Glyph(R.drawable.ic_banks, tint = GlyphMint),
+            tileVariant = TileVariant.PreStyled(R.drawable.ic_banks),
             title = "Connected Banks",
             subtitle = "$connectedBankCount External Account${if (connectedBankCount == 1) "" else "s"} Linked",
             onClick = onConnectedBanks
         )
         ThinDivider()
         PreferenceRow(
-            tileVariant = TileVariant.Glyph(R.drawable.ic_support, tint = GlyphMint),
+            tileVariant = TileVariant.PreStyled(R.drawable.ic_support),
             title = "Support",
             subtitle = "Email us — we usually reply within a day",
             onClick = onSupport
