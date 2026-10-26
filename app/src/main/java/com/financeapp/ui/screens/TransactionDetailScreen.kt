@@ -194,7 +194,7 @@ fun TransactionDetailScreen(
                     DetailRow(label = receiverLabel(tx.type), value = it)
                 }
                 tx.accountNumber?.takeIf { it.isNotBlank() }?.let {
-                    DetailRow(label = "${receiverLabel(tx.type)} Account", value = it)
+                    DetailRow(label = "Your account", value = it)
                 }
                 tx.refNumber?.takeIf { it.isNotBlank() }?.let {
                     DetailRow(label = "Reference Num", value = it)
@@ -209,7 +209,7 @@ fun TransactionDetailScreen(
                 )
                 tx.balance?.let {
                     DetailRow(
-                        label = if (outgoing) "Balance after expence" else "Balance after income",
+                        label = if (outgoing) "Balance after expense" else "Balance after income",
                         value = "ETB ${moneyShort(it)}",
                         valueColor = balanceColor,
                         valueBold = true
@@ -244,7 +244,7 @@ fun TransactionDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     CoralPill(
-                        text = "Open ${tx.bankName.split(" ").first()} receipt",
+                        text = "Open receipt",
                         modifier = Modifier.weight(1f)
                     ) {
                         runCatching {
