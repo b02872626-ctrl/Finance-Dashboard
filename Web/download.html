@@ -3,117 +3,316 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Download Finance Lore</title>
-  <meta name="description" content="Download the Finance Lore Android app: your bank and Telebirr SMS turned into a clear picture of your money." />
+  <title>Finance Lore — Download for Android</title>
+  <meta name="description" content="Your bank and Telebirr SMS, turned into a clear picture of where your money goes. Free, for Android." />
+  <meta name="theme-color" content="#F7F4EE" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;800&display=swap" rel="stylesheet" />
+  <link rel="preload" href="launch/fonts/PerfectlyNineties-Regular.ttf" as="font" type="font/ttf" crossorigin />
   <style>
-    /* Same tokens as Web/styles.css and privacy.html. */
+    /* Built from the "Launch page" design export (Claude Design, Oct 2026).
+       Release details (APK URL, version, size) appear in three places:
+       hero/download block, footer button, footer copyright line. */
+    @font-face {
+      font-family: "Perfectly Nineties";
+      src: url("launch/fonts/PerfectlyNineties-Regular.ttf") format("truetype");
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
     :root {
-      --page-bg: #0E1614;
-      --card-bg: #231E1A;
-      --inner-dark: #15110F;
-      --headline: #7FE3CB;
-      --coral: #FB5D53;
-      --body: #E6E1D8;
-      --body-muted: #B7B3AC;
-      --divider: rgba(127, 227, 203, 0.15);
+      --paper: #F7F4EE;
+      --ink: #1C1C19;
+      --ink-soft: #45433D;
+      --night: #1F1F1B;
+      --night-line: #3A3833;
+      --night-text: #C9C4B9;
+      --night-muted: #A8A399;
+      --coral: #F45544;
+      --coral-light: #FF8F83;
+      --card-line: #DDD8CE;
+      --serif: "Perfectly Nineties", Georgia, serif;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--page-bg); color: var(--body); }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: "Google Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-      font-size: 16px;
-      line-height: 1.6;
+      margin: 0; background: var(--paper); color: var(--ink);
+      font-family: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
+      font-size: 18px; line-height: 1.5; overflow-x: hidden;
     }
-    main { max-width: 640px; margin: 0 auto; padding: 40px 16px 80px; }
-    h1 { color: var(--headline); font-size: 36px; line-height: 1.15; margin: 0 0 8px; }
-    h2 { color: var(--headline); font-size: 20px; margin: 36px 0 10px; }
-    p, li { color: var(--body); }
-    a { color: var(--headline); }
-    .lead { color: var(--body-muted); font-size: 17px; margin: 0 0 28px; }
-    .card { background: var(--card-bg); border-radius: 22px; padding: 22px 20px; }
-    .download {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      width: 100%; min-height: 56px; border-radius: 999px;
-      background: var(--coral); color: #fff; font-size: 18px; font-weight: 600;
-      text-decoration: none;
+    a { color: #C23A2B; }
+    a:hover { color: var(--ink); }
+    img.deco { position: absolute; height: auto; pointer-events: none; user-select: none; }
+    .serif { font-family: var(--serif); font-weight: 400; }
+    .eyebrow { font-size: 18px; text-transform: uppercase; letter-spacing: 0.01em; }
+    .mark { background: var(--coral); color: #fff; padding: 0 0.08em; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+
+    /* Header */
+    header.wrap { padding-top: 28px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+    .logo { color: var(--ink); text-decoration: none; font-weight: 800; font-size: 26px; letter-spacing: -0.045em; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; font-size: 16px; }
+    nav a { color: var(--ink); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+    nav a.pill { border: 1px solid var(--ink); border-radius: 999px; padding: 0 20px; }
+
+    /* Hero */
+    /* overflow-x: clip keeps the decorative shapes from widening the page on phones. */
+    .hero, .permissions { overflow-x: clip; }
+    .hero { position: relative; padding-top: 80px; padding-bottom: 112px; display: flex; flex-wrap: wrap; gap: 56px; align-items: center; }
+    .hero-copy { flex: 999 1 540px; min-width: 0; display: flex; flex-direction: column; gap: 32px; position: relative; z-index: 1; }
+    .hero h1 { margin: 0; font-size: clamp(60px, 9vw, 128px); line-height: 0.92; letter-spacing: -0.025em; }
+    .scribble { position: relative; display: inline-block; }
+    .scribble svg { position: absolute; }
+    .hero p { margin: 0; font-size: 22px; line-height: 1.45; color: var(--ink-soft); max-width: 30ch; }
+    .hero-phone { flex: 1 1 340px; display: flex; justify-content: center; position: relative; padding: 40px 0; }
+
+    /* Phone mock-up (illustrative data) */
+    .phone { position: relative; z-index: 1; width: 300px; background: #121211; border-radius: 46px; padding: 12px; border: 2px solid var(--night-line); }
+    .screen { border-radius: 34px; padding: 28px 16px 20px; display: flex; flex-direction: column; gap: 14px; color: #EDEAE3; }
+    .row { display: flex; justify-content: space-between; align-items: center; }
+    .col { display: flex; flex-direction: column; }
+    .tile { width: 36px; height: 36px; border-radius: 11px; background: #2C2A25; display: flex; align-items: center; justify-content: center; }
+    .balance { background: #FF5F4F; border-radius: 20px; padding: 16px; color: #fff; display: flex; flex-direction: column; gap: 12px; }
+    .bars { display: flex; align-items: flex-end; justify-content: space-between; height: 72px; padding: 0 6px; border-bottom: 1px solid rgba(255,255,255,0.45); }
+    .bars i { width: 16px; border-radius: 8px 8px 0 0; background: #E2E0DC; display: block; }
+    .days { display: flex; justify-content: space-between; padding: 0 9px; font-size: 9px; color: rgba(255,255,255,0.85); }
+    .review { background: #2C2A25; border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .go { flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; background: #FF5F4F; display: flex; align-items: center; justify-content: center; }
+    .banks { display: flex; gap: 10px; }
+    .bank { flex: 1 1 0; background: #2C2A25; border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; color: #9FE0CF; }
+
+    /* Dark band: solution + download */
+    .band { position: relative; background: var(--night); color: var(--paper); overflow: hidden; }
+    .solution { position: relative; max-width: 1000px; margin: 0 auto; padding: 160px 24px; display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; }
+    .solution h2 { margin: 0; font-size: clamp(48px, 7vw, 104px); line-height: 0.98; letter-spacing: -0.02em; }
+    .solution > p { margin: 0; font-size: 20px; color: var(--night-text); max-width: 44ch; }
+    .download { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 20px; scroll-margin-top: 24px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 14px; background: var(--coral); color: #fff; text-decoration: none;
+      font-weight: 800; font-size: 20px; letter-spacing: -0.01em; padding: 0 40px; border-radius: 999px; min-height: 72px;
+      transition: transform .15s ease, background-color .15s ease;
     }
-    .download:active { transform: scale(0.98); }
-    .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; margin-top: 12px; color: var(--body-muted); font-size: 14px; }
-    .note { margin-top: 14px; font-size: 14px; color: var(--body-muted); text-align: center; }
-    .desktop-only { display: none; }
-    .is-desktop .desktop-only { display: block; }
-    .url {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      background: var(--inner-dark); border-radius: 12px; padding: 10px 12px;
-      word-break: break-all; color: var(--headline);
+    .btn:hover { color: #fff; background: #E8473A; }
+    .btn:active { transform: scale(0.98); }
+    .btn:focus-visible, nav a:focus-visible, .btn-ghost:focus-visible { outline: 3px solid var(--coral-light); outline-offset: 3px; }
+    .meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 15px; color: var(--night-muted); }
+    .note { margin: 8px 0 0; font-size: 16px; color: var(--night-text); }
+    .desktop-hint { display: none; margin: 0; font-size: 16px; color: var(--night-text); border: 1px solid var(--night-line); border-radius: 22px; padding: 16px 22px; max-width: 520px; }
+    .is-desktop .desktop-hint { display: block; }
+    .desktop-hint a, footer .contact a { color: var(--coral-light); font-weight: 600; word-break: break-all; }
+
+    /* Install */
+    .install { position: relative; padding-top: 120px; padding-bottom: 120px; display: flex; flex-direction: column; gap: 56px; }
+    .install-head { display: flex; flex-wrap: wrap; gap: 24px 80px; align-items: flex-end; justify-content: space-between; }
+    .section-title { margin: 0; font-size: clamp(44px, 6vw, 88px); line-height: 0.95; letter-spacing: -0.02em; }
+    .aside { display: flex; gap: 20px; align-items: flex-end; max-width: 440px; }
+    .aside p { margin: 0; font-size: 18px; color: var(--ink-soft); }
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(214px, 1fr)); gap: 16px; }
+    .card { background: #fff; border: 1px solid var(--card-line); border-radius: 28px; padding: 32px 26px; display: flex; flex-direction: column; gap: 18px; }
+    .card .num { font-family: var(--serif); font-size: 64px; line-height: 0.9; }
+    .card .txt { color: var(--ink-soft); }
+    .card strong { color: var(--ink); font-weight: 600; }
+    .card.dark { background: var(--night); color: var(--paper); border-color: var(--night); }
+    .card.dark .num { color: #FF7A6C; }
+    .card.dark .txt { color: #DCD7CC; }
+    .card.dark strong { color: #fff; }
+    .samsung { margin: 0; display: flex; gap: 14px; align-items: baseline; color: var(--ink-soft); font-size: 16px; max-width: 820px; }
+    .samsung strong { color: var(--ink); font-weight: 600; }
+    .blob { flex-shrink: 0; width: 9px; height: 8px; background: var(--coral); border-radius: 55% 45% 60% 40%; transform: rotate(-12deg); display: inline-block; }
+
+    /* Permissions */
+    .permissions { position: relative; border-top: 1px solid var(--card-line); }
+    .permissions .inner { padding-top: 120px; padding-bottom: 120px; display: flex; flex-direction: column; gap: 56px; }
+    .perm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+    .perm-grid .card { padding: 36px 30px; gap: 14px; }
+    .perm-grid h3 { margin: 0; display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; letter-spacing: -0.015em; }
+    .perm-grid h3 .blob { width: 10px; height: 9px; }
+    .perm-grid p { margin: 0; color: var(--ink-soft); }
+    .promise { margin: 0; font-size: clamp(28px, 3.2vw, 40px); line-height: 1.15; letter-spacing: -0.01em; max-width: 26ch; }
+    .policy-link { align-self: flex-start; font-size: 17px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
+
+    /* Footer */
+    footer .inner { position: relative; padding-top: 128px; padding-bottom: 72px; display: flex; flex-direction: column; gap: 40px; }
+    footer h2 { margin: 0; font-size: clamp(48px, 7vw, 104px); line-height: 0.95; letter-spacing: -0.02em; max-width: 12ch; }
+    .ctas { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+    .ctas .btn { padding: 0 36px; min-height: 68px; }
+    .btn-ghost { display: inline-flex; align-items: center; color: var(--paper); text-decoration: none; font-weight: 500; font-size: 18px; padding: 0 28px; border: 1px solid #6B675E; border-radius: 999px; min-height: 68px; }
+    .btn-ghost:hover { color: #fff; border-color: var(--paper); }
+    .fine { display: flex; flex-wrap: wrap; gap: 24px 64px; justify-content: space-between; align-items: flex-end; padding-top: 56px; border-top: 1px solid var(--night-line); margin-top: 40px; }
+    .fine .contact { margin: 0; max-width: 56ch; color: var(--night-text); font-size: 16px; }
+    .fine .copy { font-size: 15px; color: var(--night-muted); }
+
+    @media (max-width: 480px) {
+      .aside svg { width: 84px; height: 44px; }
     }
-    ol, ul { padding-left: 22px; }
-    li { margin: 6px 0; }
-    .perm { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    .perm div { background: var(--card-bg); border-radius: 16px; padding: 14px 16px; }
-    .perm strong { color: var(--headline); }
-    .muted { color: var(--body-muted); font-size: 14px; }
-    code.hash {
-      display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px; background: var(--inner-dark); border-radius: 12px; padding: 10px 12px;
-      word-break: break-all; color: var(--body-muted);
-    }
-    hr { border: 0; border-top: 1px solid var(--divider); margin: 40px 0 16px; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }
   </style>
 </head>
 <body>
+
+  <header class="wrap">
+    <a class="logo" href="#top">Finance Lore</a>
+    <nav aria-label="Page">
+      <a href="#install">How to install</a>
+      <a href="#permissions">Permissions</a>
+      <a class="pill" href="./">Web dashboard</a>
+    </nav>
+  </header>
+
   <main>
-    <h1>Finance Lore</h1>
-    <p class="lead">Your bank and Telebirr SMS, turned into a clear picture of where your money goes. Free, for Android.</p>
-
-    <div class="card">
-      <!-- Update APK_URL, version, size and SHA-256 together for each release. -->
-      <a class="download" id="download"
-         href="https://github.com/b02872626-ctrl/Finance-Dashboard/releases/download/v1.0.0/FinanceLore-1.0.0.apk"
-         download>
-        Download for Android
-      </a>
-      <div class="meta">
-        <span>Version 1.0.0</span><span>5.1 MB</span><span>Android 6.0 or newer</span>
+    <section id="top" class="hero wrap">
+      <div class="hero-copy">
+        <span class="eyebrow">Now on Android</span>
+        <h1 class="serif">Know where your <span class="scribble">money<svg aria-hidden="true" viewBox="0 0 120 40" fill="none" stroke="#F45544" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" style="left: 44%; bottom: -0.32em; width: 0.9em; height: 0.3em"><path d="M6 12 C 30 6, 70 4, 112 8"/><path d="M40 10 L 22 30 L 64 16 L 48 36"/></svg></span> goes.</h1>
+        <p>Your bank and Telebirr SMS, turned into a clear picture of where your money goes. Free, for Android.</p>
       </div>
-      <p class="note">Already using a test version? Install this over it — your data stays.</p>
-      <div class="desktop-only">
-        <p class="muted" style="margin:16px 0 6px">On a computer? Open this page on your Android phone instead:</p>
-        <div class="url" id="page-url">finance-dashboard-two-virid.vercel.app/download.html</div>
+
+      <div class="hero-phone">
+        <img class="deco" src="launch/img/triangle.png" alt="" aria-hidden="true" style="width: 150px; top: -10px; right: -10px; transform: rotate(8deg)" />
+        <img class="deco" src="launch/img/ring.png" alt="" aria-hidden="true" style="width: 170px; bottom: -6px; left: -24px; transform: rotate(-10deg); z-index: 2" />
+        <div class="phone" role="img" aria-label="Finance Lore home screen showing total balance, a weekly spending chart and bank balances">
+          <div class="screen">
+            <div class="row">
+              <div class="col" style="gap: 2px">
+                <span style="font-size: 11px; color: #A8A399">Good evening</span>
+                <span style="font-size: 18px">Selam</span>
+              </div>
+              <div class="tile">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EDEAE3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+              </div>
+            </div>
+            <div class="balance">
+              <div class="col">
+                <span style="font-size: 11px">Total Balance</span>
+                <span style="font-size: 26px; letter-spacing: -0.01em">ETB 12,480.50</span>
+                <span style="font-size: 11px">All accounts</span>
+              </div>
+              <div class="bars">
+                <i style="height: 34px"></i><i style="height: 66px"></i><i style="height: 32px"></i><i style="height: 42px"></i><i style="height: 36px"></i><i style="height: 0; background: none"></i><i style="height: 0; background: none"></i>
+              </div>
+              <div class="days"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+            </div>
+            <div class="review">
+              <div class="col">
+                <span style="font-size: 13px; color: #9FE0CF">Review today's transactions</span>
+                <span style="font-size: 10px; color: #A8A399">8 transactions need confirmation</span>
+              </div>
+              <div class="go">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+              </div>
+            </div>
+            <span style="font-size: 20px; color: #9FE0CF">Banks</span>
+            <div class="banks">
+              <div class="bank"><span style="font-size: 9px">Commercial Bank</span><span style="font-size: 17px">9,312.40 <span style="font-size: 9px">ETB</span></span></div>
+              <div class="bank"><span style="font-size: 9px">Telebirr</span><span style="font-size: 17px">3,168.10 <span style="font-size: 9px">ETB</span></span></div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <h2>How to install</h2>
-    <p class="muted">Finance Lore isn't on the Play Store yet, so Android asks you to confirm the install. It takes a minute.</p>
-    <ol>
-      <li>Tap <strong>Download for Android</strong> and wait for it to finish.</li>
-      <li>Open the file from your notifications or your <strong>Downloads</strong> / <strong>My Files</strong> app.</li>
-      <li>If Android says it can't install apps from this source, tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser, then go back.</li>
-      <li>Tap <strong>Install</strong>. If Google Play Protect shows a warning about an unknown app, tap <strong>More details → Install anyway</strong>.</li>
-      <li>Open Finance Lore, sign in, and allow SMS access so it can read your bank messages.</li>
-    </ol>
-    <p class="muted">On Samsung phones the setting is under <strong>Settings → Apps → ⋮ → Special access → Install unknown apps</strong>. You can turn it off again after installing.</p>
+    <section class="band">
+      <img class="deco" src="launch/img/cube.png" alt="" aria-hidden="true" style="width: clamp(110px, 14vw, 200px); top: 48px; left: 6%; transform: rotate(-8deg)" />
+      <img class="deco" src="launch/img/triangle.png" alt="" aria-hidden="true" style="width: clamp(110px, 14vw, 210px); top: 30%; right: 5%; transform: rotate(14deg)" />
+      <img class="deco" src="launch/img/ring.png" alt="" aria-hidden="true" style="width: clamp(110px, 13vw, 190px); bottom: 40px; left: 12%; transform: rotate(6deg)" />
+      <div class="solution">
+        <span class="eyebrow">The solution</span>
+        <h2 class="serif">Thousands of SMS messages become a <span class="scribble">financial<svg aria-hidden="true" viewBox="0 0 200 24" fill="none" stroke="#F45544" stroke-width="5" stroke-linecap="round" style="left: 0; bottom: -0.18em; width: 100%; height: 0.22em"><path d="M4 14 C 20 4, 30 22, 48 12 S 78 4, 96 14 S 128 22, 146 12 S 178 4, 196 12"/></svg></span> story.</h2>
+        <p>CBE, Telebirr, Awash, Dashen — every message your banks already send you, read and sorted in one place.</p>
 
-    <h2>What it asks for, and why</h2>
-    <div class="perm">
-      <div><strong>SMS</strong><br />To read messages from banks and mobile-money services like CBE, Telebirr, Awash and Dashen. Other messages are skipped — never stored or uploaded.</div>
-      <div><strong>Notifications</strong><br />A reminder to review new transactions. You can turn this off in the app.</div>
-      <div><strong>Internet</strong><br />To sync your transactions to your account so they're on the web dashboard and safe if you change phones.</div>
-    </div>
-    <p class="muted" style="margin-top:14px">Finance Lore never asks for your bank PIN or password, and can't move money. Read the full <a href="privacy.html">privacy policy</a>.</p>
+        <div id="download" class="download">
+          <a class="btn" href="https://github.com/b02872626-ctrl/Finance-Dashboard/releases/download/v1.0.0/FinanceLore-1.0.0.apk" download>
+            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 10 6 6 6-6"/><path d="M4 20h16"/></svg>
+            Download for Android
+          </a>
+          <div class="meta">
+            <span>Version 1.0.0</span><span aria-hidden="true">·</span><span>5.1 MB</span><span aria-hidden="true">·</span><span>Android 6.0 or newer</span>
+          </div>
+          <p class="note">Already using a test version? Install this over it — your data stays.</p>
+          <p class="desktop-hint">On a computer? Open this page on your Android phone instead:<br /><a id="page-url" href="download.html">finance-dashboard-two-virid.vercel.app/download</a></p>
+        </div>
+      </div>
+    </section>
 
-    <h2>Check the file (optional)</h2>
-    <p class="muted">The SHA-256 fingerprint of <code>FinanceLore-1.0.0.apk</code> is:</p>
-    <code class="hash">aac5d80d3e4f0f879ac76eee5cc87e17f11d6eb8dbae36d5f93ac376543deb72</code>
+    <section id="install" class="install wrap">
+      <div class="install-head">
+        <div class="col" style="gap: 20px; max-width: 700px">
+          <span class="eyebrow">How to install</span>
+          <h2 class="serif section-title">It takes <span class="mark">a minute.</span></h2>
+        </div>
+        <div class="aside">
+          <svg aria-hidden="true" viewBox="0 0 190 100" width="140" height="74" fill="none" stroke="#F45544" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M6 6 C 10 70, 70 96, 104 70 C 128 52, 112 28, 98 44 C 84 62, 120 88, 178 70"/><path d="M164 60 L 180 70 L 166 82"/></svg>
+          <p>Finance Lore isn't on the Play Store yet, so Android asks you to confirm the install.</p>
+        </div>
+      </div>
 
-    <hr />
-    <p class="muted">Problems installing or a bank message it didn't read? Email <a href="mailto:nahusenaygebreamlak@gmail.com">nahusenaygebreamlak@gmail.com</a>, or use Settings → Support in the app.</p>
-    <p class="muted">Already have the app? <a href="./">Open the web dashboard</a>.</p>
+      <ol class="steps">
+        <li class="card"><span class="num">1</span><span class="txt">Tap <strong>Download for Android</strong> and wait for it to finish.</span></li>
+        <li class="card"><span class="num">2</span><span class="txt">Open the file from your notifications or your <strong>Downloads / My Files</strong> app.</span></li>
+        <li class="card"><span class="num">3</span><span class="txt">If Android says it can't install apps from this source, tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser, then go back.</span></li>
+        <li class="card"><span class="num">4</span><span class="txt">Tap <strong>Install</strong>. If Google Play Protect warns about an unknown app, tap <strong>More details → Install anyway</strong>.</span></li>
+        <li class="card dark"><span class="num">5</span><span class="txt">Open Finance Lore, sign in, and allow <strong>SMS access</strong> so it can read your bank messages.</span></li>
+      </ol>
+
+      <p class="samsung"><span class="blob" aria-hidden="true"></span><span><strong>Samsung phones:</strong> the setting is under Settings → Apps → ⋮ → Special access → Install unknown apps. You can turn it off again after installing.</span></p>
+    </section>
+
+    <section id="permissions" class="permissions">
+      <img class="deco" src="launch/img/bar.png" alt="" aria-hidden="true" style="width: clamp(48px, 5vw, 72px); top: 96px; right: 6%; transform: rotate(18deg)" />
+      <div class="inner wrap">
+        <div class="col" style="gap: 20px; max-width: 800px">
+          <span class="eyebrow">What it asks for, and why</span>
+          <h2 class="serif section-title">Three permissions. <span class="mark">No surprises.</span></h2>
+        </div>
+
+        <div class="perm-grid">
+          <div class="card">
+            <h3><span class="blob" aria-hidden="true"></span>SMS</h3>
+            <p>To read messages from banks and mobile-money services like CBE, Telebirr, Awash and Dashen. Other messages are skipped — never stored or uploaded.</p>
+          </div>
+          <div class="card">
+            <h3><span class="blob" aria-hidden="true" style="border-radius: 45% 55% 40% 60%; transform: rotate(20deg)"></span>Notifications</h3>
+            <p>A reminder to review new transactions. You can turn this off in the app.</p>
+          </div>
+          <div class="card">
+            <h3><span class="blob" aria-hidden="true" style="border-radius: 60% 40% 50% 50%; transform: rotate(-30deg)"></span>Internet</h3>
+            <p>To sync your transactions to your account so they're on the web dashboard and safe if you change phones.</p>
+          </div>
+        </div>
+
+        <p class="serif promise">Finance Lore never asks for your bank PIN or password, and <span class="mark">can't move money.</span></p>
+        <a class="policy-link" href="privacy.html">Read the full privacy policy →</a>
+      </div>
+    </section>
   </main>
+
+  <footer class="band">
+    <img class="deco" src="launch/img/star.png" alt="" aria-hidden="true" style="width: clamp(150px, 20vw, 290px); top: 56px; right: -40px; transform: rotate(-6deg)" />
+    <img class="deco" src="launch/img/cube.png" alt="" aria-hidden="true" style="width: clamp(90px, 9vw, 130px); bottom: 120px; right: 26%; transform: rotate(16deg)" />
+    <div class="inner wrap">
+      <h2 class="serif">One place to understand your money.</h2>
+      <div class="ctas">
+        <a class="btn" href="https://github.com/b02872626-ctrl/Finance-Dashboard/releases/download/v1.0.0/FinanceLore-1.0.0.apk" download>
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 10 6 6 6-6"/><path d="M4 20h16"/></svg>
+          Download for Android
+        </a>
+        <a class="btn-ghost" href="./">Already have the app? Open the web dashboard</a>
+      </div>
+      <div class="fine">
+        <p class="contact">Problems installing, or a bank message it didn't read? Email <a href="mailto:nahusenaygebreamlak@gmail.com">nahusenaygebreamlak@gmail.com</a>, or use Settings → Support in the app.</p>
+        <span class="copy">© 2026 Finance Lore · Free for Android · Version 1.0.0</span>
+      </div>
+    </div>
+  </footer>
+
   <script>
-    // Show the "open this on your phone" hint to desktop visitors only.
+    // "Open this on your phone" hint: desktop visitors only, with this page's real address.
     if (!/Android/i.test(navigator.userAgent)) {
       document.documentElement.classList.add("is-desktop");
+      var a = document.getElementById("page-url");
+      if (location.protocol.indexOf("http") === 0) {
+        a.href = location.href.split("#")[0];
+        a.textContent = location.host + location.pathname.replace(/\.html$/, "");
+      }
     }
   </script>
 </body>
