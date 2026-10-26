@@ -34,6 +34,14 @@ class SupabaseRestClient(
         )
     }
 
+    /**
+     * Permanently deletes the signed-in user (and, via ON DELETE CASCADE, all
+     * of their rows). See supabase/launch_account_deletion_and_banks.sql.
+     */
+    fun deleteMyAccount() {
+        request(method = "POST", path = "rpc/delete_my_account", body = "{}")
+    }
+
     /** Upserts the shared bank catalog by bank_name. */
     fun upsertBanks(bankNames: Set<String>) {
         if (bankNames.isEmpty()) return

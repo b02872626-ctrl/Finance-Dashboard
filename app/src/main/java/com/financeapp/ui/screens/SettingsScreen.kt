@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +63,7 @@ private val TileBg     = Color(0xFF302A25)
 private val TileBorder = Color(0xFF353535)
 private val Headline   = AppBlue
 private val BodyMuted  = Color(0xFFB7B3AC)
+private val Coral      = com.financeapp.ui.theme.CoralPrimary
 private val DividerCol = Color(0x227FE3CB)
 private val GlyphLight = Color(0xFFEBEBEB) // matches Frame 177 bell stroke
 private val GlyphMint  = Color(0xFF85D5C6) // matches safe.svg lock stroke
@@ -125,6 +128,90 @@ fun SettingsScreen(
         }
 
         item { LogoutPill(onClick = { vm.signOut() }) }
+
+        item { DeleteAccountLink() }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Delete account — deliberately low-key text link + explicit confirmation.
+// On success SupabaseSyncer clears the session, which sends AppNavigation
+// back to the sign-in screen; nothing else to do here.
+// ---------------------------------------------------------------------------
+@Composable
+private fun DeleteAccountLink() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var confirming by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var deleting by remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Text(
+            text = "Delete account",
+            color = Coral,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = { confirming = true })
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+    }
+
+    if (confirming) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { if (!deleting) confirming = false },
+            containerColor = CardBg,
+            title = { Text("Delete your account?", color = Headline, fontWeight = FontWeight.SemiBold) },
+            text = {
+                Text(
+                    "This permanently deletes your Finance Lore account and all of your " +
+                        "synced transactions, categories and settings from our servers, and " +
+                        "clears them from this phone.\n\nYour bank SMS messages are not " +
+                        "touched. This can't be undone.",
+                    color = BodyMuted,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    enabled = !deleting,
+                    onClick = {
+                        deleting = true
+                        scope.launch {
+                            val result = com.financeapp.remote.SupabaseSyncer(context).deleteAccountAndData()
+                            deleting = false
+                            if (result.isSuccess) {
+                                confirming = false
+                                android.widget.Toast.makeText(context, "Your account was deleted", android.widget.Toast.LENGTH_LONG).show()
+                            } else {
+                                val offline = generateSequence(result.exceptionOrNull()) { it.cause }
+                                    .any { it is java.io.IOException }
+                                android.widget.Toast.makeText(
+                                    context,
+                                    if (offline) "No internet connection. Nothing was deleted — try again when you're online."
+                                    else "Couldn't delete your account. Nothing was deleted — please try again or contact Support.",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                ) {
+                    if (deleting) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Coral
+                        )
+                    } else {
+                        Text("Delete permanently", color = Coral, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(enabled = !deleting, onClick = { confirming = false }) {
+                    Text("Cancel", color = Headline)
+                }
+            }
+        )
     }
 }
 

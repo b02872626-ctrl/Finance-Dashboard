@@ -173,6 +173,33 @@ class SupabaseSyncer(private val context: Context) {
     }
 
     /**
+     * Settings → Delete account. Order matters:
+     *  1. stop background sync, so it can't race us refreshing the
+     *     single-use refresh token (or re-upload rows mid-delete);
+     *  2. delete the account server-side (cascades to every user table);
+     *  3. only then wipe the local DB + settings, clearing the session last —
+     *     that flips the app back to the sign-in screen.
+     * If step 2 fails nothing local is touched, so the user can retry.
+     */
+    suspend fun deleteAccountAndData(): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val cfg = SupabaseConfigProvider.fromBuildConfig()
+                ?: error("Supabase not configured")
+            val settingsRepo = SettingsRepository(context)
+            SupabaseSyncScheduler.cancelAll(context)
+            val session = ensureFreshSession(settingsRepo, cfg)
+                ?: error("Not signed in")
+            SupabaseRestClient(cfg, session.accessToken).deleteMyAccount()
+
+            AppDatabase.getInstance(context).clearAllTables()
+            settingsRepo.clearAllExceptSession()
+            settingsRepo.clearSupabaseSession()
+        }.onFailure { e ->
+            ErrorLogRepository.fromContext(context).log("Account deletion failed", e)
+        }
+    }
+
+    /**
      * Returns the current session, refreshing it first if expired. If the
      * refresh token itself is dead (already used / revoked — this happens
      * when two sync passes race to refresh the same token, or the user

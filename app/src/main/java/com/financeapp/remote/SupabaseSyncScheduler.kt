@@ -81,6 +81,13 @@ object SupabaseSyncScheduler {
         enqueue(context)
     }
 
+    /** Stops the sync chain and the periodic trigger (account deletion). */
+    fun cancelAll(context: Context) {
+        val wm = WorkManager.getInstance(context.applicationContext)
+        wm.cancelUniqueWork(UNIQUE_WORK_NAME)
+        wm.cancelUniqueWork("${UNIQUE_WORK_NAME}_periodic_v2")
+    }
+
     suspend fun enqueueIfPending(context: Context) {
         val hasPending = withContext(Dispatchers.IO) {
             TransactionRepository(AppDatabase.getInstance(context.applicationContext))

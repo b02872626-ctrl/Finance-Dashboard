@@ -80,6 +80,24 @@ class SettingsRepository(context: Context) {
             .apply()
     }
 
+    /**
+     * Account deletion: drop every local preference (name, categories,
+     * onboarding, …) except the session keys, which the caller clears last
+     * via [clearSupabaseSession] so observers see the sign-out.
+     */
+    fun clearAllExceptSession() {
+        val keep = setOf(
+            KEY_SUPABASE_ACCESS_TOKEN,
+            KEY_SUPABASE_REFRESH_TOKEN,
+            KEY_SUPABASE_USER_ID,
+            KEY_SUPABASE_EMAIL,
+            KEY_SUPABASE_EXPIRES_AT_MS
+        )
+        val editor = prefs.edit()
+        prefs.all.keys.filter { it !in keep }.forEach { editor.remove(it) }
+        editor.commit()
+    }
+
     fun clearSupabaseSession() {
         prefs.edit()
             .remove(KEY_SUPABASE_ACCESS_TOKEN)
