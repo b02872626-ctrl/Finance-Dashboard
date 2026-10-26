@@ -71,6 +71,15 @@ data class PeriodInsights(
 
 class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() {
 
+    /**
+     * One shared full-table query for every derived flow below. Room re-runs
+     * a query on every table change (e.g. each sync marking rows synced), so
+     * four separate getAllTransactions() collectors meant four full reloads.
+     */
+    private val allTransactions: SharedFlow<List<TransactionEntity>> =
+        repo.getAllTransactions()
+            .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -82,7 +91,7 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
 
     val state: StateFlow<AnalyticsState> = combine(
         repo.getMonthlyAggregates(System.currentTimeMillis() - 365L * 24 * 3600 * 1000),
-        repo.getAllTransactions()
+        allTransactions
     ) { monthly, all ->
         val expenses = all.filter {
             it.type in listOf(
@@ -125,7 +134,7 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
     val periodInsights: StateFlow<PeriodInsights> = combine(
         _periodFrom,
         _periodTo,
-        repo.getAllTransactions()
+        allTransactions
     ) { from, to, all ->
         val inRange = all.filter { it.dateTime in from..to }
         val expenseTypes = listOf(
@@ -175,7 +184,7 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
     // -------------------------------------------------------------------------
     // Insights tab — aggregations driving the Insights screen + per-category drill-down.
     // -------------------------------------------------------------------------
-    val insights: StateFlow<InsightsState> = repo.getAllTransactions()
+    val insights: StateFlow<InsightsState> = allTransactions
         .map { all -> buildInsights(all) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), InsightsState())
@@ -192,7 +201,7 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
 
     fun categoryDetail(category: String): StateFlow<CategoryDetailState> =
         categoryDetailFlows.getOrPut(category) {
-            repo.getAllTransactions()
+            allTransactions
                 .map { all ->
                     runCatching { buildCategoryDetail(all, category) }
                         .getOrElse {

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -185,12 +186,16 @@ fun TransactionsScreen(vm: TransactionsViewModel, onTxClick: (Long) -> Unit) {
     Box(Modifier.fillMaxSize().background(PageBg).nestedScroll(pullRefreshState.nestedScrollConnection)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 140.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 140.dp)
         ) {
+            // No spacedBy here: day sections are split into one header item
+            // plus one item per transaction (so a 1Y/All-time list only
+            // composes visible rows), and rows must sit flush. Section gaps
+            // come from SectionGap below.
             item { HistoryHeader(userName = "" /* shown only on Home; History uses generic greeting */) }
 
             item {
+                SectionGap()
                 HistoryCard(
                     searchQuery = filter.searchQuery,
                     activeType = filter.type,
@@ -208,15 +213,26 @@ fun TransactionsScreen(vm: TransactionsViewModel, onTxClick: (Long) -> Unit) {
             }
 
             if (groups.isEmpty()) {
-                item { EmptyState() }
+                item { SectionGap(); EmptyState() }
             } else {
                 groups.forEach { group ->
-                    item(key = "g-${group.dateKey}") {
-                        DaySection(group = group, onTxClick = onTxClick)
+                    item(key = "g-${group.dateKey}", contentType = "day-header") {
+                        SectionGap()
+                        DayHeader(group = group)
+                    }
+                    itemsIndexed(
+                        items = group.transactions,
+                        key = { _, tx -> "t-${tx.id}" },
+                        contentType = { _, _ -> "tx-row" }
+                    ) { i, tx ->
+                        HistoryRow(tx = tx, onClick = { onTxClick(tx.id) })
+                        if (i != group.transactions.lastIndex) {
+                            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DividerCol))
+                        }
                     }
                 }
                 if (filter.searchQuery.isBlank() && filter.fromMs == 0L) {
-                    item { LoadMorePill(onClick = { vm.loadMore() }) }
+                    item { SectionGap(); LoadMorePill(onClick = { vm.loadMore() }) }
                 }
             }
         }
@@ -391,8 +407,11 @@ private fun IconTile(iconRes: Int, contentDescription: String, onClick: () -> Un
 // Day section + row (mirrors Home styling)
 // ---------------------------------------------------------------------------
 @Composable
-private fun DaySection(group: DayGroup, onTxClick: (Long) -> Unit) {
-    val net = group.transactions.sumOf { netValue(it) }
+private fun SectionGap() = Spacer(Modifier.height(18.dp))
+
+@Composable
+private fun DayHeader(group: DayGroup) {
+    val net = remember(group) { group.transactions.sumOf { netValue(it) } }
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -422,13 +441,6 @@ private fun DaySection(group: DayGroup, onTxClick: (Long) -> Unit) {
         Spacer(Modifier.height(10.dp))
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DividerCol))
         Spacer(Modifier.height(4.dp))
-
-        group.transactions.forEachIndexed { i, tx ->
-            HistoryRow(tx = tx, onClick = { onTxClick(tx.id) })
-            if (i != group.transactions.lastIndex) {
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DividerCol))
-            }
-        }
     }
 }
 
