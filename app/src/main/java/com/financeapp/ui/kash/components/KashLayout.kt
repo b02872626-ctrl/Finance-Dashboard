@@ -1,6 +1,23 @@
 package com.financeapp.ui.kash.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.roundToInt
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +84,10 @@ import com.financeapp.ui.kash.kashClickable
  * row, the one figure, its controls); the light sheet below rises over it
  * with a handle and holds [content]. The sheet starts where the hero ends.
  *
+ * [expandable]: scrolling the sheet's content up first lifts the sheet over
+ * the hero, up to just under the status bar; scrolling back down at the top
+ * of the content lowers it again. The handle can be dragged too.
+ *
  * [content] gets the bottom padding a scrolling list needs so its last row
  * clears the floating [tabBar] (or the navigation bar on sub-pages).
  */
@@ -78,31 +99,81 @@ fun KashScreen(
     handle: Boolean = true,
     heroGap: Dp = KashSpace.GapXl,
     heroBottom: Dp = 26.dp,
+    expandable: Boolean = true,
     content: @Composable ColumnScope.(bottomPadding: PaddingValues) -> Unit,
 ) {
+    val density = LocalDensity.current
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottom = if (tabBar != null) KashTabBarHeight + navBottom else navBottom + 16.dp
-    Column(modifier.fillMaxSize().background(KashColors.Slate)) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(start = KashSpace.InsetApp, end = KashSpace.InsetApp, top = KashSpace.HeaderTop, bottom = heroBottom),
-            verticalArrangement = Arrangement.spacedBy(heroGap),
-            content = hero,
-        )
-        Box(
-            Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .clip(KashShapes.Sheet)
-                .background(KashColors.Surface)
-        ) {
-            Column(Modifier.fillMaxSize().padding(horizontal = KashSpace.InsetApp)) {
-                if (handle) KashHandle(Modifier.padding(top = 10.dp, bottom = 10.dp))
-                content(PaddingValues(bottom = bottom))
+    val statusTop = WindowInsets.statusBars.getTop(density)
+
+    // How far (px) the sheet has risen over the hero, and how far it may.
+    var risen by rememberSaveable { mutableFloatStateOf(0f) }
+    val limit = remember { floatArrayOf(0f) }
+    val rise = remember {
+        object : NestedScrollConnection {
+            // Content moving up: lift the sheet before the list scrolls.
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y >= 0f || risen >= limit[0]) return Offset.Zero
+                val d = minOf(-available.y, limit[0] - risen)
+                risen += d
+                return Offset(0f, -d)
             }
-            if (tabBar != null) Box(Modifier.align(Alignment.BottomCenter)) { tabBar() }
+            // Content already at its top and still pulled down: lower the sheet.
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (available.y <= 0f || risen <= 0f) return Offset.Zero
+                val d = minOf(available.y, risen)
+                risen -= d
+                return Offset(0f, d)
+            }
+        }
+    }
+    val drag = rememberDraggableState { delta -> risen = (risen - delta).coerceIn(0f, limit[0]) }
+
+    Layout(
+        modifier = modifier.fillMaxSize().background(KashColors.Slate),
+        content = {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    // The hero fades as the sheet covers it.
+                    .graphicsLayer { alpha = if (limit[0] > 0f) 1f - (risen / limit[0]) * 0.6f else 1f }
+                    .statusBarsPadding()
+                    .padding(start = KashSpace.InsetApp, end = KashSpace.InsetApp, top = KashSpace.HeaderTop, bottom = heroBottom),
+                verticalArrangement = Arrangement.spacedBy(heroGap),
+                content = hero,
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(KashShapes.Sheet)
+                    .background(KashColors.Surface)
+                    .then(if (expandable) Modifier.nestedScroll(rise) else Modifier)
+            ) {
+                Column(Modifier.fillMaxSize().padding(horizontal = KashSpace.InsetApp)) {
+                    if (handle) {
+                        KashHandle(
+                            Modifier
+                                .then(if (expandable) Modifier.draggable(drag, Orientation.Vertical) else Modifier)
+                                .padding(top = 10.dp, bottom = 10.dp)
+                        )
+                    }
+                    content(PaddingValues(bottom = bottom))
+                }
+                if (tabBar != null) Box(Modifier.align(Alignment.BottomCenter)) { tabBar() }
+            }
+        },
+    ) { measurables, constraints ->
+        val heroPlaceable = measurables[0].measure(constraints.copy(minHeight = 0))
+        // The sheet can rise to 8dp under the status bar.
+        limit[0] = if (expandable) (heroPlaceable.height - statusTop - 8.dp.roundToPx()).coerceAtLeast(0).toFloat() else 0f
+        val top = (heroPlaceable.height - risen.coerceIn(0f, limit[0])).roundToInt().coerceAtMost(constraints.maxHeight)
+        val sheetPlaceable = measurables[1].measure(
+            Constraints.fixed(constraints.maxWidth, (constraints.maxHeight - top).coerceAtLeast(0))
+        )
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            heroPlaceable.place(0, 0)
+            sheetPlaceable.place(0, top)
         }
     }
 }
