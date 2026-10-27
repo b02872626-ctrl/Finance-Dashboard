@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Every notification Kash sends. One template per trigger; amounts arrive
+  already formatted ("1,200"). Add values-am/strings_notifications.xml for
+  Amharic.
+-->
+<resources>
+    <string name="notif_channel_alerts">Money alerts</string>
+    <string name="notif_channel_alerts_desc">Low balance, income and unusual fees</string>
+    <string name="notif_channel_digest">Evening digest</string>
+    <string name="notif_channel_digest_desc">Transactions to review and the day\'s updates, once a day</string>
+    <string name="notif_channel_summaries">Summaries</string>
+    <string name="notif_channel_summaries_desc">Weekly and month-end summaries</string>
+    <string name="notif_channel_health">Account health</string>
+    <string name="notif_channel_health_desc">When Kash can\'t read your bank SMS</string>
+    <string name="notif_channel_security">Security</string>
+    <string name="notif_channel_security_desc">Wrong PIN attempts</string>
+
+    <string name="notif_low_balance_title">%1$s balance is low</string>
+    <string name="notif_low_balance_text">%1$s ETB left. Your alert is set below %2$s ETB.</string>
+
+    <string name="notif_income_title">%1$s ETB landed</string>
+    <string name="notif_income_text_from">From %1$s. That\'s %2$s ETB in this month so far.</string>
+    <string name="notif_income_text">That\'s %1$s ETB in this month so far.</string>
+
+    <string name="notif_fee_spike_title">%1$s ETB in fees</string>
+    <string name="notif_fee_spike_text">That\'s %1$d%% of a %2$s ETB transaction on %3$s.</string>
+    <string name="notif_fee_day_title">%1$s ETB in fees today</string>
+    <plurals name="notif_fee_day_text">
+        <item quantity="one">From 1 transaction. Bank charges add up quietly.</item>
+        <item quantity="other">Across %d transactions. Bank charges add up quietly.</item>
+    </plurals>
+
+    <string name="notif_lockout_title">Someone tried to unlock Kash</string>
+    <string name="notif_lockout_text">%1$d wrong PINs in a row, so Kash is locked for a moment. If it wasn\'t you, change your PIN in Settings.</string>
+
+    <string name="notif_review_question">Was %1$s ETB to %2$s %3$s?</string>
+    <plurals name="notif_review_title">
+        <item quantity="one">1 transaction to review today</item>
+        <item quantity="other">%d transactions to review today</item>
+    </plurals>
+    <plurals name="notif_review_text">
+        <item quantity="one">1 to review today. It takes a few seconds.</item>
+        <item quantity="other">%d to review today. About 30 seconds.</item>
+    </plurals>
+
+    <plurals name="notif_capture_title">
+        <item quantity="one">We saved 1 message from %2$s</item>
+        <item quantity="other">We saved %1$d messages from %2$s</item>
+    </plurals>
+    <string name="notif_capture_text">Kash can\'t read %1$s yet. The messages are kept and will show up once it can.</string>
+
+    <plurals name="notif_digest_summary">
+        <item quantity="one">1 update from Kash today</item>
+        <item quantity="other">%d updates from Kash today</item>
+    </plurals>
+
+    <string name="notif_weekly_title">Your week: %1$s ETB spent</string>
+    <string name="notif_weekly_text">Top: %1$s. %2$s</string>
+    <string name="notif_weekly_more">%1$d%% more than last week.</string>
+    <string name="notif_weekly_less">%1$d%% less than last week.</string>
+    <string name="notif_weekly_same">About the same as last week.</string>
+    <string name="notif_weekly_first">Your first full week in Kash.</string>
+
+    <string name="notif_month_title">%1$s in Kash</string>
+    <string name="notif_month_text">In %1$s ETB, out %2$s ETB, you kept %3$d%%. Biggest: %4$s, %5$s ETB.</string>
+    <string name="notif_month_text_overspent">In %1$s ETB, out %2$s ETB, %3$s ETB more out than in. Biggest: %4$s, %5$s ETB.</string>
+    <string name="notif_month_text_no_income">Out %1$s ETB. Biggest: %2$s, %3$s ETB.</string>
+
+    <plurals name="notif_backlog_title">
+        <item quantity="one">1 transaction is waiting for a category</item>
+        <item quantity="other">%d transactions are waiting for a category</item>
+    </plurals>
+    <string name="notif_backlog_text">Your reports get sharper with each one. Start with the newest.</string>
+
+    <string name="notif_reengage_title">%1$s ETB spent since you last opened Kash</string>
+    <plurals name="notif_reengage_title_count">
+        <item quantity="one">1 new transaction since you last opened Kash</item>
+        <item quantity="other">%d new transactions since you last opened Kash</item>
+    </plurals>
+    <string name="notif_reengage_text">Biggest: %1$s ETB to %2$s.</string>
+    <string name="notif_reengage_text_plain">They\'re sorted by day and ready to review.</string>
+
+    <string name="notif_sms_lost_title">Kash stopped reading your bank SMS</string>
+    <string name="notif_sms_lost_text">SMS access is off, so new transactions aren\'t being added. Tap to turn it back on.</string>
+
+    <string name="notif_uncategorized">Uncategorized</string>
+</resources>

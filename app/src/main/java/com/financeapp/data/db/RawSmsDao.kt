@@ -30,4 +30,18 @@ interface RawSmsDao {
 
     @Query("DELETE FROM raw_sms")
     suspend fun clear()
+
+    /**
+     * Messages received since [fromMs] from senders Kash has never turned
+     * into a transaction — capture-only banks, grouped per sender.
+     */
+    @Query("""
+        SELECT r.sender AS sender, COUNT(*) AS count FROM raw_sms r
+        WHERE r.receivedAt >= :fromMs
+          AND NOT EXISTS (SELECT 1 FROM transactions t WHERE t.sender = r.sender)
+        GROUP BY r.sender
+    """)
+    suspend fun capturedOnlySince(fromMs: Long): List<SenderCount>
 }
+
+data class SenderCount(val sender: String, val count: Int)

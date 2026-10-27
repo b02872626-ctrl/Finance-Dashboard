@@ -9,6 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.financeapp.data.model.CategoryRuleEntity
 import com.financeapp.data.model.ErrorLogEntity
 import com.financeapp.data.model.RawSmsEntity
+import com.financeapp.data.model.SentNotificationEntity
 import com.financeapp.data.model.TransactionEntity
 
 @Database(
@@ -16,9 +17,10 @@ import com.financeapp.data.model.TransactionEntity
         TransactionEntity::class,
         RawSmsEntity::class,
         ErrorLogEntity::class,
-        CategoryRuleEntity::class
+        CategoryRuleEntity::class,
+        SentNotificationEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun rawSmsDao(): RawSmsDao
     abstract fun errorLogDao(): ErrorLogDao
     abstract fun categoryRuleDao(): CategoryRuleDao
+    abstract fun sentNotificationDao(): SentNotificationDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -46,6 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_7_8)
                     .addMigrations(MIGRATION_8_9)
                     .addMigrations(MIGRATION_9_10)
+                    .addMigrations(MIGRATION_10_11)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
@@ -178,6 +182,31 @@ abstract class AppDatabase : RoomDatabase() {
          * mark the rows unsynced so the web dashboard gets the new category.
          * No schema change.
          */
+        /** Notification log for dedup, caps and the evening digest. */
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `sent_notifications` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `dedupKey` TEXT NOT NULL,
+                        `triggerType` TEXT NOT NULL,
+                        `tier` INTEGER NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `route` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `sentAt` INTEGER,
+                        `shownAs` TEXT,
+                        `digestKey` TEXT
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_sent_notifications_dedupKey` ON `sent_notifications` (`dedupKey`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_sent_notifications_tier_sentAt` ON `sent_notifications` (`tier`, `sentAt`)")
+            }
+        }
+
         private val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 val legacy = com.financeapp.data.model.Spending.LEGACY_OWN_ACCOUNT_NAMES

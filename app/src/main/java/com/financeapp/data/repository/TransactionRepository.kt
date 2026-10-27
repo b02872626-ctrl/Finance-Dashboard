@@ -122,6 +122,8 @@ class TransactionRepository(
 
     suspend fun latestTransactionMs(): Long? = txnDao.latestTransactionMs()
 
+    suspend fun countTransactions(): Int = txnDao.count()
+
     /**
      * Confirm / change a single review. Decides automatically whether the
      * result is CONFIRMED (user accepted prediction) or CHANGED (user
@@ -324,6 +326,7 @@ class TransactionRepository(
     suspend fun clearAllData() {
         txnDao.clear()
         rawDao.clear()
+        db.sentNotificationDao().clear()
     }
 
     suspend fun getUnsyncedTransactions(): List<TransactionEntity> =

@@ -13,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.financeapp.data.db.AppDatabase
+import com.financeapp.notifications.AppForeground
+import com.financeapp.notifications.NotificationPrefs
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.remote.SupabaseSyncScheduler
@@ -101,7 +103,8 @@ class MainActivity : ComponentActivity() {
         val currentVersion = BuildConfig.VERSION_CODE
         if (settingsRepo.getLastIngestedVersion() < currentVersion) {
             if (hasSmsAccess) {
-                SmsIngestWorker.enqueue(this)
+                // Rescan: old SMS replayed, so no transaction alerts from it.
+                SmsIngestWorker.enqueue(this, rescan = true)
             }
             settingsRepo.setLastIngestedVersion(currentVersion)
         }
@@ -121,10 +124,14 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         if (!isChangingConfigurations) backgroundedAt = System.currentTimeMillis()
+        AppForeground.isForeground = false
+        NotificationPrefs(this).lastAppOpenMs = System.currentTimeMillis()
     }
 
     override fun onStart() {
         super.onStart()
+        AppForeground.isForeground = true
+        NotificationPrefs(this).lastAppOpenMs = System.currentTimeMillis()
         if (backgroundedAt > 0L &&
             System.currentTimeMillis() - backgroundedAt > PinManager.RELOCK_AFTER_MS
         ) {

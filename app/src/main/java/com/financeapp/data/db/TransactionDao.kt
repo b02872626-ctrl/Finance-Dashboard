@@ -351,4 +351,17 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions")
     suspend fun clear()
+
+    // ── Notifications ────────────────────────────────────────────────────
+
+    /** Rows dated in [fromMs, toMs), for summaries and the low-balance floor. */
+    @Query("SELECT * FROM transactions WHERE dateTime >= :fromMs AND dateTime < :toMs ORDER BY dateTime ASC")
+    suspend fun snapshotBetween(fromMs: Long, toMs: Long): List<TransactionEntity>
+
+    /** Rows Kash added since [sinceMs] (by insert time, not SMS date). */
+    @Query("SELECT * FROM transactions WHERE createdAt >= :sinceMs ORDER BY dateTime ASC")
+    suspend fun snapshotCreatedSince(sinceMs: Long): List<TransactionEntity>
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE reviewStatus = 'PENDING' AND type != 'UNKNOWN'")
+    suspend fun countAllPending(): Int
 }

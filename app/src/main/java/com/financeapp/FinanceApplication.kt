@@ -18,5 +18,7 @@ class FinanceApplication : Application() {
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
         SyncNotificationHelper.ensureChannel(this)
+        com.financeapp.notifications.KashNotifier.ensureChannels(this)
+        com.financeapp.notifications.NotificationScheduler.ensureScheduled(this)
     }
 }

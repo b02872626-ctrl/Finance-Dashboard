@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.financeapp.notifications.TransactionTriggers
 import com.financeapp.security.PinManager
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashIcon
@@ -52,6 +54,7 @@ import com.financeapp.ui.kash.components.KashTopBar
 import com.financeapp.ui.kash.Haptic
 import com.financeapp.ui.kash.rememberHaptic
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // =============================================================================
 // 4-digit app PIN: create, unlock and change (AppPinCreate, AppPinConfirm,
@@ -217,6 +220,8 @@ fun PinLockScreen(
     var accepted by remember { mutableStateOf(false) }
     var unlocking by remember { mutableStateOf(false) }
     val haptic = rememberHaptic()
+    val scope = rememberCoroutineScope()
+    val appContext = LocalContext.current.applicationContext
 
     if (unlocking) {
         UnlockLoading()
@@ -255,6 +260,7 @@ fun PinLockScreen(
                     haptic(Haptic.REJECT); shakeKey++
                     message = null
                     now = System.currentTimeMillis(); lockedUntil = r.untilMs
+                    scope.launch { TransactionTriggers.onPinLockout(appContext, r.untilMs) }
                 }
             }
         },
@@ -340,6 +346,8 @@ fun ChangePinScreen(
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val haptic = rememberHaptic()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val appContext = context.applicationContext
 
     LaunchedEffect(lockedUntil) {
         while (lockedUntil > System.currentTimeMillis()) { now = System.currentTimeMillis(); delay(250) }
@@ -378,6 +386,7 @@ fun ChangePinScreen(
                     haptic(Haptic.REJECT); shakeKey++
                     message = null
                     now = System.currentTimeMillis(); lockedUntil = r.untilMs
+                    scope.launch { TransactionTriggers.onPinLockout(appContext, r.untilMs) }
                 }
             }
         },

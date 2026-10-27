@@ -8,7 +8,15 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -18,7 +26,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -33,8 +43,11 @@ import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.remote.SyncNotificationHelper
+import com.financeapp.notifications.InAppNotice
+import com.financeapp.notifications.KashNotifier
 import com.financeapp.security.PinManager
 import com.financeapp.ui.kash.KashColors
+import com.financeapp.ui.kash.components.KashSnackbar
 import com.financeapp.ui.kash.components.KashTab
 import com.financeapp.ui.kash.components.KashTabBar
 import com.financeapp.ui.kash.components.kashBank
@@ -76,6 +89,7 @@ import com.financeapp.viewmodel.SettingsViewModel
 import com.financeapp.viewmodel.SettingsViewModelFactory
 import com.financeapp.viewmodel.TransactionsViewModel
 import com.financeapp.viewmodel.TransactionsViewModelFactory
+import kotlinx.coroutines.delay
 
 /** Route names. Notifications deep-link into [Categorize] (now Review). */
 sealed class Screen(val route: String) {
@@ -162,15 +176,54 @@ fun AppNavigation(
             }
         }
 
-        MainNavigation(
-            repo = repo,
-            hasSmsAccess = hasSmsAccess,
-            userName = userName,
-            settingsRepo = settingsRepo,
-            setVm = setVm,
-            pendingRoute = pendingRoute,
-            onPendingRouteHandled = onPendingRouteHandled
-        )
+        // A tapped in-app notice navigates like a notification would.
+        var noticeRoute by remember { mutableStateOf<String?>(null) }
+        Box(Modifier.fillMaxSize()) {
+            MainNavigation(
+                repo = repo,
+                hasSmsAccess = hasSmsAccess,
+                userName = userName,
+                settingsRepo = settingsRepo,
+                setVm = setVm,
+                pendingRoute = pendingRoute ?: noticeRoute,
+                onPendingRouteHandled = { noticeRoute = null; onPendingRouteHandled() }
+            )
+            InAppNoticeHost(onOpen = { noticeRoute = it })
+        }
+    }
+}
+
+/**
+ * Tier 1 and 2 notifications while Kash is open: a snackbar above the tab
+ * bar for a few seconds instead of the system shade.
+ */
+@Composable
+private fun InAppNoticeHost(onOpen: (String) -> Unit) {
+    var notice by remember { mutableStateOf<InAppNotice?>(null) }
+    LaunchedEffect(Unit) {
+        KashNotifier.inAppNotices.collect { n ->
+            notice = n
+            delay(5_000)
+            if (notice == n) notice = null
+        }
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        AnimatedVisibility(
+            notice != null,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+        ) {
+            val n = notice ?: return@AnimatedVisibility
+            KashSnackbar(
+                message = "${n.title}. ${n.text}",
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 88.dp)
+                    .fillMaxWidth(),
+                action = if (n.route != null) "Open" else null,
+                onAction = { n.route?.let(onOpen); notice = null },
+            )
+        }
     }
 }
 

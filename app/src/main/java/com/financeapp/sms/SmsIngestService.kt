@@ -56,11 +56,14 @@ class SmsIngestService : Service() {
                 val messages = SmsReader.readFinancialSms(applicationContext)
                 // Chunks so the notification can show how far the scan is.
                 val insertedTxs = mutableListOf<com.financeapp.data.model.TransactionEntity>()
+                // First run reads the whole inbox: no transaction alerts from history.
+                val firstRun = repo.countTransactions() == 0
                 messages.chunked(100).forEachIndexed { i, chunk ->
                     insertedTxs += repo.ingestAllReturningInserted(chunk)
                     updateProgress(((i + 1) * 100).coerceAtMost(messages.size), messages.size)
                 }
                 val inserted = insertedTxs.size
+                com.financeapp.notifications.TransactionTriggers.onInserted(applicationContext, insertedTxs, batchIsHistorical = firstRun)
                 val pendingTransactions = repo.countUnsyncedTransactions()
                 val pendingRawMessages = repo.countUnsyncedRawMessages()
                 val totalPending = pendingTransactions + pendingRawMessages
@@ -71,18 +74,8 @@ class SmsIngestService : Service() {
 
                 val settingsRepo = SettingsRepository(applicationContext)
                 val notificationsEnabled = settingsRepo.notificationsEnabledSync()
+                // Transactions to review wait for the evening digest (notifications/).
                 if (notificationsEnabled) {
-                    if (inserted > 0) {
-                        val todayUncategorized = repo.countTodayUncategorizedTransactions()
-                        if (todayUncategorized > 0) {
-                            SyncNotificationHelper.notifyCategorizeToday(
-                                context = applicationContext,
-                                userName = settingsRepo.getUserName(),
-                                transactionCount = todayUncategorized
-                            )
-                        }
-                    }
-
                     if (SupabaseConfigProvider.fromBuildConfig() != null &&
                         settingsRepo.getSupabaseSession() != null &&
                         totalPending > 0 && !NetworkMonitor.isOnline(applicationContext)

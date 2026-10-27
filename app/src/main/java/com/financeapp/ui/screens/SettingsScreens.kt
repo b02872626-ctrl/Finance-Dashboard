@@ -37,7 +37,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.key
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import com.financeapp.R
+import com.financeapp.notifications.NotificationPrefs
+import com.financeapp.notifications.NotificationScheduler
+import com.financeapp.notifications.NotifyGroup
+import com.financeapp.ui.kash.components.KashMoney
+import com.financeapp.ui.kash.components.KashRadioRow
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.ErrorLogRepository
 import com.financeapp.export.TransactionCsv
@@ -342,12 +350,25 @@ fun PrivacyPage(onBack: () -> Unit) {
     if (confirmDelete) DeleteAccountDialog(onDismiss = { confirmDelete = false })
 }
 
-/** Notifications (AppNotifications): one switch. */
+/**
+ * Notifications (AppNotifications): the master switch, then the preference
+ * centre — a switch per group (Security can't be turned off), digest time,
+ * quiet hours and the alert thresholds. Values live in NotificationPrefs.
+ */
 @Composable
 fun NotificationsPage(vm: SettingsViewModel, onBack: () -> Unit) {
     val enabled by vm.notificationsEnabled.collectAsState()
+    val context = LocalContext.current
+    val prefs = remember { NotificationPrefs(context) }
+    // Re-read prefs on every change.
+    val tick by remember { prefs.changes() }.collectAsState(initial = Unit)
+    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+
     SettingsPage("Notifications", onBack, headline = "When Kash\ntaps your shoulder") { pad ->
-        Column(Modifier.padding(pad), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -361,11 +382,51 @@ fun NotificationsPage(vm: SettingsViewModel, onBack: () -> Unit) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("Kash notifications", style = KashType.BodyStrong, color = KashColors.Ink)
                     Text(
-                        "A nudge when new transactions need a category, and a note when syncing is waiting for internet",
+                        "Only what your bank SMS doesn't tell you. Most of it comes once, in the evening.",
                         style = KashType.Caption, color = KashColors.InkMuted,
                     )
                 }
                 KashSwitch(enabled, vm::setNotificationsEnabled, "Kash notifications")
+            }
+
+            if (enabled) key(tick) {
+                SectionLabel("What Kash tells you")
+                KashListGroup {
+                    GroupRow(prefs, NotifyGroup.ALERTS, "Money alerts", "Low balance, money in, unusual fees")
+                    GroupRow(prefs, NotifyGroup.REVIEW, "Review", "Transactions to sort, in the evening digest")
+                    GroupRow(prefs, NotifyGroup.SUMMARIES, "Summaries", "Your week, your month, and a catch-up after a quiet week")
+                    GroupRow(prefs, NotifyGroup.HEALTH, "Account health", "When Kash can't read your bank SMS")
+                    KashListRow("Security", hint = "Wrong PIN attempts", value = "Always on", showDivider = false)
+                }
+
+                SectionLabel("When")
+                KashListGroup {
+                    KashListRow("Evening digest", value = clock(prefs.digestMinute), onClick = { sheet = "digest" })
+                    KashListRow(
+                        "Quiet hours",
+                        hint = "Alerts wait until the morning digest. Security still comes through.",
+                        value = if (prefs.quietHoursOn) "${clock(prefs.quietStartMinute)}–${clock(prefs.quietEndMinute)}" else "Off",
+                        showDivider = false,
+                        onClick = { sheet = "quiet" },
+                    )
+                }
+
+                SectionLabel("Alert limits")
+                KashListGroup {
+                    KashListRow(
+                        "Low balance",
+                        value = prefs.balanceFloor?.let { "Below ${KashMoney.whole(it)} ETB" } ?: "Automatic",
+                        hint = if (prefs.balanceFloor == null) "Twice what you spend on an average day" else null,
+                        onClick = { sheet = "floor" },
+                    )
+                    KashListRow(
+                        "Fees",
+                        value = "Over ${prefs.feePercent}%",
+                        hint = "Or more than ${prefs.feeDailyTotal} ETB of fees in one day",
+                        showDivider = false,
+                        onClick = { sheet = "fees" },
+                    )
+                }
             }
             Text(
                 "You can also turn Kash notifications off in your phone's settings.",
@@ -373,7 +434,91 @@ fun NotificationsPage(vm: SettingsViewModel, onBack: () -> Unit) {
             )
         }
     }
+
+    val close = { sheet = null }
+    when (sheet) {
+        "digest" -> KashSheet("Evening digest", onDismiss = close) {
+            Column {
+                (17..23).forEach { h ->
+                    KashRadioRow(clock(h * 60), prefs.digestMinute == h * 60, {
+                        prefs.digestMinute = h * 60
+                        NotificationScheduler.scheduleDigest(context)
+                        close()
+                    })
+                }
+            }
+        }
+        "quiet" -> KashSheet("Quiet hours", onDismiss = close) {
+            key(tick) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Quiet hours", style = KashType.Body, color = KashColors.Ink, modifier = Modifier.weight(1f))
+                        KashSwitch(prefs.quietHoursOn, { prefs.quietHoursOn = it; NotificationScheduler.scheduleDigest(context) }, "Quiet hours")
+                    }
+                    if (prefs.quietHoursOn) {
+                        HourChips("From", listOf(20, 21, 22, 23, 0), prefs.quietStartMinute) {
+                            prefs.quietStartMinute = it; NotificationScheduler.scheduleDigest(context)
+                        }
+                        HourChips("Until", listOf(5, 6, 7, 8, 9), prefs.quietEndMinute) {
+                            prefs.quietEndMinute = it; NotificationScheduler.scheduleDigest(context)
+                        }
+                    }
+                }
+            }
+        }
+        "floor" -> KashSheet("Low balance alert", onDismiss = close) {
+            var text by rememberSaveable { mutableStateOf(prefs.balanceFloor?.let { KashMoney.whole(it).replace(",", "") } ?: "") }
+            val value = text.toDoubleOrNull()
+            Column(Modifier.imePadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                KashTextField(
+                    text, { t -> text = t.filter { it.isDigit() }.take(9) }, "Alert me below (ETB)",
+                    placeholder = "500", keyboardType = KeyboardType.Number, imeAction = ImeAction.Done,
+                    hint = "Kash checks the balance in each new bank SMS.",
+                )
+                KashButton("Save", { prefs.balanceFloor = value; close() }, Modifier.fillMaxWidth(), enabled = value != null && value > 0)
+                KashButton("Use automatic", { prefs.balanceFloor = null; close() }, Modifier.fillMaxWidth(), KashButtonVariant.Quiet)
+            }
+        }
+        "fees" -> KashSheet("Fee alert", onDismiss = close) {
+            key(tick) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    ChipRow("Fees on one transaction over", listOf(3, 5, 10).map { it to "$it%" }, prefs.feePercent) { prefs.feePercent = it }
+                    ChipRow("Fees in one day over", listOf(50, 100, 200).map { it to "$it ETB" }, prefs.feeDailyTotal) { prefs.feeDailyTotal = it }
+                }
+            }
+        }
+    }
 }
+
+@Composable
+private fun SectionLabel(text: String) =
+    Text(text, style = KashType.Label, color = KashColors.InkMuted, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+
+@Composable
+private fun GroupRow(prefs: NotificationPrefs, group: NotifyGroup, label: String, hint: String) {
+    var on by remember { mutableStateOf(prefs.isGroupOn(group)) }
+    KashListRow(label, hint = hint, trailing = {
+        KashSwitch(on, { on = it; prefs.setGroupOn(group, it) }, label)
+    })
+}
+
+@Composable
+private fun HourChips(label: String, hours: List<Int>, selected: Int, onPick: (Int) -> Unit) =
+    ChipRow(label, hours.map { it * 60 to clock(it * 60) }, selected, onPick)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChipRow(label: String, options: List<Pair<Int, String>>, selected: Int, onPick: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, style = KashType.Label, color = KashColors.InkMuted)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { (v, text) -> KashChip(text, v == selected, { onPick(v) }) }
+        }
+    }
+}
+
+/** 1200 → "20:00". */
+private fun clock(minute: Int) = "%d:%02d".format(minute / 60, minute % 60)
 
 /** Banks Kash follows: the same switches as Choose sources. */
 @Composable

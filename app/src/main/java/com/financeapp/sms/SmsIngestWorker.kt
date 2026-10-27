@@ -6,10 +6,12 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.financeapp.data.db.AppDatabase
 import com.financeapp.data.repository.ErrorLogRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
+import com.financeapp.notifications.TransactionTriggers
 import com.financeapp.remote.NetworkMonitor
 import com.financeapp.remote.SupabaseConfigProvider
 import com.financeapp.remote.SupabaseSyncScheduler
@@ -34,10 +36,14 @@ class SmsIngestWorker(
             val ctx = applicationContext
             val repo = TransactionRepository(AppDatabase.getInstance(ctx), settings = com.financeapp.data.repository.SettingsRepository(ctx))
             val messages = SmsReader.readFinancialSms(ctx)
+            // First run (empty ledger) and upgrade rescans replay history:
+            // no transaction-level alerts from those.
+            val firstRun = repo.countTransactions() == 0
             val insertedTxs = repo.ingestAllReturningInserted(messages)
             val inserted = insertedTxs.size
             val pendingTransactions = repo.countUnsyncedTransactions()
             val pendingRawMessages  = repo.countUnsyncedRawMessages()
+            TransactionTriggers.onInserted(ctx, insertedTxs, batchIsHistorical = firstRun || inputData.getBoolean(KEY_RESCAN, false))
 
             if (pendingTransactions + pendingRawMessages > 0) {
                 SupabaseSyncScheduler.enqueue(ctx)
@@ -45,15 +51,8 @@ class SmsIngestWorker(
 
             val settingsRepo = SettingsRepository(ctx)
             val notificationsEnabled = settingsRepo.notificationsEnabledSync()
+            // Transactions to review wait for the evening digest (notifications/).
             if (notificationsEnabled && inserted > 0) {
-                val todayUncategorized = repo.countTodayUncategorizedTransactions()
-                if (todayUncategorized > 0) {
-                    SyncNotificationHelper.notifyCategorizeToday(
-                        context = ctx,
-                        userName = settingsRepo.getUserName(),
-                        transactionCount = todayUncategorized
-                    )
-                }
                 if (pendingTransactions + pendingRawMessages > 0 &&
                     !NetworkMonitor.isOnline(ctx) &&
                     SupabaseConfigProvider.fromBuildConfig() != null &&
@@ -76,14 +75,17 @@ class SmsIngestWorker(
 
     companion object {
         private const val UNIQUE_WORK_NAME = "sms_ingest_now"
+        private const val KEY_RESCAN = "rescan"
 
         /**
          * Enqueue an immediate-ish background scan. Uses REPLACE so rapid
          * back-to-back SMS (e.g. a transfer + its receipt) coalesce into a
          * single scan instead of N redundant ones.
          */
-        fun enqueue(context: Context) {
-            val request = OneTimeWorkRequestBuilder<SmsIngestWorker>().build()
+        fun enqueue(context: Context, rescan: Boolean = false) {
+            val request = OneTimeWorkRequestBuilder<SmsIngestWorker>()
+                .setInputData(workDataOf(KEY_RESCAN to rescan))
+                .build()
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
         }

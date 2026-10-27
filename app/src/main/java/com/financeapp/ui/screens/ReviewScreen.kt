@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -106,6 +107,9 @@ fun ReviewScreen(
     KashSystemBars(darkIcons = false)
     val state by vm.state.collectAsState()
     val haptic = rememberHaptic()
+    // A review session: holds off the backlog nudge for 3 days.
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    LaunchedEffect(Unit) { com.financeapp.notifications.NotificationPrefs(appContext).lastReviewSessionMs = System.currentTimeMillis() }
     val current = state.current
     val allCategories = remember(customCategories) { TransactionCategoryCatalog.allCategories(customCategories) }
     // The category picked on the card; starts at the prediction (or Own
