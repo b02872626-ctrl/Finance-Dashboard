@@ -78,8 +78,8 @@ import com.financeapp.ui.kash.components.KashTransactionRow
 import com.financeapp.ui.kash.displayName
 import com.financeapp.ui.kash.kashDirection
 import com.financeapp.ui.kash.num
-import com.financeapp.ui.theme.Haptic
-import com.financeapp.ui.theme.rememberHaptic
+import com.financeapp.ui.kash.Haptic
+import com.financeapp.ui.kash.rememberHaptic
 import com.financeapp.util.KashDates
 import com.financeapp.util.LocalCalendarSystem
 import com.financeapp.viewmodel.ReviewQueueState

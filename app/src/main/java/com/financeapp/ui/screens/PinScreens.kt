@@ -48,8 +48,8 @@ import com.financeapp.ui.kash.components.KashPinDots
 import com.financeapp.ui.kash.components.KashPinKeys
 import com.financeapp.ui.kash.components.KashPinMessage
 import com.financeapp.ui.kash.components.KashTopBar
-import com.financeapp.ui.theme.Haptic
-import com.financeapp.ui.theme.rememberHaptic
+import com.financeapp.ui.kash.Haptic
+import com.financeapp.ui.kash.rememberHaptic
 import kotlinx.coroutines.delay
 
 // =============================================================================
