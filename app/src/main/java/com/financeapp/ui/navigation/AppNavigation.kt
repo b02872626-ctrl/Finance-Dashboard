@@ -1,23 +1,16 @@
 package com.financeapp.ui.navigation
 
-import androidx.annotation.DrawableRes
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,71 +18,76 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.financeapp.BuildConfig
 import com.financeapp.R
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.remote.SyncNotificationHelper
-import com.financeapp.ui.screens.AccountSecurityScreen
-import com.financeapp.ui.screens.AccountSettingsScreen
-import com.financeapp.ui.screens.AnalyticsScreen
-import com.financeapp.ui.screens.CategorizeTransactionsScreen
-import com.financeapp.ui.screens.CategoryDetailScreen
-import com.financeapp.ui.screens.DashboardScreen
-import com.financeapp.ui.screens.EditAccountScreen
-import com.financeapp.ui.screens.NotificationPreferencesScreen
-import com.financeapp.ui.screens.ReviewQueueScreen
-import com.financeapp.ui.screens.SettingsScreen
-import com.financeapp.ui.theme.AppBackground
-import com.financeapp.ui.theme.AppBlue
+import com.financeapp.security.PinManager
+import com.financeapp.ui.kash.KashColors
+import com.financeapp.ui.kash.components.KashTab
+import com.financeapp.ui.kash.components.KashTabBar
+import com.financeapp.ui.kash.components.kashBank
+import com.financeapp.ui.screens.AccountDetailScreen
+import com.financeapp.ui.screens.AccountsTabScreen
+import com.financeapp.ui.screens.AddScreen
+import com.financeapp.ui.screens.AnalyticsTabScreen
+import com.financeapp.ui.screens.BanksFollowedPage
+import com.financeapp.ui.screens.CategoryScreen
+import com.financeapp.ui.screens.ChangePinScreen
+import com.financeapp.ui.screens.EditAccountPage
+import com.financeapp.ui.screens.ExportSheet
+import com.financeapp.ui.screens.HistoryScreen
+import com.financeapp.ui.screens.HomeScreen
+import com.financeapp.ui.screens.NotificationsPage
+import com.financeapp.ui.screens.OnboardingFlow
+import com.financeapp.ui.screens.PinLockScreen
+import com.financeapp.ui.screens.PinSetupScreen
+import com.financeapp.ui.screens.PrivacyPage
+import com.financeapp.ui.screens.ReviewScreen
+import com.financeapp.ui.screens.SettingsHomeScreen
+import com.financeapp.ui.screens.SignInAgainScreen
+import com.financeapp.ui.screens.TransactionScreen
+import com.financeapp.util.LocalCalendarSystem
+import com.financeapp.viewmodel.AddTransactionViewModel
+import com.financeapp.viewmodel.AddTransactionViewModelFactory
 import com.financeapp.viewmodel.AnalyticsViewModel
 import com.financeapp.viewmodel.AnalyticsViewModelFactory
 import com.financeapp.viewmodel.BankAnalyticsViewModel
 import com.financeapp.viewmodel.BankAnalyticsViewModelFactory
 import com.financeapp.viewmodel.DashboardViewModel
 import com.financeapp.viewmodel.DashboardViewModelFactory
+import com.financeapp.viewmodel.OnboardingViewModel
+import com.financeapp.viewmodel.OnboardingViewModelFactory
 import com.financeapp.viewmodel.ReviewQueueViewModel
 import com.financeapp.viewmodel.ReviewQueueViewModelFactory
-import com.financeapp.ui.theme.pressScale
-import com.financeapp.ui.theme.rememberTactileSource
 import com.financeapp.viewmodel.ReviewScope
 import com.financeapp.viewmodel.SettingsViewModel
 import com.financeapp.viewmodel.SettingsViewModelFactory
 import com.financeapp.viewmodel.TransactionsViewModel
 import com.financeapp.viewmodel.TransactionsViewModelFactory
 
-sealed class Screen(val route: String, val label: String, @DrawableRes val iconRes: Int = 0) {
-    object Dashboard : Screen("dashboard", "Home", R.drawable.ic_home_dark)
-    object Accounts : Screen("accounts", "Accounts", R.drawable.ic_book_dark)
-    object Transactions : Screen("transactions", "History", R.drawable.ic_history_dark)
-    object Categorize : Screen(SyncNotificationHelper.CATEGORY_ROUTE, "Categorize")
-    object DailyReview : Screen("daily_review", "Daily Review")
-    object Analytics : Screen("analytics", "Analytics", R.drawable.ic_anaytics_dark)
-    object Profile : Screen("profile", "Profile", R.drawable.ic_profile_dark)
-    object AccountSettings : Screen("account_settings", "Account", R.drawable.ic_profile_dark)
-    object AddTransaction : Screen("add_transaction", "Add transaction")
+/** Route names. Notifications deep-link into [Categorize] (now Review). */
+sealed class Screen(val route: String) {
+    object Dashboard : Screen("dashboard")
+    object Accounts : Screen("accounts")
+    object Transactions : Screen("transactions")
+    object Categorize : Screen(SyncNotificationHelper.CATEGORY_ROUTE)
+    object DailyReview : Screen("daily_review")
+    object Analytics : Screen("analytics")
+    object Profile : Screen("profile")
+    object AddTransaction : Screen("add_transaction")
 }
-
-private val TABS = listOf(
-    Screen.Dashboard,
-    Screen.Accounts,
-    Screen.Transactions,
-    Screen.Analytics
-)
 
 @Composable
 fun AppNavigation(
@@ -105,82 +103,75 @@ fun AppNavigation(
 ) {
     val setVm: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(settingsRepo, repo))
     val userName by setVm.userName.collectAsState()
-    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
-    val pinManager = remember { com.financeapp.security.PinManager(appContext) }
+    val appContext = LocalContext.current.applicationContext
+    val pinManager = remember { PinManager(appContext) }
     val isSupabaseSignedIn by settingsRepo.isSupabaseSignedInFlow()
         .collectAsState(initial = settingsRepo.getSupabaseSession() != null)
     val onboardingComplete by settingsRepo.onboardingCompleteFlow()
         .collectAsState(initial = settingsRepo.isOnboardingComplete())
     var smsRecoveryRequested by rememberSaveable { mutableStateOf(false) }
+    val calendarSystem by setVm.calendarSystem.collectAsState()
 
-    val nameLoaded = true
-
-    if (!nameLoaded) {
-        Box(Modifier.fillMaxSize().background(AppBackground))
-        return
-    }
-
-    // First launch: Welcome → SMS → sources → sign in → summary (the auth
-    // step now comes after the SMS steps). The PIN gate below follows.
-    if (!onboardingComplete) {
-        com.financeapp.ui.screens.OnboardingFlow(
-            repo = repo,
-            settingsRepo = settingsRepo,
-            hasSmsAccess = hasSmsAccess,
-            smsDenied = smsDenied,
-            isSignedIn = isSupabaseSignedIn,
-            onRequestSmsAccess = requestSmsAccess,
-            onFinish = { settingsRepo.setOnboardingComplete(true) }
-        )
-        return
-    }
-
-    // Signed out after onboarding: session expired, Log out or Forgot PIN.
-    if (!isSupabaseSignedIn) {
-        com.financeapp.ui.screens.SignInAgainScreen(onSignedIn = {})
-        return
-    }
-
-    // App PIN. Re-read whenever sign-in state flips (log out / forgot PIN
-    // clear it, so the next sign-in lands on "Create a PIN").
-    var hasPin by remember(isSupabaseSignedIn) { mutableStateOf(pinManager.hasPin()) }
-    if (!hasPin) {
-        com.financeapp.ui.screens.PinSetupScreen(
-            pinManager = pinManager,
-            onDone = { hasPin = true; onUnlocked() }
-        )
-        return
-    }
-    if (isLocked) {
-        com.financeapp.ui.screens.PinLockScreen(
-            pinManager = pinManager,
-            onUnlocked = onUnlocked,
-            onForgot = {
-                setVm.signOut()      // clears PIN + session → sign-in screen
-                onUnlocked()
-            }
-        )
-        return
-    }
-
-    LaunchedEffect(onboardingComplete, hasSmsAccess) {
-        if (!onboardingComplete) return@LaunchedEffect
-        if (hasSmsAccess) {
-            smsRecoveryRequested = false
-        } else if (!smsRecoveryRequested) {
-            smsRecoveryRequested = true
-            requestSmsAccess()
+    CompositionLocalProvider(LocalCalendarSystem provides calendarSystem) {
+        // First launch: Welcome → SMS → sources → sign in → summary (the auth
+        // step now comes after the SMS steps). The PIN gate below follows.
+        if (!onboardingComplete) {
+            OnboardingFlow(
+                repo = repo,
+                settingsRepo = settingsRepo,
+                hasSmsAccess = hasSmsAccess,
+                smsDenied = smsDenied,
+                isSignedIn = isSupabaseSignedIn,
+                onRequestSmsAccess = requestSmsAccess,
+                onFinish = { settingsRepo.setOnboardingComplete(true) }
+            )
+            return@CompositionLocalProvider
         }
-    }
 
-    MainNavigation(
-        repo = repo,
-        hasSmsAccess = hasSmsAccess,
-        userName = userName,
-        settingsRepo = settingsRepo,
-        pendingRoute = pendingRoute,
-        onPendingRouteHandled = onPendingRouteHandled
-    )
+        // Signed out after onboarding: session expired, Log out or Forgot PIN.
+        if (!isSupabaseSignedIn) {
+            SignInAgainScreen(onSignedIn = {})
+            return@CompositionLocalProvider
+        }
+
+        // App PIN. Re-read whenever sign-in state flips (log out / forgot PIN
+        // clear it, so the next sign-in lands on "Create a PIN").
+        var hasPin by remember(isSupabaseSignedIn) { mutableStateOf(pinManager.hasPin()) }
+        if (!hasPin) {
+            PinSetupScreen(pinManager = pinManager, onDone = { hasPin = true; onUnlocked() })
+            return@CompositionLocalProvider
+        }
+        if (isLocked) {
+            PinLockScreen(
+                pinManager = pinManager,
+                onUnlocked = onUnlocked,
+                onForgot = {
+                    setVm.signOut()      // clears PIN + session → Sign in again
+                    onUnlocked()
+                }
+            )
+            return@CompositionLocalProvider
+        }
+
+        LaunchedEffect(hasSmsAccess) {
+            if (hasSmsAccess) {
+                smsRecoveryRequested = false
+            } else if (!smsRecoveryRequested) {
+                smsRecoveryRequested = true
+                requestSmsAccess()
+            }
+        }
+
+        MainNavigation(
+            repo = repo,
+            hasSmsAccess = hasSmsAccess,
+            userName = userName,
+            settingsRepo = settingsRepo,
+            setVm = setVm,
+            pendingRoute = pendingRoute,
+            onPendingRouteHandled = onPendingRouteHandled
+        )
+    }
 }
 
 @Composable
@@ -189,59 +180,41 @@ private fun MainNavigation(
     hasSmsAccess: Boolean,
     userName: String,
     settingsRepo: SettingsRepository,
+    setVm: SettingsViewModel,
     pendingRoute: String?,
     onPendingRouteHandled: () -> Unit
 ) {
     val navController = rememberNavController()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val setVm: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(settingsRepo, repo))
-    val backstackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backstackEntry?.destination?.route
-    val showBottomBar = currentRoute?.let { route ->
-        route == Screen.Analytics.route
-    } ?: false
+    val context = LocalContext.current
 
-    val dashFac = remember { DashboardViewModelFactory(repo) }
-    val txFac = remember { TransactionsViewModelFactory(repo) }
-    val anlFac = remember { AnalyticsViewModelFactory(repo) }
     val reviewTodayFac = remember { ReviewQueueViewModelFactory(repo, ReviewScope.TODAY) }
-    val reviewAllFac   = remember { ReviewQueueViewModelFactory(repo, ReviewScope.ALL) }
-
-    val dashVm: DashboardViewModel = viewModel(factory = dashFac)
-    val txVm: TransactionsViewModel = viewModel(factory = txFac)
-    val anlVm: AnalyticsViewModel = viewModel(factory = anlFac)
+    val reviewAllFac = remember { ReviewQueueViewModelFactory(repo, ReviewScope.ALL) }
+    val dashVm: DashboardViewModel = viewModel(factory = remember { DashboardViewModelFactory(repo) })
+    val txVm: TransactionsViewModel = viewModel(factory = remember { TransactionsViewModelFactory(repo) })
+    val anlVm: AnalyticsViewModel = viewModel(factory = remember { AnalyticsViewModelFactory(repo) })
+    val sourcesVm: OnboardingViewModel = viewModel(factory = remember { OnboardingViewModelFactory(repo, settingsRepo) })
     val categories by setVm.categories.collectAsState()
-    // Real recent-picks for the picker sheet "Recent" row — pushed by repo
+    // Real recent picks for the picker's "Recent" row, pushed by the repo
     // every time the user confirms a category.
-    val recentCategories by remember(settingsRepo) {
-        settingsRepo.recentCategoriesFlow()
-    }.collectAsState(initial = settingsRepo.getRecentCategories())
-    val todayUncategorized by txVm.todayUncategorizedTransactions.collectAsState()
-    val bulkSuggestion by txVm.bulkCategorySuggestion.collectAsState()
+    val recentCategories by remember(settingsRepo) { settingsRepo.recentCategoriesFlow() }
+        .collectAsState(initial = settingsRepo.getRecentCategories())
 
     LaunchedEffect(pendingRoute) {
         if (!pendingRoute.isNullOrBlank()) {
-            navController.navigate(pendingRoute) {
-                launchSingleTop = true
-            }
+            navController.navigate(pendingRoute) { launchSingleTop = true }
             onPendingRouteHandled()
         }
     }
 
-    // Provide the user's calendar preference to every composable in the tree.
-    // Any date-rendering site reads `LocalCalendarSystem.current` and
-    // re-renders automatically when the user flips the Settings toggle.
-    val calendarSystem by setVm.calendarSystem.collectAsState()
-
-    // The Kash tab bar for the four tab screens (icons only, dot under the active one).
-    val tabBar: (com.financeapp.ui.kash.components.KashTab) -> (@Composable () -> Unit) = { active ->
+    // The tab bar for the four tab screens (icons only, dot under the active one).
+    val tabBar: (KashTab) -> (@Composable () -> Unit) = { active ->
         {
-            com.financeapp.ui.kash.components.KashTabBar(active, onSelect = { tab ->
+            KashTabBar(active, onSelect = { tab ->
                 val target = when (tab) {
-                    com.financeapp.ui.kash.components.KashTab.Home -> Screen.Dashboard
-                    com.financeapp.ui.kash.components.KashTab.Accounts -> Screen.Accounts
-                    com.financeapp.ui.kash.components.KashTab.History -> Screen.Transactions
-                    com.financeapp.ui.kash.components.KashTab.Analytics -> Screen.Analytics
+                    KashTab.Home -> Screen.Dashboard
+                    KashTab.Accounts -> Screen.Accounts
+                    KashTab.History -> Screen.Transactions
+                    KashTab.Analytics -> Screen.Analytics
                 }
                 if (target == Screen.Transactions) txVm.clearFilters()
                 navController.navigate(target.route) {
@@ -252,9 +225,10 @@ private fun MainNavigation(
             })
         }
     }
+
     @Composable
     fun ReviewRoute(vm: ReviewQueueViewModel) {
-        com.financeapp.ui.screens.ReviewScreen(
+        ReviewScreen(
             vm = vm,
             userName = userName,
             customCategories = categories,
@@ -262,37 +236,31 @@ private fun MainNavigation(
             onAddCustomCategory = { setVm.addCustomCategory(it) },
             onClose = { navController.popBackStack() },
             onReviewOlder = {
-                navController.navigate("${Screen.DailyReview.route}?scope=all") {
-                    popUpTo(Screen.Dashboard.route)
-                }
+                navController.navigate("${Screen.DailyReview.route}?scope=all") { popUpTo(Screen.Dashboard.route) }
             },
         )
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(
-        com.financeapp.util.LocalCalendarSystem provides calendarSystem
-    ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppBackground)
-    ) {
+    fun openTx(id: Long) = navController.navigate("detail/$id")
+    fun openAccount(bankName: String) = navController.navigate("bank_analytics/${Uri.encode(bankName)}")
+    fun back() { navController.popBackStack() }
+
+    Box(Modifier.fillMaxSize().background(KashColors.Slate)) {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
             modifier = Modifier.fillMaxSize(),
-            // Per user direction: no enter/exit slide animations between
-            // screens. Routes hard-cut to the new destination.
-            enterTransition    = { androidx.compose.animation.EnterTransition.None },
-            exitTransition     = { androidx.compose.animation.ExitTransition.None },
-            popEnterTransition = { androidx.compose.animation.EnterTransition.None },
-            popExitTransition  = { androidx.compose.animation.ExitTransition.None }
+            // No slide animations between screens: routes hard-cut.
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             composable(Screen.Dashboard.route) {
-                com.financeapp.ui.screens.HomeScreen(
+                HomeScreen(
                     vm = dashVm,
-                    tabBar = tabBar(com.financeapp.ui.kash.components.KashTab.Home),
-                    onTxClick = { id -> navController.navigate("detail/$id") },
+                    tabBar = tabBar(KashTab.Home),
+                    onTxClick = ::openTx,
                     onSeeAll = {
                         txVm.clearFilters()
                         navController.navigate(Screen.Transactions.route) {
@@ -307,44 +275,35 @@ private fun MainNavigation(
                 )
             }
             composable(Screen.AddTransaction.route) {
-                val addVm: com.financeapp.viewmodel.AddTransactionViewModel = viewModel(
-                    factory = com.financeapp.viewmodel.AddTransactionViewModelFactory(repo)
-                )
+                val addVm: AddTransactionViewModel = viewModel(factory = AddTransactionViewModelFactory(repo))
                 val dash by dashVm.state.collectAsState()
-                com.financeapp.ui.screens.AddScreen(
+                AddScreen(
                     vm = addVm,
-                    banks = dash.accountBalances.map { com.financeapp.ui.kash.components.kashBank(it.bankName).shortName },
+                    banks = dash.accountBalances.map { kashBank(it.bankName).shortName },
                     customCategories = categories,
                     recentCategories = recentCategories,
                     onAddCategory = { setVm.addCustomCategory(it) },
-                    onSaved = { navController.popBackStack() },
-                    onClose = { navController.popBackStack() },
+                    onSaved = ::back,
+                    onClose = ::back,
                 )
             }
             composable(Screen.Accounts.route) {
-                com.financeapp.ui.screens.AccountsTabScreen(
+                AccountsTabScreen(
                     vm = dashVm,
                     hasSmsAccess = hasSmsAccess,
-                    tabBar = tabBar(com.financeapp.ui.kash.components.KashTab.Accounts),
-                    onOpenAccount = { bankName -> navController.navigate("bank_analytics/${android.net.Uri.encode(bankName)}") },
+                    tabBar = tabBar(KashTab.Accounts),
+                    onOpenAccount = ::openAccount,
                     onAdd = { navController.navigate(Screen.AddTransaction.route) },
-                    onTxClick = { id -> navController.navigate("detail/$id") },
+                    onTxClick = ::openTx,
                 )
             }
             composable(
                 route = "bank_analytics/{bankName}",
                 arguments = listOf(navArgument("bankName") { type = NavType.StringType })
             ) { backStackEntry ->
-                val bankName = backStackEntry.arguments?.getString("bankName")?.let(android.net.Uri::decode) ?: return@composable
-                val vm: BankAnalyticsViewModel = viewModel(
-                    key = "bank_$bankName",
-                    factory = BankAnalyticsViewModelFactory(repo, bankName)
-                )
-                com.financeapp.ui.screens.AccountDetailScreen(
-                    vm = vm,
-                    onBack = { navController.popBackStack() },
-                    onTxClick = { id -> navController.navigate("detail/$id") }
-                )
+                val bankName = backStackEntry.arguments?.getString("bankName")?.let(Uri::decode) ?: return@composable
+                val vm: BankAnalyticsViewModel = viewModel(key = "bank_$bankName", factory = BankAnalyticsViewModelFactory(repo, bankName))
+                AccountDetailScreen(vm = vm, onBack = ::back, onTxClick = ::openTx)
             }
             composable(
                 route = "${Screen.Transactions.route}?search={search}",
@@ -357,25 +316,15 @@ private fun MainNavigation(
                         txVm.setSearch(search)
                     }
                 }
-                com.financeapp.ui.screens.HistoryScreen(
-                    vm = txVm,
-                    tabBar = tabBar(com.financeapp.ui.kash.components.KashTab.History),
-                    onTxClick = { id -> navController.navigate("detail/$id") }
-                )
+                HistoryScreen(vm = txVm, tabBar = tabBar(KashTab.History), onTxClick = ::openTx)
             }
             composable(Screen.Analytics.route) {
-                AnalyticsScreen(
+                AnalyticsTabScreen(
                     vm = anlVm,
-                    onCounterpartyClick = { categoryOrSentinel ->
-                        if (categoryOrSentinel == "__uncategorized__") {
-                            navController.navigate(Screen.Categorize.route) {
-                                launchSingleTop = true
-                            }
-                        } else {
-                            val encoded = android.net.Uri.encode(categoryOrSentinel)
-                            navController.navigate("category_detail/$encoded")
-                        }
-                    }
+                    tabBar = tabBar(KashTab.Analytics),
+                    onCategory = { navController.navigate("category_detail/${Uri.encode(it)}") },
+                    onReview = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
+                    onAccount = ::openAccount,
                 )
             }
             composable(
@@ -383,15 +332,8 @@ private fun MainNavigation(
                 arguments = listOf(navArgument("category") { type = NavType.StringType })
             ) { backStack ->
                 val raw = backStack.arguments?.getString("category") ?: return@composable
-                // Compose Navigation does NOT auto-decode StringType args, so
-                // "Drinks%20and%20fun" stays encoded otherwise. Decode here.
-                val category = android.net.Uri.decode(raw)
-                CategoryDetailScreen(
-                    vm = anlVm,
-                    category = category,
-                    onBack = { navController.popBackStack() },
-                    onAddTransaction = { navController.navigate(Screen.Categorize.route) }
-                )
+                // Navigation does not decode StringType args; "Drinks%20and%20fun" stays encoded otherwise.
+                CategoryScreen(vm = anlVm, category = Uri.decode(raw), onBack = ::back, onTxClick = ::openTx)
             }
             composable(
                 route = "detail/{txId}",
@@ -401,7 +343,7 @@ private fun MainNavigation(
                 var tx by remember { mutableStateOf<TransactionEntity?>(null) }
                 LaunchedEffect(txId) { tx = repo.getById(txId) }
                 tx?.let { transaction ->
-                    com.financeapp.ui.screens.TransactionScreen(
+                    TransactionScreen(
                         tx = transaction,
                         customCategories = categories,
                         recentCategories = recentCategories,
@@ -410,210 +352,77 @@ private fun MainNavigation(
                             tx = transaction.copy(category = it)
                         },
                         onAddCategory = { setVm.addCustomCategory(it) },
-                        onBack = { navController.popBackStack() }
+                        onBack = ::back
                     )
                 }
             }
-            // "Categorize today" (notification, Analytics) merged into Review.
+            // "Categorize today" (the notification) merged into Review.
             composable(Screen.Categorize.route) {
-                val keyedVm: ReviewQueueViewModel = viewModel(key = "review_queue_today", factory = reviewTodayFac)
-                ReviewRoute(keyedVm)
+                ReviewRoute(viewModel(key = "review_queue_today", factory = reviewTodayFac))
             }
             composable(
                 route = "${Screen.DailyReview.route}?scope={scope}",
-                arguments = listOf(
-                    navArgument("scope") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    }
-                )
+                arguments = listOf(navArgument("scope") { type = NavType.StringType; nullable = true; defaultValue = null })
             ) { backStack ->
                 val scopeArg = backStack.arguments?.getString("scope")
-                val factory = if (scopeArg == "all") reviewAllFac else reviewTodayFac
-                val keyedVm: ReviewQueueViewModel = viewModel(
-                    key = "review_queue_${scopeArg ?: "today"}",
-                    factory = factory
+                ReviewRoute(
+                    viewModel(
+                        key = "review_queue_${scopeArg ?: "today"}",
+                        factory = if (scopeArg == "all") reviewAllFac else reviewTodayFac
+                    )
                 )
-                ReviewRoute(keyedVm)
             }
             composable(Screen.DailyReview.route) {
-                val keyedVm: ReviewQueueViewModel = viewModel(key = "review_queue_today", factory = reviewTodayFac)
-                ReviewRoute(keyedVm)
+                ReviewRoute(viewModel(key = "review_queue_today", factory = reviewTodayFac))
             }
             composable(Screen.Profile.route) {
-                SettingsScreen(
+                val sources by sourcesVm.sources.collectAsState()
+                var exportOpen by rememberSaveable { mutableStateOf(false) }
+                SettingsHomeScreen(
                     vm = setVm,
-                    onBack = { navController.popBackStack() },
+                    followedBanks = sources.count { it.enabled },
+                    onBack = ::back,
                     onEditAccount = { navController.navigate("profile_edit") },
-                    onAccountSecurity = { navController.navigate("profile_security") },
-                    onNotificationPreferences = { navController.navigate("profile_notifications") },
+                    onPrivacy = { navController.navigate("profile_security") },
+                    onNotifications = { navController.navigate("profile_notifications") },
                     onChangePin = { navController.navigate("profile_pin") },
-                    onConnectedBanks = {
-                        navController.navigate(Screen.Accounts.route) { launchSingleTop = true }
-                    },
+                    onBanks = { navController.navigate("profile_banks") },
+                    onExport = { exportOpen = true },
                     onSupport = { openSupportEmail(context) }
                 )
+                if (exportOpen) {
+                    val all by remember { repo.getAllTransactions() }.collectAsState(initial = emptyList())
+                    ExportSheet(all = all, onClose = { exportOpen = false })
+                }
             }
-            composable("profile_edit") {
-                EditAccountScreen(vm = setVm, onBack = { navController.popBackStack() })
-            }
-            composable("profile_security") {
-                AccountSecurityScreen(vm = setVm, onBack = { navController.popBackStack() })
+            composable("profile_edit") { EditAccountPage(vm = setVm, onBack = ::back) }
+            composable("profile_security") { PrivacyPage(onBack = ::back) }
+            composable("profile_notifications") { NotificationsPage(vm = setVm, onBack = ::back) }
+            composable("profile_banks") {
+                val sources by sourcesVm.sources.collectAsState()
+                BanksFollowedPage(sources = sources, onToggle = sourcesVm::setSourceEnabled, onBack = ::back)
             }
             composable("profile_pin") {
-                val ctx = androidx.compose.ui.platform.LocalContext.current
-                val pm = remember { com.financeapp.security.PinManager(ctx) }
-                com.financeapp.ui.screens.ChangePinScreen(
-                    pinManager = pm,
-                    onDone = { navController.popBackStack() },
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable("profile_notifications") {
-                NotificationPreferencesScreen(vm = setVm, onBack = { navController.popBackStack() })
-            }
-            composable(Screen.AccountSettings.route) {
-                AccountSettingsScreen(onBack = { navController.popBackStack() })
-            }
-        }
-
-        if (showBottomBar) {
-            // Fade scrim above the floating nav. Without this, scrolled
-            // content slides under the nav with no opacity transition,
-            // washing out the nav's contrast (testers flagged this — see
-            // the "elements behind the nav bar are making the nav bar lose
-            // contrast" screenshot).
-            //
-            // Implementation: a transparent→pageBg vertical gradient
-            // positioned just above the nav. Content keeps its full color
-            // up to the scrim's top edge, fades out across ~64dp, and is
-            // fully invisible against the page bg by the time it would
-            // physically cross under the nav row.
-            NavBarScrim(pageBg = AppBackground)
-
-            FloatingBottomNav(
-                currentRoute = currentRoute,
-                onNavigate = { screen ->
-                    if (screen == Screen.Transactions) txVm.clearFilters()
-                    if (screen == Screen.Analytics) anlVm.setSearch("")
-                    navController.navigate(screen.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = false }
-                        launchSingleTop = true
-                        restoreState = false
-                    }
-                }
-            )
-        }
-    }
-    }  // CompositionLocalProvider — LocalCalendarSystem
-}
-
-/**
- * Soft fade-to-page-bg gradient that sits BEHIND the floating nav. Earlier
- * version reserved the nav's footprint with bottom padding, which placed
- * the fade ABOVE the nav and washed out the last bit of scroll content
- * (e.g. the "Banks" section header looked dim in the screenshot).
- *
- * New positioning: scrim aligned to the bottom of the navigation-bars
- * inset with NO extra padding, ~140dp tall. Content fades from full
- * opacity at the scrim's top edge to fully pageBg at the bottom — and
- * the floating nav row (rendered AFTER this Box) sits on top of the
- * already-opaque pageBg portion. From the user's perspective the
- * non-nav content stays crisp; the fade only happens directly under
- * the nav, where it has to.
- */
-@Composable
-private fun NavBarScrim(pageBg: androidx.compose.ui.graphics.Color) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .navigationBarsPadding(),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(
-                            androidx.compose.ui.graphics.Color.Transparent,
-                            pageBg.copy(alpha = 0.6f),
-                            pageBg
-                        )
-                    )
-                )
-        )
-    }
-}
-
-@Composable
-private fun FloatingBottomNav(
-    currentRoute: String?,
-    onNavigate: (Screen) -> Unit
-) {
-    // Floating card with 4 evenly-spaced tab icons.
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-                .clip(RoundedCornerShape(32.dp))
-                .background(Color(0xFF231E1A))
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TABS.forEach { screen ->
-                val selected = currentRoute == screen.route ||
-                    (screen == Screen.Transactions && currentRoute?.startsWith("transactions") == true)
-                val tabIx = rememberTactileSource()
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .pressScale(tabIx)
-                        .clickable(
-                            interactionSource = tabIx,
-                            indication = null
-                        ) { onNavigate(screen) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = screen.iconRes),
-                        contentDescription = screen.label,
-                        tint = if (selected) AppBlue else Color(0xFFB7B3AC),
-                        modifier = Modifier.size(34.dp)
-                    )
-                }
+                val pm = remember { PinManager(context) }
+                ChangePinScreen(pinManager = pm, onDone = ::back, onBack = ::back)
             }
         }
     }
 }
 
-/** Settings → Support: pre-filled email with version + device for triage. */
-private fun openSupportEmail(context: android.content.Context) {
+/** Settings → Email support: pre-filled email with version + device for triage. */
+private fun openSupportEmail(context: Context) {
     val address = context.getString(R.string.support_email)
-    val body = "\n\n---\nApp: ${com.financeapp.BuildConfig.VERSION_NAME}" +
+    val body = "\n\n---\nApp: ${BuildConfig.VERSION_NAME}" +
         "\nDevice: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}" +
         "\nAndroid: ${android.os.Build.VERSION.RELEASE}"
-    val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
-        data = android.net.Uri.parse("mailto:")
-        putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(address))
-        putExtra(android.content.Intent.EXTRA_SUBJECT, "Kash support")
-        putExtra(android.content.Intent.EXTRA_TEXT, body)
+    val intent = Intent(Intent.ACTION_SENDTO).apply {
+        data = Uri.parse("mailto:")
+        putExtra(Intent.EXTRA_EMAIL, arrayOf(address))
+        putExtra(Intent.EXTRA_SUBJECT, "Kash support")
+        putExtra(Intent.EXTRA_TEXT, body)
     }
     runCatching { context.startActivity(intent) }.onFailure {
-        android.widget.Toast.makeText(
-            context,
-            "No email app found. Write to us at $address",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
+        Toast.makeText(context, "No email app found. Write to us at $address", Toast.LENGTH_LONG).show()
     }
 }

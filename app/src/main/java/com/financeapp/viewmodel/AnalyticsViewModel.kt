@@ -71,6 +71,36 @@ data class PeriodInsights(
     val days: Int            = 1
 )
 
+/** One month's numbers for the Analytics tab (AppAnalytics, AppAnalyticsMore). */
+data class MonthReport(
+    val fromMs: Long = 0L,
+    val toMs: Long = 0L,
+    val isCurrent: Boolean = true,
+    val spent: Double = 0.0,
+    val moneyIn: Double = 0.0,
+    /** Spending in the month before; null when there is none to compare. */
+    val prevSpent: Double? = null,
+    val prevFromMs: Long = 0L,
+    /** Six months ending with this one, oldest first. */
+    val sixMonths: List<MonthInOut> = emptyList(),
+    /** Categories with spending this month, biggest first. */
+    val categories: List<CategoryTotal> = emptyList(),
+    /** Spending per day of the month, up to today for the current month. */
+    val days: List<Double> = emptyList(),
+    val topPayees: List<PayeeTotal> = emptyList(),
+    /** Spending per account (full bank name), biggest first. */
+    val perAccount: List<Pair<String, Double>> = emptyList(),
+    /** Spending rows this month with no category. */
+    val uncategorized: Int = 0,
+    /** Spending rows with no category, all time (Start reviewing badge). */
+    val uncategorizedAllTime: Int = 0,
+    val hasAnyTransactions: Boolean = false,
+    val isLoading: Boolean = true,
+)
+
+data class MonthInOut(val startMs: Long, val moneyIn: Double, val spent: Double)
+data class PayeeTotal(val name: String, val count: Int, val total: Double)
+
 class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() {
 
     /**
@@ -81,6 +111,87 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
     private val allTransactions: SharedFlow<List<TransactionEntity>> =
         repo.getAllTransactions()
             .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
+
+    private val _calendar = MutableStateFlow("GREGORIAN")
+    /** Any instant inside the month being shown; defaults to now. */
+    private val _reportAt = MutableStateFlow(System.currentTimeMillis())
+    val reportAt: StateFlow<Long> = _reportAt.asStateFlow()
+
+    fun setCalendar(calendarSystem: String) { _calendar.value = calendarSystem }
+    fun setReportMonth(anyMsInMonth: Long) { _reportAt.value = anyMsInMonth }
+
+    val report: StateFlow<MonthReport> = combine(allTransactions, _calendar, _reportAt) { all, cal, at ->
+        buildReport(all, cal, at)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthReport())
+
+    /** Months that have transactions, newest first (the month picker). */
+    val availableMonths: StateFlow<List<Long>> = combine(allTransactions, _calendar) { all, cal ->
+        all.map { com.financeapp.util.KashDates.monthBounds(it.dateTime, cal).first }
+            .plus(com.financeapp.util.KashDates.monthBounds(System.currentTimeMillis(), cal).first)
+            .distinct().sortedDescending().take(24)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private fun buildReport(all: List<TransactionEntity>, cal: String, at: Long): MonthReport {
+        val dates = com.financeapp.util.KashDates
+        val now = System.currentTimeMillis()
+        val (from, to) = dates.monthBounds(at, cal)
+        val isCurrent = now in from until to
+        val inMonth = all.filter { it.dateTime in from until to }
+        val spending = inMonth.filter { it.isSpending() }
+        val prevFrom = dates.monthBounds(from - 1, cal).first
+        val prevSpending = all.filter { it.dateTime in prevFrom until from && it.isSpending() }
+
+        val six = (0 until 6).fold(listOf(from)) { acc, _ -> acc + dates.monthBounds(acc.last() - 1, cal).first }
+            .take(6).reversed()
+            .map { start ->
+                val end = dates.monthBounds(start, cal).second
+                val rows = all.filter { it.dateTime in start until end }
+                MonthInOut(start, rows.filter { it.isIncome() }.sumOf { it.amount }, rows.filter { it.isSpending() }.sumOf { it.amount })
+            }
+
+        val categories = spending.filter { !it.category.isNullOrBlank() }
+            .groupBy { TransactionCategoryCatalog.normalize(it.category!!) }
+            .map { (name, rows) -> CategoryTotal(name, rows.sumOf { it.amount }, rows.size) }
+            .sortedByDescending { it.total }
+
+        val dayCount = (((if (isCurrent) dates.startOfDay(now) + 86_400_000L else to) - from + 43_200_000L) / 86_400_000L).toInt().coerceAtLeast(1)
+        val days = DoubleArray(dayCount)
+        spending.forEach { tx ->
+            val i = ((dates.startOfDay(tx.dateTime) - from + 43_200_000L) / 86_400_000L).toInt()
+            if (i in 0 until dayCount) days[i] += tx.amount
+        }
+
+        val payees = spending.filter { !it.counterparty.isNullOrBlank() }
+            .groupBy { it.counterparty!!.trim() }
+            .map { (name, rows) -> PayeeTotal(name, rows.size, rows.sumOf { it.amount }) }
+            .sortedByDescending { it.total }
+            .take(5)
+
+        val perAccount = spending.groupBy { it.bankName }
+            .map { (name, rows) -> name to rows.sumOf { it.amount } }
+            .sortedByDescending { it.second }
+
+        return MonthReport(
+            fromMs = from,
+            toMs = to,
+            isCurrent = isCurrent,
+            spent = spending.sumOf { it.amount },
+            moneyIn = inMonth.filter { it.isIncome() }.sumOf { it.amount },
+            prevSpent = prevSpending.sumOf { it.amount }.takeIf { prevSpending.isNotEmpty() },
+            prevFromMs = prevFrom,
+            sixMonths = six,
+            categories = categories,
+            days = days.toList(),
+            topPayees = payees,
+            perAccount = perAccount,
+            uncategorized = spending.count { it.category.isNullOrBlank() },
+            uncategorizedAllTime = all.count { it.isSpending() && it.category.isNullOrBlank() },
+            hasAnyTransactions = all.isNotEmpty(),
+            isLoading = false,
+        )
+    }
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -193,9 +304,9 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
 
     fun categoryDetail(category: String): StateFlow<CategoryDetailState> =
         categoryDetailFlows.getOrPut(category) {
-            allTransactions
-                .map { all ->
-                    runCatching { buildCategoryDetail(all, category) }
+            combine(allTransactions, _calendar, _reportAt) { all, cal, at -> Triple(all, cal, at) }
+                .map { (all, cal, at) ->
+                    runCatching { buildCategoryDetail(all, category, com.financeapp.util.KashDates.monthBounds(at, cal)) }
                         .getOrElse {
                             // Don't let a bad row crash the screen — fall
                             // back to an empty state with the category name
@@ -284,12 +395,12 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         )
     }
 
-    private fun buildCategoryDetail(all: List<TransactionEntity>, category: String): CategoryDetailState {
+    private fun buildCategoryDetail(all: List<TransactionEntity>, category: String, month: Pair<Long, Long>): CategoryDetailState {
         val normalized = TransactionCategoryCatalog.normalize(category)
         val (todayStart, todayEnd) = todayBounds()
-        val monthStart = startOfMonth()
+        val (monthStart, monthEnd) = month
 
-        val monthExpenses = all.filter { it.isSpending() && it.dateTime >= monthStart }
+        val monthExpenses = all.filter { it.isSpending() && it.dateTime >= monthStart && it.dateTime < monthEnd }
         val matchedMonth = monthExpenses.filter {
             it.category?.let(TransactionCategoryCatalog::normalize).equals(normalized, ignoreCase = true)
         }
@@ -297,8 +408,8 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         val totalMonth = monthExpenses.sumOf { it.amount }
         val catMonth = matchedMonth.sumOf { it.amount }
         val catToday = matchedMonth.filter { it.dateTime in todayStart..todayEnd }.sumOf { it.amount }
-        val cal = Calendar.getInstance()
-        val daysSoFar = cal.get(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
+        val now = System.currentTimeMillis()
+        val daysSoFar = (((if (now < monthEnd) now else monthEnd - 1) - monthStart) / 86_400_000L + 1).coerceAtLeast(1)
         val percent = if (totalMonth > 0) (catMonth / totalMonth) * 100.0 else 0.0
 
         return CategoryDetailState(
