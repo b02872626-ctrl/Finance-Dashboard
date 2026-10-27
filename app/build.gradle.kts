@@ -4,6 +4,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("app.cash.paparazzi")
 }
 
 val localProperties = Properties().apply {
@@ -96,6 +97,11 @@ android {
     composeOptions { kotlinCompilerExtensionVersion = "1.5.10" }
 }
 
+// Paparazzi finds the SDK through ANDROID_HOME; point it at the one in local.properties.
+tasks.withType<Test>().configureEach {
+    environment("ANDROID_HOME", android.sdkDirectory.absolutePath)
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
     implementation(composeBom)
@@ -124,4 +130,15 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // Paparazzi's layoutlib needs the JVM Guava variant, not the Android one.
+    constraints {
+        testImplementation("com.google.guava:guava") {
+            attributes {
+                attribute(
+                    TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                    objects.named(TargetJvmEnvironment::class.java, TargetJvmEnvironment.STANDARD_JVM)
+                )
+            }
+        }
+    }
 }

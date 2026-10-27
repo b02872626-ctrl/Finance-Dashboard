@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Your money at a glance</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 22px">
+    <h1 class="title-m" style="margin: 6px 0 0">Your money at a glance</h1>
+    <div>
+      <div class="body" style="color: var(--on-slate-muted)">You spend about</div>
+      <div class="figure-xl k-num" style="margin-top: 4px">14,820<span class="figure-unit" style="color: var(--on-slate-muted)"> ETB a month</span></div>
+    </div>
+    <div role="img" aria-label="Monthly spending, May to October; October so far is highlighted" style="display: flex; gap: 10px; height: 104px">
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px"><span style="height: 70%; border-radius: 6px; background: var(--chart-bar)"></span><span class="micro" style="text-align: center; color: var(--on-slate-muted)">May</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px"><span style="height: 85%; border-radius: 6px; background: var(--chart-bar)"></span><span class="micro" style="text-align: center; color: var(--on-slate-muted)">Jun</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px"><span style="height: 60%; border-radius: 6px; background: var(--chart-bar)"></span><span class="micro" style="text-align: center; color: var(--on-slate-muted)">Jul</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px"><span style="height: 100%; border-radius: 6px; background: var(--chart-bar)"></span><span class="micro" style="text-align: center; color: var(--on-slate-muted)">Aug</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px"><span style="height: 78%; border-radius: 6px; background: var(--chart-bar)"></span><span class="micro" style="text-align: center; color: var(--on-slate-muted)">Sep</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px"><span style="height: 55%; border-radius: 6px; background: var(--sand)"></span><span class="micro" style="text-align: center; color: var(--on-slate)">Oct</span></div>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet" style="top: 420px; padding-bottom: 28px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column">
+      <ul style="list-style: none; margin: 0; padding: 0">
+        <li style="display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line)">
+          <span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><x-import component-from-global-scope="Kash.Icon" name="history" size="{{icon}}"></x-import></span>
+          <span class="body" style="flex: 1; color: var(--ink-muted)">Transactions found</span>
+          <span class="body-strong k-num">1,253</span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line)">
+          <span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><x-import component-from-global-scope="Kash.Icon" name="out" size="{{icon}}" stroke-width="{{stroke}}"></x-import></span>
+          <span class="body" style="flex: 1; color: var(--ink-muted)">Most money goes to</span>
+          <span class="body-strong">Shoa Supermarket</span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 14px; padding: 13px 0">
+          <span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><x-import component-from-global-scope="Kash.Icon" name="in" size="{{icon}}" stroke-width="{{stroke}}"></x-import></span>
+          <span class="body" style="flex: 1; color: var(--ink-muted)">Money in, a month</span>
+          <span class="body-strong k-num">18,900 ETB</span>
+        </li>
+      </ul>
+      <div style="flex: 1"></div>
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppPinCreate.dc.html">Continue</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { icon: 20, stroke: 2.2 }; }
+}
+</script>
+</body>
+</html>

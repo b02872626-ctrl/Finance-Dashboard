@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash (360) — History</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 360px; height: 780px">
+
+  <div class="k-screen__hero" style="gap: 16px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 class="title-m" style="margin: 0">History</h1>
+      <x-import component-from-global-scope="Kash.IconButton" icon="calendar" label="Pick dates" tone="onSlate" href="AppHistoryDate.dc.html"></x-import>
+    </div>
+    <x-import component-from-global-scope="Kash.SearchField" placeholder="Search name, category, reference" tone="onSlate"></x-import>
+    <div style="display: flex; gap: 8px; overflow: hidden">
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate" selected="{{yes}}">All</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">In</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">Out</x-import>
+      <a href="AppHistoryPeriod.dc.html" class="k-chip k-chip--onSlate" style="display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; box-sizing: border-box">This month<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></a>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 262px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body">
+      <x-import component-from-global-scope="Kash.DayHeader" label="Today" net="−737.00"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Telecom package: Daily Internet Pack 1GB + 50 min" account="Telebirr" time="12:36" category="Airtime" amount="100" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="bekelu beyene (2519****3121)" account="Telebirr" time="12:36" category="Family" amount="160" direction="in" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="CBE → Telebirr" account="CBE" time="9:02" category="Own accounts" amount="500" direction="transfer" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Kaldi's Coffee Bole" account="CBE" time="8:14" category="Food" amount="297" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.DayHeader" label="Yesterday" net="−1,850.00"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Ride Addis" account="Telebirr" time="18:40" category="Transport" amount="600" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Ethiopian Electric Utility — Addis Ababa Region" account="CBE Birr" time="18:10" category="Bills" amount="1250" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.DayHeader" label="Sunday, 25 Oct" net="+3,400.00"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Abebe Kebede (2519****3121)" account="Telebirr" time="16:22" category="Family" amount="3400" direction="in" href="AppTransaction.dc.html"></x-import>
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="history" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      yes: true, small: 16,
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

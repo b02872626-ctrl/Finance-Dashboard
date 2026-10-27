@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Accounts</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 18px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 class="title-m" style="margin: 0">Accounts</h1>
+      <x-import component-from-global-scope="Kash.IconButton" icon="plus" label="Add account" tone="onSlate"></x-import>
+    </div>
+    <div style="display: flex; gap: 12px; margin-right: calc(-1 * var(--inset-app)); overflow: hidden">
+      <a href="AppAccountDetail.dc.html" style="flex: 0 0 304px; height: 196px; box-sizing: border-box; padding: 20px; border-radius: var(--radius-card); background: var(--slate-ink); display: flex; flex-direction: column; justify-content: space-between">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <x-import component-from-global-scope="Kash.BankBadge" code="CBE" size="{{badge}}"></x-import>
+          <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+            <span class="body-strong">Commercial Bank of Ethiopia</span>
+            <span class="caption k-num" style="color: var(--on-slate-muted)">•••• 4607</span>
+          </div>
+        </div>
+        <div>
+          <div class="caption" style="color: var(--on-slate-muted)">Balance</div>
+          <div class="figure-l k-num" style="margin-top: 2px">12,340<span class="figure-unit" style="color: var(--on-slate-muted)">.48 ETB</span></div>
+          <div class="micro" style="margin-top: 8px; color: var(--on-slate-muted)">From today's SMS, 12:36</div>
+        </div>
+      </a>
+      <div aria-hidden="true" style="flex: 0 0 304px; height: 196px; box-sizing: border-box; padding: 20px; border-radius: var(--radius-card); background: var(--slate-ink); opacity: 0.6">
+        <x-import component-from-global-scope="Kash.BankBadge" code="tb" size="{{badge}}"></x-import>
+      </div>
+    </div>
+    <div role="img" aria-label="Account 1 of 3" style="display: flex; justify-content: center; gap: 6px">
+      <span style="width: 18px; height: 6px; border-radius: 3px; background: var(--sand)"></span>
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: var(--ghost-line)"></span>
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: var(--ghost-line)"></span>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 392px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; gap: 8px">
+        <a href="AppAccountDetail.dc.html" class="k-btn k-btn--secondary k-btn--compact" style="flex: 1; width: auto"><span class="k-btn__label"><x-import component-from-global-scope="Kash.Icon" name="history" size="{{icon}}"></x-import>History</span></a>
+        <button class="k-btn k-btn--secondary k-btn--compact" style="flex: 1; width: auto"><span class="k-btn__label"><x-import component-from-global-scope="Kash.Icon" name="sms" size="{{icon}}"></x-import>Bank SMS</span></button>
+      </div>
+
+      <div style="padding: 14px 16px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-card); display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline"><span class="label" style="color: var(--ink-muted)">Spent this month</span><span class="figure-s k-num">8,545 ETB</span></div>
+        <div role="img" aria-label="68% of last month's spending so far" style="height: 6px; border-radius: 3px; background: var(--well); overflow: hidden"><span style="display: block; width: 68%; height: 100%; background: var(--slate)"></span></div>
+      </div>
+
+      <div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 4px"><h2 class="title-s" style="margin: 0">Transactions</h2><a href="AppAccountDetail.dc.html" class="label" style="color: var(--ink-muted)">See all</a></div>
+        <x-import component-from-global-scope="Kash.TransactionRow" name="Salary — Afro Trading PLC" time="10:00" category="Salary" amount="18500" direction="in" href="AppTransaction.dc.html"></x-import>
+        <x-import component-from-global-scope="Kash.TransactionRow" name="Kaldi's Coffee Bole" time="8:14" category="Food" amount="297" direction="out" href="AppTransaction.dc.html"></x-import>
+      </div>
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="accounts" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      badge: 40, icon: 20,
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

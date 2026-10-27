@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Apply to all?</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: var(--slate-ink); font-family: var(--font-sans); display: flex; align-items: center; padding: 0 16px; overflow: hidden">
+
+  <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" style="width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border-radius: var(--radius-sheet); padding: 24px 22px 18px; display: flex; flex-direction: column; gap: 18px">
+    <div>
+      <h2 id="dlg-title" class="title-m" style="margin: 0">Put all 3 in Family?</h2>
+      <p class="body" style="margin: 8px 0 0; color: var(--ink-muted); font-weight: 400">bekelu beyene sent you money 3 times this month. Kash can label them together.</p>
+    </div>
+
+    <div style="margin-bottom: -1px">
+      <x-import component-from-global-scope="Kash.TransactionRow" name="bekelu beyene" account="Telebirr" time="Today, 12:36" amount="160" direction="in"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="bekelu beyene" account="Telebirr" time="Oct 19, 8:05" amount="500" direction="in"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="bekelu beyene" account="Telebirr" time="Oct 4, 19:40" amount="250" direction="in"></x-import>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px">
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppReviewDone.dc.html">Label all 3</x-import>
+      <x-import component-from-global-scope="Kash.Button" variant="quiet" href="AppReviewDone.dc.html">Just this one</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Pick dates, Ethiopian calendar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.day{height:40px;border:0;border-radius:var(--radius-chip);background:transparent;color:var(--ink);font-family:var(--font-sans);font-size:15px;font-weight:500;cursor:pointer;padding:0}
+.day--in{background:var(--well);border-radius:0}
+.day--end{background:var(--slate);color:var(--on-slate);font-weight:600}
+.day--today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.day--off{color:var(--ink-faint);cursor:default}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: var(--slate-ink); font-family: var(--font-sans); display: flex; align-items: center; padding: 0 16px; overflow: hidden">
+
+  <div role="dialog" aria-modal="true" aria-labelledby="dp-title" style="width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border-radius: var(--radius-sheet); padding: 22px 18px 16px; display: flex; flex-direction: column; gap: 16px">
+    <div>
+      <span class="label" style="color: var(--ink-muted)">Pick dates</span>
+      <h2 id="dp-title" class="title-m k-num" style="margin: 2px 0 0">Tikimt 10 – 16</h2>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <x-import component-from-global-scope="Kash.IconButton" icon="back" label="Meskerem"></x-import>
+      <span class="body-strong">Tikimt 2019</span>
+      <x-import component-from-global-scope="Kash.IconButton" icon="chevronRight" label="Hidar"></x-import>
+    </div>
+    <div>
+      <div class="micro" aria-hidden="true" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; color: var(--ink-muted); padding-bottom: 6px"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+      <div style="display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 4px">
+          <span></span> <span></span> <span></span> <span></span> <span></span> <span></span> <button class="day k-num" aria-label="Tikimt 1">1</button>
+          <button class="day k-num" aria-label="Tikimt 2">2</button> <button class="day k-num" aria-label="Tikimt 3">3</button> <button class="day k-num" aria-label="Tikimt 4">4</button> <button class="day k-num" aria-label="Tikimt 5">5</button> <button class="day k-num" aria-label="Tikimt 6">6</button> <button class="day k-num" aria-label="Tikimt 7">7</button> <button class="day k-num" aria-label="Tikimt 8">8</button>
+          <button class="day k-num" aria-label="Tikimt 9">9</button> <button class="day day--end k-num" aria-label="Tikimt 10" aria-pressed="true">10</button> <button class="day day--in k-num" aria-label="Tikimt 11">11</button> <button class="day day--in k-num" aria-label="Tikimt 12">12</button> <button class="day day--in k-num" aria-label="Tikimt 13">13</button> <button class="day day--in k-num" aria-label="Tikimt 14">14</button> <button class="day day--in k-num" aria-label="Tikimt 15">15</button>
+          <button class="day day--end k-num" aria-label="Tikimt 16" aria-pressed="true">16</button> <button class="day day--today k-num" aria-label="Tikimt 17">17</button> <button class="day day--off k-num" aria-label="Tikimt 18" disabled>18</button> <button class="day day--off k-num" aria-label="Tikimt 19" disabled>19</button> <button class="day day--off k-num" aria-label="Tikimt 20" disabled>20</button> <button class="day day--off k-num" aria-label="Tikimt 21" disabled>21</button> <button class="day day--off k-num" aria-label="Tikimt 22" disabled>22</button>
+          <button class="day day--off k-num" aria-label="Tikimt 23" disabled>23</button> <button class="day day--off k-num" aria-label="Tikimt 24" disabled>24</button> <button class="day day--off k-num" aria-label="Tikimt 25" disabled>25</button> <button class="day day--off k-num" aria-label="Tikimt 26" disabled>26</button> <button class="day day--off k-num" aria-label="Tikimt 27" disabled>27</button> <button class="day day--off k-num" aria-label="Tikimt 28" disabled>28</button> <button class="day day--off k-num" aria-label="Tikimt 29" disabled>29</button>
+          <button class="day day--off k-num" aria-label="Tikimt 30" disabled>30</button>
+      </div>
+    </div>
+    <div style="display: flex; gap: var(--gap-m); margin-top: 4px">
+      <x-import component-from-global-scope="Kash.Button" variant="secondary" href="AppHistoryEC.dc.html" style="flex: 0 0 auto; min-width: 104px">Cancel</x-import>
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppHistoryEC.dc.html" style="flex: 1; min-width: 0">Show these days</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

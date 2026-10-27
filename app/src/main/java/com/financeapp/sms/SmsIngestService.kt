@@ -123,7 +123,7 @@ class SmsIngestService : Service() {
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Finance App")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_menu_recent_history)
+            .setSmallIcon(com.financeapp.R.drawable.ic_stat_kash)
             .setOngoing(true)
             .build()
 

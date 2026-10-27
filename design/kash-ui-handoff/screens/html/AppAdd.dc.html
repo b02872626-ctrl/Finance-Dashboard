@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Add transaction</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 20px">
+    <div style="display: flex; align-items: center; gap: 14px">
+      <x-import component-from-global-scope="Kash.IconButton" icon="back" label="Back" tone="onSlate" href="AppHome.dc.html"></x-import>
+      <h1 class="title-xs" style="margin: 0">Add transaction</h1>
+    </div>
+    <div role="group" aria-label="Type" style="display: flex; gap: 8px">
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate" selected="{{yes}}">Expense</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">Income</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">Transfer</x-import>
+    </div>
+    <label style="display: flex; align-items: baseline; gap: 8px">
+      <span class="k-sr">Amount in ETB</span>
+      <input class="figure-xl k-num" inputmode="decimal" value="250" style="width: 150px; border: 0; padding: 0; background: transparent; color: var(--on-slate); outline: 0">
+      <span class="figure-unit" style="color: var(--on-slate-muted)">ETB</span>
+    </label>
+  </div>
+
+  <div class="k-screen__sheet" style="top: 292px; padding-bottom: 24px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 16px">
+      <x-import component-from-global-scope="Kash.TextField" label="Who got paid" placeholder="e.g. Shoa Supermarket" id="who"></x-import>
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span class="label" style="color: var(--ink-muted)">Paid from</span>
+        <div style="display: flex; gap: 8px">
+          <x-import component-from-global-scope="Kash.Chip" selected="{{yes}}">Cash</x-import>
+          <x-import component-from-global-scope="Kash.Chip">CBE</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Telebirr</x-import>
+          <x-import component-from-global-scope="Kash.Chip">BoA</x-import>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+        <x-import component-from-global-scope="Kash.TextField" label="When" default-value="Today, 14:20" id="when"></x-import>
+        <x-import component-from-global-scope="Kash.TextField" label="Category" placeholder="Optional" id="cat"></x-import>
+      </div>
+
+      <x-import component-from-global-scope="Kash.TextField" label="Note" placeholder="Optional" id="note"></x-import>
+
+      <div style="flex: 1"></div>
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppHome.dc.html">Save transaction</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

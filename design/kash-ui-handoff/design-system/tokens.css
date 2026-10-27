@@ -1,0 +1,69 @@
+/* Kash — generated from tokens.json */
+:root, [data-theme="light"] {
+  --slate: #3d4859;
+  --slate-ink: #2b3340;
+  --sand: #e9dfc6;
+  --on-slate: #ffffff;
+  --on-slate-muted: #c6cdd8;
+  --ghost-fill: rgba(255, 255, 255, 0.07);
+  --ghost-line: rgba(255, 255, 255, 0.22);
+  --chart-bar: rgba(255, 255, 255, 0.18);
+  --surface: #f4f5f7;
+  --surface-raised: #ffffff;
+  --well: #e7eaef;
+  --line: #e1e4e9;
+  --line-strong: #d5d9e0;
+  --handle: #cbd0d8;
+  --ink: #222a36;
+  --ink-muted: #5f6877;
+  --ink-faint: #7d8594;
+  --money-in: #3e7a4a;
+  --money-out: #a3412f;
+  --money-neutral: var(--ink-faint);
+  --focus: var(--slate);
+  --focus-on-slate: var(--sand);
+  --bank-cbe: #6b2e8e;
+  --bank-telebirr: #0f7a5e;
+  --bank-boa: #8f6418;
+}
+:root {
+  --gap-xs: 6px;
+  --gap-s: 8px;
+  --gap-m: 10px;
+  --gap-l: 14px;
+  --gap-xl: 22px;
+  --inset-app: 22px;
+  --inset-onboarding: 24px;
+  --row-y: 13px;
+  --top-safe: 58px;
+  --radius-sheet: 28px;
+  --radius-card: 20px;
+  --radius-control: 16px;
+  --radius-field: 14px;
+  --radius-chip: 12px;
+  --radius-pill: 999px;
+  --button-h: 56px;
+  --button-h-compact: 52px;
+  --icon-button: 44px;
+  --well-size: 40px;
+  --chip-h: 38px;
+  --tab-h: 52px;
+  --font-sans: Figtree, system-ui, sans-serif;
+}
+.figure-xl { font-family: var(--font-sans); font-size: 46px; line-height: 1.05; font-weight: 600; letter-spacing: -0.035em; }
+.figure-l { font-family: var(--font-sans); font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; }
+.figure-m { font-family: var(--font-sans); font-size: 34px; line-height: 1.1; font-weight: 600; letter-spacing: -0.03em; }
+.figure-unit { font-family: var(--font-sans); font-size: 22px; line-height: 1.1; font-weight: 500; letter-spacing: -0.01em; }
+.figure-s { font-family: var(--font-sans); font-size: 16px; line-height: 20px; font-weight: 600; }
+.title-l { font-family: var(--font-sans); font-size: 32px; line-height: 1.12; font-weight: 700; letter-spacing: -0.035em; }
+.title-m { font-family: var(--font-sans); font-size: 24px; line-height: 30px; font-weight: 700; letter-spacing: -0.03em; }
+.wordmark { font-family: var(--font-sans); font-size: 22px; line-height: 26px; font-weight: 700; letter-spacing: -0.03em; }
+.title-s { font-family: var(--font-sans); font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.title-xs { font-family: var(--font-sans); font-size: 17px; line-height: 22px; font-weight: 600; }
+.body-l { font-family: var(--font-sans); font-size: 16px; line-height: 24px; font-weight: 400; }
+.label-l { font-family: var(--font-sans); font-size: 16px; line-height: 20px; font-weight: 600; }
+.body { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 500; }
+.body-strong { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 600; }
+.label { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 500; }
+.caption { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }
+.micro { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }

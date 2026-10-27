@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Welcome</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.wheel{height:168px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,0.14) 0%,rgba(0,0,0,0.14) 24%,#000 40%,#000 60%,rgba(0,0,0,0.14) 76%,rgba(0,0,0,0.14) 100%);mask-image:linear-gradient(to bottom,rgba(0,0,0,0.14) 0%,rgba(0,0,0,0.14) 24%,#000 40%,#000 60%,rgba(0,0,0,0.14) 76%,rgba(0,0,0,0.14) 100%)}
+.wheel__list{margin:0;padding:0;list-style:none;animation:kash-wheel 12s cubic-bezier(.65,0,.35,1) infinite}
+.wheel__item{height:56px;display:flex;align-items:center;gap:14px}
+@keyframes kash-wheel{
+0%,15%{transform:translateY(0)}
+20%,35%{transform:translateY(-56px)}
+40%,55%{transform:translateY(-112px)}
+60%,75%{transform:translateY(-168px)}
+80%,95%{transform:translateY(-224px)}
+100%{transform:translateY(-280px)}
+}
+@media (prefers-reduced-motion: reduce){.wheel__list{animation:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: var(--surface); color: var(--ink); font-family: var(--font-sans)">
+
+  <span class="wordmark" style="position: absolute; left: var(--inset-onboarding); top: 64px">kash</span>
+
+  <div class="wheel" role="img" aria-label="Kash sorts your spending, income, transfers, daily review and monthly trends" style="position: absolute; left: var(--inset-onboarding); right: var(--inset-onboarding); top: 168px">
+    <ul class="wheel__list" aria-hidden="true">
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--slate); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="chart" size="{{icon}}"></x-import></span><span class="title-l">Trends</span></li>
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--money-out); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="out" size="{{icon}}" stroke-width="{{stroke}}"></x-import></span><span class="title-l">Spending</span></li>
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--money-in); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="in" size="{{icon}}" stroke-width="{{stroke}}"></x-import></span><span class="title-l">Income</span></li>
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--ink-muted); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="transfer" size="{{icon}}" stroke-width="{{stroke}}"></x-import></span><span class="title-l">Transfers</span></li>
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--slate); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="calendar" size="{{icon}}"></x-import></span><span class="title-l">Bills</span></li>
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--slate); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="chart" size="{{icon}}"></x-import></span><span class="title-l">Trends</span></li>
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--money-out); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="out" size="{{icon}}" stroke-width="{{stroke}}"></x-import></span><span class="title-l">Spending</span></li>
+      <li class="wheel__item"><span style="width: 40px; height: 40px; border-radius: var(--radius-field); background: var(--well); color: var(--money-in); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="in" size="{{icon}}" stroke-width="{{stroke}}"></x-import></span><span class="title-l">Income</span></li>
+    </ul>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 432px; box-sizing: border-box; background: var(--slate); color: var(--on-slate); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; padding: 32px var(--inset-onboarding) 28px; display: flex; flex-direction: column; gap: 14px">
+    <h1 class="title-l" style="margin: 0">Your bank SMS,<br>already sorted.</h1>
+    <p class="body-l" style="margin: 0; color: var(--on-slate-muted); max-width: 320px">Kash turns CBE, Telebirr and other bank messages into a clear history. Nothing to type.</p>
+    <div style="flex: 1"></div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <x-import component-from-global-scope="Kash.Button" variant="accent" href="AppAllowSMS.dc.html">Get started</x-import>
+      <x-import component-from-global-scope="Kash.Button" variant="quiet-on-slate" href="AppSignIn.dc.html">I already have an account</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { icon: 20, stroke: 2.2 }; }
+}
+</script>
+</body>
+</html>

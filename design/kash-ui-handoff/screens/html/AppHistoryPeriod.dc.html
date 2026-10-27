@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Pick a period</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.opt{display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.radio{width:22px;height:22px;box-sizing:border-box;border-radius:999px;border:2px solid var(--line-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.radio--on{border-color:var(--slate)}
+.radio--on::after{content:"";width:10px;height:10px;border-radius:999px;background:var(--slate)}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px; background: var(--slate-ink)">
+
+  <div class="k-screen__sheet" style="top: 300px; padding-bottom: 28px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h2 class="title-m" style="margin: 0">Show transactions from</h2>
+        <x-import component-from-global-scope="Kash.IconButton" icon="chevronDown" label="Close" href="AppHistory.dc.html"></x-import>
+      </div>
+      <div role="radiogroup" aria-label="Period">
+        <a href="AppHistory.dc.html" role="radio" aria-checked="false" class="opt"><span class="radio"></span><span class="body" style="flex: 1">This week</span></a>
+        <a href="AppHistory.dc.html" role="radio" aria-checked="true" class="opt"><span class="radio radio--on"></span><span class="body-strong" style="flex: 1">This month</span></a>
+        <a href="AppHistory.dc.html" role="radio" aria-checked="false" class="opt"><span class="radio"></span><span class="body" style="flex: 1">Last month</span></a>
+        <a href="AppHistory.dc.html" role="radio" aria-checked="false" class="opt"><span class="radio"></span><span class="body" style="flex: 1">This year</span></a>
+        <a href="AppHistory.dc.html" role="radio" aria-checked="false" class="opt"><span class="radio"></span><span class="body" style="flex: 1">All time</span></a>
+        <a href="AppHistoryDate.dc.html" class="opt" style="border-bottom: 0"><x-import component-from-global-scope="Kash.Icon" name="calendar" size="{{icon}}"></x-import><span class="body" style="flex: 1">Pick dates…</span><x-import component-from-global-scope="Kash.Icon" name="chevronRight" size="{{small}}"></x-import></a>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { icon: 22, small: 16 }; }
+}
+</script>
+</body>
+</html>

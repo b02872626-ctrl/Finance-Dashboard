@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Category detail</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 20px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <x-import component-from-global-scope="Kash.IconButton" icon="back" label="Back" tone="onSlate" href="AppAnalytics.dc.html"></x-import>
+      <h1 class="title-xs" style="margin: 0">Food</h1>
+      <x-import component-from-global-scope="Kash.IconButton" icon="calendar" label="Change period" tone="onSlate"></x-import>
+    </div>
+    <div>
+      <div class="body" style="color: var(--on-slate-muted)">Spent in October</div>
+      <div class="figure-xl k-num" style="margin-top: 4px">6,240<span class="figure-unit" style="color: var(--on-slate-muted)">.00 ETB</span></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px">
+      <div style="padding: 12px; border-radius: var(--radius-control); background: var(--ghost-fill); border: 1px solid var(--ghost-line); display: flex; flex-direction: column; gap: 2px"><span class="micro" style="color: var(--on-slate-muted)">Today</span><span class="figure-s k-num">297</span></div>
+      <div style="padding: 12px; border-radius: var(--radius-control); background: var(--ghost-fill); border: 1px solid var(--ghost-line); display: flex; flex-direction: column; gap: 2px"><span class="micro" style="color: var(--on-slate-muted)">A day, avg</span><span class="figure-s k-num">231</span></div>
+      <div style="padding: 12px; border-radius: var(--radius-control); background: var(--ghost-fill); border: 1px solid var(--ghost-line); display: flex; flex-direction: column; gap: 2px"><span class="micro" style="color: var(--on-slate-muted)">Of spending</span><span class="figure-s k-num">33%</span></div>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet" style="top: 340px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body">
+      <x-import component-from-global-scope="Kash.DayHeader" label="Today" net="−297.00"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Kaldi's Coffee Bole" account="CBE" time="8:14" amount="297" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.DayHeader" label="Yesterday" net="−1,453.00"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Shoa Supermarket" account="CBE" time="13:05" amount="1453" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.DayHeader" label="Sunday, 25 Oct" net="−1,120.00"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Yod Abyssinia" account="Telebirr" time="20:31" amount="860" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Tomoca Coffee" account="Telebirr" time="9:12" amount="260" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.DayHeader" label="Friday, 23 Oct" net="−2,410.00"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Friendship Supermarket" account="CBE" time="18:02" amount="2410" direction="out" href="AppTransaction.dc.html"></x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

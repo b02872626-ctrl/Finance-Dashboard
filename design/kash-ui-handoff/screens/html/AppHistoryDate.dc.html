@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Pick dates</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.day{height:40px;border:0;border-radius:var(--radius-chip);background:transparent;color:var(--ink);font-family:var(--font-sans);font-size:15px;font-weight:500;cursor:pointer;padding:0}
+.day--in{background:var(--well);border-radius:0}
+.day--end{background:var(--slate);color:var(--on-slate);font-weight:600}
+.day--today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.day--off{color:var(--ink-faint);cursor:default}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: var(--slate-ink); font-family: var(--font-sans); display: flex; align-items: center; padding: 0 16px; overflow: hidden">
+
+  <div role="dialog" aria-modal="true" aria-labelledby="dp-title" style="width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border-radius: var(--radius-sheet); padding: 22px 18px 16px; display: flex; flex-direction: column; gap: 16px">
+    <div>
+      <span class="label" style="color: var(--ink-muted)">Pick dates</span>
+      <h2 id="dp-title" class="title-m k-num" style="margin: 2px 0 0">20 – 26 Oct</h2>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <x-import component-from-global-scope="Kash.IconButton" icon="back" label="September"></x-import>
+      <span class="body-strong">October 2026</span>
+      <x-import component-from-global-scope="Kash.IconButton" icon="chevronRight" label="November"></x-import>
+    </div>
+    <div>
+      <div class="micro" aria-hidden="true" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; color: var(--ink-muted); padding-bottom: 6px"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+      <div style="display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 4px">
+          <span></span> <span></span> <span></span> <button class="day k-num" aria-label="1 October">1</button> <button class="day k-num" aria-label="2 October">2</button> <button class="day k-num" aria-label="3 October">3</button> <button class="day k-num" aria-label="4 October">4</button>
+          <button class="day k-num" aria-label="5 October">5</button> <button class="day k-num" aria-label="6 October">6</button> <button class="day k-num" aria-label="7 October">7</button> <button class="day k-num" aria-label="8 October">8</button> <button class="day k-num" aria-label="9 October">9</button> <button class="day k-num" aria-label="10 October">10</button> <button class="day k-num" aria-label="11 October">11</button>
+          <button class="day k-num" aria-label="12 October">12</button> <button class="day k-num" aria-label="13 October">13</button> <button class="day k-num" aria-label="14 October">14</button> <button class="day k-num" aria-label="15 October">15</button> <button class="day k-num" aria-label="16 October">16</button> <button class="day k-num" aria-label="17 October">17</button> <button class="day k-num" aria-label="18 October">18</button>
+          <button class="day k-num" aria-label="19 October">19</button> <button class="day day--end k-num" aria-label="20 October" aria-pressed="true">20</button> <button class="day day--in k-num" aria-label="21 October">21</button> <button class="day day--in k-num" aria-label="22 October">22</button> <button class="day day--in k-num" aria-label="23 October">23</button> <button class="day day--in k-num" aria-label="24 October">24</button> <button class="day day--in k-num" aria-label="25 October">25</button>
+          <button class="day day--end k-num" aria-label="26 October" aria-pressed="true">26</button> <button class="day day--today k-num" aria-label="27 October">27</button> <button class="day day--off k-num" aria-label="28 October" disabled>28</button> <button class="day day--off k-num" aria-label="29 October" disabled>29</button> <button class="day day--off k-num" aria-label="30 October" disabled>30</button> <button class="day day--off k-num" aria-label="31 October" disabled>31</button>
+      </div>
+    </div>
+    <div style="display: flex; gap: var(--gap-m); margin-top: 4px">
+      <x-import component-from-global-scope="Kash.Button" variant="secondary" href="AppHistory.dc.html" style="flex: 0 0 auto; min-width: 104px">Cancel</x-import>
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppHistory.dc.html" style="flex: 1; min-width: 0">Show these days</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

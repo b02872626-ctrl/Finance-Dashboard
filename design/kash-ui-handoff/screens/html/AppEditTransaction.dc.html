@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Check this transaction</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px; background: var(--slate-ink)">
+
+  <div class="k-screen__sheet" style="top: 132px; padding-bottom: 28px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 16px">
+
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h2 class="title-m" style="margin: 0">Check this one</h2>
+        <x-import component-from-global-scope="Kash.IconButton" icon="chevronDown" label="Close" href="AppReview.dc.html"></x-import>
+      </div>
+
+      <div class="figure-l k-num" style="color: var(--money-in)">+160<span class="figure-unit">.00 ETB</span></div>
+
+      <x-import component-from-global-scope="Kash.KeyValueList" items="{{facts}}"></x-import>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="label" style="color: var(--ink-muted)">The SMS Kash read</span>
+        <p class="caption" style="margin: 0; padding: 14px 16px; border-radius: var(--radius-field); background: var(--well); color: var(--ink)">Dear Customer, you have received ETB 160.00 from bekelu beyene (2519****3121) on 27/10/2026 12:36. Your telebirr balance is ETB 1,776.48. Thank you!</p>
+      </div>
+
+      <div style="flex: 1"></div>
+
+      <div style="display: flex; flex-direction: column; gap: var(--gap-s)">
+        <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppReviewCategory.dc.html">Change category</x-import>
+        <x-import component-from-global-scope="Kash.Button" variant="secondary" href="AppReview.dc.html">Not a transaction</x-import>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      facts: [
+        { label: 'From', value: 'bekelu beyene' },
+        { label: 'Account', value: 'Telebirr · •••• 3121', numeric: true },
+        { label: 'When', value: 'Today, 12:36', numeric: true },
+        { label: 'Category', value: 'Not set yet' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

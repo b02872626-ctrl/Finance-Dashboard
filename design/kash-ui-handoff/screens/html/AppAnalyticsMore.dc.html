@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Analytics, scrolled</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.d{flex:1;border-radius:2px 2px 0 0;background:var(--ink-faint)}
+.place{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.acct{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.track{height:6px;border-radius:3px;background:var(--well);overflow:hidden}
+.fill{display:block;height:100%;background:var(--slate);border-radius:3px}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 class="title-m" style="margin: 0">Analytics</h1>
+      <button class="k-chip k-chip--onSlate" style="display: inline-flex; align-items: center; gap: 4px">October<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></button>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 124px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 22px">
+
+      <section aria-labelledby="day-title" style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <h2 id="day-title" class="title-s" style="margin: 0">Every day</h2>
+          <span class="caption k-num" style="color: var(--ink-muted)">711 a day on average</span>
+        </div>
+        <div role="img" aria-label="Spending per day in October. Highest: Tuesday 20 October, 1,950. Today, the 27th: 897." style="display: flex; align-items: flex-end; gap: 3px; height: 72px; border-bottom: 1px solid var(--line-strong)">
+          <span class="d" style="height: 35%"></span><span class="d" style="height: 60%"></span><span class="d" style="height: 20%"></span><span class="d" style="height: 45%"></span><span class="d" style="height: 80%"></span><span class="d" style="height: 30%"></span><span class="d" style="height: 10%"></span><span class="d" style="height: 55%"></span><span class="d" style="height: 40%"></span><span class="d" style="height: 25%"></span><span class="d" style="height: 90%"></span><span class="d" style="height: 35%"></span><span class="d" style="height: 15%"></span><span class="d" style="height: 50%"></span><span class="d" style="height: 65%"></span><span class="d" style="height: 30%"></span><span class="d" style="height: 20%"></span><span class="d" style="height: 70%"></span><span class="d" style="height: 45%"></span><span class="d" style="height: 100%"></span><span class="d" style="height: 25%"></span><span class="d" style="height: 40%"></span><span class="d" style="height: 55%"></span><span class="d" style="height: 30%"></span><span class="d" style="height: 60%"></span><span class="d" style="height: 45%"></span><span class="d" style="height: 46%; background: var(--slate)"></span><span class="d" style="height: 0"></span><span class="d" style="height: 0"></span><span class="d" style="height: 0"></span><span class="d" style="height: 0"></span>
+        </div>
+        <div class="micro k-num" aria-hidden="true" style="display: flex; justify-content: space-between; color: var(--ink-muted)"><span>1 Oct</span><span>Highest: 20 Oct · 1,950</span><span style="color: var(--ink); font-weight: 600">Today</span></div>
+      </section>
+
+      <section aria-labelledby="place-title">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <h2 id="place-title" class="title-s" style="margin: 0">Where you pay most</h2>
+          <a href="AppHistory.dc.html" class="label" style="color: var(--ink-muted)">See all</a>
+        </div>
+        <div class="place"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span class="body">Shoa Supermarket</span><span class="caption" style="color: var(--ink-muted)">6 payments</span></span><span class="body-strong k-num">4,210</span></div>
+        <div class="place"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span class="body">Ride Addis</span><span class="caption" style="color: var(--ink-muted)">9 payments</span></span><span class="body-strong k-num">2,700</span></div>
+        <div class="place"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span class="body">Ethio Telecom</span><span class="caption" style="color: var(--ink-muted)">14 payments</span></span><span class="body-strong k-num">1,410</span></div>
+      </section>
+
+      <section aria-labelledby="acct-title">
+        <h2 id="acct-title" class="title-s" style="margin: 0">Spent from</h2>
+        <a href="AppAccountDetail.dc.html" class="acct"><span style="display: flex; align-items: center; gap: 10px"><x-import component-from-global-scope="Kash.BankBadge" code="CBE" size="{{badge}}"></x-import><span class="body" style="flex: 1">CBE</span><span class="body-strong k-num">11,800</span></span><span class="track"><span class="fill" style="width: 100%"></span></span></a>
+        <a href="AppAccountDetail.dc.html" class="acct"><span style="display: flex; align-items: center; gap: 10px"><x-import component-from-global-scope="Kash.BankBadge" code="tb" size="{{badge}}"></x-import><span class="body" style="flex: 1">Telebirr</span><span class="body-strong k-num">6,700</span></span><span class="track"><span class="fill" style="width: 57%"></span></span></a>
+      </section>
+
+      <a href="AppReview.dc.html" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-card)">
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span class="body-strong">7 transactions need a category</span>
+          <span class="caption" style="color: var(--ink-muted)">They're left out of "Where it goes" until then</span>
+        </span>
+        <x-import component-from-global-scope="Kash.Icon" name="chevronRight" size="{{icon}}"></x-import>
+      </a>
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="analytics" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      small: 16, icon: 20, badge: 28,
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

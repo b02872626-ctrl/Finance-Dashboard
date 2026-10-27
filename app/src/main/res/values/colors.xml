@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Kash brand colours used outside Compose (window, splash, notifications). -->
+    <color name="kash_slate">#3D4859</color>
+    <color name="kash_sand">#E9DFC6</color>
+</resources>

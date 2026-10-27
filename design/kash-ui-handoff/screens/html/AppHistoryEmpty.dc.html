@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — History, no results</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 16px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 class="title-m" style="margin: 0">History</h1>
+      <x-import component-from-global-scope="Kash.IconButton" icon="calendar" label="Pick dates" tone="onSlate" href="AppHistoryDate.dc.html"></x-import>
+    </div>
+    <x-import component-from-global-scope="Kash.SearchField" placeholder="Search name, category, reference" default-value="Yod Abyssinia" tone="onSlate"></x-import>
+    <div style="display: flex; gap: 8px; overflow: hidden">
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">All</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate" selected="{{yes}}">In</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">Out</x-import>
+      <a href="AppHistoryPeriod.dc.html" class="k-chip k-chip--onSlate" style="display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; box-sizing: border-box">This month<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></a>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 262px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; padding: 0 16px">
+      <span style="width: 56px; height: 56px; border-radius: var(--radius-control); background: var(--well); color: var(--ink-muted); display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Kash.Icon" name="search" size="{{big}}"></x-import></span>
+      <div>
+        <h2 class="title-s" style="margin: 0">Nothing matches</h2>
+        <p class="body" style="margin: 8px 0 0; color: var(--ink-muted); font-weight: 400">No money came in from “Yod Abyssinia” this month. Try Out, or a longer period.</p>
+      </div>
+      <x-import component-from-global-scope="Kash.Button" variant="secondary" href="AppHistory.dc.html" style="width: 200px">Clear filters</x-import>
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="history" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      yes: true, small: 16, big: 26,
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

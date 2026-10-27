@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Analytics, nothing categorised</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.tile{flex:1;min-width:0;white-space:nowrap;padding:12px;border-radius:var(--radius-control);background:var(--ghost-fill);border:1px solid var(--ghost-line);display:flex;flex-direction:column;gap:2px}
+.grp{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.pair{height:112px;display:flex;align-items:flex-end;gap:2px}
+.bar{width:14px;border-radius:4px 4px 0 0}
+.in{background:var(--money-in)}
+.out{background:var(--slate)}
+.cat{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.track{height:6px;border-radius:3px;background:var(--well);overflow:hidden}
+.fill{display:block;height:100%;background:var(--slate);border-radius:3px}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 18px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 class="title-m" style="margin: 0">Analytics</h1>
+      <button class="k-chip k-chip--onSlate" style="display: inline-flex; align-items: center; gap: 4px">October<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></button>
+    </div>
+    <div>
+      <div class="body" style="color: var(--on-slate-muted)">Spent in October</div>
+      <div class="figure-xl k-num" style="margin-top: 4px">19,200<span class="figure-unit" style="color: var(--on-slate-muted)">.00 ETB</span></div>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <div class="tile"><span class="micro" style="color: var(--on-slate-muted)">Money in</span><span class="figure-s k-num">24,500</span></div>
+      <div class="tile"><span class="micro" style="color: var(--on-slate-muted)">Left over</span><span class="figure-s k-num">5,300</span></div>
+      <div class="tile"><span class="micro" style="color: var(--on-slate-muted)">vs Sep</span><span class="figure-s k-num">8% less</span></div>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 314px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 22px">
+
+      <section aria-labelledby="cat-title" style="display: flex; flex-direction: column; gap: 12px">
+        <h2 id="cat-title" class="title-s" style="margin: 0">Where it goes</h2>
+        <div style="padding: 18px 16px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-card); display: flex; flex-direction: column; gap: 14px">
+          <div role="img" aria-hidden="true" style="display: flex; flex-direction: column; gap: 8px">
+            <span style="height: 6px; width: 100%; border-radius: 3px; background: var(--well)"></span>
+            <span style="height: 6px; width: 70%; border-radius: 3px; background: var(--well)"></span>
+            <span style="height: 6px; width: 45%; border-radius: 3px; background: var(--well)"></span>
+          </div>
+          <div>
+            <div class="body-strong">Nothing has a category yet</div>
+            <p class="caption" style="margin: 4px 0 0; color: var(--ink-muted)">Review your transactions and this fills in: food, transport, bills and the rest.</p>
+          </div>
+          <x-import component-from-global-scope="Kash.Button" variant="primary" compact="{{yes}}" badge="64" href="AppReview.dc.html">Start reviewing</x-import>
+        </div>
+      </section>
+
+      <section aria-labelledby="io-title" style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <h2 id="io-title" class="title-s" style="margin: 0">Money in and out</h2>
+          <span class="caption" style="color: var(--ink-muted)">Last 6 months</span>
+        </div>
+        <div class="caption" aria-hidden="true" style="display: flex; gap: 16px; color: var(--ink-muted)">
+          <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--money-in)"></span>In</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--slate)"></span>Out</span>
+        </div>
+        <div role="img" aria-label="Money in and out per month, May to October. October: 24,500 in, 19,200 out." style="display: flex; border-bottom: 1px solid var(--line-strong); padding-bottom: 0">
+          <div class="grp"><div class="pair"><span class="bar in" style="height: 90%"></span><span class="bar out" style="height: 65%"></span></div></div>
+          <div class="grp"><div class="pair"><span class="bar in" style="height: 94%"></span><span class="bar out" style="height: 79%"></span></div></div>
+          <div class="grp"><div class="pair"><span class="bar in" style="height: 88%"></span><span class="bar out" style="height: 58%"></span></div></div>
+          <div class="grp"><div class="pair"><span class="bar in" style="height: 98%"></span><span class="bar out" style="height: 93%"></span></div></div>
+          <div class="grp"><div class="pair"><span class="bar in" style="height: 97%"></span><span class="bar out" style="height: 85%"></span></div></div>
+          <div class="grp"><div class="pair"><span class="bar in" style="height: 100%"></span><span class="bar out" style="height: 78%"></span></div></div>
+        </div>
+        <div class="micro" aria-hidden="true" style="display: flex; margin-top: -6px; color: var(--ink-muted)">
+          <span style="flex: 1; text-align: center">May</span><span style="flex: 1; text-align: center">Jun</span><span style="flex: 1; text-align: center">Jul</span><span style="flex: 1; text-align: center">Aug</span><span style="flex: 1; text-align: center">Sep</span><span style="flex: 1; text-align: center; color: var(--ink); font-weight: 600">Oct</span>
+        </div>
+      </section>
+
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="analytics" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      small: 16, yes: true,
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

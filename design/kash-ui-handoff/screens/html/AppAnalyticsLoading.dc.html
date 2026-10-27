@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Analytics, loading</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.gk{display:block;border-radius:6px;background:var(--ghost-fill)}
+.sk{display:block;border-radius:6px;background:var(--well)}
+.tile{flex:1;min-width:0;white-space:nowrap;padding:12px;border-radius:var(--radius-control);background:var(--ghost-fill);border:1px solid var(--ghost-line);display:flex;flex-direction:column;gap:2px}
+.grp{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.pair{height:112px;display:flex;align-items:flex-end;gap:2px}
+.bar{width:14px;border-radius:4px 4px 0 0}
+.in{background:var(--money-in)}
+.out{background:var(--slate)}
+.cat{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.track{height:6px;border-radius:3px;background:var(--well);overflow:hidden}
+.fill{display:block;height:100%;background:var(--slate);border-radius:3px}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 18px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 class="title-m" style="margin: 0">Analytics</h1>
+      <button class="k-chip k-chip--onSlate" style="display: inline-flex; align-items: center; gap: 4px">October<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></button>
+    </div>
+    <div>
+      <div class="body" style="color: var(--on-slate-muted)">Spent in October</div>
+      <span class="gk" style="margin-top: 10px; width: 210px; height: 40px; background: rgba(255,255,255,0.12)"></span>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <div class="tile"><span class="micro" style="color: var(--on-slate-muted)">Money in</span><span class="gk" style="width: 56px; height: 16px; margin-top: 4px; background: rgba(255,255,255,0.12)"></span></div>
+      <div class="tile"><span class="micro" style="color: var(--on-slate-muted)">Left over</span><span class="gk" style="width: 56px; height: 16px; margin-top: 4px; background: rgba(255,255,255,0.12)"></span></div>
+      <div class="tile"><span class="micro" style="color: var(--on-slate-muted)">vs Sep</span><span class="gk" style="width: 56px; height: 16px; margin-top: 4px; background: rgba(255,255,255,0.12)"></span></div>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 314px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" role="status" aria-label="Loading analytics" style="display: flex; flex-direction: column; gap: 22px">
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <span class="sk" style="width: 150px; height: 14px"></span>
+        <div style="display: flex; align-items: flex-end; gap: 14px; height: 112px; border-bottom: 1px solid var(--line)">
+          <span class="sk" style="flex: 1; height: 70%"></span><span class="sk" style="flex: 1; height: 85%"></span><span class="sk" style="flex: 1; height: 60%"></span><span class="sk" style="flex: 1; height: 95%"></span><span class="sk" style="flex: 1; height: 80%"></span><span class="sk" style="flex: 1; height: 75%"></span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <span class="sk" style="width: 120px; height: 14px"></span>
+        <span class="sk" style="width: 100%; height: 6px"></span>
+        <span class="sk" style="width: 62%; height: 6px"></span>
+        <span class="sk" style="width: 48%; height: 6px"></span>
+      </div>
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="analytics" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      small: 16,
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

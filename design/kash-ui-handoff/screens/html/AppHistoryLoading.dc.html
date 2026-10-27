@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — History, loading</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+.sk{display:block;flex-shrink:0;border-radius:6px;background:var(--well)}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 16px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 class="title-m" style="margin: 0">History</h1>
+      <x-import component-from-global-scope="Kash.IconButton" icon="calendar" label="Pick a date" tone="onSlate"></x-import>
+    </div>
+    <x-import component-from-global-scope="Kash.SearchField" placeholder="Search name, category, reference" tone="onSlate"></x-import>
+    <div style="display: flex; gap: 8px; overflow: hidden">
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate" selected="{{yes}}">All</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">In</x-import>
+      <x-import component-from-global-scope="Kash.Chip" tone="onSlate">Out</x-import>
+      <button class="k-chip k-chip--onSlate" style="display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0">This month<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></button>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 262px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" role="status" aria-label="Loading transactions">
+      <div style="padding: 16px 0 6px"><span class="sk" style="display: block; width: 64px; height: 10px"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: var(--row-y) 0; border-bottom: 1px solid var(--line)"><span class="sk" style="width: 40px; height: 40px; border-radius: var(--radius-field)"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 8px"><span class="sk" style="width: 62%; height: 12px"></span><span class="sk" style="width: 38%; height: 10px"></span></span><span class="sk" style="width: 64px; height: 12px"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: var(--row-y) 0; border-bottom: 1px solid var(--line)"><span class="sk" style="width: 40px; height: 40px; border-radius: var(--radius-field)"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 8px"><span class="sk" style="width: 48%; height: 12px"></span><span class="sk" style="width: 30%; height: 10px"></span></span><span class="sk" style="width: 64px; height: 12px"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: var(--row-y) 0; border-bottom: 1px solid var(--line)"><span class="sk" style="width: 40px; height: 40px; border-radius: var(--radius-field)"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 8px"><span class="sk" style="width: 70%; height: 12px"></span><span class="sk" style="width: 42%; height: 10px"></span></span><span class="sk" style="width: 64px; height: 12px"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: var(--row-y) 0; border-bottom: 1px solid var(--line)"><span class="sk" style="width: 40px; height: 40px; border-radius: var(--radius-field)"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 8px"><span class="sk" style="width: 55%; height: 12px"></span><span class="sk" style="width: 34%; height: 10px"></span></span><span class="sk" style="width: 64px; height: 12px"></span></div>
+      <div style="padding: 16px 0 6px"><span class="sk" style="display: block; width: 80px; height: 10px"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: var(--row-y) 0; border-bottom: 1px solid var(--line)"><span class="sk" style="width: 40px; height: 40px; border-radius: var(--radius-field)"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 8px"><span class="sk" style="width: 58%; height: 12px"></span><span class="sk" style="width: 36%; height: 10px"></span></span><span class="sk" style="width: 64px; height: 12px"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: var(--row-y) 0; border-bottom: 1px solid var(--line)"><span class="sk" style="width: 40px; height: 40px; border-radius: var(--radius-field)"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 8px"><span class="sk" style="width: 66%; height: 12px"></span><span class="sk" style="width: 40%; height: 10px"></span></span><span class="sk" style="width: 64px; height: 12px"></span></div>
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="history" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      yes: true, small: 16,
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

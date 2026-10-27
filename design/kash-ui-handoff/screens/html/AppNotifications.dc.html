@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Notifications</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 22px">
+    <div style="display: flex; align-items: center; gap: 14px">
+      <x-import component-from-global-scope="Kash.IconButton" icon="back" label="Back" tone="onSlate" href="AppSettings.dc.html"></x-import>
+      <span class="title-xs">Notifications</span>
+    </div>
+    <h1 class="title-l" style="margin: 0">When Kash<br>taps your shoulder</h1>
+  </div>
+
+  <div class="k-screen__sheet" style="top: 236px; padding-bottom: 24px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 14px">
+      <div style="background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-card)">
+        <div style="display: flex; align-items: center; gap: 14px; padding: 16px">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span class="body-strong">Kash notifications</span><span class="caption" style="color: var(--ink-muted)">A nudge when new transactions need a category, and a note when syncing is waiting for internet</span></span>
+          <x-import component-from-global-scope="Kash.Switch" label="Kash notifications" default-checked="{{yes}}"></x-import>
+        </div>
+      </div>
+      <p class="caption" style="margin: 0 4px; color: var(--ink-muted)">You can also turn Kash notifications off in your phone's settings.</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true, no: false }; }
+}
+</script>
+</body>
+</html>

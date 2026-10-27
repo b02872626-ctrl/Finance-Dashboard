@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Sign in to sync</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Roboto:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: var(--surface); color: var(--ink); font-family: var(--font-sans); display: flex; flex-direction: column; padding: var(--top-safe) var(--inset-onboarding) 28px; gap: 24px; overflow: hidden">
+
+  <div style="display: flex; align-items: center; gap: 16px">
+    <x-import component-from-global-scope="Kash.IconButton" icon="back" label="Back" href="AppSources.dc.html"></x-import>
+    <x-import component-from-global-scope="Kash.StepBar" current="{{three}}" total="{{three}}" label="Step 3 of 3" style="flex: 1"></x-import>
+    <span style="width: 44px; flex-shrink: 0"></span>
+  </div>
+
+  <div>
+    <h1 class="title-l" style="margin: 0">Keep a copy<br>in the cloud</h1>
+    <p class="body-l" style="margin: 14px 0 0; color: var(--ink-muted)">Your history survives a new phone and shows on the web. It syncs whenever you are online.</p>
+  </div>
+
+  <a href="AppSummary.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 12px; height: 52px; border-radius: var(--radius-control); background: #FFFFFF; border: 1px solid #747775; color: #1F1F1F; font-family: Roboto, Arial, sans-serif; font-size: 15px; font-weight: 500">
+    <span aria-hidden="true" title="Official Google G mark goes here" style="width: 20px; height: 20px; border-radius: 4px; border: 1px dashed #9A9A9A; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #6F6F6F">G</span>
+    Continue with Google
+  </a>
+
+  <div class="caption" style="display: flex; align-items: center; gap: 12px; color: var(--ink-muted)"><span style="flex: 1; height: 1px; background: var(--line-strong)"></span>or with email<span style="flex: 1; height: 1px; background: var(--line-strong)"></span></div>
+
+  <div style="display: flex; flex-direction: column; gap: 14px">
+    <x-import component-from-global-scope="Kash.TextField" label="Email" type="email" placeholder="you@example.com" id="em"></x-import>
+    <x-import component-from-global-scope="Kash.TextField" label="Password" type="password" placeholder="At least 8 characters" id="pw"></x-import>
+  </div>
+
+  <div style="flex: 1"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px">
+    <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppSummary.dc.html">Create account</x-import>
+    <x-import component-from-global-scope="Kash.Button" variant="quiet" href="AppSummary.dc.html">I have an account — sign in</x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { three: 3 }; }
+}
+</script>
+</body>
+</html>

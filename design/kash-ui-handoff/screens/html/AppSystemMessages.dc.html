@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Notifications and messages</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+.n{background:#FFFFFF;border-radius:var(--radius-card);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.n__app{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;color:var(--ink-muted)}
+.n__icon{width:20px;height:20px;border-radius:6px;overflow:hidden;display:block;flex-shrink:0}
+.n__act{display:flex;gap:18px;margin-top:6px}
+.n__act button{border:0;background:transparent;padding:6px 0;font-family:var(--font-sans);font-size:14px;font-weight:600;color:var(--slate);cursor:pointer}
+.toast{align-self:center;padding:12px 18px;border-radius:var(--radius-control);background:var(--slate-ink);color:var(--on-slate);font-size:14px;line-height:20px;font-weight:500}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #DDE0E6; color: var(--ink); font-family: var(--font-sans); padding: 28px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+
+  <span class="label" style="color: var(--ink-muted); padding: 0 4px">Notifications</span>
+
+  <div class="n">
+    <div class="n__app"><svg class="n__icon" viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" fill="#3D4859"></rect><rect x="34" y="30" width="10" height="48" rx="5" fill="#E9DFC6"></rect><rect x="50" y="44" width="10" height="34" rx="5" fill="#FFFFFF"></rect><rect x="66" y="36" width="10" height="42" rx="5" fill="#FFFFFF" fill-opacity="0.45"></rect></svg>Kash · 19:30</div>
+    <span class="body-strong">4 new transactions to sort</span>
+    <span class="caption" style="color: var(--ink-muted)">Takes about 30 seconds. Tap to start your review.</span>
+    <div class="n__act"><button>Review now</button></div>
+  </div>
+
+  <div class="n">
+    <div class="n__app"><svg class="n__icon" viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" fill="#3D4859"></rect><rect x="34" y="30" width="10" height="48" rx="5" fill="#E9DFC6"></rect><rect x="50" y="44" width="10" height="34" rx="5" fill="#FFFFFF"></rect><rect x="66" y="36" width="10" height="42" rx="5" fill="#FFFFFF" fill-opacity="0.45"></rect></svg>Kash · now</div>
+    <span class="body-strong">Reading your bank SMS…</span>
+    <div role="progressbar" aria-label="Reading bank SMS" style="height: 4px; border-radius: 2px; background: var(--well); overflow: hidden; margin-top: 4px"><span style="display: block; width: 55%; height: 100%; background: var(--slate)"></span></div>
+  </div>
+
+  <div class="n">
+    <div class="n__app"><svg class="n__icon" viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" fill="#3D4859"></rect><rect x="34" y="30" width="10" height="48" rx="5" fill="#E9DFC6"></rect><rect x="50" y="44" width="10" height="34" rx="5" fill="#FFFFFF"></rect><rect x="66" y="36" width="10" height="42" rx="5" fill="#FFFFFF" fill-opacity="0.45"></rect></svg>Kash · 2 min ago</div>
+    <span class="body-strong">Found 3 new transactions</span>
+    <span class="caption" style="color: var(--ink-muted)">From CBE and Telebirr.</span>
+  </div>
+
+  <div class="n">
+    <div class="n__app"><svg class="n__icon" viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" fill="#3D4859"></rect><rect x="34" y="30" width="10" height="48" rx="5" fill="#E9DFC6"></rect><rect x="50" y="44" width="10" height="34" rx="5" fill="#FFFFFF"></rect><rect x="66" y="36" width="10" height="42" rx="5" fill="#FFFFFF" fill-opacity="0.45"></rect></svg>Kash · 10:12</div>
+    <span class="body-strong">Waiting for internet to back up</span>
+    <span class="caption" style="color: var(--ink-muted)">12 transactions are safe on this phone. They'll back up when you're online.</span>
+  </div>
+
+  <div class="n">
+    <div class="n__app"><svg class="n__icon" viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" fill="#3D4859"></rect><rect x="34" y="30" width="10" height="48" rx="5" fill="#E9DFC6"></rect><rect x="50" y="44" width="10" height="34" rx="5" fill="#FFFFFF"></rect><rect x="66" y="36" width="10" height="42" rx="5" fill="#FFFFFF" fill-opacity="0.45"></rect></svg>Kash · 10:40</div>
+    <span class="body-strong">Backed up</span>
+    <span class="caption" style="color: var(--ink-muted)">Your 12 new transactions are in your Kash account.</span>
+  </div>
+
+  <span class="label" style="color: var(--ink-muted); padding: 10px 4px 0">Toasts</span>
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <span class="toast">Exported 312 transactions</span>
+    <span class="toast">Couldn't open the receipt. Try again later.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

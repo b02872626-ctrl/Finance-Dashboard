@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launch window before Compose draws (Android 6–11): bars centred on slate. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/kash_slate" />
+    <item android:width="144dp" android:height="144dp" android:gravity="center"
+        android:drawable="@drawable/ic_launcher_foreground" />
+</layer-list>

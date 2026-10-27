@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Review, after confirming</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero" style="gap: 18px">
+    <div style="display: flex; align-items: center; gap: 14px">
+      <x-import component-from-global-scope="Kash.IconButton" icon="back" label="Back" tone="onSlate" href="AppHome.dc.html"></x-import>
+      <span class="title-xs" style="flex: 1">Review</span>
+      <span class="label k-num" style="color: var(--on-slate-muted)">4 of 6</span>
+    </div>
+    <x-import component-from-global-scope="Kash.StepBar" current="{{four}}" total="{{six}}" tone="onSlate" label="4 of 6 reviewed"></x-import>
+  </div>
+
+  <div class="k-screen__sheet" style="top: 168px; padding-bottom: 28px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 18px; overflow: visible">
+
+      <div style="background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 18px; display: flex; flex-direction: column; gap: 22px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <x-import component-from-global-scope="Kash.BankBadge" code="tb" size="{{badge}}"></x-import>
+            <span class="label">Telebirr</span>
+          </div>
+          <span class="label k-num" style="color: var(--ink-muted)">Today, 12:36</span>
+        </div>
+        <div>
+          <div class="figure-l k-num" style="color: var(--money-out)">−100<span class="figure-unit">.00 ETB</span></div>
+          <div class="body-l" style="margin-top: 6px; color: var(--ink-muted)">to <b style="color: var(--ink); font-weight: 600">Ethio Telecom</b></div>
+        </div>
+        <x-import component-from-global-scope="Kash.KeyValueList" items="{{facts}}" card="{{no}}"></x-import>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <span class="label" style="color: var(--ink-muted)">What was it?</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <x-import component-from-global-scope="Kash.Chip" selected="{{yes}}">Airtime</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Bills</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Food</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Shopping</x-import>
+          <a href="AppReviewCategory.dc.html" class="k-chip" style="display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box">More<x-import component-from-global-scope="Kash.Icon" name="chevronRight" size="{{small}}"></x-import></a>
+        </div>
+      </div>
+
+      <div style="flex: 1"></div>
+
+      <div role="status" style="display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; min-height: 52px; box-sizing: border-box; border-radius: var(--radius-control); background: var(--slate-ink); color: var(--on-slate)">
+        <span class="body" style="flex: 1">Confirmed bekelu beyene as Family</span>
+        <button class="label-l" style="height: 40px; padding: 0 12px; border: 0; border-radius: var(--radius-chip); background: transparent; color: var(--sand); font-family: var(--font-sans); cursor: pointer">Undo</button>
+      </div>
+
+      <div style="display: flex; gap: var(--gap-m)">
+        <x-import component-from-global-scope="Kash.Button" variant="secondary" href="AppReview.dc.html" style="flex: 0 0 auto; min-width: 104px">Skip</x-import>
+        <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppReviewApplyAll.dc.html" style="flex: 1; min-width: 0">Confirm as Airtime</x-import>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      four: 4, six: 6, badge: 32, small: 16, yes: true, no: false,
+      facts: [
+        { label: 'For', value: 'Daily Internet Pack 1GB' },
+        { label: 'Balance after', value: '616.48', numeric: true }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

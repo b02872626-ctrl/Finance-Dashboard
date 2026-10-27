@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — New category</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: var(--slate-ink); font-family: var(--font-sans); display: flex; align-items: center; padding: 0 16px; overflow: hidden">
+
+  <div role="dialog" aria-modal="true" aria-labelledby="nc-title" style="width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border-radius: var(--radius-sheet); padding: 24px 22px 18px; display: flex; flex-direction: column; gap: 18px">
+    <div>
+      <h2 id="nc-title" class="title-m" style="margin: 0">New category</h2>
+      <p class="body" style="margin: 8px 0 0; color: var(--ink-muted); font-weight: 400">A short name to group transactions by.</p>
+    </div>
+    <x-import component-from-global-scope="Kash.TextField" label="Name" placeholder="e.g. Subscriptions" default-value="Gym" id="catname"></x-import>
+    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px">
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppReviewCategory.dc.html">Create</x-import>
+      <x-import component-from-global-scope="Kash.Button" variant="quiet" href="AppReviewCategory.dc.html">Cancel</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

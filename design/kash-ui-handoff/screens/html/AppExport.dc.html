@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Export transactions</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px; background: var(--slate-ink)">
+
+  <div class="k-screen__sheet" style="top: 340px; padding-bottom: 28px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h2 class="title-m" style="margin: 0">Export transactions</h2>
+        <x-import component-from-global-scope="Kash.IconButton" icon="chevronDown" label="Close" href="AppSettings.dc.html"></x-import>
+      </div>
+
+      <div role="group" aria-labelledby="ex-period" style="display: flex; flex-direction: column; gap: 10px">
+        <span id="ex-period" class="label" style="color: var(--ink-muted)">Period</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <x-import component-from-global-scope="Kash.Chip">This month</x-import>
+          <x-import component-from-global-scope="Kash.Chip" selected="{{yes}}">Last 3 months</x-import>
+          <x-import component-from-global-scope="Kash.Chip">This year</x-import>
+          <x-import component-from-global-scope="Kash.Chip">All time</x-import>
+        </div>
+      </div>
+
+      <div role="group" aria-labelledby="ex-acct" style="display: flex; flex-direction: column; gap: 10px">
+        <span id="ex-acct" class="label" style="color: var(--ink-muted)">Accounts</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <x-import component-from-global-scope="Kash.Chip" selected="{{yes}}">All</x-import>
+          <x-import component-from-global-scope="Kash.Chip">CBE</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Telebirr</x-import>
+          <x-import component-from-global-scope="Kash.Chip">BoA</x-import>
+        </div>
+      </div>
+
+      <p class="caption" style="margin: 0; color: var(--ink-muted)">A CSV file that opens in Excel or Google Sheets. You choose where to save it next.</p>
+
+      <div style="flex: 1"></div>
+      <x-import component-from-global-scope="Kash.Button" variant="primary" icon="export" href="AppSettings.dc.html">Export 312 transactions</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

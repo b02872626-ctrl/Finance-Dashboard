@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Home, all caught up</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px">
+
+  <div class="k-screen__hero">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span class="wordmark">kash</span>
+      <div style="display: flex; gap: var(--gap-s)">
+        <x-import component-from-global-scope="Kash.IconButton" icon="plus" label="Add transaction" tone="onSlate" href="AppAdd.dc.html"></x-import>
+        <x-import component-from-global-scope="Kash.IconButton" icon="settings" label="Settings" tone="onSlate" href="AppSettings.dc.html"></x-import>
+      </div>
+    </div>
+    <div>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span class="body" style="color: var(--on-slate-muted)">Total balance</span>
+        <button aria-label="Show balance" style="width: 28px; height: 28px; border: 0; padding: 0; background: transparent; color: var(--on-slate-muted); display: flex; align-items: center; justify-content: center; cursor: pointer"><x-import component-from-global-scope="Kash.Icon" name="eye" size="{{eye}}"></x-import></button>
+      </div>
+      <div class="figure-xl" aria-label="Balance hidden" style="margin-top: 4px; letter-spacing: 0.08em">••••••<span class="figure-unit" style="color: var(--on-slate-muted); letter-spacing: 0"> ETB</span></div>
+    </div>
+    <div style="display: flex; gap: var(--gap-m)">
+      <div role="status" style="flex: 1; height: var(--button-h-compact); box-sizing: border-box; border-radius: var(--radius-control); background: var(--ghost-fill); border: 1px solid var(--ghost-line); display: flex; align-items: center; gap: 10px; padding: 0 16px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg><span style="display: flex; flex-direction: column"><span class="label-l">All caught up</span><span class="micro" style="color: var(--on-slate-muted)">6 reviewed today</span></span></div>
+    </div>
+    <x-import component-from-global-scope="Kash.WeekChart" values="{{week}}" today="{{today}}" total="−4,120"></x-import>
+  </div>
+
+  <div class="k-screen__sheet k-screen__sheet--tabbed" style="top: 404px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h2 class="title-s" style="margin: 0">Transactions</h2>
+        <a href="AppHistory.dc.html" class="label" style="color: var(--ink-muted)">See all</a>
+      </div>
+      <x-import component-from-global-scope="Kash.DayHeader" label="Today"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="bekelu beyene" account="Telebirr" time="12:36" category="Family" amount="160" direction="in" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Daily Internet Pack 1GB" account="Telebirr" time="12:36" category="Airtime" amount="100" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="CBE → Telebirr" account="CBE" time="9:02" category="Own accounts" amount="500" direction="transfer" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.DayHeader" label="Yesterday"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Ethiopian Electric Utility" account="CBE Birr" time="18:10" category="Bills" amount="1250" direction="out" href="AppTransaction.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.TransactionRow" name="Ride Addis" account="Telebirr" time="18:40" category="Transport" amount="600" direction="out" href="AppTransaction.dc.html"></x-import>
+    </div>
+    <x-import component-from-global-scope="Kash.TabBar" active="home" hrefs="{{tabs}}" style="position: absolute; left: 0; right: 0; bottom: 0"></x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      yes: true, eye: 18, today: 4,
+      week: [0.4, 0.75, 0.25, 0.55, 1, 0, 0],
+      tabs: { home: 'AppHome.dc.html', accounts: 'AppAccounts.dc.html', history: 'AppHistory.dc.html', analytics: 'AppAnalytics.dc.html' }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash (360) — Transaction</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+summary{list-style:none}summary::-webkit-details-marker{display:none}
+</style>
+</helmet>
+<div class="k-screen" style="width: 360px; height: 780px">
+
+  <div class="k-screen__hero" style="gap: 26px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <x-import component-from-global-scope="Kash.IconButton" icon="back" label="Back" tone="onSlate" href="AppHistory.dc.html"></x-import>
+      <x-import component-from-global-scope="Kash.IconButton" icon="share" label="Share" tone="onSlate"></x-import>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px">
+      <span class="body" style="color: var(--on-slate-muted)">Paid from Telebirr</span>
+      <div class="figure-xl k-num">−100<span class="figure-unit" style="color: var(--on-slate-muted)">.00 ETB</span></div>
+      <span class="body-l" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">Telecom package: Daily Internet Pack 1GB + 50 min, valid for 24 hours</span>
+      <a href="AppReviewCategory.dc.html" class="k-chip k-chip--onSlate" style="display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; box-sizing: border-box" aria-label="Category: Airtime. Change">Airtime<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></a>
+    </div>
+  </div>
+
+  <div class="k-screen__sheet" style="top: 374px; padding-bottom: 24px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 12px">
+      <x-import component-from-global-scope="Kash.KeyValueList" items="{{main}}"></x-import>
+
+      <details style="border-bottom: 1px solid var(--line)">
+        <summary class="body" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; cursor: pointer">More details<x-import component-from-global-scope="Kash.Icon" name="chevronDown" size="{{small}}"></x-import></summary>
+        <div style="padding-bottom: 6px">
+          <x-import component-from-global-scope="Kash.KeyValueList" items="{{more}}" card="{{no}}" style="display: block"></x-import>
+        </div>
+      </details>
+
+      <div style="flex: 1"></div>
+
+      <x-import component-from-global-scope="Kash.Button" variant="secondary" icon="external">Open bank receipt</x-import>
+      <x-import component-from-global-scope="Kash.Button" variant="quiet">Not a transaction? Hide it</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      small: 16, no: false,
+      main: [
+        { label: 'To', value: 'Ethio Telecom' },
+        { label: 'Account', value: 'Telebirr · •••• 3121', numeric: true },
+        { label: 'When', value: 'Today, 12:36', numeric: true },
+        { label: 'Balance after', value: '616.48', numeric: true }
+      ],
+      more: [
+        { label: 'Reference', value: 'CJ3K9X2T7A', numeric: true },
+        { label: 'VAT', value: '13.04', numeric: true },
+        { label: 'Original SMS', value: 'Show' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

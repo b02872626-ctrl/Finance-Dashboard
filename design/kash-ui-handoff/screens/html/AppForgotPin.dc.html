@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Forgot PIN</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: var(--slate-ink); font-family: var(--font-sans); display: flex; align-items: center; padding: 0 16px; overflow: hidden">
+
+  <div role="alertdialog" aria-modal="true" aria-labelledby="fp-title" aria-describedby="fp-body" style="width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border-radius: var(--radius-sheet); padding: 24px 22px 18px; display: flex; flex-direction: column; gap: 18px">
+    <div>
+      <h2 id="fp-title" class="title-m" style="margin: 0">Forgot your PIN?</h2>
+      <p id="fp-body" class="body" style="margin: 8px 0 0; color: var(--ink-muted); font-weight: 400">Sign in to your Kash account again, then choose a new PIN.</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-card)">
+      <x-import component-from-global-scope="Kash.Icon" name="lock" size="{{icon}}"></x-import>
+      <span class="body">Your transactions on this phone stay where they are.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px">
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppSignInAgain.dc.html">Sign in again</x-import>
+      <x-import component-from-global-scope="Kash.Button" variant="quiet" href="AppUnlock.dc.html">Cancel</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { icon: 20 }; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kash — Pick a category</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kash/tokens.css">
+<link rel="stylesheet" href="ds/kash/components/bundle.css">
+<script src="ds/kash/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{opacity:0.88}
+</style>
+</helmet>
+<div class="k-screen" style="width: 390px; height: 844px; background: var(--slate-ink)">
+
+  <div class="k-screen__sheet" style="top: 96px; padding-bottom: 28px">
+    <span class="k-screen__handle" aria-hidden="true"></span>
+    <div class="k-screen__body" style="display: flex; flex-direction: column; gap: 18px">
+
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h2 class="title-m" style="margin: 0">Pick a category</h2>
+        <x-import component-from-global-scope="Kash.IconButton" icon="chevronDown" label="Close" href="AppReview.dc.html"></x-import>
+      </div>
+
+      <x-import component-from-global-scope="Kash.SearchField" placeholder="Search categories"></x-import>
+
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <span class="label" style="color: var(--ink-muted)">Recent</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <x-import component-from-global-scope="Kash.Chip" selected="{{yes}}">Family</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Food</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Airtime</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Transport</x-import>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <span class="label" style="color: var(--ink-muted)">Everyday</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <x-import component-from-global-scope="Kash.Chip">Bills</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Shopping</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Health</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Rent</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Eating out</x-import>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <span class="label" style="color: var(--ink-muted)">Money in and between accounts</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <x-import component-from-global-scope="Kash.Chip">Salary</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Refund</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Loan</x-import>
+          <x-import component-from-global-scope="Kash.Chip">Own accounts</x-import>
+          <a href="AppNewCategory.dc.html" class="k-chip" style="display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; border-style: dashed; border-color: var(--line-strong); color: var(--ink-muted)"><x-import component-from-global-scope="Kash.Icon" name="plus" size="{{small}}"></x-import>New category</a>
+        </div>
+      </div>
+
+      <div style="flex: 1"></div>
+
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-card)">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span class="body-strong">Use for bekelu beyene from now on</span>
+          <span class="caption" style="color: var(--ink-muted)">Future SMS from this sender land in Family</span>
+        </div>
+        <x-import component-from-global-scope="Kash.Switch" label="Use for bekelu beyene from now on" default-checked="{{yes}}"></x-import>
+      </div>
+
+      <x-import component-from-global-scope="Kash.Button" variant="primary" href="AppReviewApplyAll.dc.html">Use Family</x-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true, small: 16 }; }
+}
+</script>
+</body>
+</html>
