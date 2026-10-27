@@ -31,6 +31,18 @@ class KashDatesTest {
     }
 
     @Test
+    fun pagumeIsFiveOrSixDays() {
+        // 8 Sep 2026 = Pagumē 3, 2018 (non-leap): Pagumē runs 6–10 Sep.
+        val (from, to) = KashDates.monthBounds(ms(2026, 9, 8), "ETHIOPIAN")
+        assertEquals(ms(2026, 9, 6, 0), from)
+        assertEquals(ms(2026, 9, 11, 0), to)
+        // 8 Sep 2023 = Pagumē, 2015 (leap): six days, 6–11 Sep.
+        val (lFrom, lTo) = KashDates.monthBounds(ms(2023, 9, 8), "ETHIOPIAN")
+        assertEquals(ms(2023, 9, 6, 0), lFrom)
+        assertEquals(ms(2023, 9, 12, 0), lTo)
+    }
+
+    @Test
     fun ethiopianYearStartsOnMeskerem1() {
         val (from, to) = KashDates.yearBounds(ms(2026, 10, 27), "ETHIOPIAN")
         val start = EthiopianCalendar.fromMillis(from + 3_600_000L)

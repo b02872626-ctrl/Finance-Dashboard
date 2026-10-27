@@ -283,11 +283,10 @@ private fun ReviewCard(tx: TransactionEntity, onLongPress: () -> Unit) {
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
         }
-        val facts = buildList {
-            add(KashKeyValue(if (dir == KashDirection.In) "To" else "From", tx.accountLine(), numeric = true))
-            tx.balance?.let { add(KashKeyValue("Balance after", KashMoney.amount(it), numeric = true)) }
+        // The account is already named at the top of the card.
+        tx.balance?.let {
+            KashKeyValueList(listOf(KashKeyValue("Balance after", KashMoney.amount(it), numeric = true)), card = false)
         }
-        KashKeyValueList(facts, card = false)
     }
 }
 
