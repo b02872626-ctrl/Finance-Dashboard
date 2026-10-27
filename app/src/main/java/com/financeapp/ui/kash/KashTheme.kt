@@ -206,6 +206,26 @@ fun Modifier.kashClickable(
         )
 }
 
+/**
+ * Status/navigation bar icon colours for the screen being shown. Slate tops
+ * want light icons ([darkIcons] false); light onboarding pages want dark.
+ * [navDarkIcons] defaults to dark because app screens end on the light sheet.
+ */
+@Composable
+fun KashSystemBars(darkIcons: Boolean, navDarkIcons: Boolean = true) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (view.isInEditMode) return
+    androidx.compose.runtime.SideEffect {
+        var ctx = view.context
+        while (ctx is android.content.ContextWrapper && ctx !is android.app.Activity) ctx = ctx.baseContext
+        val window = (ctx as? android.app.Activity)?.window ?: return@SideEffect
+        androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = darkIcons
+            isAppearanceLightNavigationBars = navDarkIcons
+        }
+    }
+}
+
 /** True when the user turned animations off ("remove animations"). */
 @Composable
 fun rememberReducedMotion(): Boolean {

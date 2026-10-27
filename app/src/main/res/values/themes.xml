@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.FinanceApp" parent="android:Theme.Material.NoActionBar">
-        <!-- TODO(redesign step 3): switch to @drawable/splash_window (slate + bars)
-             once the screens are rebuilt; the old dark screens still need this. -->
-        <item name="android:windowBackground">#0E1614</item>
+        <!-- Slate launch window with the Kash bars; Compose draws over it. -->
+        <item name="android:windowBackground">@drawable/splash_window</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">#0E1614</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>

@@ -19,11 +19,14 @@ import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.sms.SmsIngestService
 import com.financeapp.sms.SmsIngestWorker
 import com.financeapp.ui.navigation.AppNavigation
-import com.financeapp.ui.theme.FinanceAppTheme
+import com.financeapp.ui.kash.KashTheme
+import androidx.activity.enableEdgeToEdge
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var hasSmsAccess by mutableStateOf(false)
+    /** True once Android refused READ_SMS (incl. "Don't ask again"). */
+    private var smsDenied by mutableStateOf(false)
     private var pendingRoute by mutableStateOf<String?>(null)
 
     // App PIN: locked on every cold start and after > RELOCK_AFTER_MS in the
@@ -43,11 +46,17 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
             if (granted[Manifest.permission.READ_SMS] == true) {
                 hasSmsAccess = true
+                smsDenied = false
                 SmsIngestService.start(this)
+            } else if (granted.containsKey(Manifest.permission.READ_SMS)) {
+                smsDenied = true
             }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Draw behind the status and navigation bars; each screen picks its
+        // bar icon colours (KashSystemBars).
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // Rotation / theme change recreates the activity — don't re-lock for that.
         isLocked = savedInstanceState?.getBoolean(STATE_LOCKED, true) ?: true
@@ -61,12 +70,13 @@ class MainActivity : ComponentActivity() {
         refreshPermissionState()
 
         setContent {
-            FinanceAppTheme {
+            KashTheme {
                 AppNavigation(
                     repo = repo,
                     settingsRepo = settingsRepo,
                     hasSmsAccess = hasSmsAccess,
                     requestSmsAccess = ::checkAndRequestPermissions,
+                    smsDenied = smsDenied,
                     pendingRoute = pendingRoute,
                     onPendingRouteHandled = { pendingRoute = null },
                     isLocked = isLocked,

@@ -4,87 +4,78 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.financeapp.R
 import com.financeapp.security.PinManager
-import com.financeapp.ui.theme.AppBackground
-import com.financeapp.ui.theme.AppBlue
-import com.financeapp.ui.theme.CoralPrimary
+import com.financeapp.ui.kash.KashColors
+import com.financeapp.ui.kash.KashIcon
+import com.financeapp.ui.kash.KashIconView
+import com.financeapp.ui.kash.KashShapes
+import com.financeapp.ui.kash.KashSize
+import com.financeapp.ui.kash.KashSpace
+import com.financeapp.ui.kash.KashSystemBars
+import com.financeapp.ui.kash.KashType
+import com.financeapp.ui.kash.components.KashButton
+import com.financeapp.ui.kash.components.KashButtonVariant
+import com.financeapp.ui.kash.components.KashDialog
+import com.financeapp.ui.kash.components.KashPinCountdown
+import com.financeapp.ui.kash.components.KashPinDots
+import com.financeapp.ui.kash.components.KashPinKeys
+import com.financeapp.ui.kash.components.KashPinMessage
+import com.financeapp.ui.kash.components.KashTopBar
 import com.financeapp.ui.theme.Haptic
-import com.financeapp.ui.theme.pressScale
 import com.financeapp.ui.theme.rememberHaptic
-import com.financeapp.ui.theme.rememberTactileSource
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 // =============================================================================
-// 4-digit app PIN: setup, lock screen and change flow. All three share
-// PinPad (title + 4 dots + numeric keypad). See security/PinManager.kt.
+// 4-digit app PIN: create, unlock and change (AppPinCreate, AppPinConfirm,
+// AppUnlock, AppUnlockLocked, AppForgotPin, AppChangePin). All slate.
+// Logic lives in security/PinManager.kt.
 // =============================================================================
-
-private val PinBg       = AppBackground
-private val PinCard     = Color(0xFF231E1A)
-private val PinHeadline = AppBlue
-private val PinCoral    = CoralPrimary
-private val PinMuted    = Color(0xFFB7B3AC)
-private val PinFaint    = Color(0xFF7C7872)
 
 /**
- * Title, subtitle, 4 dots and a 3×4 keypad. Calls [onComplete] once 4 digits
- * are entered and clears itself; [shakeKey] changes trigger a shake (wrong PIN).
+ * Slate PIN page: a 44dp header row, the lock tile + title + subtitle + dots
+ * + message centred in the free space, and the keypad at the bottom.
+ * Collects digits and calls [onComplete] with all four, then clears.
  */
 @Composable
-private fun PinPad(
+private fun PinPage(
     title: String,
     subtitle: String,
     message: String?,
-    messageIsError: Boolean,
+    countdown: String?,
     enabled: Boolean,
     shakeKey: Int,
     onComplete: (String) -> Unit,
-    topBar: @Composable () -> Unit = {},
-    footer: @Composable () -> Unit = {}
+    header: @Composable () -> Unit = { Box(Modifier.height(KashSize.IconButton)) },
+    footer: (@Composable () -> Unit)? = null,
 ) {
+    KashSystemBars(darkIcons = false)
     var entry by remember { mutableStateOf("") }
     val haptic = rememberHaptic()
     val shake = remember { Animatable(0f) }
@@ -93,118 +84,70 @@ private fun PinPad(
         for (x in listOf(18f, -16f, 12f, -8f, 4f, 0f)) shake.animateTo(x, tween(45))
     }
 
-    fun press(d: Char) {
-        if (!enabled || entry.length >= PinManager.PIN_LENGTH) return
-        haptic(Haptic.TAP)
-        entry += d
-        if (entry.length == PinManager.PIN_LENGTH) {
-            val pin = entry
-            entry = ""
-            onComplete(pin)
-        }
-    }
-
     Column(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
-            .background(PinBg)
-            .systemBarsPadding()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(KashColors.Slate)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(start = KashSpace.InsetOnboarding, end = KashSpace.InsetOnboarding, top = KashSpace.HeaderTop,
+                bottom = if (footer != null) 12.dp else 24.dp),
     ) {
-        topBar()
-        Spacer(Modifier.weight(0.7f))
-        Box(
-            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(PinCard),
-            contentAlignment = Alignment.Center
+        header()
+        Column(
+            Modifier.weight(1f).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterVertically),
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_shield),
-                contentDescription = null,
-                tint = PinCoral,
-                modifier = Modifier.size(26.dp)
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(title, color = PinHeadline, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(6.dp))
-        Text(subtitle, color = PinMuted, fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(28.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-            modifier = Modifier.offset { IntOffset(shake.value.roundToInt(), 0) }
-        ) {
-            repeat(PinManager.PIN_LENGTH) { i ->
-                val filled = i < entry.length
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(if (filled) PinHeadline else Color.Transparent)
-                        .border(2.dp, if (filled) PinHeadline else PinFaint, CircleShape)
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(KashShapes.Control)
+                    .background(KashColors.GhostFill)
+                    .border(1.dp, KashColors.GhostLine, KashShapes.Control),
+                contentAlignment = Alignment.Center,
+            ) { KashIconView(KashIcon.Lock, size = 22.dp, tint = KashColors.OnSlate) }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    title, style = KashType.TitleM, color = KashColors.OnSlate, textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    subtitle, style = KashType.BodyL, color = KashColors.OnSlateMuted, textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                KashPinDots(entry.length, offset = shake.value.dp)
+                when {
+                    countdown != null -> KashPinCountdown(countdown)
+                    message != null -> KashPinMessage(message)
+                }
+            }
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = message ?: " ",
-            color = if (messageIsError) PinCoral else PinMuted,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.height(36.dp)
+        KashPinKeys(
+            disabled = !enabled,
+            onDigit = { d ->
+                if (entry.length < PinManager.PIN_LENGTH) {
+                    haptic(Haptic.TAP)
+                    entry += d
+                    if (entry.length == PinManager.PIN_LENGTH) {
+                        val pin = entry
+                        entry = ""
+                        onComplete(pin)
+                    }
+                }
+            },
+            onDelete = { if (entry.isNotEmpty()) { haptic(Haptic.TAP); entry = entry.dropLast(1) } },
         )
-        Spacer(Modifier.weight(0.5f))
-
-        val rows = listOf("123", "456", "789")
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            rows.forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                    row.forEach { d -> Key(label = d.toString(), enabled = enabled) { press(d) } }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                Spacer(Modifier.size(76.dp))
-                Key(label = "0", enabled = enabled) { press('0') }
-                Box(
-                    modifier = Modifier
-                        .size(76.dp)
-                        .clip(CircleShape)
-                        .clickable(enabled = enabled && entry.isNotEmpty()) {
-                            haptic(Haptic.TAP); entry = entry.dropLast(1)
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Backspace,
-                        contentDescription = "Delete digit",
-                        tint = if (entry.isNotEmpty()) PinHeadline else PinFaint,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(18.dp))
-        footer()
-        Spacer(Modifier.height(18.dp))
+        if (footer != null) Box(Modifier.fillMaxWidth().padding(top = 8.dp)) { footer() }
     }
 }
 
-@Composable
-private fun Key(label: String, enabled: Boolean, onClick: () -> Unit) {
-    val ix = rememberTactileSource()
-    Box(
-        modifier = Modifier
-            .size(76.dp)
-            .pressScale(ix)
-            .clip(CircleShape)
-            .background(PinCard)
-            .clickable(interactionSource = ix, indication = null, enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, color = if (enabled) PinHeadline else PinFaint, fontSize = 28.sp, fontWeight = FontWeight.Medium)
-    }
-}
+private fun wrongPinMessage(attemptsLeft: Int) =
+    if (attemptsLeft == 1) "Wrong PIN. 1 attempt left." else "Wrong PIN. $attemptsLeft attempts left."
+
+private fun countdownText(secondsLeft: Long) = "Try again in %d:%02d".format(secondsLeft / 60, secondsLeft % 60)
 
 /**
  * Create a PIN: enter, then confirm. Used right after onboarding / on first
@@ -215,19 +158,19 @@ fun PinSetupScreen(
     pinManager: PinManager,
     onDone: () -> Unit,
     title: String = "Create a PIN",
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
 ) {
     var first by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var shakeKey by remember { mutableStateOf(0) }
     val haptic = rememberHaptic()
 
-    PinPad(
+    PinPage(
         title = if (first == null) title else "Confirm your PIN",
-        subtitle = if (first == null) "You'll enter this 4-digit PIN every time you open Kash."
-                   else "Enter the same 4 digits again.",
+        subtitle = if (first == null) "You'll enter these 4 digits\nevery time you open Kash."
+        else "Enter the same 4 digits again.",
         message = error,
-        messageIsError = error != null,
+        countdown = null,
         enabled = true,
         shakeKey = shakeKey,
         onComplete = { pin ->
@@ -241,11 +184,14 @@ fun PinSetupScreen(
             } else {
                 haptic(Haptic.REJECT)
                 first = null
-                error = "PINs didn't match. Try again."
+                error = "PINs didn't match. Start again."
                 shakeKey++
             }
         },
-        topBar = { if (onBack != null) PinBackBar(onBack) }
+        header = {
+            if (onBack != null) KashTopBar("Change PIN", onBack = onBack)
+            else Box(Modifier.height(KashSize.IconButton))
+        },
     )
 }
 
@@ -258,7 +204,7 @@ fun PinSetupScreen(
 fun PinLockScreen(
     pinManager: PinManager,
     onUnlocked: () -> Unit,
-    onForgot: () -> Unit
+    onForgot: () -> Unit,
 ) {
     var message by remember { mutableStateOf<String?>(null) }
     var shakeKey by remember { mutableStateOf(0) }
@@ -267,7 +213,6 @@ fun PinLockScreen(
     var confirmForgot by remember { mutableStateOf(false) }
     val haptic = rememberHaptic()
 
-    // Lockout countdown.
     LaunchedEffect(lockedUntil) {
         while (lockedUntil > System.currentTimeMillis()) {
             now = System.currentTimeMillis()
@@ -278,11 +223,11 @@ fun PinLockScreen(
     val lockedOut = lockedUntil > now
     val secondsLeft = ((lockedUntil - now + 999) / 1000).coerceAtLeast(0)
 
-    PinPad(
-        title = "Enter your PIN",
-        subtitle = "Unlock Kash",
-        message = if (lockedOut) "Too many wrong attempts. Try again in ${secondsLeft}s." else message,
-        messageIsError = lockedOut || message != null,
+    PinPage(
+        title = if (lockedOut) "Too many tries" else "Welcome back",
+        subtitle = if (lockedOut) "For your safety, wait a moment\nbefore trying again." else "Enter your PIN to unlock Kash.",
+        message = message,
+        countdown = if (lockedOut) countdownText(secondsLeft) else null,
         enabled = !lockedOut,
         shakeKey = shakeKey,
         onComplete = { pin ->
@@ -290,49 +235,58 @@ fun PinLockScreen(
                 PinManager.Result.Ok -> { haptic(Haptic.CONFIRM); onUnlocked() }
                 is PinManager.Result.Wrong -> {
                     haptic(Haptic.REJECT); shakeKey++
-                    message = if (r.attemptsLeft == 1) "Wrong PIN. 1 attempt left." else "Wrong PIN. ${r.attemptsLeft} attempts left."
+                    message = wrongPinMessage(r.attemptsLeft)
                 }
                 is PinManager.Result.LockedOut -> {
                     haptic(Haptic.REJECT); shakeKey++
+                    message = null
                     now = System.currentTimeMillis(); lockedUntil = r.untilMs
                 }
             }
         },
+        header = {
+            Box(Modifier.fillMaxWidth().height(KashSize.IconButton), contentAlignment = Alignment.Center) {
+                Text("kash", style = KashType.Wordmark, color = KashColors.OnSlate)
+            }
+        },
         footer = {
-            Text(
-                "Forgot PIN?",
-                color = PinMuted,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { confirmForgot = true }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-        }
+            KashButton("Forgot PIN?", { confirmForgot = true }, Modifier.fillMaxWidth(), KashButtonVariant.QuietOnSlate)
+        },
     )
 
     if (confirmForgot) {
-        AlertDialog(
-            onDismissRequest = { confirmForgot = false },
-            containerColor = PinCard,
-            title = { Text("Forgot your PIN?", color = PinHeadline, fontWeight = FontWeight.SemiBold) },
-            text = {
-                Text(
-                    "To set a new PIN, sign in to your Kash account again. " +
-                        "Your transactions on this phone stay where they are.",
-                    color = PinMuted, fontSize = 14.sp
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { confirmForgot = false; onForgot() }) {
-                    Text("Sign in again", color = PinCoral, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmForgot = false }) { Text("Cancel", color = PinHeadline) }
-            }
+        ForgotPinDialog(
+            onSignInAgain = { confirmForgot = false; onForgot() },
+            onCancel = { confirmForgot = false },
         )
+    }
+}
+
+/** AppForgotPin. */
+@Composable
+private fun ForgotPinDialog(onSignInAgain: () -> Unit, onCancel: () -> Unit) {
+    KashDialog(
+        title = "Forgot your PIN?",
+        description = "Sign in to your Kash account again, then choose a new PIN.",
+        onDismiss = onCancel,
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(KashShapes.Card)
+                .background(KashColors.SurfaceRaised)
+                .border(1.dp, KashColors.Line, KashShapes.Card)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            KashIconView(KashIcon.Lock, size = 20.dp, tint = KashColors.Ink)
+            Text("Your transactions on this phone stay where they are.", style = KashType.Body, color = KashColors.Ink)
+        }
+        Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            KashButton("Sign in again", onSignInAgain, Modifier.fillMaxWidth())
+            KashButton("Cancel", onCancel, Modifier.fillMaxWidth(), KashButtonVariant.Quiet)
+        }
     }
 }
 
@@ -341,7 +295,7 @@ fun PinLockScreen(
 fun ChangePinScreen(
     pinManager: PinManager,
     onDone: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     var verified by remember { mutableStateOf(!pinManager.hasPin()) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -349,8 +303,7 @@ fun ChangePinScreen(
     var lockedUntil by remember { mutableLongStateOf(pinManager.lockedUntil()) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val haptic = rememberHaptic()
-    val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
 
     LaunchedEffect(lockedUntil) {
         while (lockedUntil > System.currentTimeMillis()) { now = System.currentTimeMillis(); delay(250) }
@@ -365,53 +318,33 @@ fun ChangePinScreen(
             onDone = {
                 android.widget.Toast.makeText(context, "PIN changed", android.widget.Toast.LENGTH_SHORT).show()
                 onDone()
-            }
+            },
         )
         return
     }
     val lockedOut = lockedUntil > now
     val secondsLeft = ((lockedUntil - now + 999) / 1000).coerceAtLeast(0)
-    PinPad(
-        title = "Enter your current PIN",
-        subtitle = "Then choose a new one.",
-        message = if (lockedOut) "Too many wrong attempts. Try again in ${secondsLeft}s." else message,
-        messageIsError = lockedOut || message != null,
+    PinPage(
+        title = if (lockedOut) "Too many tries" else "Enter your current PIN",
+        subtitle = if (lockedOut) "For your safety, wait a moment\nbefore trying again." else "Then you'll choose a new one.",
+        message = message,
+        countdown = if (lockedOut) countdownText(secondsLeft) else null,
         enabled = !lockedOut,
         shakeKey = shakeKey,
         onComplete = { pin ->
             when (val r = pinManager.verify(pin)) {
-                PinManager.Result.Ok -> scope.launch { verified = true }
+                PinManager.Result.Ok -> verified = true
                 is PinManager.Result.Wrong -> {
                     haptic(Haptic.REJECT); shakeKey++
-                    message = if (r.attemptsLeft == 1) "Wrong PIN. 1 attempt left." else "Wrong PIN. ${r.attemptsLeft} attempts left."
+                    message = wrongPinMessage(r.attemptsLeft)
                 }
                 is PinManager.Result.LockedOut -> {
                     haptic(Haptic.REJECT); shakeKey++
+                    message = null
                     now = System.currentTimeMillis(); lockedUntil = r.untilMs
                 }
             }
         },
-        topBar = { PinBackBar(onBack) }
+        header = { KashTopBar("Change PIN", onBack = onBack) },
     )
-}
-
-@Composable
-private fun PinBackBar(onBack: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(PinCard)
-                .clickable(onClick = onBack),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_back_dark),
-                contentDescription = "Back",
-                tint = PinHeadline,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
 }

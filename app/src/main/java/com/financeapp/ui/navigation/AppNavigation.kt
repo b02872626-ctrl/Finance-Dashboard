@@ -54,10 +54,8 @@ import com.financeapp.ui.screens.CategoryDetailScreen
 import com.financeapp.ui.screens.DashboardScreen
 import com.financeapp.ui.screens.EditAccountScreen
 import com.financeapp.ui.screens.NotificationPreferencesScreen
-import com.financeapp.ui.screens.OnboardingScreen
 import com.financeapp.ui.screens.ReviewQueueScreen
 import com.financeapp.ui.screens.SettingsScreen
-import com.financeapp.ui.screens.SupabaseAuthScreen
 import com.financeapp.ui.screens.TransactionDetailScreen
 import com.financeapp.ui.screens.TransactionsScreen
 import com.financeapp.ui.theme.AppBackground
@@ -103,6 +101,7 @@ fun AppNavigation(
     settingsRepo: SettingsRepository,
     hasSmsAccess: Boolean,
     requestSmsAccess: () -> Unit,
+    smsDenied: Boolean = false,
     pendingRoute: String? = null,
     onPendingRouteHandled: () -> Unit = {},
     isLocked: Boolean = false,
@@ -125,23 +124,24 @@ fun AppNavigation(
         return
     }
 
-    if (!isSupabaseSignedIn) {
-        SupabaseAuthScreen(
-            onBack = {},
-            showBackButton = false,
-            onboardingMode = true
+    // First launch: Welcome → SMS → sources → sign in → summary (the auth
+    // step now comes after the SMS steps). The PIN gate below follows.
+    if (!onboardingComplete) {
+        com.financeapp.ui.screens.OnboardingFlow(
+            repo = repo,
+            settingsRepo = settingsRepo,
+            hasSmsAccess = hasSmsAccess,
+            smsDenied = smsDenied,
+            isSignedIn = isSupabaseSignedIn,
+            onRequestSmsAccess = requestSmsAccess,
+            onFinish = { settingsRepo.setOnboardingComplete(true) }
         )
         return
     }
 
-    if (!onboardingComplete) {
-        val transactions by repo.getAllTransactions().collectAsState(initial = emptyList())
-        OnboardingScreen(
-            hasSmsAccess = hasSmsAccess,
-            transactions = transactions,
-            onRequestSmsAccess = requestSmsAccess,
-            onFinish = { settingsRepo.setOnboardingComplete(true) }
-        )
+    // Signed out after onboarding: session expired, Log out or Forgot PIN.
+    if (!isSupabaseSignedIn) {
+        com.financeapp.ui.screens.SignInAgainScreen(onSignedIn = {})
         return
     }
 
