@@ -32,7 +32,7 @@ class SmsIngestWorker(
     override suspend fun doWork(): Result {
         return try {
             val ctx = applicationContext
-            val repo = TransactionRepository(AppDatabase.getInstance(ctx))
+            val repo = TransactionRepository(AppDatabase.getInstance(ctx), settings = com.financeapp.data.repository.SettingsRepository(ctx))
             val messages = SmsReader.readFinancialSms(ctx)
             val insertedTxs = repo.ingestAllReturningInserted(messages)
             val inserted = insertedTxs.size

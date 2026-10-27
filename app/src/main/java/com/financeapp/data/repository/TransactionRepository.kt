@@ -397,6 +397,9 @@ class TransactionRepository(
 
     suspend fun ingestDetailed(sms: SmsMessage): IngestDetailedResult {
         if (!SmsParserEngine.isFinancialSms(sms.sender)) return IngestDetailedResult(IngestResult.IGNORED)
+        // Banks the user switched off (Choose sources / Banks Kash follows)
+        // are not read any more.
+        if (settings?.getDisabledSenders()?.contains(sms.sender) == true) return IngestDetailedResult(IngestResult.IGNORED)
 
         val hash = ParserUtils.md5(sms.body.trim())
         val rawId = rawDao.insert(

@@ -41,20 +41,25 @@ class SmsIngestService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 NOTIF_ID,
-                buildNotification("Scanning SMS history…"),
+                buildNotification(),
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
         } else {
-            startForeground(NOTIF_ID, buildNotification("Scanning SMS history…"))
+            startForeground(NOTIF_ID, buildNotification())
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         scope.launch {
             try {
-                val repo = TransactionRepository(AppDatabase.getInstance(applicationContext))
+                val repo = TransactionRepository(AppDatabase.getInstance(applicationContext), settings = com.financeapp.data.repository.SettingsRepository(applicationContext))
                 val messages = SmsReader.readFinancialSms(applicationContext)
-                val insertedTxs = repo.ingestAllReturningInserted(messages)
+                // Chunks so the notification can show how far the scan is.
+                val insertedTxs = mutableListOf<com.financeapp.data.model.TransactionEntity>()
+                messages.chunked(100).forEachIndexed { i, chunk ->
+                    insertedTxs += repo.ingestAllReturningInserted(chunk)
+                    updateProgress(((i + 1) * 100).coerceAtMost(messages.size), messages.size)
+                }
                 val inserted = insertedTxs.size
                 val pendingTransactions = repo.countUnsyncedTransactions()
                 val pendingRawMessages = repo.countUnsyncedRawMessages()
@@ -78,26 +83,30 @@ class SmsIngestService : Service() {
                         }
                     }
 
-                    val cloud = when {
-                        SupabaseConfigProvider.fromBuildConfig() == null -> " (cloud sync not configured)"
-                        settingsRepo.getSupabaseSession() == null -> " (sign in to sync)"
-                        totalPending > 0 && !NetworkMonitor.isOnline(applicationContext) -> {
-                            settingsRepo.markPendingSyncNotification()
-                            SyncNotificationHelper.notifyOfflineQueued(
-                                context = applicationContext,
-                                transactionCount = pendingTransactions,
-                                rawMessageCount = pendingRawMessages
-                            )
-                            " (no internet, sync queued)"
-                        }
-                        totalPending > 0 -> " (cloud sync scheduled)"
-                        else -> ""
+                    if (SupabaseConfigProvider.fromBuildConfig() != null &&
+                        settingsRepo.getSupabaseSession() != null &&
+                        totalPending > 0 && !NetworkMonitor.isOnline(applicationContext)
+                    ) {
+                        settingsRepo.markPendingSyncNotification()
+                        SyncNotificationHelper.notifyOfflineQueued(
+                            context = applicationContext,
+                            transactionCount = pendingTransactions,
+                            rawMessageCount = pendingRawMessages
+                        )
                     }
-                    updateNotification("Done! Found $inserted new transactions.$cloud")
+                    if (inserted > 0) {
+                        val banks = insertedTxs.map { com.financeapp.ui.kash.components.kashBank(it.bankName).shortName }.distinct()
+                        val from = when (banks.size) {
+                            1 -> "From ${banks[0]}."
+                            2 -> "From ${banks[0]} and ${banks[1]}."
+                            else -> "From ${banks.dropLast(1).joinToString(", ")} and ${banks.last()}."
+                        }
+                        postResult(if (inserted == 1) "Found 1 new transaction" else "Found $inserted new transactions", from)
+                    }
                 }
             } catch (e: Exception) {
                 ErrorLogRepository.fromContext(applicationContext).log("SMS ingest failed", e)
-                updateNotification("Scan failed (see Settings > Errors).")
+                postResult("Couldn't read your SMS", "Pull down on Home to try again.")
             } finally {
                 stopSelf(startId)
             }
@@ -113,28 +122,49 @@ class SmsIngestService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, "SMS Sync", NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID, "Reading bank SMS", NotificationManager.IMPORTANCE_LOW
             )
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
     }
 
-    private fun buildNotification(text: String): Notification =
+    /** "Reading your bank SMS…" with a progress bar once the count is known. */
+    private fun buildNotification(done: Int = 0, total: Int = 0): Notification =
         NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Finance App")
-            .setContentText(text)
+            .setContentTitle("Reading your bank SMS…")
             .setSmallIcon(com.financeapp.R.drawable.ic_stat_kash)
+            .setColor(0xFF3D4859.toInt())
+            .setProgress(total, done, total == 0)
             .setOngoing(true)
             .build()
 
-    private fun updateNotification(text: String) {
+    private fun updateProgress(done: Int, total: Int) {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIF_ID, buildNotification(text))
+        nm.notify(NOTIF_ID, buildNotification(done, total))
+    }
+
+    /** The scan's outcome, as its own notification (the progress one goes with the service). */
+    private fun postResult(title: String, text: String) {
+        val open = android.app.PendingIntent.getActivity(
+            this, RESULT_ID,
+            Intent(this, com.financeapp.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setSmallIcon(com.financeapp.R.drawable.ic_stat_kash)
+            .setColor(0xFF3D4859.toInt())
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(RESULT_ID, n)
     }
 
     companion object {
         private const val CHANNEL_ID = "sms_sync_channel"
         private const val NOTIF_ID   = 1001
+        private const val RESULT_ID  = 1002
 
         fun start(context: Context) {
             val intent = Intent(context, SmsIngestService::class.java)

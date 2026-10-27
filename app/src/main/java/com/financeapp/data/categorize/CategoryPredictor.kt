@@ -99,6 +99,8 @@ class CategoryPredictor(
 
     private fun typeFallback(type: String?): String? = when (type) {
         TransactionType.CREDIT.name -> "Income"
+        // Moves between the user's own accounts: never spending (Spending.kt).
+        TransactionType.INTERNAL_TRANSFER.name -> com.financeapp.data.model.Spending.OWN_ACCOUNTS
         // We intentionally do NOT auto-tag TRANSFER_OUT/PAYMENT as "Transfer"
         // here — the user often sends money to friends (which they call
         // "Loan") or pays rent via transfer. The transfer flag-banner in

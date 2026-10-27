@@ -20,10 +20,10 @@ object SyncNotificationHelper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Cloud Sync",
+                "Backups and reviews",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Cloud sync status and completion updates"
+                description = "Transactions to sort and backup updates"
             }
             context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
@@ -31,55 +31,37 @@ object SyncNotificationHelper {
 
     fun notifyOfflineQueued(context: Context, transactionCount: Int, rawMessageCount: Int = 0) {
         ensureChannel(context)
-        val total = transactionCount + rawMessageCount
         notify(
             context = context,
             id = OFFLINE_ID,
-            title = "Cloud sync pending",
-            text = when {
-                total <= 0 -> "Cloud data is saved locally and will sync when internet returns."
-                transactionCount > 0 && rawMessageCount > 0 ->
-                    "$transactionCount transactions and $rawMessageCount raw messages are saved locally and will sync when internet returns."
-                transactionCount > 0 && transactionCount == 1 ->
-                    "1 transaction is saved locally and will sync when internet returns."
-                transactionCount > 0 ->
-                    "$transactionCount transactions are saved locally and will sync when internet returns."
-                rawMessageCount == 1 ->
-                    "1 raw message is saved locally and will sync when internet returns."
-                else ->
-                    "$rawMessageCount raw messages are saved locally and will sync when internet returns."
+            title = "Waiting for internet to back up",
+            text = when (transactionCount) {
+                0 -> "Your transactions are safe on this phone. They'll back up when you're online."
+                1 -> "1 transaction is safe on this phone. It'll back up when you're online."
+                else -> "$transactionCount transactions are safe on this phone. They'll back up when you're online."
             }
         )
     }
 
     fun notifySynced(context: Context, transactionCount: Int, rawMessageCount: Int = 0) {
         ensureChannel(context)
-        val total = transactionCount + rawMessageCount
         notify(
             context = context,
             id = SYNCED_ID,
-            title = "Cloud sync complete",
-            text = when {
-                total <= 0 -> "Pending cloud data was synced to Supabase."
-                transactionCount > 0 && rawMessageCount > 0 ->
-                    "$transactionCount transactions and $rawMessageCount raw messages were synced to Supabase."
-                transactionCount > 0 && transactionCount == 1 ->
-                    "1 pending transaction was synced to Supabase."
-                transactionCount > 0 ->
-                    "$transactionCount pending transactions were synced to Supabase."
-                rawMessageCount == 1 ->
-                    "1 raw message was synced to Supabase."
-                else ->
-                    "$rawMessageCount raw messages were synced to Supabase."
+            title = "Backed up",
+            text = when (transactionCount) {
+                0 -> "Everything on this phone is in your Kash account."
+                1 -> "Your new transaction is in your Kash account."
+                else -> "Your $transactionCount new transactions are in your Kash account."
             }
         )
     }
 
+    /** "4 new transactions to sort" → opens Review (the old Categorize Today). */
     fun notifyCategorizeToday(context: Context, userName: String, transactionCount: Int) {
         if (transactionCount <= 0) return
 
         ensureChannel(context)
-        val text = "Hey ${userName.ifBlank { "there" }}, you've had $transactionCount transaction${if (transactionCount == 1) "" else "s"} today, let's categorize them."
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(MainActivity.EXTRA_DESTINATION_ROUTE, CATEGORY_ROUTE)
@@ -94,9 +76,10 @@ object SyncNotificationHelper {
         notify(
             context = context,
             id = CATEGORIZE_ID,
-            title = "Categorize today's transactions",
-            text = text,
-            pendingIntent = pendingIntent
+            title = if (transactionCount == 1) "1 new transaction to sort" else "$transactionCount new transactions to sort",
+            text = "Takes about 30 seconds. Tap to start your review.",
+            pendingIntent = pendingIntent,
+            action = "Review now"
         )
     }
 
@@ -105,7 +88,8 @@ object SyncNotificationHelper {
         id: Int,
         title: String,
         text: String,
-        pendingIntent: PendingIntent? = null
+        pendingIntent: PendingIntent? = null,
+        action: String? = null
     ) {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_kash)
@@ -114,7 +98,9 @@ object SyncNotificationHelper {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setColor(0xFF3D4859.toInt())
             .setContentIntent(pendingIntent)
+            .apply { if (action != null && pendingIntent != null) addAction(0, action, pendingIntent) }
             .build()
 
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

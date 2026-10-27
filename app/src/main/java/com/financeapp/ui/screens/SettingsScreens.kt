@@ -405,7 +405,7 @@ fun BanksFollowedPage(sources: List<SmsSource>, onToggle: (String, Boolean) -> U
                     }
                 }
                 Text(
-                    "Kash stops reading new SMS from a bank you switch off, and leaves it out of your lists.",
+                    "Kash stops reading new SMS from a bank you switch off. Turn it back on any time.",
                     style = KashType.Caption, color = KashColors.InkMuted, modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
