@@ -1,5 +1,6 @@
 package com.financeapp
 
+import com.financeapp.security.PinManager
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -25,6 +26,11 @@ class MainActivity : ComponentActivity() {
     private var hasSmsAccess by mutableStateOf(false)
     private var pendingRoute by mutableStateOf<String?>(null)
 
+    // App PIN: locked on every cold start and after > RELOCK_AFTER_MS in the
+    // background. AppNavigation only shows the lock screen when a PIN exists.
+    private var isLocked by mutableStateOf(true)
+    private var backgroundedAt = 0L
+
     private val requiredPermissions = buildList {
         add(Manifest.permission.READ_SMS)
         add(Manifest.permission.RECEIVE_SMS)
@@ -43,6 +49,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Rotation / theme change recreates the activity — don't re-lock for that.
+        isLocked = savedInstanceState?.getBoolean(STATE_LOCKED, true) ?: true
         pendingRoute = intent?.getStringExtra(EXTRA_DESTINATION_ROUTE)
 
         val db   = AppDatabase.getInstance(this)
@@ -60,7 +68,9 @@ class MainActivity : ComponentActivity() {
                     hasSmsAccess = hasSmsAccess,
                     requestSmsAccess = ::checkAndRequestPermissions,
                     pendingRoute = pendingRoute,
-                    onPendingRouteHandled = { pendingRoute = null }
+                    onPendingRouteHandled = { pendingRoute = null },
+                    isLocked = isLocked,
+                    onUnlocked = { isLocked = false }
                 )
             }
         }
@@ -93,8 +103,24 @@ class MainActivity : ComponentActivity() {
         pendingRoute = intent.getStringExtra(EXTRA_DESTINATION_ROUTE)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(STATE_LOCKED, isLocked)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) backgroundedAt = System.currentTimeMillis()
+    }
+
     override fun onStart() {
         super.onStart()
+        if (backgroundedAt > 0L &&
+            System.currentTimeMillis() - backgroundedAt > PinManager.RELOCK_AFTER_MS
+        ) {
+            isLocked = true
+        }
+        backgroundedAt = 0L
         refreshPermissionState()
         if (hasSmsAccess) {
             SmsIngestService.start(this)
@@ -121,5 +147,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_DESTINATION_ROUTE = "destination_route"
+        private const val STATE_LOCKED = "pin_locked"
     }
 }

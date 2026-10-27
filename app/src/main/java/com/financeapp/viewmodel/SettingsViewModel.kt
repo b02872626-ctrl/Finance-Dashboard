@@ -76,6 +76,7 @@ class SettingsViewModel(
     fun addCustomCategory(name: String): String? = repo.addCustomCategory(name)
 
     fun signOut() {
+        repo.clearPin()
         repo.clearPendingSyncNotification()
         repo.clearSupabaseSession()
     }

@@ -75,6 +75,7 @@ fun SettingsScreen(
     onEditAccount: () -> Unit = {},
     onAccountSecurity: () -> Unit = {},
     onNotificationPreferences: () -> Unit = {},
+    onChangePin: () -> Unit = {},
     onConnectedBanks: () -> Unit = onBack,
     onSupport: () -> Unit = {},
     onToggleTheme: () -> Unit = {}
@@ -115,6 +116,7 @@ fun SettingsScreen(
                 connectedBankCount = connectedBankCount,
                 onAccountSecurity = onAccountSecurity,
                 onNotifications = onNotificationPreferences,
+                onChangePin = onChangePin,
                 onConnectedBanks = onConnectedBanks,
                 onSupport = onSupport
             )
@@ -359,6 +361,7 @@ private fun PreferencesList(
     connectedBankCount: Int,
     onAccountSecurity: () -> Unit,
     onNotifications: () -> Unit,
+    onChangePin: () -> Unit,
     onConnectedBanks: () -> Unit,
     onSupport: () -> Unit
 ) {
@@ -378,6 +381,13 @@ private fun PreferencesList(
             title = "Notification Preferences",
             subtitle = "Transaction alerts",
             onClick = onNotifications
+        )
+        ThinDivider()
+        PreferenceRow(
+            tileVariant = TileVariant.PreStyled(R.drawable.ic_account_security),
+            title = "Change PIN",
+            subtitle = "4-digit PIN to open Kash",
+            onClick = onChangePin
         )
         ThinDivider()
         PreferenceRow(

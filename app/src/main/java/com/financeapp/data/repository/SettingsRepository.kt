@@ -11,7 +11,11 @@ import kotlinx.coroutines.flow.map
 import com.financeapp.remote.SupabaseSession
 
 class SettingsRepository(context: Context) {
+    private val appContext: Context = context.applicationContext
     private val prefs: SharedPreferences = context.getSharedPreferences("finance_settings", Context.MODE_PRIVATE)
+
+    /** Removes the app PIN (log out / forgot PIN). The next sign-in asks for a new one. */
+    fun clearPin() = com.financeapp.security.PinManager(appContext).clear()
 
     fun getUserName(): String = prefs.getString("user_name", "") ?: ""
     fun setUserName(name: String) = prefs.edit().putString("user_name", name).apply()

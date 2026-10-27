@@ -104,10 +104,14 @@ fun AppNavigation(
     hasSmsAccess: Boolean,
     requestSmsAccess: () -> Unit,
     pendingRoute: String? = null,
-    onPendingRouteHandled: () -> Unit = {}
+    onPendingRouteHandled: () -> Unit = {},
+    isLocked: Boolean = false,
+    onUnlocked: () -> Unit = {}
 ) {
     val setVm: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(settingsRepo, repo))
     val userName by setVm.userName.collectAsState()
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val pinManager = remember { com.financeapp.security.PinManager(appContext) }
     val isSupabaseSignedIn by settingsRepo.isSupabaseSignedInFlow()
         .collectAsState(initial = settingsRepo.getSupabaseSession() != null)
     val onboardingComplete by settingsRepo.onboardingCompleteFlow()
@@ -137,6 +141,28 @@ fun AppNavigation(
             transactions = transactions,
             onRequestSmsAccess = requestSmsAccess,
             onFinish = { settingsRepo.setOnboardingComplete(true) }
+        )
+        return
+    }
+
+    // App PIN. Re-read whenever sign-in state flips (log out / forgot PIN
+    // clear it, so the next sign-in lands on "Create a PIN").
+    var hasPin by remember(isSupabaseSignedIn) { mutableStateOf(pinManager.hasPin()) }
+    if (!hasPin) {
+        com.financeapp.ui.screens.PinSetupScreen(
+            pinManager = pinManager,
+            onDone = { hasPin = true; onUnlocked() }
+        )
+        return
+    }
+    if (isLocked) {
+        com.financeapp.ui.screens.PinLockScreen(
+            pinManager = pinManager,
+            onUnlocked = onUnlocked,
+            onForgot = {
+                setVm.signOut()      // clears PIN + session → sign-in screen
+                onUnlocked()
+            }
         )
         return
     }
@@ -430,6 +456,7 @@ private fun MainNavigation(
                     onEditAccount = { navController.navigate("profile_edit") },
                     onAccountSecurity = { navController.navigate("profile_security") },
                     onNotificationPreferences = { navController.navigate("profile_notifications") },
+                    onChangePin = { navController.navigate("profile_pin") },
                     onConnectedBanks = {
                         navController.navigate(Screen.Accounts.route) { launchSingleTop = true }
                     },
@@ -441,6 +468,15 @@ private fun MainNavigation(
             }
             composable("profile_security") {
                 AccountSecurityScreen(vm = setVm, onBack = { navController.popBackStack() })
+            }
+            composable("profile_pin") {
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                val pm = remember { com.financeapp.security.PinManager(ctx) }
+                com.financeapp.ui.screens.ChangePinScreen(
+                    pinManager = pm,
+                    onDone = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable("profile_notifications") {
                 NotificationPreferencesScreen(vm = setVm, onBack = { navController.popBackStack() })

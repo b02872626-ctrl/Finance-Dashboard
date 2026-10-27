@@ -193,6 +193,7 @@ class SupabaseSyncer(private val context: Context) {
 
             AppDatabase.getInstance(context).clearAllTables()
             settingsRepo.clearAllExceptSession()
+            settingsRepo.clearPin()
             settingsRepo.clearSupabaseSession()
         }.onFailure { e ->
             ErrorLogRepository.fromContext(context).log("Account deletion failed", e)
