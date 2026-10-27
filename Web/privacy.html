@@ -6,42 +6,38 @@
   <title>Privacy Policy · Kash</title>
   <meta name="description" content="How the Kash app and web dashboard collect, use and protect your data." />
   <style>
-    /* Same tokens as Web/styles.css so the page matches the app. */
+    /* Kash tokens (design/kash-ui-handoff), matching the app and dashboard. */
     :root {
-      --page-bg: #0E1614;
-      --card-bg: #231E1A;
-      --headline: #7FE3CB;
-      --coral: #FB5D53;
-      --body: #E6E1D8;
-      --body-muted: #B7B3AC;
-      --divider: rgba(127, 227, 203, 0.15);
+      --slate: #3D4859; --sand: #E9DFC6; --on-slate: #FFFFFF; --on-slate-muted: #C6CDD8;
+      --surface: #F4F5F7; --raised: #FFFFFF; --line: #E1E4E9; --handle: #CBD0D8;
+      --ink: #222A36; --ink-muted: #5F6877;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--page-bg); color: var(--body); }
-    body {
-      font-family: "Google Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-      font-size: 16px;
-      line-height: 1.6;
-    }
+    html, body { margin: 0; background: var(--slate); color: var(--ink); }
+    body { font-family: Figtree, system-ui, sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    .top { max-width: 720px; margin: 0 auto; padding: 28px 16px 64px; color: var(--on-slate); }
+    .top a { color: var(--on-slate); text-decoration: none; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+    .sheet { background: var(--surface); border-radius: 28px 28px 0 0; position: relative; min-height: 60vh; }
+    .sheet::before { content: ""; position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--handle); }
     main { max-width: 720px; margin: 0 auto; padding: 40px 16px 80px; }
-    h1 { color: var(--headline); font-size: 32px; line-height: 1.2; margin: 0 0 6px; }
-    h2 { color: var(--headline); font-size: 20px; margin: 36px 0 8px; }
-    p, li { color: var(--body); }
-    .muted { color: var(--body-muted); font-size: 14px; }
-    .summary {
-      background: var(--card-bg);
-      border-radius: 20px;
-      padding: 18px 20px;
-      margin: 24px 0 8px;
-    }
+    h1 { color: var(--ink); font-size: 32px; line-height: 1.12; letter-spacing: -0.035em; margin: 0 0 6px; }
+    h2 { color: var(--ink); font-size: 18px; letter-spacing: -0.02em; margin: 36px 0 8px; }
+    p, li { color: var(--ink); }
+    .muted { color: var(--ink-muted); font-size: 14px; }
+    .summary { background: var(--raised); border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; margin: 24px 0 8px; }
     .summary ul { margin: 8px 0 0; padding-left: 20px; }
     ul { padding-left: 22px; }
     li { margin: 4px 0; }
-    a { color: var(--headline); }
-    hr { border: 0; border-top: 1px solid var(--divider); margin: 40px 0 16px; }
+    a { color: var(--ink); }
+    hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0 16px; }
   </style>
-</head>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" />
+    </head>
 <body>
+  <div class="top"><a href="/download">kash</a></div>
+  <div class="sheet">
   <main>
     <h1>Privacy Policy</h1>
     <p class="muted">Kash · Effective October 30, 2026</p>
@@ -108,5 +104,6 @@
     <hr />
     <p class="muted">Questions? <a href="mailto:nahusenaygebreamlak@gmail.com">nahusenaygebreamlak@gmail.com</a></p>
   </main>
+  </div>
 </body>
 </html>

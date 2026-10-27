@@ -4,17 +4,18 @@
    ========================================================================= */
 
 :root {
-  --page-bg: #0E1614;
-  --card-bg: #231E1A;
-  --inner-dark: #15110F;
-  --tile-bg: #302A25;
-  --tile-border: #353535;
-  --headline: #7FE3CB;
-  --coral: #FB5D53;
-  --green-income: #4CD495;
-  --body-muted: #B7B3AC;
-  --footer-grey: #7C7872;
-  --divider: rgba(127, 227, 203, 0.15);
+  /* Kash tokens, same mapping as ../styles.css. */
+  --page-bg: #F4F5F7;
+  --card-bg: #FFFFFF;
+  --inner-dark: #E7EAEF;
+  --tile-bg: #E7EAEF;
+  --tile-border: #E1E4E9;
+  --headline: #222A36;
+  --coral: #A3412F;
+  --green-income: #3E7A4A;
+  --body-muted: #5F6877;
+  --footer-grey: #7D8594;
+  --divider: #E1E4E9;
 }
 
 * { box-sizing: border-box; }
@@ -24,7 +25,7 @@ html, body {
   padding: 0;
   background: var(--page-bg);
   color: var(--headline);
-  font-family: "Google Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  font-family: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
@@ -52,7 +53,7 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   margin-left: 8px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(251, 93, 83, 0.12);
+  background: rgba(163, 65, 47, 0.12);
   color: var(--coral);
   font-size: 11px;
   font-weight: 600;
@@ -156,7 +157,7 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   cursor: pointer;
   transition: background 120ms ease;
 }
-.btn-ghost:hover { background: rgba(127, 227, 203, 0.06); }
+.btn-ghost:hover { background: rgba(61, 72, 89, 0.06); }
 
 .btn-secondary {
   background: var(--tile-bg);
@@ -170,8 +171,8 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
 
 .error {
   color: var(--coral);
-  background: rgba(251, 93, 83, 0.08);
-  border: 1px solid rgba(251, 93, 83, 0.3);
+  background: rgba(163, 65, 47, 0.08);
+  border: 1px solid rgba(163, 65, 47, 0.3);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 13px;
@@ -264,7 +265,7 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   cursor: pointer;
   transition: background 120ms ease;
 }
-.hbar-row:hover { background: rgba(127, 227, 203, 0.06); }
+.hbar-row:hover { background: rgba(61, 72, 89, 0.06); }
 .hbar-label {
   font-size: 13px;
   color: var(--headline);
@@ -342,7 +343,7 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   cursor: pointer;
   transition: background 120ms ease;
 }
-.users-table tbody tr:hover { background: rgba(127, 227, 203, 0.04); }
+.users-table tbody tr:hover { background: rgba(61, 72, 89, 0.04); }
 .users-table tbody tr:last-child { border-bottom: none; }
 .users-table tbody td { padding: 12px 20px; color: var(--headline); vertical-align: middle; }
 
@@ -356,7 +357,7 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   height: 8px;
   border-radius: 50%;
   background: var(--green-income);
-  box-shadow: 0 0 0 2px rgba(76, 212, 149, 0.18);
+  box-shadow: none;
   margin-right: 6px;
   vertical-align: middle;
 }
@@ -427,7 +428,7 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   border-radius: 50%;
   background: var(--body-muted);
 }
-.session-row.live .marker { background: var(--green-income); box-shadow: 0 0 0 2px rgba(76, 212, 149, 0.18); }
+.session-row.live .marker { background: var(--green-income); box-shadow: none; }
 .session-row .time { color: var(--body-muted); }
 .session-row .dur { font-variant-numeric: tabular-nums; color: var(--headline); font-weight: 600; }
 .session-row .client {
@@ -447,9 +448,9 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   letter-spacing: 0.8px;
   padding: 2px 6px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(34, 42, 54, 0.08);
   color: var(--body-muted);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(34, 42, 54, 0.02);
 }
 .version-client-web     { color: #7BD0E5; border-color: rgba(123, 208, 229, 0.3); background: rgba(123, 208, 229, 0.06); }
 .version-client-android { color: #4FB99F; border-color: rgba(79, 185, 159, 0.3); background: rgba(79, 185, 159, 0.06); }
