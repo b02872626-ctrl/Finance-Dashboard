@@ -99,8 +99,9 @@ object KashDates {
         if (ethiopian(cal)) {
             val e = EthiopianCalendar.fromMillis(ms)
             val start = startOfDay(ms) - (e.day - 1) * DAY
-            // Walk forward to the next month's first day (handles Pagume).
-            var end = start + 28 * DAY
+            // Walk forward day by day to the next month's first day, so
+            // Pagume ends after its 5 (or 6) days instead of a fixed 28.
+            var end = start
             while (EthiopianCalendar.fromMillis(end + DAY / 2).month == e.month) end += DAY
             return start to startOfDay(end + DAY / 2)
         }
