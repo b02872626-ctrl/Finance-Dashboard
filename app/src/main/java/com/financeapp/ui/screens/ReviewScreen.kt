@@ -1,6 +1,34 @@
 package com.financeapp.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
+import com.financeapp.ui.kash.animatedAmount
+import com.financeapp.ui.kash.rememberReducedMotion
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -119,6 +147,30 @@ fun ReviewScreen(
     }
     var newCategoryOpen by remember { mutableStateOf(false) }
 
+    // Swipe: the card follows the finger; right confirms, left skips. Each
+    // card gets its own offset so the next one starts centred.
+    val reduced = rememberReducedMotion()
+    val scope = rememberCoroutineScope()
+    val swipe = remember(current?.id) { Animatable(0f) }
+    var cardWidth by remember { mutableFloatStateOf(1f) }
+    var flying by remember(current?.id) { mutableStateOf(false) }
+    fun fly(direction: Int, then: () -> Unit) {
+        if (flying) return
+        flying = true
+        if (reduced) { then(); return }
+        scope.launch {
+            swipe.animateTo(direction * cardWidth * 1.3f, tween(220))
+            then()
+            // Still the same card (the "label all" question opened, say):
+            // bring it back. A new card has its own offset, so this is a no-op then.
+            delay(600)
+            swipe.animateTo(0f, spring(dampingRatio = 0.7f))
+            flying = false
+        }
+    }
+    val confirm: (String) -> Unit = { cat -> haptic(Haptic.CONFIRM); fly(1) { vm.pickCategory(cat, advance = true) } }
+    val skip: () -> Unit = { haptic(Haptic.TAP); fly(-1) { vm.skip() } }
+
     val total = state.totalToday.coerceAtLeast(state.doneToday)
     val position = (state.doneToday + if (state.complete || current == null) 0 else 1).coerceAtMost(total)
 
@@ -152,7 +204,26 @@ fun ReviewScreen(
                     Modifier.weight(1f).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
-                    ReviewCard(current, onLongPress = { haptic(Haptic.LONG); vm.openDetailSheet() })
+                    SwipeableReviewCard(
+                        tx = current,
+                        offset = swipe,
+                        selected = selected,
+                        reduced = reduced,
+                        onWidth = { cardWidth = it },
+                        onLongPress = { haptic(Haptic.LONG); vm.openDetailSheet() },
+                        onCrossed = { haptic(Haptic.TAP) },
+                        onRelease = { dx ->
+                            val line = cardWidth * 0.35f
+                            when {
+                                dx > line && selected != null -> confirm(selected!!)
+                                dx < -line -> skip()
+                                else -> {
+                                    scope.launch { swipe.animateTo(0f, spring(dampingRatio = 0.6f)) }
+                                    if (dx > line) vm.openPickerSheet()
+                                }
+                            }
+                        },
+                    )
                     CategoryChoice(
                         tx = current,
                         userName = userName,
@@ -163,13 +234,19 @@ fun ReviewScreen(
                         onMore = vm::openPickerSheet,
                     )
                 }
-                state.snackbar?.let {
-                    KashSnackbar(it.text, Modifier.fillMaxWidth().padding(bottom = 10.dp), action = "Undo", onAction = vm::undo)
+                AnimatedVisibility(
+                    state.snackbar != null,
+                    enter = fadeIn() + slideInVertically { it / 2 },
+                    exit = fadeOut(),
+                ) {
+                    var last by remember { mutableStateOf("") }
+                    state.snackbar?.let { last = it.text }
+                    KashSnackbar(last, Modifier.fillMaxWidth().padding(bottom = 10.dp), action = "Undo", onAction = vm::undo)
                 }
                 ReviewButtons(
                     selected = selected,
-                    onSkip = { haptic(Haptic.TAP); vm.skip() },
-                    onConfirm = { cat -> haptic(Haptic.CONFIRM); vm.pickCategory(cat, advance = true) },
+                    onSkip = skip,
+                    onConfirm = confirm,
                     onPick = vm::openPickerSheet,
                 )
             }
@@ -238,6 +315,83 @@ private fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
         .map { it.lowercase(Locale.US).trim() }
         .filter { it.length >= 4 }
         .any { it in cpLow }
+}
+
+/**
+ * The review card on a leash: drag it sideways and it tilts with you, a
+ * label says what letting go will do, past 35% of its width it goes. A new
+ * card rises into place from slightly smaller.
+ */
+@Composable
+private fun SwipeableReviewCard(
+    tx: TransactionEntity,
+    offset: Animatable<Float, AnimationVector1D>,
+    selected: String?,
+    reduced: Boolean,
+    onWidth: (Float) -> Unit,
+    onLongPress: () -> Unit,
+    onCrossed: () -> Unit,
+    onRelease: (Float) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var width by remember { mutableFloatStateOf(1f) }
+    val rise = remember(tx.id) { Animatable(if (reduced) 1f else 0f) }
+    LaunchedEffect(tx.id) { if (!reduced) rise.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)) }
+    val progress = (offset.value / (width * 0.35f)).coerceIn(-1f, 1f)
+    // A tick when the drag crosses the line, either way.
+    val armed = kotlin.math.abs(progress) >= 1f
+    LaunchedEffect(armed) { if (armed) onCrossed() }
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f); onWidth(width) }
+            .graphicsLayer {
+                val s = 0.95f + 0.05f * rise.value
+                scaleX = s; scaleY = s
+                translationY = (1f - rise.value) * 16.dp.toPx()
+                translationX = offset.value
+                rotationZ = offset.value / width * 8f
+                alpha = (0.6f + 0.4f * rise.value) * (1f - (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) * 0.6f)
+            }
+            .pointerInput(tx.id) {
+                val tracker = VelocityTracker()
+                detectHorizontalDragGestures(
+                    onDragStart = { tracker.resetTracking() },
+                    onDragEnd = {
+                        val v = tracker.calculateVelocity().x
+                        // A quick flick counts even before the line.
+                        val dx = offset.value + if (kotlin.math.abs(v) > 1800f) v * 0.2f else 0f
+                        onRelease(dx)
+                    },
+                    onDragCancel = { scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.6f)) } },
+                ) { change, dx ->
+                    change.consume()
+                    tracker.addPosition(change.uptimeMillis, change.position)
+                    scope.launch { offset.snapTo(offset.value + dx) }
+                }
+            },
+    ) {
+        ReviewCard(tx, onLongPress)
+        if (progress != 0f) {
+            val right = progress > 0
+            Box(
+                Modifier.matchParentSize().padding(18.dp),
+                contentAlignment = if (right) Alignment.CenterStart else Alignment.CenterEnd,
+            ) {
+                Text(
+                    if (right) (selected?.let { "Confirm as $it" } ?: "Pick a category") else "Skip",
+                    style = KashType.LabelL,
+                    color = if (right) KashColors.OnSlate else KashColors.Ink,
+                    modifier = Modifier
+                        .graphicsLayer { alpha = kotlin.math.abs(progress); rotationZ = if (right) -6f else 6f }
+                        .clip(KashShapes.Chip)
+                        .background(if (right) KashColors.MoneyIn else KashColors.Well)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -322,7 +476,7 @@ private fun CategoryChoice(
                 .take(4)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            chips.forEach { c -> KashChip(c, c == selected, { onSelect(c) }) }
+            chips.forEach { c -> KashChip(c, c == selected, { onSelect(c) }, checkWhenSelected = true) }
             KashChip("More", false, onMore, trailing = KashIcon.ChevronRight)
         }
     }
@@ -360,10 +514,7 @@ private fun DoneView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(
-                Modifier.size(64.dp).clip(KashShapes.Control).background(KashColors.Slate),
-                contentAlignment = Alignment.Center,
-            ) { KashIconView(KashIcon.Check, size = 26.dp, tint = KashColors.OnSlate) }
+            DrawnCheck()
             Spacer(Modifier.height(20.dp))
             Text("All caught up", style = KashType.TitleM, color = KashColors.Ink)
             Text(
@@ -371,7 +522,7 @@ private fun DoneView(
                     state.scope == ReviewScope.ALL -> "Every transaction has a category now."
                     state.totalToday == 0 -> "Nothing new today.\nWe'll nudge you when new SMS arrive."
                     state.totalToday == 1 -> "Today's transaction is sorted.\nWe'll nudge you when new SMS arrive."
-                    else -> "Today's ${state.totalToday} transactions are sorted.\nWe'll nudge you when new SMS arrive."
+                    else -> "Today's ${animatedAmount(state.totalToday.toDouble()).roundToInt()} transactions are sorted.\nWe'll nudge you when new SMS arrive."
                 },
                 style = KashType.BodyL, color = KashColors.InkMuted, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp),
@@ -389,6 +540,39 @@ private fun DoneView(
             }
         }
         KashButton("Back to home", onHome, Modifier.fillMaxWidth())
+    }
+}
+
+/** The done tile: pops in, then its check draws itself. */
+@Composable
+private fun DrawnCheck() {
+    val reduced = rememberReducedMotion()
+    val pop = remember { Animatable(if (reduced) 1f else 0.6f) }
+    val draw = remember { Animatable(if (reduced) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (reduced) return@LaunchedEffect
+        launch { pop.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow)) }
+        delay(120)
+        draw.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
+    }
+    Box(
+        Modifier
+            .size(64.dp)
+            .graphicsLayer { scaleX = pop.value; scaleY = pop.value }
+            .clip(KashShapes.Control)
+            .background(KashColors.Slate)
+            .semantics { contentDescription = "Done" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(26.dp)) {
+            // The Check icon's path (24-unit grid): 20,6 → 9,17 → 4,12, drawn from the short end.
+            val u = size.width / 24f
+            val path = Path().apply { moveTo(4 * u, 12 * u); lineTo(9 * u, 17 * u); lineTo(20 * u, 6 * u) }
+            val measure = PathMeasure().apply { setPath(path, false) }
+            val part = Path()
+            measure.getSegment(0f, measure.length * draw.value, part, true)
+            drawPath(part, KashColors.OnSlate, style = Stroke(width = 2.4f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
     }
 }
 
@@ -546,14 +730,27 @@ private fun ApplyAllDialog(
     onDismiss: () -> Unit,
 ) {
     val cal = LocalCalendarSystem.current
+    val reduced = rememberReducedMotion()
+    val scope = rememberCoroutineScope()
+    // "Label all": the rows flash sand as they take the label, then the dialog goes.
+    val flash = remember { Animatable(0f) }
+    val labelAll = {
+        if (reduced) onAll() else scope.launch {
+            flash.animateTo(1f, tween(140))
+            flash.animateTo(0f, tween(260))
+            onAll()
+        }
+        Unit
+    }
     KashDialog(
         title = "Put all $total in $category?",
         description = "Kash found $total transactions with $name. Kash can label them together.",
         onDismiss = onDismiss,
     ) {
         Column {
-            samples.take(3).forEach { tx ->
+            samples.take(3).forEachIndexed { i, tx ->
                 KashTransactionRow(
+                    modifier = Modifier.background(KashColors.Sand.copy(alpha = 0.55f * flash.value), KashShapes.Field),
                     name = tx.displayName(),
                     amount = tx.amount,
                     direction = tx.kashDirection(),
@@ -569,7 +766,7 @@ private fun ApplyAllDialog(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            KashButton("Label all $total", onAll, Modifier.fillMaxWidth())
+            KashButton("Label all $total", labelAll, Modifier.fillMaxWidth())
             KashButton("Just this one", onJustOne, Modifier.fillMaxWidth(), KashButtonVariant.Quiet)
         }
     }

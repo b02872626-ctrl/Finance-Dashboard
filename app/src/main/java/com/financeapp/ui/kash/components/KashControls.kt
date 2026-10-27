@@ -1,6 +1,14 @@
 package com.financeapp.ui.kash.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -178,13 +186,19 @@ fun KashChip(
     leading: KashIcon? = null,
     trailing: KashIcon? = null,
     dashed: Boolean = false,
+    /** Show a check that scales in while selected (category choices). */
+    checkWhenSelected: Boolean = false,
 ) {
-    val (bg, line, fg) = when {
+    val (bgTarget, lineTarget, fgTarget) = when {
         onSlate && selected -> Triple(KashColors.Sand, KashColors.Sand, KashColors.SlateInk)
         onSlate -> Triple(KashColors.GhostFill, KashColors.GhostLine, KashColors.OnSlate)
         selected -> Triple(KashColors.Slate, KashColors.Slate, KashColors.OnSlate)
         else -> Triple(KashColors.SurfaceRaised, KashColors.Line, KashColors.Ink)
     }
+    // Selection fills in rather than snapping.
+    val bg by animateColorAsState(bgTarget, tween(160), label = "chipBg")
+    val line by animateColorAsState(lineTarget, tween(160), label = "chipLine")
+    val fg by animateColorAsState(fgTarget, tween(160), label = "chipFg")
     Row(
         modifier = modifier
             .kashClickable(role = Role.Button, onClick = onClick)
@@ -201,6 +215,13 @@ fun KashChip(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (leading != null) KashIconView(leading, size = 16.dp, tint = if (dashed) KashColors.InkMuted else fg)
+        if (checkWhenSelected) {
+            AnimatedVisibility(
+                selected,
+                enter = expandHorizontally() + scaleIn(spring(dampingRatio = 0.5f)) + fadeIn(),
+                exit = shrinkHorizontally() + fadeOut(),
+            ) { KashIconView(KashIcon.Check, size = 16.dp, tint = fg, strokeWidth = 2.4f) }
+        }
         Text(
             text,
             style = KashType.Label,

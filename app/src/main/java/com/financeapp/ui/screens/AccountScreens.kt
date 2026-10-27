@@ -321,7 +321,7 @@ fun AccountDetailScreen(
                     listOfNotNull("Balance", last4?.let { "•••• $it" }).joinToString(" · "),
                     style = KashType.Body.num(), color = KashColors.OnSlateMuted,
                 )
-                KashFigure(state.totalBalance, Modifier.padding(top = 4.dp))
+                KashFigure(state.totalBalance, Modifier.padding(top = 4.dp), countUp = true)
             }
         },
     ) { pad ->

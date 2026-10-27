@@ -65,8 +65,11 @@ fun KashFigure(
     currency: String = "ETB",
     showDecimals: Boolean = true,
     hidden: Boolean = false,
+    /** Roll from the previous figure (from 0 on first load). For totals, not single transactions. */
+    countUp: Boolean = false,
 ) {
-    val formatted = KashMoney.amount(value)
+    val shown = if (countUp && !hidden) com.financeapp.ui.kash.animatedAmount(value) else value
+    val formatted = KashMoney.amount(shown)
     val whole = formatted.substringBefore('.')
     val decimals = "." + formatted.substringAfter('.')
     val unitStyle = KashType.FigureUnit.toSpanStyle().copy(color = unitColor)

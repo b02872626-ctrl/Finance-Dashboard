@@ -1,5 +1,14 @@
 package com.financeapp.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import com.financeapp.ui.kash.rememberReducedMotion
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -67,7 +76,7 @@ import java.util.Calendar
  * holds the total balance (hidden on every launch), the review button and
  * the week; the sheet lists the latest transactions by day.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     vm: DashboardViewModel,
@@ -97,6 +106,12 @@ fun HomeScreen(
     }
 
     val hasAny = state.recentTransactions.isNotEmpty()
+    // Ids already on screen. A row that shows up later (a new SMS) slides in
+    // with a sand wash; the first load doesn't count.
+    var known by remember { mutableStateOf<Set<Long>?>(null) }
+    LaunchedEffect(state.recentTransactions, state.isLoading) {
+        if (!state.isLoading) known = (known ?: emptySet()) + state.recentTransactions.map { it.id }
+    }
     val groups = remember(state.recentTransactions) { groupByDay(state.recentTransactions).take(3) }
 
     Box(Modifier.fillMaxSize().nestedScroll(pull.nestedScrollConnection)) {
@@ -117,12 +132,17 @@ fun HomeScreen(
                 }
             },
         ) { pad ->
-            when {
-                state.isLoading -> Column {
+            val phase = when {
+                state.isLoading -> 0
+                !hasAny -> 1
+                else -> 2
+            }
+            Crossfade(phase, label = "home") { p -> Column { when (p) {
+                0 -> Column {
                     KashSkeleton(width = 120.dp, height = 16.dp)
                     repeat(5) { KashSkeletonRow() }
                 }
-                !hasAny -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+                1 -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
                     KashEmptyState(
                         KashIcon.History,
                         "No transactions yet",
@@ -141,12 +161,16 @@ fun HomeScreen(
                     }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = pad) {
                         groups.forEach { (day, rows) ->
-                            item(key = "h$day") { KashDayHeader(KashDates.dayHeader(day, cal)) }
-                            items(rows, key = { it.id }) { tx -> KashTxRow(tx, onClick = { onTxClick(tx.id) }) }
+                            item(key = "h$day") { KashDayHeader(KashDates.dayHeader(day, cal), Modifier.animateItemPlacement()) }
+                            items(rows, key = { it.id }) { tx ->
+                                FreshRow(fresh = known != null && tx.id !in known!!, modifier = Modifier.animateItemPlacement()) {
+                                    KashTxRow(tx, onClick = { onTxClick(tx.id) })
+                                }
+                            }
                         }
                     }
                 }
-            }
+            } } }
         }
         PullToRefreshContainer(
             state = pull,
@@ -154,6 +178,18 @@ fun HomeScreen(
             containerColor = KashColors.SurfaceRaised,
             contentColor = KashColors.Slate,
         )
+    }
+}
+
+/** A newly arrived row: expands into place, then its sand wash fades. */
+@Composable
+private fun FreshRow(fresh: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val reduced = rememberReducedMotion()
+    val show = remember { MutableTransitionState(!fresh || reduced).apply { targetState = true } }
+    val wash = remember { Animatable(if (fresh) 1f else 0f) }
+    LaunchedEffect(Unit) { if (fresh) { delay(500); wash.animateTo(0f, tween(1400)) } }
+    AnimatedVisibility(show, modifier, enter = expandVertically() + fadeIn()) {
+        Box(Modifier.background(KashColors.Sand.copy(alpha = 0.45f * wash.value))) { content() }
     }
 }
 
@@ -173,10 +209,12 @@ private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolea
                 ) { KashIconView(KashIcon.Eye, size = 18.dp, tint = KashColors.OnSlateMuted) }
             }
         }
-        if (state.isLoading) {
-            KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
-        } else {
-            KashFigure(total, Modifier.padding(top = 4.dp), hidden = hasAny && !visible)
+        Crossfade(state.isLoading, label = "balance") { loading ->
+            if (loading) {
+                KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
+            } else {
+                KashFigure(total, Modifier.padding(top = 4.dp), hidden = hasAny && !visible, countUp = true)
+            }
         }
     }
 }

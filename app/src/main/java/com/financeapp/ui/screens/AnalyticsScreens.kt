@@ -1,5 +1,8 @@
 package com.financeapp.ui.screens
 
+import com.financeapp.ui.kash.rememberGrow
+import com.financeapp.ui.kash.kashEnter
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -108,7 +111,7 @@ fun AnalyticsTabScreen(
             Column {
                 Text(if (r.isLoading) "Spent this month" else "Spent in $monthName", style = KashType.Body, color = KashColors.OnSlateMuted)
                 if (r.isLoading) KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
-                else KashFigure(r.spent, Modifier.padding(top = 4.dp))
+                else KashFigure(r.spent, Modifier.padding(top = 4.dp), countUp = true)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("Money in", if (r.isLoading) null else KashMoney.whole(r.moneyIn), Modifier.weight(1f))
@@ -120,32 +123,34 @@ fun AnalyticsTabScreen(
             }
         },
     ) { pad ->
-        if (r.isLoading) {
-            AnalyticsSkeleton()
-            return@KashScreen
-        }
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad),
-            verticalArrangement = Arrangement.spacedBy(26.dp),
-        ) {
-            if (r.categories.isEmpty()) {
-                WhereItGoesEmpty(r.uncategorizedAllTime, onReview)
-                MoneyInOut(r, cal)
-            } else {
-                MoneyInOut(r, cal)
-                WhereItGoes(r, onCategory)
+        Crossfade(r.isLoading, label = "analytics") { loading ->
+            if (loading) {
+                AnalyticsSkeleton()
+                return@Crossfade
             }
-            if (r.spent > 0) EveryDay(r, cal)
-            if (r.topPayees.isNotEmpty()) WhereYouPayMost(r)
-            if (r.perAccount.isNotEmpty()) SpentFrom(r, onAccount)
-            if (r.uncategorized > 0 && r.categories.isNotEmpty()) {
-                KashListGroup {
-                    KashListRow(
-                        if (r.uncategorized == 1) "1 transaction needs a category" else "${r.uncategorized} transactions need a category",
-                        hint = "They're left out of “Where it goes” until then",
-                        showDivider = false,
-                        onClick = onReview,
-                    )
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad),
+                verticalArrangement = Arrangement.spacedBy(26.dp),
+            ) {
+                if (r.categories.isEmpty()) {
+                    WhereItGoesEmpty(r.uncategorizedAllTime, onReview)
+                    MoneyInOut(r, cal)
+                } else {
+                    MoneyInOut(r, cal)
+                    WhereItGoes(r, onCategory)
+                }
+                if (r.spent > 0) EveryDay(r, cal)
+                if (r.topPayees.isNotEmpty()) WhereYouPayMost(r)
+                if (r.perAccount.isNotEmpty()) SpentFrom(r, onAccount)
+                if (r.uncategorized > 0 && r.categories.isNotEmpty()) {
+                    KashListGroup {
+                        KashListRow(
+                            if (r.uncategorized == 1) "1 transaction needs a category" else "${r.uncategorized} transactions need a category",
+                            hint = "They're left out of “Where it goes” until then",
+                            showDivider = false,
+                            onClick = onReview,
+                        )
+                    }
                 }
             }
         }
@@ -227,14 +232,15 @@ private fun MoneyInOut(r: MonthReport, cal: String) {
                 },
         ) {
             Row(Modifier.fillMaxWidth().height(112.dp)) {
-                r.sixMonths.forEach { m ->
+                r.sixMonths.forEachIndexed { i, m ->
+                    val grow = rememberGrow(r.fromMs, delayMs = i * 50, durationMs = 550)
                     Row(
                         Modifier.weight(1f).fillMaxHeight(),
                         horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.Bottom,
                     ) {
-                        Bar((m.moneyIn / max).toFloat(), KashColors.MoneyIn)
-                        Bar((m.spent / max).toFloat(), KashColors.Slate)
+                        Bar((m.moneyIn / max).toFloat(), KashColors.MoneyIn, grow)
+                        Bar((m.spent / max).toFloat(), KashColors.Slate, grow)
                     }
                 }
             }
@@ -255,11 +261,11 @@ private fun MoneyInOut(r: MonthReport, cal: String) {
 }
 
 @Composable
-private fun Bar(fraction: Float, color: Color) {
+private fun Bar(fraction: Float, color: Color, grow: Float = 1f) {
     Box(
         Modifier
             .width(14.dp)
-            .fillMaxHeight(fraction.coerceIn(0.02f, 1f))
+            .fillMaxHeight((fraction.coerceIn(0.02f, 1f) * grow).coerceAtLeast(0.001f))
             .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
             .background(color)
     )
@@ -274,7 +280,9 @@ private fun Legend(color: Color, label: String) {
 }
 
 @Composable
-private fun Progress(fraction: Float, label: String) {
+private fun Progress(fraction: Float, label: String, delayMs: Int = 0) {
+    // Fills left to right when the section appears.
+    val grow = rememberGrow(fraction, delayMs = delayMs, durationMs = 600)
     Box(
         Modifier
             .fillMaxWidth()
@@ -282,7 +290,7 @@ private fun Progress(fraction: Float, label: String) {
             .clip(RoundedCornerShape(3.dp))
             .background(KashColors.Well)
             .semantics { contentDescription = label },
-    ) { Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().background(KashColors.Slate)) }
+    ) { Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f) * grow).fillMaxHeight().background(KashColors.Slate)) }
 }
 
 @Composable
@@ -290,11 +298,12 @@ private fun WhereItGoes(r: MonthReport, onCategory: (String) -> Unit) {
     val total = r.categories.sumOf { it.total }.coerceAtLeast(1.0)
     val max = r.categories.first().total.coerceAtLeast(1.0)
     Section("Where it goes") {
-        r.categories.forEach { c ->
+        r.categories.forEachIndexed { i, c ->
             val pct = (c.total / total * 100).roundToInt()
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .kashEnter(i, r.fromMs)
                     .kashClickable(press = KashPress.Highlight) { onCategory(c.category) }
                     .padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -304,7 +313,7 @@ private fun WhereItGoes(r: MonthReport, onCategory: (String) -> Unit) {
                     Text(KashMoney.whole(c.total) + " ", style = KashType.BodyStrong.num(), color = KashColors.Ink)
                     Text("· $pct%", style = KashType.Caption.num(), color = KashColors.InkMuted)
                 }
-                Progress((c.total / max).toFloat(), "${c.category}: $pct% of categorised spending")
+                Progress((c.total / max).toFloat(), "${c.category}: $pct% of categorised spending", delayMs = (i * 30).coerceAtMost(300))
             }
             KashDivider()
         }
@@ -362,10 +371,11 @@ private fun EveryDay(r: MonthReport, cal: String) {
             ) {
                 r.days.forEachIndexed { i, v ->
                     val last = r.isCurrent && i == r.days.lastIndex
+                    val grow = rememberGrow(r.fromMs, delayMs = i * 12, durationMs = 450)
                     Box(
                         Modifier
                             .weight(1f)
-                            .fillMaxHeight((v / max).toFloat().coerceIn(0.03f, 1f))
+                            .fillMaxHeight(((v / max).toFloat().coerceIn(0.03f, 1f) * grow).coerceAtLeast(0.001f))
                             .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                             .background(if (last) KashColors.Ink else KashColors.InkFaint)
                     )
@@ -469,7 +479,7 @@ fun CategoryScreen(
             )
             Column {
                 Text("Spent in $monthName", style = KashType.Body, color = KashColors.OnSlateMuted)
-                KashFigure(state.monthSpending, Modifier.padding(top = 4.dp))
+                KashFigure(state.monthSpending, Modifier.padding(top = 4.dp), countUp = true)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (report.isCurrent) StatTile("Today", KashMoney.whole(state.todaySpending), Modifier.weight(1f))

@@ -1,5 +1,6 @@
 package com.financeapp.ui.kash.components
 
+import com.financeapp.ui.kash.rememberGrow
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -226,10 +227,12 @@ fun KashWeekChart(
             horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             values.forEachIndexed { i, v ->
+                // Bars rise from the baseline, one after another.
+                val grow = rememberGrow(values, delayMs = i * 40, durationMs = 500)
                 Box(
                     Modifier
                         .weight(1f)
-                        .fillMaxHeight(v.coerceIn(0.08f, 1f))
+                        .fillMaxHeight((v.coerceIn(0.08f, 1f) * grow).coerceAtLeast(0.001f))
                         .clip(RoundedCornerShape(4.dp))
                         .background(if (i == today) KashColors.Sand else KashColors.ChartBar)
                 )
@@ -302,7 +305,7 @@ fun KashAccountCard(
             Text("Balance", style = KashType.Caption, color = KashColors.OnSlateMuted)
             Spacer(Modifier.height(2.dp))
             if (balance != null) {
-                KashFigure(balance, style = KashType.FigureL)
+                KashFigure(balance, style = KashType.FigureL, countUp = true)
             } else {
                 Text("—", style = KashType.FigureL, color = KashColors.OnSlate)
             }
