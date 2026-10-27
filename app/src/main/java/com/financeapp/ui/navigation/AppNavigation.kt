@@ -46,9 +46,7 @@ import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.remote.SyncNotificationHelper
 import com.financeapp.ui.screens.AccountSecurityScreen
 import com.financeapp.ui.screens.AccountSettingsScreen
-import com.financeapp.ui.screens.AccountsScreen
 import com.financeapp.ui.screens.AnalyticsScreen
-import com.financeapp.ui.screens.BankAnalyticsScreen
 import com.financeapp.ui.screens.CategorizeTransactionsScreen
 import com.financeapp.ui.screens.CategoryDetailScreen
 import com.financeapp.ui.screens.DashboardScreen
@@ -56,8 +54,6 @@ import com.financeapp.ui.screens.EditAccountScreen
 import com.financeapp.ui.screens.NotificationPreferencesScreen
 import com.financeapp.ui.screens.ReviewQueueScreen
 import com.financeapp.ui.screens.SettingsScreen
-import com.financeapp.ui.screens.TransactionDetailScreen
-import com.financeapp.ui.screens.TransactionsScreen
 import com.financeapp.ui.theme.AppBackground
 import com.financeapp.ui.theme.AppBlue
 import com.financeapp.viewmodel.AnalyticsViewModel
@@ -179,6 +175,7 @@ fun AppNavigation(
 
     MainNavigation(
         repo = repo,
+        hasSmsAccess = hasSmsAccess,
         userName = userName,
         settingsRepo = settingsRepo,
         pendingRoute = pendingRoute,
@@ -189,6 +186,7 @@ fun AppNavigation(
 @Composable
 private fun MainNavigation(
     repo: TransactionRepository,
+    hasSmsAccess: Boolean,
     userName: String,
     settingsRepo: SettingsRepository,
     pendingRoute: String?,
@@ -200,8 +198,7 @@ private fun MainNavigation(
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route
     val showBottomBar = currentRoute?.let { route ->
-        (TABS.any { it.route == route } || route.startsWith(Screen.Transactions.route)) &&
-            route != Screen.Dashboard.route
+        route == Screen.Analytics.route
     } ?: false
 
     val dashFac = remember { DashboardViewModelFactory(repo) }
@@ -310,32 +307,40 @@ private fun MainNavigation(
                 )
             }
             composable(Screen.AddTransaction.route) {
-                val addVm: com.financeapp.viewmodel.AddTransactionViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                val addVm: com.financeapp.viewmodel.AddTransactionViewModel = viewModel(
                     factory = com.financeapp.viewmodel.AddTransactionViewModelFactory(repo)
                 )
-                com.financeapp.ui.screens.AddTransactionScreen(
+                val dash by dashVm.state.collectAsState()
+                com.financeapp.ui.screens.AddScreen(
                     vm = addVm,
+                    banks = dash.accountBalances.map { com.financeapp.ui.kash.components.kashBank(it.bankName).shortName },
+                    customCategories = categories,
+                    recentCategories = recentCategories,
+                    onAddCategory = { setVm.addCustomCategory(it) },
                     onSaved = { navController.popBackStack() },
-                    onClose = { navController.popBackStack() }
+                    onClose = { navController.popBackStack() },
                 )
             }
             composable(Screen.Accounts.route) {
-                AccountsScreen(
+                com.financeapp.ui.screens.AccountsTabScreen(
                     vm = dashVm,
-                    onAccountClick = { bankName ->
-                        navController.navigate("bank_analytics/${android.net.Uri.encode(bankName)}")
-                    }
+                    hasSmsAccess = hasSmsAccess,
+                    tabBar = tabBar(com.financeapp.ui.kash.components.KashTab.Accounts),
+                    onOpenAccount = { bankName -> navController.navigate("bank_analytics/${android.net.Uri.encode(bankName)}") },
+                    onAdd = { navController.navigate(Screen.AddTransaction.route) },
+                    onTxClick = { id -> navController.navigate("detail/$id") },
                 )
             }
             composable(
                 route = "bank_analytics/{bankName}",
                 arguments = listOf(navArgument("bankName") { type = NavType.StringType })
             ) { backStackEntry ->
-                val bankName = backStackEntry.arguments?.getString("bankName") ?: return@composable
+                val bankName = backStackEntry.arguments?.getString("bankName")?.let(android.net.Uri::decode) ?: return@composable
                 val vm: BankAnalyticsViewModel = viewModel(
+                    key = "bank_$bankName",
                     factory = BankAnalyticsViewModelFactory(repo, bankName)
                 )
-                BankAnalyticsScreen(
+                com.financeapp.ui.screens.AccountDetailScreen(
                     vm = vm,
                     onBack = { navController.popBackStack() },
                     onTxClick = { id -> navController.navigate("detail/$id") }
@@ -352,8 +357,9 @@ private fun MainNavigation(
                         txVm.setSearch(search)
                     }
                 }
-                TransactionsScreen(
+                com.financeapp.ui.screens.HistoryScreen(
                     vm = txVm,
+                    tabBar = tabBar(com.financeapp.ui.kash.components.KashTab.History),
                     onTxClick = { id -> navController.navigate("detail/$id") }
                 )
             }
@@ -395,9 +401,10 @@ private fun MainNavigation(
                 var tx by remember { mutableStateOf<TransactionEntity?>(null) }
                 LaunchedEffect(txId) { tx = repo.getById(txId) }
                 tx?.let { transaction ->
-                    TransactionDetailScreen(
+                    com.financeapp.ui.screens.TransactionScreen(
                         tx = transaction,
-                        categories = categories,
+                        customCategories = categories,
+                        recentCategories = recentCategories,
                         onCategorySelected = {
                             txVm.updateCategory(txId, it)
                             tx = transaction.copy(category = it)

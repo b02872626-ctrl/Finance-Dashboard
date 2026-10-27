@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FinanceApp" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.FinanceApp" parent="android:Theme.Material.Light.NoActionBar">
         <!-- Slate launch window with the Kash bars; Compose draws over it. -->
         <item name="android:windowBackground">@drawable/splash_window</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

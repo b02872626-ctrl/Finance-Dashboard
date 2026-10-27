@@ -339,8 +339,8 @@ fun KashDialogCard(
             .padding(start = 22.dp, end = 22.dp, top = 24.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Column {
-            Text(title, style = KashType.TitleM, color = KashColors.Ink, modifier = Modifier.semantics { heading() })
+        if (title.isNotEmpty() || description != null) Column {
+            if (title.isNotEmpty()) Text(title, style = KashType.TitleM, color = KashColors.Ink, modifier = Modifier.semantics { heading() })
             if (description != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(description, style = KashType.Body.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal), color = KashColors.InkMuted)

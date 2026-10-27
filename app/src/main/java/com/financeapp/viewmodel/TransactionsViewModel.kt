@@ -2,26 +2,46 @@ package com.financeapp.viewmodel
 
 import com.financeapp.data.model.isIncome
 import com.financeapp.data.model.isSpending
+import com.financeapp.data.model.isOwnAccountTransfer
 import androidx.lifecycle.*
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.parsing.TransactionType
-import com.financeapp.ui.components.HistoryPeriod
+import com.financeapp.util.KashDates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+/** History's period sheet. Bounds follow the calendar setting. */
+enum class HistoryRange(val label: String) {
+    WEEK("This week"), MONTH("This month"), LAST_MONTH("Last month"), YEAR("This year"), ALL("All time"), CUSTOM("Pick dates")
+}
+
+/** History's In / Out chips. Null = All (own-account moves only show under All). */
+enum class TxDirection { IN, OUT }
+
 data class TransactionsFilter(
     val sender: String?             = null,
     val type: String?               = null,
+    /** Used when [range] is CUSTOM (inclusive start, exclusive end). */
     val fromMs: Long                = 0L,
     val toMs: Long                  = Long.MAX_VALUE,
     val searchQuery: String         = "",
-    /** Quick period chip; null while a custom calendar date is applied. */
-    val period: HistoryPeriod?      = HistoryPeriod.ALL
-)
+    val range: HistoryRange         = HistoryRange.MONTH,
+    val direction: TxDirection?     = null
+) {
+    /** Effective [from, to) for the period, in the given calendar. */
+    fun bounds(calendarSystem: String, now: Long = System.currentTimeMillis()): Pair<Long, Long> = when (range) {
+        HistoryRange.WEEK -> KashDates.weekStart(now) to Long.MAX_VALUE
+        HistoryRange.MONTH -> KashDates.monthBounds(now, calendarSystem).first to Long.MAX_VALUE
+        HistoryRange.LAST_MONTH -> KashDates.monthBounds(KashDates.monthBounds(now, calendarSystem).first - 1, calendarSystem)
+        HistoryRange.YEAR -> KashDates.yearBounds(now, calendarSystem).first to Long.MAX_VALUE
+        HistoryRange.ALL -> 0L to Long.MAX_VALUE
+        HistoryRange.CUSTOM -> fromMs to toMs
+    }
+}
 
 data class DayGroup(
     val dateLabel: String,
@@ -45,19 +65,30 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
     val filter: StateFlow<TransactionsFilter> = _filter.asStateFlow()
 
     private val _limitDays = MutableStateFlow(10) // Pagination limit
+    private val _calendar = MutableStateFlow("GREGORIAN")
+    private val _loaded = MutableStateFlow(false)
+    /** False until the first result for the current filter arrives (skeleton rows). */
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
 
-    val transactions: StateFlow<List<DayGroup>> = _filter
-        .combine(_limitDays) { f, limit -> f to limit }
-        .flatMapLatest { (f, limit) ->
-            repo.getFiltered(f.sender, f.type, f.fromMs, f.toMs)
+    val transactions: StateFlow<List<DayGroup>> = combine(_filter, _limitDays, _calendar) { f, limit, cal -> Triple(f, limit, cal) }
+        .flatMapLatest { (f, limit, cal) ->
+            _loaded.value = false
+            val (from, to) = f.bounds(cal)
+            repo.getFiltered(f.sender, f.type, from, to - 1)
                 .map { list ->
                     val q = f.searchQuery.trim()
-                    val filtered = if (q.isBlank()) list else list.filter { tx -> matchesSearch(tx, q) }
-                    buildDayGroups(filtered, limit, q.isNotBlank() || f.fromMs > 0L)
+                    val filtered = list.filter { tx ->
+                        (q.isBlank() || matchesSearch(tx, q)) && matchesDirection(tx, f.direction)
+                    }
+                    buildDayGroups(filtered, limit, q.isNotBlank() || f.range != HistoryRange.ALL)
+                        .also { _loaded.value = true }
                 }
         }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** The calendar setting decides where "this month" starts. */
+    fun setCalendar(calendarSystem: String) { _calendar.value = calendarSystem }
 
     val availableTypes = TransactionType.values().toList()
 
@@ -73,10 +104,10 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
     fun setSearch(q: String)   { _filter.update { it.copy(searchQuery = q) } }
     fun setSender(s: String?)  { _filter.update { it.copy(sender = s) } }
     fun setType(t: String?)    { _filter.update { it.copy(type = t) } }
-    fun setDateFilter(fromMs: Long, toMs: Long) { _filter.update { it.copy(fromMs = fromMs, toMs = toMs, period = null) } }
-    fun setPeriod(p: HistoryPeriod) {
-        _filter.update { it.copy(fromMs = p.fromMs(), toMs = Long.MAX_VALUE, period = p) }
-    }
+    /** Custom range from the date dialog: [fromMs, toMs). */
+    fun setDateFilter(fromMs: Long, toMs: Long) { _filter.update { it.copy(fromMs = fromMs, toMs = toMs, range = HistoryRange.CUSTOM) } }
+    fun setRange(r: HistoryRange) { _filter.update { it.copy(range = r) } }
+    fun setDirection(d: TxDirection?) { _filter.update { it.copy(direction = d) } }
     fun clearFilters()         { _filter.value = TransactionsFilter() }
 
     fun updateCategory(id: Long, category: String?, allowBulkSuggestion: Boolean = false) {
@@ -114,12 +145,20 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
      */
     suspend fun getExportTransactions(): List<TransactionEntity> {
         val f = _filter.value
-        val base = repo.getFiltered(f.sender, f.type, f.fromMs, f.toMs).first()
+        val (from, to) = f.bounds(_calendar.value)
+        val base = repo.getFiltered(f.sender, f.type, from, to - 1).first()
+            .filter { matchesDirection(it, f.direction) }
 
         val q = f.searchQuery.trim()
         if (q.isBlank()) return base
 
         return base.filter { tx -> matchesSearch(tx, q) }
+    }
+
+    private fun matchesDirection(tx: TransactionEntity, d: TxDirection?): Boolean = when (d) {
+        null -> true
+        TxDirection.IN -> tx.isIncome()
+        TxDirection.OUT -> tx.isSpending() || (tx.type != TransactionType.CREDIT.name && !tx.isOwnAccountTransfer())
     }
 
     private fun matchesSearch(tx: TransactionEntity, q: String): Boolean =

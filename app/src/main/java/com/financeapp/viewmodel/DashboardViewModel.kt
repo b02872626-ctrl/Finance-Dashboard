@@ -20,7 +20,13 @@ data class AccountSummary(
     val bankName: String,
     val accountNumber: String,
     val balance: Double,
-    val transactionCount: Int
+    val transactionCount: Int,
+    /** When the balance was last read from an SMS (null: never). */
+    val balanceAtMs: Long? = null,
+    /** Spending from this account since the 1st of this month. */
+    val monthSpent: Double = 0.0,
+    /** Spending from this account in the whole of last month. */
+    val lastMonthSpent: Double = 0.0
 )
 
 data class WeekActivityPoint(
@@ -155,7 +161,15 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
                     .maxByOrNull { it.dateTime }
                 val account = latestWithAccount?.accountNumber ?: ""
 
-                AccountSummary(bankName, account, latestBalance, txns.size)
+                val monthStart = startOfMonth()
+                AccountSummary(
+                    bankName, account, latestBalance, txns.size,
+                    balanceAtMs = latestWithBalance?.dateTime,
+                    monthSpent = txns.filter { it.isSpending() && it.dateTime >= monthStart }.sumOf { it.amount },
+                    lastMonthSpent = txns.filter {
+                        it.isSpending() && it.dateTime < monthStart && it.dateTime >= startOfLastMonth()
+                    }.sumOf { it.amount },
+                )
             }
             .sortedByDescending { it.balance }
     }
@@ -230,6 +244,11 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
             Calendar.FRIDAY -> "F"
             else -> "S"
         }
+
+    private fun startOfLastMonth(): Long = Calendar.getInstance().apply {
+        timeInMillis = startOfMonth()
+        add(Calendar.MONTH, -1)
+    }.timeInMillis
 
     private fun startOfMonth(): Long {
         val cal = Calendar.getInstance()
