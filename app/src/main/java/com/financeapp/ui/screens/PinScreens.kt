@@ -47,6 +47,7 @@ import com.financeapp.ui.kash.components.KashPinCountdown
 import com.financeapp.ui.kash.components.KashPinDots
 import com.financeapp.ui.kash.components.KashPinKeys
 import com.financeapp.ui.kash.components.KashPinMessage
+import com.financeapp.ui.kash.components.KashSpinner
 import com.financeapp.ui.kash.components.KashTopBar
 import com.financeapp.ui.kash.Haptic
 import com.financeapp.ui.kash.rememberHaptic
@@ -211,7 +212,14 @@ fun PinLockScreen(
     var lockedUntil by remember { mutableLongStateOf(pinManager.lockedUntil()) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var confirmForgot by remember { mutableStateOf(false) }
+    var unlocking by remember { mutableStateOf(false) }
     val haptic = rememberHaptic()
+
+    if (unlocking) {
+        UnlockLoading()
+        LaunchedEffect(Unit) { delay(UNLOCK_LOADING_MS); onUnlocked() }
+        return
+    }
 
     LaunchedEffect(lockedUntil) {
         while (lockedUntil > System.currentTimeMillis()) {
@@ -232,7 +240,7 @@ fun PinLockScreen(
         shakeKey = shakeKey,
         onComplete = { pin ->
             when (val r = pinManager.verify(pin)) {
-                PinManager.Result.Ok -> { haptic(Haptic.CONFIRM); onUnlocked() }
+                PinManager.Result.Ok -> { haptic(Haptic.CONFIRM); unlocking = true }
                 is PinManager.Result.Wrong -> {
                     haptic(Haptic.REJECT); shakeKey++
                     message = wrongPinMessage(r.attemptsLeft)
@@ -259,6 +267,27 @@ fun PinLockScreen(
             onSignInAgain = { confirmForgot = false; onForgot() },
             onCancel = { confirmForgot = false },
         )
+    }
+}
+
+private const val UNLOCK_LOADING_MS = 900L
+
+/** Brief slate hold after a correct PIN: wordmark + spinner, then the app. */
+@Composable
+private fun UnlockLoading() {
+    KashSystemBars(darkIcons = false)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(KashColors.Slate)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
+    ) {
+        Text("kash", style = KashType.Wordmark, color = KashColors.OnSlate)
+        KashSpinner(size = 24.dp, color = KashColors.OnSlate, label = "Opening Kash")
+        Text("Opening your accounts…", style = KashType.Body, color = KashColors.OnSlateMuted)
     }
 }
 
