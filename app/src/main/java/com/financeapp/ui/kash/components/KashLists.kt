@@ -98,14 +98,11 @@ fun KashTransactionRow(
                 )
                 if (sub.isNotEmpty() || category != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Account · time keeps its width; a long category pill truncates.
                         if (sub.isNotEmpty()) {
-                            Text(
-                                sub, style = KashType.Caption.num(), color = KashColors.InkMuted,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false),
-                            )
+                            Text(sub, style = KashType.Caption.num(), color = KashColors.InkMuted, maxLines = 1, softWrap = false)
                         }
-                        if (category != null) KashPill(category)
+                        if (category != null) KashPill(category, Modifier.weight(1f, fill = false))
                     }
                 }
             }
@@ -134,7 +131,7 @@ fun KashPill(text: String, modifier: Modifier = Modifier) {
     ) {
         Text(
             text, style = KashType.Micro.copy(fontWeight = FontWeight.Medium), color = KashColors.Ink,
-            maxLines = 1, softWrap = false,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
 }

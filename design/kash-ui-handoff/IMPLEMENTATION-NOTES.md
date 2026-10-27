@@ -60,3 +60,33 @@ Everything is new and additive; no screen uses it yet. Paths are under `app/src/
   - `splash_window.xml`: splash for older Android, switched on in step 3
 
 Screenshot tests: `app/src/test/java/com/financeapp/ui/kash/KashComponentsScreenshotTest.kt` (Paparazzi, JVM only). Run `./gradlew recordPaparazziDebug` to save the images to `app/src/test/snapshots/images/`.
+
+## Steps 3–6: done (27 Oct 2026)
+Every screen in the handoff is rebuilt on the Kash components. The old theme, components, screens, Google Sans fonts and 50 unused icons are gone (APK 5.3 MB → 2.0 MB).
+
+Decisions taken from your answers:
+- "18 months of history, at once" now reads "Your full SMS history, at once" (the reader has no cap).
+- "+" on Accounts opens Add transaction.
+- No "See all" links on Analytics. Categories and payees are listed in full on the page.
+
+Behaviour changes 1–8 are all in place. Notes on each:
+1. First-launch order. "I already have an account" goes straight to sign in, then picks up the SMS steps.
+2. Switching a bank off stops the scanner reading its new SMS. Rows already imported stay in your lists.
+3. The "categorize today" notification and every Review entry point open Review.
+4. The summary numbers come from `OnboardingViewModel`.
+5. SMS denied has its own screen, with "Open settings" going to the app's system settings.
+6. Export lives in Settings, with period and account filters. Files are named `kash_transactions_….csv`.
+7. Review pre-selects "Own accounts", and the predictor now suggests it for internal transfers.
+8. Every date goes through `util/KashDates`. History's "This month" and the Analytics month follow the calendar setting.
+
+Hidden because there is no logic behind them yet:
+- Accounts **Bank SMS** button
+- Transaction **Not a transaction? Hide it**. Marking a row doesn't remove it from lists yet.
+- Review card **Same sender: N times this month**. The card shows the account and balance after instead.
+- Account card **Spent this month** bar: shown only when there was spending last month (it shows the share of last month spent so far).
+
+Still needs assets:
+- The official **Continue with Google** button and G mark. A placeholder is drawn to Google's colours.
+- **Bank logos.** `BankBadge` shows initials. Three PNGs (`res/drawable-nodpi/logo_cbe|logo_telebirr|logo_boa.png`) are still in the repo, unused. If they are the official marks, they can go into `BankBadge`.
+
+Checked on the JVM (Paparazzi): components at 390 dp, and rows, buttons and dates at 360 dp with long names and the Ethiopian calendar (`KashSmallPhoneScreenshotTest`). No device was connected, so the screens themselves haven't been run on a phone yet.
