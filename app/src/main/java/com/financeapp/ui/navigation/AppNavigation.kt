@@ -200,10 +200,9 @@ private fun MainNavigation(
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route
     val showBottomBar = currentRoute?.let { route ->
-        TABS.any { it.route == route } ||
-            route.startsWith(Screen.Transactions.route) ||
-            route == Screen.Categorize.route
-    } ?: true
+        (TABS.any { it.route == route } || route.startsWith(Screen.Transactions.route)) &&
+            route != Screen.Dashboard.route
+    } ?: false
 
     val dashFac = remember { DashboardViewModelFactory(repo) }
     val txFac = remember { TransactionsViewModelFactory(repo) }
@@ -237,6 +236,42 @@ private fun MainNavigation(
     // re-renders automatically when the user flips the Settings toggle.
     val calendarSystem by setVm.calendarSystem.collectAsState()
 
+    // The Kash tab bar for the four tab screens (icons only, dot under the active one).
+    val tabBar: (com.financeapp.ui.kash.components.KashTab) -> (@Composable () -> Unit) = { active ->
+        {
+            com.financeapp.ui.kash.components.KashTabBar(active, onSelect = { tab ->
+                val target = when (tab) {
+                    com.financeapp.ui.kash.components.KashTab.Home -> Screen.Dashboard
+                    com.financeapp.ui.kash.components.KashTab.Accounts -> Screen.Accounts
+                    com.financeapp.ui.kash.components.KashTab.History -> Screen.Transactions
+                    com.financeapp.ui.kash.components.KashTab.Analytics -> Screen.Analytics
+                }
+                if (target == Screen.Transactions) txVm.clearFilters()
+                navController.navigate(target.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = false }
+                    launchSingleTop = true
+                    restoreState = false
+                }
+            })
+        }
+    }
+    @Composable
+    fun ReviewRoute(vm: ReviewQueueViewModel) {
+        com.financeapp.ui.screens.ReviewScreen(
+            vm = vm,
+            userName = userName,
+            customCategories = categories,
+            recentCategories = recentCategories,
+            onAddCustomCategory = { setVm.addCustomCategory(it) },
+            onClose = { navController.popBackStack() },
+            onReviewOlder = {
+                navController.navigate("${Screen.DailyReview.route}?scope=all") {
+                    popUpTo(Screen.Dashboard.route)
+                }
+            },
+        )
+    }
+
     androidx.compose.runtime.CompositionLocalProvider(
         com.financeapp.util.LocalCalendarSystem provides calendarSystem
     ) {
@@ -257,43 +292,21 @@ private fun MainNavigation(
             popExitTransition  = { androidx.compose.animation.ExitTransition.None }
         ) {
             composable(Screen.Dashboard.route) {
-                DashboardScreen(
+                com.financeapp.ui.screens.HomeScreen(
                     vm = dashVm,
-                    userName = userName,
+                    tabBar = tabBar(com.financeapp.ui.kash.components.KashTab.Home),
                     onTxClick = { id -> navController.navigate("detail/$id") },
-                    onAccountsClick = {
-                        navController.navigate(Screen.Accounts.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                    onAccountClick = { bankName ->
-                        navController.navigate("bank_analytics/${android.net.Uri.encode(bankName)}")
-                    },
-                    onHistoryClick = {
+                    onSeeAll = {
                         txVm.clearFilters()
-                        navController.navigate(Screen.Transactions.route)
-                    },
-                    onQuickFilterClick = { type ->
-                        txVm.clearFilters()
-                        if (type != null) {
-                            txVm.setType(type)
-                        }
-                        navController.navigate(Screen.Transactions.route)
-                    },
-                    onSettingsClick = { navController.navigate(Screen.Profile.route) },
-                    onStartDailyReview = {
-                        navController.navigate(Screen.DailyReview.route) {
+                        navController.navigate(Screen.Transactions.route) {
+                            popUpTo(navController.graph.findStartDestination().id)
                             launchSingleTop = true
                         }
                     },
-                    onStartOlderReview = {
-                        navController.navigate("${Screen.DailyReview.route}?scope=all") {
-                            launchSingleTop = true
-                        }
-                    },
-                    onAddTransactionClick = {
-                        navController.navigate(Screen.AddTransaction.route)
-                    }
+                    onSettings = { navController.navigate(Screen.Profile.route) },
+                    onAdd = { navController.navigate(Screen.AddTransaction.route) },
+                    onReviewToday = { navController.navigate(Screen.DailyReview.route) { launchSingleTop = true } },
+                    onReviewOlder = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
                 )
             }
             composable(Screen.AddTransaction.route) {
@@ -394,21 +407,10 @@ private fun MainNavigation(
                     )
                 }
             }
+            // "Categorize today" (notification, Analytics) merged into Review.
             composable(Screen.Categorize.route) {
-                CategorizeTransactionsScreen(
-                    userName = userName,
-                    transactions = todayUncategorized,
-                    categories = categories,
-                    bulkSuggestion = bulkSuggestion,
-                    onBack = { navController.popBackStack() },
-                    onTxClick = { id -> navController.navigate("detail/$id") },
-                    onCategorySelected = { id, category ->
-                        txVm.updateCategory(id, category, allowBulkSuggestion = true)
-                    },
-                    onAddCategory = { setVm.addCustomCategory(it) },
-                    onApplyBulkSuggestion = { txVm.applyBulkCategorySuggestion() },
-                    onDismissBulkSuggestion = { txVm.dismissBulkCategorySuggestion() }
-                )
+                val keyedVm: ReviewQueueViewModel = viewModel(key = "review_queue_today", factory = reviewTodayFac)
+                ReviewRoute(keyedVm)
             }
             composable(
                 route = "${Screen.DailyReview.route}?scope={scope}",
@@ -426,28 +428,11 @@ private fun MainNavigation(
                     key = "review_queue_${scopeArg ?: "today"}",
                     factory = factory
                 )
-                ReviewQueueScreen(
-                    vm = keyedVm,
-                    userName = userName,
-                    customCategories = categories,
-                    recentCategories = recentCategories,
-                    onAddCustomCategory = { setVm.addCustomCategory(it) },
-                    onClose = { navController.popBackStack() }
-                )
+                ReviewRoute(keyedVm)
             }
             composable(Screen.DailyReview.route) {
-                val keyedVm: ReviewQueueViewModel = viewModel(
-                    key = "review_queue_today",
-                    factory = reviewTodayFac
-                )
-                ReviewQueueScreen(
-                    vm = keyedVm,
-                    userName = userName,
-                    customCategories = categories,
-                    recentCategories = recentCategories,
-                    onAddCustomCategory = { setVm.addCustomCategory(it) },
-                    onClose = { navController.popBackStack() }
-                )
+                val keyedVm: ReviewQueueViewModel = viewModel(key = "review_queue_today", factory = reviewTodayFac)
+                ReviewRoute(keyedVm)
             }
             composable(Screen.Profile.route) {
                 SettingsScreen(

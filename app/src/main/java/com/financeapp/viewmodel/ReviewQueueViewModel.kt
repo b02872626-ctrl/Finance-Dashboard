@@ -48,7 +48,9 @@ data class ConfirmApplyAll(
      * Captured here so the snackbar label ("Confirmed as X" vs "Changed to X")
      * stays accurate even if the cursor moves before the user picks an action.
      */
-    val predictedCategory: String?
+    val predictedCategory: String?,
+    /** Newest rows from this merchant, shown in the dialog. */
+    val samples: List<TransactionEntity> = emptyList()
 )
 
 data class ReviewQueueState(
@@ -71,7 +73,9 @@ data class ReviewQueueState(
     /** Non-null when the "Apply to all '{name}' transactions?" popup is showing. */
     val confirmApplyAll: ConfirmApplyAll? = null,
     val complete: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    /** PENDING rows older than today (the done screen's "older ones" card). */
+    val olderPending: Int = 0
 ) {
     val current: TransactionEntity? get() = items.getOrNull(currentIdx)
 }
@@ -107,6 +111,9 @@ class ReviewQueueViewModel(
         // per-row UPDATE loop the audit flagged).
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             runCatching { repo.backfillMissingMerchantKeys() }
+        }
+        viewModelScope.launch {
+            repo.countOlderPendingReview().collect { _state.value = _state.value.copy(olderPending = it) }
         }
         viewModelScope.launch {
             when (scope) {
@@ -189,16 +196,17 @@ class ReviewQueueViewModel(
      * Quick-pick chip OR picker sheet. If the row has a [merchantKey] and
      * other transactions share it, we open the "Apply to all {name}
      * transactions?" popup instead of applying immediately. Otherwise we
-     * apply to the single row.
+     * apply to the single row. [applyToSimilar] false (the picker's "Use for
+     * {name} from now on" switch turned off) labels only this row, no rule.
      */
-    fun pickCategory(category: String, advance: Boolean) {
+    fun pickCategory(category: String, advance: Boolean, applyToSimilar: Boolean = true) {
         val t = state.value.current ?: return
         viewModelScope.launch {
             val key = t.merchantKey
             val counterparty = t.counterparty
             if (!key.isNullOrBlank() && !counterparty.isNullOrBlank()) {
                 val totalCount = repo.countTransactionsByMerchantKey(key)
-                if (totalCount > 1) {
+                if (totalCount > 1 && applyToSimilar) {
                     // Show the popup, defer the actual write until the user
                     // chooses "Apply to all" or "Just this one".
                     _state.value = _state.value.copy(
@@ -209,7 +217,8 @@ class ReviewQueueViewModel(
                             merchantKey = key,
                             counterparty = counterparty,
                             totalCount = totalCount,
-                            predictedCategory = t.predictedCategory
+                            predictedCategory = t.predictedCategory,
+                            samples = repo.getByMerchantKey(key, 4)
                         )
                     )
                     return@launch
@@ -218,7 +227,7 @@ class ReviewQueueViewModel(
             // No merchant key, or no other transactions to match — apply
             // to just this row and create a rule (so future SMS still
             // auto-categorize correctly even though there are 0 past rows).
-            applyAndSnack(t.id, category, applyToSimilar = !key.isNullOrBlank(), advance = advance, predicted = t.predictedCategory)
+            applyAndSnack(t.id, category, applyToSimilar = applyToSimilar && !key.isNullOrBlank(), advance = advance, predicted = t.predictedCategory)
         }
     }
 

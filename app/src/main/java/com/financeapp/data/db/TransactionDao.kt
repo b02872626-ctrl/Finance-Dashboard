@@ -280,6 +280,10 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE merchantKey = :merchantKey")
     suspend fun countTransactionsByMerchantKey(merchantKey: String): Int
 
+    /** Newest rows sharing a merchant_key (the "Apply to all?" list). */
+    @Query("SELECT * FROM transactions WHERE merchantKey = :merchantKey ORDER BY dateTime DESC LIMIT :limit")
+    suspend fun getByMerchantKey(merchantKey: String, limit: Int): List<TransactionEntity>
+
     /**
      * Pre-migration rows are missing merchantKey. Return them so we can
      * compute the key from counterparty + write it back. Counterparty is

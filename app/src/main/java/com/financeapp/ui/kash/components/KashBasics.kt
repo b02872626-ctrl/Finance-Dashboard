@@ -20,6 +20,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashTheme
 import com.financeapp.ui.kash.KashType
@@ -75,8 +76,8 @@ fun KashFigure(
         softWrap = false,
         text = buildAnnotatedString {
             if (hidden) {
-                withStyle(SpanStyle(color = color, letterSpacing = style.letterSpacing)) { append("• • • • • •") }
-                withStyle(unitStyle) { append("  $currency") }
+                withStyle(SpanStyle(color = color, letterSpacing = 0.08.em)) { append("••••••") }
+                withStyle(unitStyle) { append(" $currency") }
             } else {
                 withStyle(SpanStyle(color = color)) { append(sign + whole) }
                 withStyle(unitStyle) {

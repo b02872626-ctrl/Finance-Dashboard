@@ -191,6 +191,10 @@ class TransactionRepository(
     suspend fun countTransactionsByMerchantKey(merchantKey: String): Int =
         txnDao.countTransactionsByMerchantKey(merchantKey)
 
+    /** Newest rows sharing a merchant_key, for the "Apply to all?" dialog. */
+    suspend fun getByMerchantKey(merchantKey: String, limit: Int = 4): List<TransactionEntity> =
+        txnDao.getByMerchantKey(merchantKey, limit)
+
     /**
      * One-shot backfill: pre-migration rows have merchantKey = null because
      * the column was added without recomputing keys from counterparty. This
