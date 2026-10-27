@@ -52,6 +52,7 @@ import com.financeapp.ui.kash.components.KashKeyValueList
 import com.financeapp.ui.kash.components.KashMoney
 import com.financeapp.ui.kash.components.KashScreen
 import com.financeapp.ui.kash.displayName
+import com.financeapp.ui.kash.KashPress
 import com.financeapp.ui.kash.kashClickable
 import com.financeapp.ui.kash.kashDirection
 import com.financeapp.util.KashDates
@@ -177,7 +178,7 @@ private fun MoreDetails(tx: TransactionEntity, open: Boolean, onToggle: () -> Un
     }
     Column {
         Row(
-            Modifier.fillMaxWidth().kashClickable(onClick = onToggle).padding(vertical = 14.dp),
+            Modifier.fillMaxWidth().kashClickable(press = KashPress.Highlight, onClick = onToggle).padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(if (open) "Fewer details" else "More details", style = KashType.Body, color = KashColors.Ink, modifier = Modifier.weight(1f))

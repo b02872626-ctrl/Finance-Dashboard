@@ -39,6 +39,7 @@ import com.financeapp.ui.kash.KashSize
 import com.financeapp.ui.kash.KashSpace
 import com.financeapp.ui.kash.KashTheme
 import com.financeapp.ui.kash.KashType
+import com.financeapp.ui.kash.KashPress
 import com.financeapp.ui.kash.kashClickable
 import com.financeapp.ui.kash.num
 
@@ -82,7 +83,7 @@ fun KashTransactionRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (onClick != null) Modifier.kashClickable(onClick = onClick) else Modifier)
+                .then(if (onClick != null) Modifier.kashClickable(press = KashPress.Highlight, onClick = onClick) else Modifier)
                 .padding(vertical = KashSpace.RowY),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -231,7 +232,7 @@ fun KashListRow(
         Row(
             Modifier
                 .fillMaxWidth()
-                .then(if (onClick != null) Modifier.kashClickable(onClick = onClick) else Modifier)
+                .then(if (onClick != null) Modifier.kashClickable(press = KashPress.Highlight, onClick = onClick) else Modifier)
                 .padding(horizontal = inset, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),

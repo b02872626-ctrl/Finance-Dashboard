@@ -75,6 +75,7 @@ private fun PinPage(
     onComplete: (String) -> Unit,
     header: @Composable () -> Unit = { Box(Modifier.height(KashSize.IconButton)) },
     footer: (@Composable () -> Unit)? = null,
+    success: Boolean = false,
 ) {
     KashSystemBars(darkIcons = false)
     var entry by remember { mutableStateOf("") }
@@ -119,7 +120,7 @@ private fun PinPage(
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                KashPinDots(entry.length, offset = shake.value.dp)
+                KashPinDots(entry.length, offset = shake.value.dp, success = success)
                 when {
                     countdown != null -> KashPinCountdown(countdown)
                     message != null -> KashPinMessage(message)
@@ -127,9 +128,10 @@ private fun PinPage(
             }
         }
         KashPinKeys(
-            disabled = !enabled,
+            // Stays bright while the green dots show; taps are ignored below.
+            disabled = !enabled && !success,
             onDigit = { d ->
-                if (entry.length < PinManager.PIN_LENGTH) {
+                if (enabled && entry.length < PinManager.PIN_LENGTH) {
                     haptic(Haptic.TAP)
                     entry += d
                     if (entry.length == PinManager.PIN_LENGTH) {
@@ -139,7 +141,7 @@ private fun PinPage(
                     }
                 }
             },
-            onDelete = { if (entry.isNotEmpty()) { haptic(Haptic.TAP); entry = entry.dropLast(1) } },
+            onDelete = { if (enabled && entry.isNotEmpty()) { haptic(Haptic.TAP); entry = entry.dropLast(1) } },
         )
         if (footer != null) Box(Modifier.fillMaxWidth().padding(top = 8.dp)) { footer() }
     }
@@ -212,6 +214,7 @@ fun PinLockScreen(
     var lockedUntil by remember { mutableLongStateOf(pinManager.lockedUntil()) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var confirmForgot by remember { mutableStateOf(false) }
+    var accepted by remember { mutableStateOf(false) }
     var unlocking by remember { mutableStateOf(false) }
     val haptic = rememberHaptic()
 
@@ -220,6 +223,8 @@ fun PinLockScreen(
         LaunchedEffect(Unit) { delay(UNLOCK_LOADING_MS); onUnlocked() }
         return
     }
+    // Hold the green dots for a beat before the loading screen.
+    LaunchedEffect(accepted) { if (accepted) { delay(ACCEPTED_HOLD_MS); unlocking = true } }
 
     LaunchedEffect(lockedUntil) {
         while (lockedUntil > System.currentTimeMillis()) {
@@ -236,11 +241,12 @@ fun PinLockScreen(
         subtitle = if (lockedOut) "For your safety, wait a moment\nbefore trying again." else "Enter your PIN to unlock Kash.",
         message = message,
         countdown = if (lockedOut) countdownText(secondsLeft) else null,
-        enabled = !lockedOut,
+        enabled = !lockedOut && !accepted,
         shakeKey = shakeKey,
+        success = accepted,
         onComplete = { pin ->
             when (val r = pinManager.verify(pin)) {
-                PinManager.Result.Ok -> { haptic(Haptic.CONFIRM); unlocking = true }
+                PinManager.Result.Ok -> { haptic(Haptic.CONFIRM); accepted = true }
                 is PinManager.Result.Wrong -> {
                     haptic(Haptic.REJECT); shakeKey++
                     message = wrongPinMessage(r.attemptsLeft)
@@ -271,6 +277,7 @@ fun PinLockScreen(
 }
 
 private const val UNLOCK_LOADING_MS = 900L
+private const val ACCEPTED_HOLD_MS = 350L
 
 /** Brief slate hold after a correct PIN: wordmark + spinner, then the app. */
 @Composable

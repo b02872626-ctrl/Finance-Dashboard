@@ -1,6 +1,10 @@
 package com.financeapp.ui.kash
 
 import android.provider.Settings
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.clickable
@@ -14,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -59,6 +65,7 @@ object KashColors {
     val BankCbe = Color(0xFF6B2E8E)
     val BankTelebirr = Color(0xFF0F7A5E)
     val BankBoa = Color(0xFF8F6418)
+    val SuccessOnSlate = Color(0xFF9BD3A5) // PIN accepted
     /** Backdrop behind sheets and dialogs. */
     val Backdrop = SlateInk.copy(alpha = 0.94f)
 }
@@ -183,19 +190,48 @@ fun KashTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = KashColorScheme, typography = KashTypography, content = content)
 }
 
+/** How a [kashClickable] answers a press. */
+enum class KashPress {
+    /** Buttons, cards, chips and links: shrink to 97% and spring back. */
+    Scale,
+    /** Full-width list rows: a faint ink wash behind the row, no shrink. */
+    Highlight,
+    /** PIN keys: a deeper dip to 92%. */
+    Dip,
+}
+
 /**
- * Kash press feedback: 88% opacity while pressed, no ripple; 40% when disabled.
+ * Kash press feedback: 88% opacity plus [press] while pressed, no ripple;
+ * 40% when disabled. With reduced motion only the opacity and wash remain.
  */
 fun Modifier.kashClickable(
     enabled: Boolean = true,
     role: Role? = Role.Button,
     onClickLabel: String? = null,
+    press: KashPress = KashPress.Scale,
     onClick: () -> Unit,
 ): Modifier = composed {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
+    val reduced = rememberReducedMotion()
+    val down = pressed && enabled
+    val target = when {
+        !down || reduced -> 1f
+        press == KashPress.Scale -> 0.97f
+        press == KashPress.Dip -> 0.92f
+        else -> 1f
+    }
+    // Fast in, a little bounce on the way back out.
+    val scale by animateFloatAsState(
+        target,
+        if (down) spring(stiffness = Spring.StiffnessHigh) else spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+        label = "press",
+    )
+    val wash by animateFloatAsState(if (down && press == KashPress.Highlight) 0.05f else 0f, tween(120), label = "wash")
     this
-        .alpha(if (!enabled) 0.4f else if (pressed) 0.88f else 1f)
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .alpha(if (!enabled) 0.4f else if (pressed && press != KashPress.Highlight) 0.88f else 1f)
+        .drawBehind { if (wash > 0f) drawRect(KashColors.Ink.copy(alpha = wash)) }
         .clickable(
             interactionSource = source,
             indication = null,

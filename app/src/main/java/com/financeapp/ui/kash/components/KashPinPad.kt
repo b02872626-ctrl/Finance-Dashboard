@@ -1,5 +1,10 @@
 package com.financeapp.ui.kash.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,10 +19,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -34,8 +43,10 @@ import com.financeapp.ui.kash.KashIconView
 import com.financeapp.ui.kash.KashShapes
 import com.financeapp.ui.kash.KashTheme
 import com.financeapp.ui.kash.KashType
+import com.financeapp.ui.kash.KashPress
 import com.financeapp.ui.kash.kashClickable
 import com.financeapp.ui.kash.num
+import com.financeapp.ui.kash.rememberReducedMotion
 
 /*
  * Kash.PinPad, always on slate. Split into dots, message and keys so a PIN
@@ -43,9 +54,27 @@ import com.financeapp.ui.kash.num
  * [KashPinPad] stacks all three for simple uses.
  */
 
-/** The PIN dots: filled white, empty rings. [offset] shakes them on a wrong PIN. */
+/**
+ * The PIN dots: filled white, empty rings. [offset] shakes them on a wrong PIN.
+ * Each dot pops as it fills; [success] turns them all green with one pulse.
+ */
 @Composable
-fun KashPinDots(filled: Int, modifier: Modifier = Modifier, length: Int = 4, offset: Dp = 0.dp) {
+fun KashPinDots(
+    filled: Int,
+    modifier: Modifier = Modifier,
+    length: Int = 4,
+    offset: Dp = 0.dp,
+    success: Boolean = false,
+) {
+    val reduced = rememberReducedMotion()
+    val color by animateColorAsState(if (success) KashColors.SuccessOnSlate else KashColors.OnSlate, tween(150), label = "dot")
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(success) {
+        if (success && !reduced) {
+            pulse.animateTo(1.25f, tween(120))
+            pulse.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+        }
+    }
     Row(
         modifier
             .offset(x = offset)
@@ -53,12 +82,21 @@ fun KashPinDots(filled: Int, modifier: Modifier = Modifier, length: Int = 4, off
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         repeat(length) { i ->
+            val on = success || i < filled
+            val pop = remember { Animatable(1f) }
+            LaunchedEffect(on) {
+                if (on && !success && !reduced) {
+                    pop.snapTo(1.35f)
+                    pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium))
+                }
+            }
             Box(
                 Modifier
                     .size(14.dp)
+                    .graphicsLayer { val k = pop.value * pulse.value; scaleX = k; scaleY = k }
                     .clip(KashShapes.Pill)
                     .then(
-                        if (i < filled) Modifier.background(KashColors.OnSlate)
+                        if (on) Modifier.background(color)
                         else Modifier.border(2.dp, KashColors.GhostLine, KashShapes.Pill)
                     )
             )
@@ -115,14 +153,14 @@ fun KashPinKeys(
                         ' ' -> Spacer(keyModifier)
                         '<' -> Box(
                             keyModifier
-                                .then(if (disabled) Modifier else Modifier.kashClickable(onClickLabel = "Delete last digit", onClick = onDelete))
+                                .then(if (disabled) Modifier else Modifier.kashClickable(onClickLabel = "Delete last digit", press = KashPress.Dip, onClick = onDelete))
                                 .clip(KashShapes.Control)
                                 .semantics { contentDescription = "Delete last digit" },
                             contentAlignment = Alignment.Center,
                         ) { KashIconView(KashIcon.Backspace, size = 26.dp, tint = KashColors.OnSlate) }
                         else -> Box(
                             keyModifier
-                                .then(if (disabled) Modifier else Modifier.kashClickable { onDigit(k) })
+                                .then(if (disabled) Modifier else Modifier.kashClickable(press = KashPress.Dip) { onDigit(k) })
                                 .clip(KashShapes.Control)
                                 .background(KashColors.GhostFill),
                             contentAlignment = Alignment.Center,

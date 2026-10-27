@@ -67,6 +67,7 @@ import com.financeapp.ui.kash.components.KashSkeletonRow
 import com.financeapp.ui.kash.components.KashTopBar
 import com.financeapp.ui.kash.dayNet
 import com.financeapp.ui.kash.groupByDay
+import com.financeapp.ui.kash.KashPress
 import com.financeapp.ui.kash.kashClickable
 import com.financeapp.ui.kash.num
 import com.financeapp.util.KashDates
@@ -294,7 +295,7 @@ private fun WhereItGoes(r: MonthReport, onCategory: (String) -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .kashClickable { onCategory(c.category) }
+                    .kashClickable(press = KashPress.Highlight) { onCategory(c.category) }
                     .padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -409,7 +410,7 @@ private fun SpentFrom(r: MonthReport, onAccount: (String) -> Unit) {
     Section("Spent from") {
         r.perAccount.forEach { (name, total) ->
             Column(
-                Modifier.fillMaxWidth().kashClickable { onAccount(name) }.padding(vertical = 12.dp),
+                Modifier.fillMaxWidth().kashClickable(press = KashPress.Highlight) { onAccount(name) }.padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
