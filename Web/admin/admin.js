@@ -320,6 +320,46 @@ function rateBadge(rate) {
   return `<span class="pill ${r < PARSE_RATE_TARGET ? "pill-bad" : "pill-good"}">${r.toFixed(1)}%</span>`;
 }
 
+// Every SMS not turned into a transaction, for writing parsers: sender,
+// bank, status, date and text. No user ids or emails. Pages through
+// i_raw_data 1,000 rows at a time (admin SELECT policy).
+async function exportUnparsedSms(btn) {
+  const label = btn.textContent;
+  btn.disabled = true;
+  try {
+    const rows = [];
+    for (let from = 0; ; from += 1000) {
+      btn.textContent = `Fetching… ${num(rows.length)}`;
+      const { data, error } = await supabase.from("i_raw_data")
+        .select("sender_name, bank_name, parse_status, received_at, created_at, raw_message")
+        .or("parse_status.is.null,parse_status.neq.PARSED")
+        .order("id", { ascending: true })
+        .range(from, from + 999);
+      if (error) throw error;
+      rows.push(...data);
+      if (data.length < 1000) break;
+    }
+    const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = ["sender_name,bank_name,parse_status,received_at,raw_message"]
+      .concat(rows.map((r) => [r.sender_name, r.bank_name, r.parse_status || "NO_STATUS",
+        r.received_at || r.created_at, r.raw_message].map(cell).join(",")))
+      .join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+    a.download = "kash_unparsed_sms.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    btn.textContent = `Downloaded ${num(rows.length)} SMS`;
+  } catch (e) {
+    console.error(e);
+    btn.textContent = `Couldn't export: ${e.message || e}`;
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = label; }, 6000);
+  }
+}
+document.getElementById("export-sms-btn")?.addEventListener("click", (e) => exportUnparsedSms(e.currentTarget));
+
 function renderUnparsed(rows) {
   $("stat-unparsed").textContent = rows.length >= 300 ? "300+" : num(rows.length);
   if (!rows.length) { unparsedList.innerHTML = `<p class="muted">Nothing unparsed. 🎉</p>`; return; }
