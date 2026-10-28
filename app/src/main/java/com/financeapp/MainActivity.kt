@@ -17,6 +17,7 @@ import com.financeapp.notifications.AppForeground
 import com.financeapp.notifications.NotificationPrefs
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.data.repository.SettingsRepository
+import com.financeapp.remote.AppSessionTracker
 import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.sms.SmsIngestService
 import com.financeapp.sms.SmsIngestWorker
@@ -123,7 +124,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        if (!isChangingConfigurations) backgroundedAt = System.currentTimeMillis()
+        if (!isChangingConfigurations) {
+            backgroundedAt = System.currentTimeMillis()
+            AppSessionTracker.onBackground(this)
+        }
         AppForeground.isForeground = false
         NotificationPrefs(this).lastAppOpenMs = System.currentTimeMillis()
     }
@@ -132,6 +136,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         AppForeground.isForeground = true
         NotificationPrefs(this).lastAppOpenMs = System.currentTimeMillis()
+        AppSessionTracker.onForeground(this)
         if (backgroundedAt > 0L &&
             System.currentTimeMillis() - backgroundedAt > PinManager.RELOCK_AFTER_MS
         ) {

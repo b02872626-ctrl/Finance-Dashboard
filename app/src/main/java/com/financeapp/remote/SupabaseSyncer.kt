@@ -7,6 +7,8 @@ import com.financeapp.data.repository.ErrorLogRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -212,11 +214,11 @@ class SupabaseSyncer(private val context: Context) {
     private suspend fun ensureFreshSession(
         settingsRepo: SettingsRepository,
         cfg: SupabaseConfig
-    ): SupabaseSession? {
-        val session = settingsRepo.getSupabaseSession() ?: return null
-        if (!session.isExpired()) return session
+    ): SupabaseSession? = refreshLock.withLock {
+        val session = settingsRepo.getSupabaseSession() ?: return@withLock null
+        if (!session.isExpired()) return@withLock session
 
-        return try {
+        try {
             val refreshed = SupabaseAuthClient(cfg).refresh(session.refreshToken)
             val newSession = SupabaseSession(
                 accessToken = refreshed.accessToken,
@@ -240,11 +242,28 @@ class SupabaseSyncer(private val context: Context) {
         }
     }
 
+    /**
+     * Signed-in session with a valid access token, or null when signed out /
+     * not configured. For callers outside the sync path (AppSessionTracker).
+     */
+    suspend fun activeSession(): Pair<SupabaseConfig, SupabaseSession>? = withContext(Dispatchers.IO) {
+        val cfg = SupabaseConfigProvider.fromBuildConfig() ?: return@withContext null
+        ensureFreshSession(SettingsRepository(context), cfg)?.let { cfg to it }
+    }
+
     private fun isDeadRefreshToken(e: Exception): Boolean {
         val msg = e.message ?: return false
         return msg.contains("refresh_token_already_used") ||
             msg.contains("refresh_token_not_found") ||
             msg.contains("invalid_grant") ||
             (msg.contains("Supabase auth failed (400)") && msg.contains("Invalid Refresh Token"))
+    }
+
+    private companion object {
+        /**
+         * Refresh tokens are single-use: two callers refreshing at once
+         * kills the session. Serialise every refresh through one lock.
+         */
+        val refreshLock = Mutex()
     }
 }

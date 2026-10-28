@@ -35,6 +35,41 @@ class SupabaseRestClient(
     }
 
     /**
+     * Opens an i_sessions row for the admin dashboard's time-spent metrics
+     * and returns its id. started_at / last_heartbeat_at default to now().
+     */
+    fun startSession(userId: String, appVersion: String, userAgent: String): String {
+        val body = JSONObject()
+            .put("user_id", userId)
+            .put("client", "android")
+            .put("app_version", appVersion)
+            .put("user_agent", userAgent)
+            .toString()
+        val text = request(
+            method = "POST",
+            path = "i_sessions?select=id",
+            body = body,
+            prefer = "return=representation"
+        )
+        return JSONArray(text).getJSONObject(0).getString("id")
+    }
+
+    /** Heartbeat (ended = false) or close (ended = true) an i_sessions row. */
+    fun updateSession(sessionId: String, durationSeconds: Long, ended: Boolean) {
+        val now = isoUtc.format(Date())
+        val body = JSONObject()
+            .put("last_heartbeat_at", now)
+            .put("duration_seconds", durationSeconds)
+        if (ended) body.put("ended_at", now)
+        request(
+            method = "PATCH",
+            path = "i_sessions?id=eq.$sessionId",
+            body = body.toString(),
+            prefer = "return=minimal"
+        )
+    }
+
+    /**
      * Permanently deletes the signed-in user (and, via ON DELETE CASCADE, all
      * of their rows). See supabase/launch_account_deletion_and_banks.sql.
      */

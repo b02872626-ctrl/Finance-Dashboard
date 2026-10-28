@@ -21,9 +21,22 @@ const ADMIN_EMAILS = [
   "nahusenaygebreamlak@gmail.com",
 ];
 
+// The admin keeps its own sign-in. With the default storage the page shared
+// the main web app's localStorage token (same origin), so anyone signed in to
+// Kash on that browser — the admin included — landed straight on the data
+// without a password prompt. Here the token lives in sessionStorage under its
+// own key: it dies with the tab and never leaks in from (or out to) the app.
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { persistSession: true, autoRefreshToken: true },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    storageKey: "kash-admin-auth",
+    storage: window.sessionStorage,
+  },
 });
+
+// Sign out after this long without input.
+const IDLE_LOCK_MS = 15 * 60 * 1000;
 
 // ----------------------------------------------------------------------------
 // DOM
@@ -104,9 +117,55 @@ function routeFromSession(session) {
 // Views
 // ----------------------------------------------------------------------------
 function showLogin() {
+  stopIdleLock();
+  clearAdminData();
+  closeDrill();
   loginView.classList.remove("hidden");
   deniedView.classList.add("hidden");
   adminShell.classList.add("hidden");
+}
+
+// Wipe rendered user data so nothing lingers in the DOM once locked.
+function clearAdminData() {
+  state.users = [];
+  state.sessions = [];
+  usersTbody.innerHTML = "";
+  for (const el of [chartDaily, chartHour, chartWeekday, chartTopUsers]) el.innerHTML = "";
+  drillSessions.innerHTML = "";
+}
+
+// ----------------------------------------------------------------------------
+// Idle lock — signs out after IDLE_LOCK_MS without input.
+// ----------------------------------------------------------------------------
+let idleTimer = null;
+let lastActivity = 0;
+const IDLE_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"];
+
+function bumpActivity() { lastActivity = Date.now(); }
+
+function startIdleLock() {
+  if (idleTimer) return;
+  bumpActivity();
+  for (const ev of IDLE_EVENTS) document.addEventListener(ev, bumpActivity, { passive: true });
+  // Interval check (not a single timeout) so a sleeping laptop still locks
+  // on wake: the elapsed wall-clock time is what counts.
+  idleTimer = setInterval(checkIdle, 30_000);
+  document.addEventListener("visibilitychange", checkIdle);
+}
+
+function stopIdleLock() {
+  if (!idleTimer) return;
+  clearInterval(idleTimer);
+  idleTimer = null;
+  for (const ev of IDLE_EVENTS) document.removeEventListener(ev, bumpActivity);
+  document.removeEventListener("visibilitychange", checkIdle);
+}
+
+async function checkIdle() {
+  if (!idleTimer || Date.now() - lastActivity < IDLE_LOCK_MS) return;
+  await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+  showLogin();
+  showLoginError("Signed out after 15 minutes of inactivity.");
 }
 
 function showDenied(email) {
@@ -121,6 +180,8 @@ async function showAdmin(session) {
   deniedView.classList.add("hidden");
   adminShell.classList.remove("hidden");
   adminEmail.textContent = session.user.email;
+  hideLoginError();
+  startIdleLock();
   await loadOverview();
 }
 
@@ -174,6 +235,11 @@ function hideLoginError() { loginError.classList.add("hidden"); }
 // ----------------------------------------------------------------------------
 // Data loading
 // ----------------------------------------------------------------------------
+// supabase/backfill_sessions_from_transactions.sql synthesised sessions from
+// SMS timestamps (when the bank texted, not when anyone opened the app) and
+// tagged them app_version = 'backfill-v1'. They swamp the real numbers, so
+// every session query here skips them. PostgREST's neq drops NULLs, hence or.
+const REAL_SESSIONS = "app_version.is.null,app_version.neq.backfill-v1";
 async function loadOverview() {
   usersTbody.innerHTML = `<tr><td colspan="8" class="muted">Loading…</td></tr>`;
   setChartsLoading();
@@ -185,9 +251,13 @@ async function loadOverview() {
       .from("i_sessions")
       .select("user_id, client, app_version, started_at, last_heartbeat_at, ended_at, duration_seconds")
       .gte("started_at", thirtyDaysAgo)
+      .or(REAL_SESSIONS)
       .order("started_at", { ascending: false })
       .limit(10000),
   ]);
+
+  // Locked while the request was in flight — don't paint data back in.
+  if (adminShell.classList.contains("hidden")) return;
 
   if (usersRes.error) {
     const hint = /relation .* does not exist/i.test(usersRes.error.message)
@@ -230,10 +300,9 @@ function renderStats() {
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const startOfToday = startOfLocalDay(new Date()).getTime();
 
-  const activeNow = users.filter((u) => {
-    const t = u.last_session_at ? new Date(u.last_session_at).getTime() : 0;
-    return t >= twoMinAgo;
-  }).length;
+  // A session that ended a minute ago isn't "active" — only open sessions
+  // whose heartbeat is still fresh count.
+  const activeNow = liveUserIds(sessions, twoMinAgo).size;
 
   const new7d = users.filter((u) => {
     const t = u.account_created_at ? new Date(u.account_created_at).getTime() : 0;
@@ -277,15 +346,14 @@ function renderUsers() {
     return;
   }
 
-  const twoMinAgo = Date.now() - 2 * 60 * 1000;
+  const live = liveUserIds(state.sessions, Date.now() - 2 * 60 * 1000);
   usersTbody.innerHTML = filtered.map((u) => {
-    const lastT = u.last_session_at ? new Date(u.last_session_at).getTime() : 0;
-    const live = lastT >= twoMinAgo;
+    const isLive = live.has(u.id);
     return `
       <tr data-user-id="${escapeAttr(u.id)}">
         <td>
           <div class="user-cell">
-            <span class="name">${live ? '<span class="dot-online" title="Active"></span>' : ''}${escapeHtml(u.name || "—")}</span>
+            <span class="name">${isLive ? '<span class="dot-online" title="Active"></span>' : ''}${escapeHtml(u.name || "—")}</span>
             <span class="email">${escapeHtml(u.email || "")}</span>
           </div>
         </td>
@@ -299,6 +367,14 @@ function renderUsers() {
       </tr>
     `;
   }).join("");
+}
+
+function liveUserIds(sessions, since) {
+  const ids = new Set();
+  for (const s of sessions) {
+    if (!s.ended_at && new Date(s.last_heartbeat_at).getTime() >= since) ids.add(s.user_id);
+  }
+  return ids;
 }
 
 function compareRows(a, b, key) {
@@ -350,6 +426,7 @@ async function openDrill(user) {
     .from("i_sessions")
     .select("id, client, started_at, last_heartbeat_at, ended_at, duration_seconds")
     .eq("user_id", user.id)
+    .or(REAL_SESSIONS)
     .order("started_at", { ascending: false })
     .limit(200);
 
