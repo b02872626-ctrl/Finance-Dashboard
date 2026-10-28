@@ -244,16 +244,9 @@ async function loadOverview() {
   usersTbody.innerHTML = `<tr><td colspan="8" class="muted">Loading…</td></tr>`;
   setChartsLoading();
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const [usersRes, sessionsRes] = await Promise.all([
     supabase.from("admin_user_overview").select("*"),
-    supabase
-      .from("i_sessions")
-      .select("user_id, client, app_version, started_at, last_heartbeat_at, ended_at, duration_seconds")
-      .gte("started_at", thirtyDaysAgo)
-      .or(REAL_SESSIONS)
-      .order("started_at", { ascending: false })
-      .limit(10000),
+    fetchRealSessions(),
   ]);
 
   // Locked while the request was in flight — don't paint data back in.
@@ -268,27 +261,64 @@ async function loadOverview() {
     return;
   }
   state.users = usersRes.data || [];
-  state.sessions = sessionsRes.error ? [] : (sessionsRes.data || []);
+  const allSessions = sessionsRes.error ? [] : sessionsRes.data;
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  state.sessions = allSessions.filter((s) => new Date(s.started_at).getTime() >= thirtyDaysAgo);
 
-  // Derive latest app_version per user from the 30-day session log. Sessions
-  // are ordered started_at DESC, so the first hit per user_id wins. We carry
-  // the client too so the table can show e.g. "web-beta17" vs "android-beta17".
-  // Users with no recent session keep app_version = null and render "—".
-  const latestByUser = new Map();
-  for (const s of state.sessions) {
-    if (latestByUser.has(s.user_id)) continue;
-    if (!s.app_version) continue;
-    latestByUser.set(s.user_id, { version: s.app_version, client: s.client });
+  // Per-user session numbers come from the real sessions, not the view's
+  // session_count / total_seconds / last_session_at: the view may still be
+  // counting the backfill rows if admin_overview_real_sessions.sql hasn't
+  // been applied. Sessions are ordered started_at DESC, so the first hit per
+  // user is their latest version; users with no session render "—".
+  const byUser = new Map();
+  for (const s of allSessions) {
+    let agg = byUser.get(s.user_id);
+    if (!agg) {
+      agg = { count: 0, seconds: 0, last: 0, version: null, client: null };
+      byUser.set(s.user_id, agg);
+    }
+    agg.count += 1;
+    agg.seconds += sessionSeconds(s);
+    agg.last = Math.max(agg.last, new Date(s.ended_at || s.last_heartbeat_at).getTime());
+    if (!agg.version && s.app_version) { agg.version = s.app_version; agg.client = s.client; }
   }
   for (const u of state.users) {
-    const v = latestByUser.get(u.id);
-    u.app_version = v ? v.version : null;
-    u.last_client = v ? v.client : null;
+    const agg = byUser.get(u.id);
+    u.session_count = agg ? agg.count : 0;
+    u.total_seconds = agg ? agg.seconds : 0;
+    u.last_session_at = agg && agg.last ? new Date(agg.last).toISOString() : null;
+    u.app_version = agg ? agg.version : null;
+    u.last_client = agg ? agg.client : null;
   }
 
   renderStats();
   renderUsers();
   renderCharts();
+}
+
+// Every real (non-backfill) session, newest first. PostgREST caps each
+// response at 1,000 rows, so page through with range().
+async function fetchRealSessions() {
+  const PAGE = 1000;
+  const rows = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("i_sessions")
+      .select("user_id, client, app_version, started_at, last_heartbeat_at, ended_at, duration_seconds")
+      .or(REAL_SESSIONS)
+      .order("started_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) return { data: rows, error };
+    rows.push(...data);
+    if (data.length < PAGE) return { data: rows, error: null };
+  }
+}
+
+// duration_seconds is only written by the first heartbeat; until then fall
+// back to heartbeat − start.
+function sessionSeconds(s) {
+  if (s.duration_seconds != null) return Math.max(0, Number(s.duration_seconds));
+  return Math.max(0, Math.round((new Date(s.last_heartbeat_at).getTime() - new Date(s.started_at).getTime()) / 1000));
 }
 
 function renderStats() {
@@ -443,9 +473,7 @@ async function openDrill(user) {
   const twoMinAgo = Date.now() - 2 * 60 * 1000;
   drillSessions.innerHTML = sessions.map((s) => {
     const live = !s.ended_at && new Date(s.last_heartbeat_at).getTime() >= twoMinAgo;
-    const dur = s.duration_seconds != null
-      ? Number(s.duration_seconds)
-      : Math.max(0, Math.round((new Date(s.last_heartbeat_at).getTime() - new Date(s.started_at).getTime()) / 1000));
+    const dur = sessionSeconds(s);
     return `
       <div class="session-row ${live ? 'live' : ''}">
         <div class="marker" title="${live ? 'Live' : 'Ended'}"></div>
@@ -519,7 +547,7 @@ function renderDailyChart() {
     const idx = Math.floor((t - (today.getTime() - (days - 1) * 86400000)) / 86400000);
     if (idx < 0 || idx >= days) continue;
     buckets[idx].sessions += 1;
-    buckets[idx].seconds += Math.max(0, Number(s.duration_seconds || 0));
+    buckets[idx].seconds += sessionSeconds(s);
   }
 
   if (state.sessions.length === 0) {

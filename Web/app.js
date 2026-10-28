@@ -458,7 +458,7 @@ let _sessionToken = null;
 let _heartbeatTimer = null;
 
 async function startSessionTracking(session) {
-  if (_sessionRow) return;
+  if (_sessionRow || document.visibilityState === "hidden") return;
   _sessionToken = session.access_token;
   const { data, error } = await supabase
     .from("i_sessions")
@@ -480,7 +480,6 @@ async function startSessionTracking(session) {
   _heartbeatTimer = setInterval(sendHeartbeat, 30_000);
   window.addEventListener("beforeunload", endSessionBeacon);
   window.addEventListener("pagehide", endSessionBeacon);
-  document.addEventListener("visibilitychange", onSessionVisibility);
 }
 
 async function sendHeartbeat() {
@@ -497,9 +496,18 @@ async function sendHeartbeat() {
   if (error) console.warn("Session heartbeat failed:", error.message);
 }
 
-function onSessionVisibility() {
-  if (document.visibilityState === "hidden") sendHeartbeat();
-}
+// A session is one visible stretch, like the Android app's foreground
+// stretch. Heartbeats used to keep running in a background tab, so a tab
+// left open overnight logged 10+ hours of "use".
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "hidden") {
+    endSessionBeacon();
+    stopSessionTracking();
+    return;
+  }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) startSessionTracking(session);
+});
 
 // keepalive lets the request outlive the page unload — sendBeacon would be
 // the canonical choice, but PostgREST needs the Authorization header and
@@ -532,7 +540,6 @@ function stopSessionTracking() {
   if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null; }
   window.removeEventListener("beforeunload", endSessionBeacon);
   window.removeEventListener("pagehide", endSessionBeacon);
-  document.removeEventListener("visibilitychange", onSessionVisibility);
   _sessionRow = null;
   _sessionToken = null;
 }
