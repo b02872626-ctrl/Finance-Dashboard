@@ -334,19 +334,29 @@ class TransactionRepository(
 
     suspend fun getUnsyncedRawMessages(): List<RawSmsSyncPayload> =
         rawDao.getUnsyncedRawSms().map { raw ->
-            val bankName = SmsParserEngine.inferBankName(
-                SmsMessage(
-                    sender = raw.sender,
-                    body = raw.body,
-                    timestamp = raw.receivedAt
-                )
-            ).trim()
+            val sms = SmsMessage(
+                sender = raw.sender,
+                body = raw.body,
+                timestamp = raw.receivedAt
+            )
+            val bankName = SmsParserEngine.inferBankName(sms).trim()
+            // What the parser makes of it today, for the admin parse-rate
+            // view: null = ignore pattern (OTP, promo), UNKNOWN = no parser
+            // matched (a broken or new template, or a capture-only bank).
+            val parsed = SmsParserEngine.parse(sms)
+            val parseStatus = when {
+                parsed == null                                -> "IGNORED"
+                parsed.type == TransactionType.UNKNOWN.name   -> "UNPARSED"
+                else                                          -> "PARSED"
+            }
 
             RawSmsSyncPayload(
                 localId = raw.id,
                 senderName = raw.sender.trim(),
                 bankName = if (bankName.isBlank()) raw.sender.trim() else bankName,
-                rawMessage = raw.body
+                rawMessage = raw.body,
+                receivedAt = raw.receivedAt,
+                parseStatus = parseStatus
             )
         }
 

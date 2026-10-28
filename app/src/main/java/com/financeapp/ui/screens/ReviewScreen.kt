@@ -138,6 +138,19 @@ fun ReviewScreen(
     // A review session: holds off the backlog nudge for 3 days.
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     LaunchedEffect(Unit) { com.financeapp.notifications.NotificationPrefs(appContext).lastReviewSessionMs = System.currentTimeMillis() }
+    // Admin retention metric: the queue was emptied in this visit (opening an
+    // already-finished queue doesn't count).
+    var sawPending by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isLoading, state.complete) {
+        if (state.isLoading) return@LaunchedEffect
+        if (!state.complete) sawPending = true
+        else if (sawPending) {
+            sawPending = false
+            com.financeapp.remote.Telemetry.track(appContext, com.financeapp.remote.Telemetry.REVIEW_COMPLETED, mapOf(
+                "scope" to state.scope.name, "reviewed" to state.doneToday
+            ))
+        }
+    }
     val current = state.current
     val allCategories = remember(customCategories) { TransactionCategoryCatalog.allCategories(customCategories) }
     // The category picked on the card; starts at the prediction (or Own

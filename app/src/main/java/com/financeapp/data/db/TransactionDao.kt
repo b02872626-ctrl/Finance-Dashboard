@@ -132,6 +132,9 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE isSynced = 0")
     suspend fun countUnsynced(): Int
 
+    @Query("SELECT MIN(createdAt) FROM transactions WHERE isSynced = 0")
+    suspend fun oldestUnsyncedCreatedAt(): Long?
+
     @Query("UPDATE transactions SET isSynced = 1 WHERE id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 

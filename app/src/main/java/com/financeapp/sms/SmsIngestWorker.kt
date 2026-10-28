@@ -16,6 +16,7 @@ import com.financeapp.remote.NetworkMonitor
 import com.financeapp.remote.SupabaseConfigProvider
 import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.remote.SyncNotificationHelper
+import com.financeapp.remote.Telemetry
 
 /**
  * Re-runs the SMS-inbox scan in a WorkManager job. Designed to be enqueued
@@ -41,6 +42,11 @@ class SmsIngestWorker(
             val firstRun = repo.countTransactions() == 0
             val insertedTxs = repo.ingestAllReturningInserted(messages)
             val inserted = insertedTxs.size
+            if (inserted > 0 || firstRun) {
+                Telemetry.track(ctx, Telemetry.SCAN_COMPLETED, mapOf(
+                    "source" to "worker", "messages" to messages.size, "inserted" to inserted, "first_run" to firstRun
+                ))
+            }
             val pendingTransactions = repo.countUnsyncedTransactions()
             val pendingRawMessages  = repo.countUnsyncedRawMessages()
             TransactionTriggers.onInserted(ctx, insertedTxs, batchIsHistorical = firstRun || inputData.getBoolean(KEY_RESCAN, false))
@@ -68,6 +74,9 @@ class SmsIngestWorker(
             }
             Result.success()
         } catch (e: Exception) {
+            Telemetry.track(applicationContext, Telemetry.SCAN_FAILED, mapOf(
+                "source" to "worker", "error" to "${e::class.java.simpleName}: ${e.message.orEmpty()}".take(300)
+            ))
             ErrorLogRepository.fromContext(applicationContext).log("SMS ingest worker failed", e)
             Result.retry()
         }

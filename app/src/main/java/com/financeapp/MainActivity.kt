@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
             if (granted[Manifest.permission.READ_SMS] == true) {
+                com.financeapp.remote.Telemetry.track(this, com.financeapp.remote.Telemetry.SMS_PERMISSION_GRANTED)
                 hasSmsAccess = true
                 smsDenied = false
                 SmsIngestService.start(this)

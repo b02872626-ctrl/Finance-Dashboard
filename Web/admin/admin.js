@@ -1,12 +1,15 @@
 // =============================================================================
 // Kash — Admin dashboard.
 //
-// Lists every user of the app with their session/time-spent metrics. The
-// admin gate is enforced on TWO layers:
+// Four questions: is the parser working, is categorization good enough, do
+// people stick, and are the phones healthy. Every number comes from the
+// admin_* views and tables in supabase/admin_health_metrics.sql.
+//
+// The admin gate is enforced on TWO layers:
 //   1. Client-side allowlist (ADMIN_EMAIL) — controls what UI is rendered.
 //   2. Postgres RLS policies (see supabase/add_admin_sessions.sql) — every
-//      SELECT against i_users / i_sessions / i_transactions / i_raw_data
-//      requires either user_id = auth.uid() OR is_admin(). If the JWT email
+//      SELECT against the i_* tables (and so the security_invoker admin_*
+//      views) requires either user_id = auth.uid() OR is_admin(). If the JWT email
 //      isn't on the allowlist, the queries return zero rows even if a
 //      malicious client edits ADMIN_EMAIL.
 // =============================================================================
@@ -46,7 +49,6 @@ const $ = (id) => document.getElementById(id);
 const loginView   = $("login-view");
 const deniedView  = $("denied-view");
 const adminShell  = $("admin-shell");
-const drillPane   = $("drill-pane");
 
 const loginForm      = $("login-form");
 const loginEmail     = $("login-email");
@@ -59,40 +61,25 @@ const adminEmail     = $("admin-email");
 const refreshBtn     = $("refresh-btn");
 const logoutBtn      = $("logout-btn");
 
-const statUsers          = $("stat-users");
-const statTotalTime      = $("stat-total-time");
-const statTotalSessions  = $("stat-total-sessions");
-const statActiveNow      = $("stat-active-now");
-const statNew7d          = $("stat-new-7d");
-const statAvgSession     = $("stat-avg-session");
-const statDau            = $("stat-dau");
-const statWau            = $("stat-wau");
+const parseTable    = $("parse-table");
+const unparsedList  = $("unparsed-list");
+const captureTable  = $("capture-table");
+const accuracyTable = $("accuracy-table");
+const hotspotTable  = $("hotspot-table");
+const funnelEl      = $("funnel");
+const peopleList    = $("people-list");
+const cohortTable   = $("cohort-table");
+const deviceTable   = $("device-table");
+const errorList     = $("error-list");
+const deletionList  = $("deletion-list");
 
-const chartDaily      = $("chart-daily");
-const chartHour       = $("chart-hour");
-const chartWeekday    = $("chart-weekday");
-const chartTopUsers   = $("chart-top-users");
+const RENDER_TARGETS = [
+  parseTable, unparsedList, captureTable, accuracyTable, hotspotTable,
+  funnelEl, peopleList, cohortTable, deviceTable, errorList, deletionList,
+];
 
-const usersSearch  = $("users-search");
-const usersSort    = $("users-sort");
-const usersTbody   = $("users-tbody");
-
-const drillEmail        = $("drill-email");
-const drillName         = $("drill-name");
-const drillTotalTime    = $("drill-total-time");
-const drillSessionCount = $("drill-session-count");
-const drillAvgSession   = $("drill-avg-session");
-const drillLastSeen     = $("drill-last-seen");
-const drillTxns         = $("drill-txns");
-const drillRaw          = $("drill-raw");
-const drillSessions     = $("drill-sessions");
-
-const state = {
-  users: [],       // rows from admin_user_overview
-  sessions: [],    // rows from i_sessions (last 30 days)
-  search: "",
-  sort: "last_session_at",
-};
+const PARSE_RATE_TARGET = 95;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ----------------------------------------------------------------------------
 // Boot
@@ -119,7 +106,6 @@ function routeFromSession(session) {
 function showLogin() {
   stopIdleLock();
   clearAdminData();
-  closeDrill();
   loginView.classList.remove("hidden");
   deniedView.classList.add("hidden");
   adminShell.classList.add("hidden");
@@ -127,11 +113,9 @@ function showLogin() {
 
 // Wipe rendered user data so nothing lingers in the DOM once locked.
 function clearAdminData() {
-  state.users = [];
-  state.sessions = [];
-  usersTbody.innerHTML = "";
-  for (const el of [chartDaily, chartHour, chartWeekday, chartTopUsers]) el.innerHTML = "";
-  drillSessions.innerHTML = "";
+  for (const el of RENDER_TARGETS) el.innerHTML = "";
+  for (const el of adminShell.querySelectorAll(".stat-value")) el.textContent = "—";
+  for (const el of adminShell.querySelectorAll(".stat-sub[id]")) el.textContent = "";
 }
 
 // ----------------------------------------------------------------------------
@@ -233,492 +217,428 @@ function showLoginError(msg) { loginError.textContent = msg; loginError.classLis
 function hideLoginError() { loginError.classList.add("hidden"); }
 
 // ----------------------------------------------------------------------------
-// Data loading
+// Data loading — one request per card, so a missing view only blanks its card.
 // ----------------------------------------------------------------------------
-// supabase/backfill_sessions_from_transactions.sql synthesised sessions from
-// SMS timestamps (when the bank texted, not when anyone opened the app) and
-// tagged them app_version = 'backfill-v1'. They swamp the real numbers, so
-// every session query here skips them. PostgREST's neq drops NULLs, hence or.
-const REAL_SESSIONS = "app_version.is.null,app_version.neq.backfill-v1";
-async function loadOverview() {
-  usersTbody.innerHTML = `<tr><td colspan="8" class="muted">Loading…</td></tr>`;
-  setChartsLoading();
+const SCHEMA_HINT =
+  `Schema is out of date — run <code>supabase/admin_health_metrics.sql</code> in the Supabase SQL editor.`;
 
-  const [usersRes, sessionsRes] = await Promise.all([
-    supabase.from("admin_user_overview").select("*"),
-    fetchRealSessions(),
+async function loadOverview() {
+  for (const el of RENDER_TARGETS) el.innerHTML = `<p class="muted">Loading…</p>`;
+
+  const since24h = new Date(Date.now() - DAY_MS).toISOString();
+  const since7d  = new Date(Date.now() - 7 * DAY_MS).toISOString();
+
+  const [
+    parse, unparsed, capture, quality, accuracy, hotspots, catSummary,
+    users, errors, deletions, downloads, installs,
+  ] = await Promise.all([
+    supabase.from("admin_parse_rate_7d").select("*").order("sort"),
+    supabase.from("admin_unparsed_sms").select("*"),
+    supabase.from("admin_capture_only_senders").select("*"),
+    supabase.from("admin_txn_quality").select("*").maybeSingle(),
+    supabase.from("admin_prediction_accuracy").select("*"),
+    supabase.from("admin_category_hotspots").select("*"),
+    supabase.from("admin_categorization_summary").select("*").maybeSingle(),
+    supabase.from("admin_user_health").select("*"),
+    supabase.from("i_events").select("user_id, name, props, app_version, occurred_at")
+      .in("name", ["scan_failed", "error"]).gte("occurred_at", since24h)
+      .order("occurred_at", { ascending: false }).limit(200),
+    supabase.from("i_account_deletions").select("*").order("deleted_at", { ascending: false }),
+    supabase.from("i_downloads").select("created_at, app_version"),
+    supabase.from("i_installs").select("install_id, created_at, app_version"),
   ]);
 
-  // Locked while the request was in flight — don't paint data back in.
+  // Locked while the requests were in flight — don't paint data back in.
   if (adminShell.classList.contains("hidden")) return;
 
-  if (usersRes.error) {
-    const hint = /relation .* does not exist/i.test(usersRes.error.message)
-      ? `Schema is out of date — run <code>supabase/add_admin_sessions.sql</code> in the Supabase SQL editor.`
-      : escapeHtml(usersRes.error.message);
-    usersTbody.innerHTML = `<tr><td colspan="8" class="muted">${hint}</td></tr>`;
-    setChartsEmpty(hint);
+  const userRows = users.data || [];
+  const emailById = new Map(userRows.map((u) => [u.id, u.email || u.name || u.id.slice(0, 8)]));
+
+  guard(parse, [parseTable], () => renderParseRate(parse.data));
+  guard(unparsed, [unparsedList], () => renderUnparsed(unparsed.data));
+  guard(capture, [captureTable], () => renderCaptureOnly(capture.data));
+  guard(quality, [], () => renderQuality(quality.data));
+  guard(accuracy, [accuracyTable], () => renderAccuracy(accuracy.data));
+  guard(hotspots, [hotspotTable], () => renderHotspots(hotspots.data));
+  guard(catSummary, [], () => renderCategorySummary(catSummary.data));
+  guard(users, [funnelEl, peopleList, cohortTable, deviceTable], () => {
+    renderRetention(userRows);
+    renderFunnel(userRows, downloads.data, installs.data);
+    renderPeople(userRows);
+    renderCohorts(userRows);
+    renderDevices(userRows);
+  });
+  guard(downloads, [], () => renderCountTile("downloads", downloads.data, since7d));
+  guard(installs, [], () => renderCountTile("installs", installs.data, since7d));
+  guard(errors, [errorList], () => renderErrors(errors.data, emailById));
+  guard(deletions, [deletionList], () => renderDeletions(deletions.data));
+}
+
+function guard(res, targets, render) {
+  if (res.error) {
+    const msg = /does not exist|schema cache/i.test(res.error.message) ? SCHEMA_HINT : escapeHtml(res.error.message);
+    for (const el of targets) el.innerHTML = `<p class="muted">${msg}</p>`;
+    console.warn(res.error);
     return;
   }
-  state.users = usersRes.data || [];
-  const allSessions = sessionsRes.error ? [] : sessionsRes.data;
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  state.sessions = allSessions.filter((s) => new Date(s.started_at).getTime() >= thirtyDaysAgo);
-
-  // Per-user session numbers come from the real sessions, not the view's
-  // session_count / total_seconds / last_session_at: the view may still be
-  // counting the backfill rows if admin_overview_real_sessions.sql hasn't
-  // been applied. Sessions are ordered started_at DESC, so the first hit per
-  // user is their latest version; users with no session render "—".
-  const byUser = new Map();
-  for (const s of allSessions) {
-    let agg = byUser.get(s.user_id);
-    if (!agg) {
-      agg = { count: 0, seconds: 0, last: 0, version: null, client: null };
-      byUser.set(s.user_id, agg);
-    }
-    agg.count += 1;
-    agg.seconds += sessionSeconds(s);
-    agg.last = Math.max(agg.last, new Date(s.ended_at || s.last_heartbeat_at).getTime());
-    if (!agg.version && s.app_version) { agg.version = s.app_version; agg.client = s.client; }
-  }
-  for (const u of state.users) {
-    const agg = byUser.get(u.id);
-    u.session_count = agg ? agg.count : 0;
-    u.total_seconds = agg ? agg.seconds : 0;
-    u.last_session_at = agg && agg.last ? new Date(agg.last).toISOString() : null;
-    u.app_version = agg ? agg.version : null;
-    u.last_client = agg ? agg.client : null;
-  }
-
-  renderStats();
-  renderUsers();
-  renderCharts();
-}
-
-// Every real (non-backfill) session, newest first. PostgREST caps each
-// response at 1,000 rows, so page through with range().
-async function fetchRealSessions() {
-  const PAGE = 1000;
-  const rows = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from("i_sessions")
-      .select("user_id, client, app_version, started_at, last_heartbeat_at, ended_at, duration_seconds")
-      .or(REAL_SESSIONS)
-      .order("started_at", { ascending: false })
-      .range(from, from + PAGE - 1);
-    if (error) return { data: rows, error };
-    rows.push(...data);
-    if (data.length < PAGE) return { data: rows, error: null };
+  try { render(); } catch (e) {
+    console.error(e);
+    for (const el of targets) el.innerHTML = `<p class="muted">Couldn't render: ${escapeHtml(e.message)}</p>`;
   }
 }
 
-// duration_seconds is only written by the first heartbeat; until then fall
-// back to heartbeat − start.
-function sessionSeconds(s) {
-  if (s.duration_seconds != null) return Math.max(0, Number(s.duration_seconds));
-  return Math.max(0, Math.round((new Date(s.last_heartbeat_at).getTime() - new Date(s.started_at).getTime()) / 1000));
+// ----------------------------------------------------------------------------
+// 1. Parser
+// ----------------------------------------------------------------------------
+function renderParseRate(rows) {
+  parseTable.innerHTML = `
+    <thead><tr>
+      <th>Bank</th><th class="num">Captured</th><th class="num">Parsed</th>
+      <th class="num">Unparsed</th><th class="num">Ignored</th><th class="num">Users</th>
+      <th>Last SMS</th><th class="num">Parse rate</th>
+    </tr></thead>
+    <tbody>${rows.map((r) => `
+      <tr>
+        <td><strong>${escapeHtml(r.sender_group)}</strong></td>
+        <td class="num">${num(r.captured)}</td>
+        <td class="num">${num(r.parsed)}</td>
+        <td class="num ${r.unparsed > 0 ? "text-bad" : ""}">${num(r.unparsed)}</td>
+        <td class="num muted">${num(r.ignored)}</td>
+        <td class="num">${num(r.users)}</td>
+        <td class="muted">${formatRelative(r.last_received_at) || "—"}</td>
+        <td class="num">${rateBadge(r.parse_rate)}</td>
+      </tr>`).join("")}
+    </tbody>`;
 }
 
-function renderStats() {
-  const users = state.users;
-  const sessions = state.sessions;
-  const totalSeconds = users.reduce((acc, u) => acc + Number(u.total_seconds || 0), 0);
-  const totalSessions = users.reduce((acc, u) => acc + Number(u.session_count || 0), 0);
-  const twoMinAgo = Date.now() - 2 * 60 * 1000;
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const startOfToday = startOfLocalDay(new Date()).getTime();
-
-  // A session that ended a minute ago isn't "active" — only open sessions
-  // whose heartbeat is still fresh count.
-  const activeNow = liveUserIds(sessions, twoMinAgo).size;
-
-  const new7d = users.filter((u) => {
-    const t = u.account_created_at ? new Date(u.account_created_at).getTime() : 0;
-    return t >= sevenDaysAgo;
-  }).length;
-
-  const avgSeconds = totalSessions > 0 ? Math.round(totalSeconds / totalSessions) : 0;
-
-  // DAU / WAU are computed from i_sessions (last 30d window). DAU = distinct
-  // user_ids with a session that started today (local). WAU = last 7 days.
-  const dauSet = new Set();
-  const wauSet = new Set();
-  for (const s of sessions) {
-    const t = new Date(s.started_at).getTime();
-    if (t >= startOfToday) dauSet.add(s.user_id);
-    if (t >= sevenDaysAgo) wauSet.add(s.user_id);
-  }
-
-  statUsers.textContent = users.length.toLocaleString();
-  statTotalTime.textContent = formatDuration(totalSeconds);
-  statTotalSessions.textContent = totalSessions.toLocaleString();
-  statActiveNow.textContent = activeNow.toString();
-  statNew7d.textContent = new7d.toLocaleString();
-  statAvgSession.textContent = avgSeconds ? formatDuration(avgSeconds) : "—";
-  statDau.textContent = dauSet.size.toLocaleString();
-  statWau.textContent = wauSet.size.toLocaleString();
+function rateBadge(rate) {
+  if (rate == null) return `<span class="muted">no SMS</span>`;
+  const r = Number(rate);
+  return `<span class="pill ${r < PARSE_RATE_TARGET ? "pill-bad" : "pill-good"}">${r.toFixed(1)}%</span>`;
 }
 
-function renderUsers() {
-  const q = state.search.trim().toLowerCase();
-  const filtered = q
-    ? state.users.filter((u) =>
-        (u.email || "").toLowerCase().includes(q) ||
-        (u.name || "").toLowerCase().includes(q))
-    : [...state.users];
+function renderUnparsed(rows) {
+  $("stat-unparsed").textContent = rows.length >= 300 ? "300+" : num(rows.length);
+  if (!rows.length) { unparsedList.innerHTML = `<p class="muted">Nothing unparsed. 🎉</p>`; return; }
+  unparsedList.innerHTML = rows.map((r) => `
+    <details class="sms-row">
+      <summary>
+        <span class="pill">${escapeHtml(r.sender_group)}</span>
+        <span class="sms-preview">${escapeHtml(r.raw_message)}</span>
+        <span class="muted small sms-meta">${formatDateTime(r.received_at)}</span>
+      </summary>
+      <pre class="sms-body">${escapeHtml(r.raw_message)}</pre>
+      <p class="muted small">
+        Sender <code>${escapeHtml(r.sender_name)}</code> · ${escapeHtml(r.email || r.user_id)}
+        ${r.status_inferred ? ` · <span title="Uploaded by a pre-1.0.9 build; not matched to any transaction">status inferred</span>` : ""}
+      </p>
+    </details>`).join("");
+}
 
-  filtered.sort((a, b) => compareRows(a, b, state.sort));
+function renderCaptureOnly(rows) {
+  if (!rows.length) { captureTable.innerHTML = `<tbody><tr><td class="muted">No capture-only SMS yet.</td></tr></tbody>`; return; }
+  captureTable.innerHTML = `
+    <thead><tr>
+      <th>Sender</th><th class="num">Messages</th><th class="num">Last 30d</th>
+      <th class="num">Users</th><th>Last SMS</th><th>Sample</th>
+    </tr></thead>
+    <tbody>${rows.map((r) => `
+      <tr>
+        <td><strong>${escapeHtml(r.sender_name)}</strong><div class="muted small">${escapeHtml(r.bank_name || "")}</div></td>
+        <td class="num">${num(r.messages)}</td>
+        <td class="num">${num(r.messages_30d)}</td>
+        <td class="num">${num(r.users)}</td>
+        <td class="muted">${formatRelative(r.last_received_at) || "—"}</td>
+        <td class="sample" title="${escapeAttr(r.sample || "")}">${escapeHtml(r.sample || "")}</td>
+      </tr>`).join("")}
+    </tbody>`;
+}
 
-  if (!filtered.length) {
-    usersTbody.innerHTML = `<tr><td colspan="8" class="muted">No users match.</td></tr>`;
-    return;
-  }
+function renderQuality(q) {
+  if (!q) return;
+  setStat("dup-7d", pct(q.duplicates_7d, q.total_7d), `${num(q.duplicates_7d)} of ${num(q.total_7d)} new rows`);
+  setStat("dup-all", pct(q.duplicates, q.total), `${num(q.duplicates)} of ${num(q.total)} rows`);
+  setStat("unknown", pct(q.unknown, q.total), `${num(q.unknown)} UNKNOWN rows · ${num(q.unknown_7d)} this week`);
+}
 
-  const live = liveUserIds(state.sessions, Date.now() - 2 * 60 * 1000);
-  usersTbody.innerHTML = filtered.map((u) => {
-    const isLive = live.has(u.id);
-    return `
-      <tr data-user-id="${escapeAttr(u.id)}">
-        <td>
-          <div class="user-cell">
-            <span class="name">${isLive ? '<span class="dot-online" title="Active"></span>' : ''}${escapeHtml(u.name || "—")}</span>
-            <span class="email">${escapeHtml(u.email || "")}</span>
-          </div>
-        </td>
-        <td>${formatDate(u.account_created_at)}</td>
-        <td>${formatRelative(u.last_session_at) || formatRelative(u.last_sign_in_at) || '—'}</td>
-        <td>${formatVersionCell(u)}</td>
-        <td class="num">${(u.session_count || 0).toLocaleString()}</td>
-        <td class="num">${formatDuration(u.total_seconds || 0)}</td>
-        <td class="num">${(u.txn_count || 0).toLocaleString()}</td>
-        <td class="num">${(u.raw_count || 0).toLocaleString()}</td>
-      </tr>
-    `;
+// ----------------------------------------------------------------------------
+// 2. Categorization
+// ----------------------------------------------------------------------------
+const SOURCE_LABELS = {
+  user_rule: "User rule",
+  seed: "Seed regex",
+  fallback: "Type fallback",
+  none: "No guess",
+  unknown: "Unknown",
+};
+const SOURCE_ORDER = ["user_rule", "seed", "fallback", "none", "unknown"];
+
+function renderAccuracy(rows) {
+  rows = [...rows].sort((a, b) => SOURCE_ORDER.indexOf(a.source) - SOURCE_ORDER.indexOf(b.source));
+  // "No guess" rows were never a prediction, so they stay out of accuracy.
+  const scored = rows.filter((r) => r.source !== "none");
+  const confirmed = sum(scored, "confirmed");
+  const changed = sum(scored, "changed");
+  setStat("accuracy", pct(confirmed, confirmed + changed), `${num(confirmed)} kept · ${num(changed)} changed`);
+
+  accuracyTable.innerHTML = `
+    <thead><tr>
+      <th>Source</th><th class="num">Confirmed</th><th class="num">Changed</th>
+      <th class="num">Accuracy</th><th class="num">Accuracy (30d)</th>
+      <th class="num">Not a txn</th><th class="num">Unreviewed</th>
+    </tr></thead>
+    <tbody>${rows.map((r) => {
+      const isNone = r.source === "none";
+      return `
+      <tr>
+        <td><strong>${SOURCE_LABELS[r.source] || escapeHtml(r.source)}</strong></td>
+        <td class="num">${num(r.confirmed)}</td>
+        <td class="num">${num(r.changed)}</td>
+        <td class="num">${isNone ? "—" : accuracyPill(r.confirmed, r.changed)}</td>
+        <td class="num">${isNone ? "—" : accuracyPill(r.confirmed_30d, r.changed_30d)}</td>
+        <td class="num">${num(r.not_a_txn)}</td>
+        <td class="num muted">${num(r.unreviewed)}</td>
+      </tr>`;
+    }).join("")}
+    </tbody>`;
+}
+
+function accuracyPill(ok, bad) {
+  const total = Number(ok || 0) + Number(bad || 0);
+  if (!total) return `<span class="muted">—</span>`;
+  const r = (100 * Number(ok || 0)) / total;
+  const cls = r >= 85 ? "pill-good" : r >= 65 ? "pill-warn" : "pill-bad";
+  return `<span class="pill ${cls}">${r.toFixed(0)}%</span>`;
+}
+
+function renderHotspots(rows) {
+  if (!rows.length) { hotspotTable.innerHTML = `<tbody><tr><td class="muted">Nothing landing in Other or being changed.</td></tr></tbody>`; return; }
+  hotspotTable.innerHTML = `
+    <thead><tr>
+      <th>Counterparty</th><th class="num">In Other</th><th class="num">Changed</th>
+      <th>Usually changed</th><th class="num">Users</th><th class="num">Txns</th>
+    </tr></thead>
+    <tbody>${rows.map((r) => `
+      <tr>
+        <td><strong>${escapeHtml(r.merchant_key)}</strong>${r.example && r.example.toUpperCase() !== r.merchant_key ? `<div class="muted small">${escapeHtml(r.example)}</div>` : ""}</td>
+        <td class="num">${num(r.in_other)}</td>
+        <td class="num">${num(r.changed)}</td>
+        <td>${r.changed_to ? `${escapeHtml(r.predicted || "no guess")} → <strong>${escapeHtml(r.changed_to)}</strong>` : `<span class="muted">—</span>`}</td>
+        <td class="num">${num(r.users)}</td>
+        <td class="num muted">${num(r.txns)}</td>
+      </tr>`).join("")}
+    </tbody>`;
+}
+
+function renderCategorySummary(s) {
+  if (!s) return;
+  setStat("backlog", pct(s.pending_older_than_7d, s.older_than_7d),
+    `${num(s.pending_older_than_7d)} of ${num(s.older_than_7d)} rows · ${num(s.skipped_older_than_7d)} skipped`);
+  setStat("transfers", num(s.transfers_flagged),
+    `${num(s.transfers_recategorised)} of ${num(s.transfers_reviewed)} reviewed were re-categorised (${pct(s.transfers_recategorised, s.transfers_reviewed)})`);
+  setStat("transfers-missed", num(s.transfers_missed));
+}
+
+// ----------------------------------------------------------------------------
+// 3. Retention
+// ----------------------------------------------------------------------------
+function renderRetention(users) {
+  const retained = users.filter((u) => u.review_days_7d >= 3).length;
+  setStat("retention", `${retained} / ${users.length}`, `reviewed on 3+ of the last 7 days (${pct(retained, users.length)})`);
+  const new7d = users.filter((u) => u.account_created_at && Date.now() - new Date(u.account_created_at) < 7 * DAY_MS).length;
+  setStat("users", num(users.length), `${num(new7d)} in the last 7 days`);
+}
+
+function renderCountTile(key, rows, since7d) {
+  const recent = rows.filter((r) => r.created_at >= since7d).length;
+  setStat(key, num(rows.length), `${num(recent)} in the last 7 days`);
+}
+
+function renderFunnel(users, downloads, installs) {
+  const steps = [
+    { label: "Downloaded APK", n: downloads ? downloads.length : null, anon: true },
+    { label: "Installed", n: installs ? installs.length : null, anon: true },
+    { label: "Signed up", n: users.length },
+    { label: "SMS permission granted", n: users.filter((u) => u.sms_permission_at).length },
+    { label: "First scan done", n: users.filter((u) => u.first_scan_at).length },
+    { label: "First review completed", n: users.filter((u) => u.first_review_at).length },
+    { label: "PIN set", n: users.filter((u) => u.pin_set_at).length },
+  ];
+  const max = Math.max(1, ...steps.map((s) => s.n || 0));
+  let prev = null;
+  funnelEl.innerHTML = steps.map((s) => {
+    const n = s.n ?? 0;
+    const conv = prev != null && prev > 0 ? `${Math.round((100 * n) / prev)}% of previous` : "";
+    // Drop from the previous step, highlighted where it's biggest.
+    const html = `
+      <div class="funnel-row">
+        <div class="funnel-label">${escapeHtml(s.label)}${s.anon ? ` <span class="muted small">anon</span>` : ""}</div>
+        <div class="funnel-track"><div class="funnel-fill" style="width:${Math.max(2, (100 * n) / max)}%"></div></div>
+        <div class="funnel-value"><strong>${s.n == null ? "—" : num(n)}</strong><span class="muted small">${conv}</span></div>
+      </div>`;
+    prev = s.n == null ? prev : n;
+    return html;
   }).join("");
 }
 
-function liveUserIds(sessions, since) {
-  const ids = new Set();
-  for (const s of sessions) {
-    if (!s.ended_at && new Date(s.last_heartbeat_at).getTime() >= since) ids.add(s.user_id);
-  }
-  return ids;
-}
-
-function compareRows(a, b, key) {
-  const av = a[key]; const bv = b[key];
-  if (key === "account_created_at" || key === "last_session_at") {
-    return (new Date(bv || 0).getTime()) - (new Date(av || 0).getTime());
-  }
-  return Number(bv || 0) - Number(av || 0);
-}
-
-usersSearch.addEventListener("input", (e) => {
-  state.search = e.target.value;
-  renderUsers();
-});
-usersSort.addEventListener("change", (e) => {
-  state.sort = e.target.value;
-  renderUsers();
-});
-
-usersTbody.addEventListener("click", (e) => {
-  const tr = e.target.closest("tr[data-user-id]");
-  if (!tr) return;
-  const id = tr.getAttribute("data-user-id");
-  const user = state.users.find((u) => u.id === id);
-  if (user) openDrill(user);
-});
-
-// ----------------------------------------------------------------------------
-// Drill-in
-// ----------------------------------------------------------------------------
-async function openDrill(user) {
-  drillEmail.textContent = user.email || "—";
-  drillName.textContent = user.name || user.email || "User";
-  drillTotalTime.textContent = formatDuration(user.total_seconds || 0);
-  drillSessionCount.textContent = (user.session_count || 0).toLocaleString();
-  const avg = (user.session_count || 0) > 0
-    ? Math.round(Number(user.total_seconds || 0) / Number(user.session_count))
-    : 0;
-  drillAvgSession.textContent = avg ? formatDuration(avg) : "—";
-  drillLastSeen.textContent = formatRelative(user.last_session_at) || "—";
-  drillTxns.textContent = (user.txn_count || 0).toLocaleString();
-  drillRaw.textContent = (user.raw_count || 0).toLocaleString();
-
-  drillSessions.innerHTML = `<p class="muted">Loading…</p>`;
-  drillPane.classList.remove("hidden");
-  drillPane.setAttribute("aria-hidden", "false");
-
-  const { data, error } = await supabase
-    .from("i_sessions")
-    .select("id, client, started_at, last_heartbeat_at, ended_at, duration_seconds")
-    .eq("user_id", user.id)
-    .or(REAL_SESSIONS)
-    .order("started_at", { ascending: false })
-    .limit(200);
-
-  if (error) {
-    drillSessions.innerHTML = `<p class="muted">Couldn't load sessions: ${escapeHtml(error.message)}</p>`;
-    return;
-  }
-
-  const sessions = data || [];
-  if (!sessions.length) {
-    drillSessions.innerHTML = `<p class="muted">No sessions recorded yet.</p>`;
-    return;
-  }
-  const twoMinAgo = Date.now() - 2 * 60 * 1000;
-  drillSessions.innerHTML = sessions.map((s) => {
-    const live = !s.ended_at && new Date(s.last_heartbeat_at).getTime() >= twoMinAgo;
-    const dur = sessionSeconds(s);
+function renderPeople(users) {
+  const rows = [...users].sort((a, b) => (b.days_since_review ?? 1e9) - (a.days_since_review ?? 1e9));
+  if (!rows.length) { peopleList.innerHTML = `<p class="muted">No users.</p>`; return; }
+  peopleList.innerHTML = rows.map((u) => {
+    const d = u.days_since_review;
+    const label = d == null ? "never" : d === 0 ? "today" : d === 1 ? "1 day" : `${d} days`;
+    const cls = d == null || d > 7 ? "pill-bad" : d > 2 ? "pill-warn" : "pill-good";
+    const dots = Array.from({ length: 7 }, (_, i) => `<span class="dot ${i < u.review_days_7d ? "on" : ""}"></span>`).join("");
     return `
-      <div class="session-row ${live ? 'live' : ''}">
-        <div class="marker" title="${live ? 'Live' : 'Ended'}"></div>
-        <div>
-          <span class="time">${formatDateTime(s.started_at)}</span>
-          <span class="client">${escapeHtml(s.client || '')}</span>
+      <div class="person-row">
+        <div class="user-cell">
+          <span class="name">${escapeHtml(u.name || u.email || "—")}</span>
+          ${u.name ? `<span class="email">${escapeHtml(u.email || "")}</span>` : ""}
         </div>
-        <div class="dur">${live ? 'Live · ' : ''}${formatDuration(dur)}</div>
-      </div>
-    `;
+        <div class="dots" title="${u.review_days_7d} review days in the last 7">${dots}</div>
+        <span class="pill ${cls}">${label}</span>
+      </div>`;
   }).join("");
 }
 
-function closeDrill() {
-  drillPane.classList.add("hidden");
-  drillPane.setAttribute("aria-hidden", "true");
-}
-
-drillPane.addEventListener("click", (e) => {
-  if (e.target.matches("[data-drill-close]")) closeDrill();
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !drillPane.classList.contains("hidden")) closeDrill();
-});
-
-// ----------------------------------------------------------------------------
-// Charts — inline SVG, no external libs (matches the main app's approach).
-// All charts use viewBox so they scale to whatever width the card gives them.
-// ----------------------------------------------------------------------------
-function setChartsLoading() {
-  for (const el of [chartDaily, chartHour, chartWeekday, chartTopUsers]) {
-    if (el) el.innerHTML = `<p class="muted">Loading…</p>`;
+function renderCohorts(users) {
+  const byWeek = new Map();
+  for (const u of users) {
+    if (!u.account_created_at) continue;
+    const ws = weekStart(new Date(u.account_created_at));
+    const wk = `${ws.getFullYear()}-${String(ws.getMonth() + 1).padStart(2, "0")}-${String(ws.getDate()).padStart(2, "0")}`;
+    const c = byWeek.get(wk) || { users: 0, closed: 0, retained: 0 };
+    c.users += 1;
+    if (u.week1_retained != null) { c.closed += 1; if (u.week1_retained) c.retained += 1; }
+    byWeek.set(wk, c);
   }
-}
-function setChartsEmpty(msg) {
-  for (const el of [chartDaily, chartHour, chartWeekday, chartTopUsers]) {
-    if (el) el.innerHTML = `<p class="muted">${msg || "No data."}</p>`;
-  }
+  const weeks = [...byWeek.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  if (!weeks.length) { cohortTable.innerHTML = `<tbody><tr><td class="muted">No signups yet.</td></tr></tbody>`; return; }
+  cohortTable.innerHTML = `
+    <thead><tr><th>Signup week</th><th class="num">Signed up</th><th class="num">Window closed</th><th class="num">Retained</th><th class="num">Week-1 retention</th></tr></thead>
+    <tbody>${weeks.map(([wk, c]) => `
+      <tr>
+        <td>${formatDate(`${wk}T00:00:00`)}</td>
+        <td class="num">${num(c.users)}</td>
+        <td class="num muted">${num(c.closed)}</td>
+        <td class="num">${num(c.retained)}</td>
+        <td class="num">${c.closed ? accuracyPill(c.retained, c.closed - c.retained) : `<span class="muted">pending</span>`}</td>
+      </tr>`).join("")}
+    </tbody>`;
 }
 
-function renderCharts() {
-  renderDailyChart();
-  renderHourChart();
-  renderWeekdayChart();
-  renderTopUsersChart();
-}
-
-function startOfLocalDay(d) {
+function weekStart(d) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); // Monday
   return x;
 }
 
-// 30-day bar chart of sessions per day. Bars are split: count + total time.
-function renderDailyChart() {
-  const days = 30;
-  const buckets = new Array(days).fill(0).map((_, i) => ({
-    label: "",
-    date: null,
-    sessions: 0,
-    seconds: 0,
-  }));
-  const today = startOfLocalDay(new Date());
-  for (let i = 0; i < days; i++) {
-    const d = new Date(today.getTime() - (days - 1 - i) * 86400000);
-    buckets[i].date = d;
-    buckets[i].label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  }
-  for (const s of state.sessions) {
-    const t = new Date(s.started_at).getTime();
-    const idx = Math.floor((t - (today.getTime() - (days - 1) * 86400000)) / 86400000);
-    if (idx < 0 || idx >= days) continue;
-    buckets[idx].sessions += 1;
-    buckets[idx].seconds += sessionSeconds(s);
-  }
+// ----------------------------------------------------------------------------
+// 4. Health
+// ----------------------------------------------------------------------------
+function renderDevices(users) {
+  const latest = users.map((u) => versionOf(u.app_version)).filter(Boolean).sort(compareVersions).pop();
+  const old = users.filter((u) => versionOf(u.app_version) && compareVersions(versionOf(u.app_version), latest) < 0);
+  setStat("old-version", num(old.length), latest ? `latest seen: ${latest}` : "no versions reported");
 
-  if (state.sessions.length === 0) {
-    chartDaily.innerHTML = `<p class="muted">No sessions in the last 30 days yet.</p>`;
-    return;
-  }
-
-  const W = 600, H = 180, padL = 8, padR = 8, padT = 12, padB = 28;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-  const maxSessions = Math.max(1, ...buckets.map((b) => b.sessions));
-  const barW = innerW / buckets.length;
-  const gap = Math.min(2, barW * 0.18);
-
-  const bars = buckets.map((b, i) => {
-    const x = padL + i * barW + gap / 2;
-    const w = barW - gap;
-    const h = (b.sessions / maxSessions) * innerH;
-    const y = padT + innerH - h;
-    const tip = `${b.label} · ${b.sessions} sessions · ${formatDuration(b.seconds)}`;
-    const color = b.sessions ? "var(--headline)" : "rgba(127,227,203,0.18)";
-    return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${Math.max(2, h).toFixed(2)}" rx="2" fill="${color}"><title>${escapeHtml(tip)}</title></rect>`;
-  }).join("");
-
-  // x-axis ticks every 5 days
-  const ticks = buckets.map((b, i) => {
-    if (i % 5 !== 0 && i !== buckets.length - 1) return "";
-    const x = padL + i * barW + barW / 2;
-    return `<text x="${x.toFixed(2)}" y="${(H - 8).toFixed(2)}" class="chart-axis-label" text-anchor="middle">${escapeHtml(b.label)}</text>`;
-  }).join("");
-
-  const totalSessions = buckets.reduce((a, b) => a + b.sessions, 0);
-  const totalSeconds = buckets.reduce((a, b) => a + b.seconds, 0);
-  document.getElementById("chart-daily-sub").textContent =
-    `${totalSessions.toLocaleString()} sessions · ${formatDuration(totalSeconds)}`;
-
-  chartDaily.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${ticks}</svg>`;
+  const rows = [...users].sort((a, b) =>
+    (Number(b.unsynced_transactions || 0) + Number(b.unsynced_raw || 0)) -
+    (Number(a.unsynced_transactions || 0) + Number(a.unsynced_raw || 0)));
+  deviceTable.innerHTML = `
+    <thead><tr>
+      <th>User</th><th>Version</th><th class="num">Unsynced txns</th><th class="num">Unsynced SMS</th>
+      <th>Oldest unsynced</th><th>Last sync OK</th><th>Last report</th><th>PIN</th>
+    </tr></thead>
+    <tbody>${rows.map((u) => {
+      const v = versionOf(u.app_version);
+      const isOld = v && latest && compareVersions(v, latest) < 0;
+      const oldestAge = u.oldest_unsynced_at ? Date.now() - new Date(u.oldest_unsynced_at) : 0;
+      return `
+      <tr>
+        <td><div class="user-cell"><span class="name">${escapeHtml(u.name || u.email || "—")}</span>${u.name ? `<span class="email">${escapeHtml(u.email || "")}</span>` : ""}</div></td>
+        <td>${v ? `<span class="pill ${isOld ? "pill-warn" : ""}">${escapeHtml(v)}</span>` : `<span class="muted">—</span>`}</td>
+        <td class="num">${u.unsynced_transactions == null ? `<span class="muted">—</span>` : num(u.unsynced_transactions)}</td>
+        <td class="num">${u.unsynced_raw == null ? `<span class="muted">—</span>` : num(u.unsynced_raw)}</td>
+        <td class="${oldestAge > DAY_MS ? "text-bad" : ""}">${u.oldest_unsynced_at ? formatRelative(u.oldest_unsynced_at) : `<span class="muted">—</span>`}</td>
+        <td>${u.last_sync_ok_at ? formatRelative(u.last_sync_ok_at) : `<span class="muted">—</span>`}${u.last_sync_error ? `<div class="text-bad small" title="${escapeAttr(u.last_sync_error)}">sync error</div>` : ""}</td>
+        <td class="muted">${u.status_reported_at ? formatRelative(u.status_reported_at) : "never (pre-1.0.9)"}</td>
+        <td>${u.has_pin == null ? `<span class="muted">—</span>` : u.has_pin ? "Yes" : "No"}</td>
+      </tr>`;
+    }).join("")}
+    </tbody>`;
 }
 
-function renderHourChart() {
-  const buckets = new Array(24).fill(0);
-  for (const s of state.sessions) {
-    const h = new Date(s.started_at).getHours();
-    if (h >= 0 && h < 24) buckets[h] += 1;
+// "android-1.0.9" / "web-beta17" → "1.0.9" / "beta17".
+function versionOf(v) {
+  if (!v) return null;
+  return v.replace(/^(android|web|ios)-/i, "");
+}
+function compareVersions(a, b) {
+  const pa = String(a).split(/[.-]/).map((x) => (isNaN(x) ? x : Number(x)));
+  const pb = String(b).split(/[.-]/).map((x) => (isNaN(x) ? x : Number(x)));
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? 0, y = pb[i] ?? 0;
+    if (x === y) continue;
+    if (typeof x === "number" && typeof y === "number") return x - y;
+    return String(x).localeCompare(String(y));
   }
-  if (state.sessions.length === 0) { chartHour.innerHTML = `<p class="muted">No data.</p>`; return; }
-
-  const W = 320, H = 160, padL = 8, padR = 8, padT = 12, padB = 24;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-  const max = Math.max(1, ...buckets);
-  const barW = innerW / 24;
-  const gap = Math.min(2, barW * 0.2);
-
-  const bars = buckets.map((v, i) => {
-    const x = padL + i * barW + gap / 2;
-    const w = barW - gap;
-    const h = (v / max) * innerH;
-    const y = padT + innerH - h;
-    const color = v ? "var(--green-income)" : "rgba(76,212,149,0.18)";
-    return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${Math.max(2, h).toFixed(2)}" rx="2" fill="${color}"><title>${i}:00 — ${v}</title></rect>`;
-  }).join("");
-
-  const ticks = [0, 6, 12, 18, 23].map((i) => {
-    const x = padL + i * barW + barW / 2;
-    return `<text x="${x.toFixed(2)}" y="${(H - 6).toFixed(2)}" class="chart-axis-label" text-anchor="middle">${i}</text>`;
-  }).join("");
-
-  chartHour.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${ticks}</svg>`;
+  return 0;
 }
 
-function renderWeekdayChart() {
-  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const buckets = new Array(7).fill(0);
-  for (const s of state.sessions) buckets[new Date(s.started_at).getDay()] += 1;
-  if (state.sessions.length === 0) { chartWeekday.innerHTML = `<p class="muted">No data.</p>`; return; }
-
-  const W = 320, H = 160, padL = 12, padR = 12, padT = 12, padB = 24;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-  const max = Math.max(1, ...buckets);
-  const barW = innerW / 7;
-  const gap = Math.min(6, barW * 0.25);
-
-  const bars = buckets.map((v, i) => {
-    const x = padL + i * barW + gap / 2;
-    const w = barW - gap;
-    const h = (v / max) * innerH;
-    const y = padT + innerH - h;
-    return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${Math.max(2, h).toFixed(2)}" rx="3" fill="var(--headline)"><title>${labels[i]} — ${v}</title></rect>`;
-  }).join("");
-
-  const ticks = labels.map((lab, i) => {
-    const x = padL + i * barW + barW / 2;
-    return `<text x="${x.toFixed(2)}" y="${(H - 6).toFixed(2)}" class="chart-axis-label" text-anchor="middle">${lab}</text>`;
-  }).join("");
-
-  chartWeekday.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${ticks}</svg>`;
-}
-
-// Horizontal bar chart, top 10 users by total_seconds.
-function renderTopUsersChart() {
-  const top = [...state.users]
-    .filter((u) => Number(u.total_seconds || 0) > 0)
-    .sort((a, b) => Number(b.total_seconds || 0) - Number(a.total_seconds || 0))
-    .slice(0, 10);
-
-  if (!top.length) { chartTopUsers.innerHTML = `<p class="muted">No session data yet.</p>`; return; }
-
-  const max = Math.max(1, ...top.map((u) => Number(u.total_seconds || 0)));
-  chartTopUsers.innerHTML = top.map((u) => {
-    const sec = Number(u.total_seconds || 0);
-    const pct = Math.max(2, Math.round((sec / max) * 100));
-    const name = u.name || u.email || u.id.slice(0, 8);
-    return `
-      <div class="hbar-row" data-user-id="${escapeAttr(u.id)}">
-        <div class="hbar-label" title="${escapeAttr(u.email || '')}">${escapeHtml(name)}</div>
-        <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div>
-        <div class="hbar-value">${formatDuration(sec)}</div>
+function renderErrors(rows, emailById) {
+  const scans = rows.filter((r) => r.name === "scan_failed");
+  const errs = rows.filter((r) => r.name === "error");
+  setStat("scan-fail", num(scans.length), `${new Set(scans.map((r) => r.user_id)).size} users`);
+  setStat("errors", num(errs.length), `${new Set(errs.map((r) => r.user_id)).size} users`);
+  if (!rows.length) { errorList.innerHTML = `<p class="muted">No failures in the last 24 hours.</p>`; return; }
+  errorList.innerHTML = rows.map((r) => `
+    <div class="event-row">
+      <div>
+        <span class="pill ${r.name === "scan_failed" ? "pill-bad" : "pill-warn"}">${r.name === "scan_failed" ? "Scan failed" : escapeHtml(r.props?.summary || "Error")}</span>
+        <span class="muted small">${escapeHtml(emailById.get(r.user_id) || r.user_id.slice(0, 8))} · ${escapeHtml(versionOf(r.app_version) || "")}</span>
       </div>
-    `;
+      <div class="mono event-detail">${escapeHtml(r.props?.error || "")}</div>
+      <div class="muted small">${formatDateTime(r.occurred_at)}</div>
+    </div>`).join("");
+}
+
+function renderDeletions(rows) {
+  const recent = rows.filter((r) => Date.now() - new Date(r.deleted_at) < 30 * DAY_MS).length;
+  setStat("deletions", num(rows.length), `${num(recent)} in the last 30 days`);
+  if (!rows.length) { deletionList.innerHTML = `<p class="muted">No deletions recorded.</p>`; return; }
+  deletionList.innerHTML = rows.map((r) => {
+    const stayed = r.account_created_at ? Math.max(0, Math.round((new Date(r.deleted_at) - new Date(r.account_created_at)) / DAY_MS)) : null;
+    return `
+    <div class="event-row">
+      <div><strong>${formatDateTime(r.deleted_at)}</strong> <span class="muted small">${escapeHtml(versionOf(r.app_version) || "")}</span></div>
+      <div class="muted small">
+        ${stayed == null ? "" : `stayed ${stayed} day${stayed === 1 ? "" : "s"} · `}${num(r.txn_count)} txns · ${num(r.reviewed_count)} reviewed
+      </div>
+    </div>`;
   }).join("");
 }
 
-// Click a top-user bar to drill in.
-document.addEventListener("click", (e) => {
-  const row = e.target.closest(".hbar-row[data-user-id]");
-  if (!row) return;
-  const id = row.getAttribute("data-user-id");
-  const user = state.users.find((u) => u.id === id);
-  if (user) openDrill(user);
-});
+// ----------------------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------------------
+function setStat(key, value, sub) {
+  $(`stat-${key}`).textContent = value;
+  const subEl = $(`stat-${key}-sub`);
+  if (subEl && sub != null) subEl.textContent = sub;
+}
+function num(n) { return Number(n || 0).toLocaleString(); }
+function sum(rows, key) { return rows.reduce((a, r) => a + Number(r[key] || 0), 0); }
+function pct(part, whole) {
+  const w = Number(whole || 0);
+  if (!w) return "—";
+  const p = (100 * Number(part || 0)) / w;
+  return `${p < 10 && p > 0 ? p.toFixed(1) : Math.round(p)}%`;
+}
 
 // ----------------------------------------------------------------------------
 // Formatters
 // ----------------------------------------------------------------------------
-// Renders the per-user Version cell. Strings like "web-beta17" or
-// "android-beta17" get split into a small "WEB"/"ANDROID" client tag plus
-// the version label so the column is scannable. Unknown / missing values
-// render as a muted em-dash.
-function formatVersionCell(u) {
-  const v = u.app_version;
-  if (!v) return '<span class="muted">—</span>';
-  // Common patterns: "web-beta17", "android-1.0.0-beta17", "web-1.2.3"
-  let client = u.last_client || "";
-  let label = v;
-  const dash = v.indexOf("-");
-  if (dash > 0) {
-    const head = v.slice(0, dash).toLowerCase();
-    if (head === "web" || head === "android" || head === "ios") {
-      client = head;
-      label = v.slice(dash + 1);
-    }
-  }
-  const clientPill = client
-    ? `<span class="version-client version-client-${escapeAttr(client)}">${escapeHtml(client.toUpperCase())}</span>`
-    : "";
-  return `<span class="version-cell">${clientPill}<code class="version-label">${escapeHtml(label)}</code></span>`;
-}
-
-function formatDuration(seconds) {
-  const s = Math.max(0, Math.round(Number(seconds) || 0));
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ${s % 60}s`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ${m % 60}m`;
-  const d = Math.floor(h / 24);
-  return `${d}d ${h % 24}h`;
-}
-
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);

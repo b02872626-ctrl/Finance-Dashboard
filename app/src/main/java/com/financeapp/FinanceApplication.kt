@@ -20,5 +20,6 @@ class FinanceApplication : Application() {
         SyncNotificationHelper.ensureChannel(this)
         com.financeapp.notifications.KashNotifier.ensureChannels(this)
         com.financeapp.notifications.NotificationScheduler.ensureScheduled(this)
+        com.financeapp.remote.Telemetry.onAppStart(this)
     }
 }
