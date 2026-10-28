@@ -36,7 +36,7 @@ class CbeDebitParser : BankParser {
     //  - "debited with ETB 100.00"
     //  - "A debit transaction of ETB 15.0"
     private val amountRe  = Regex(
-        """(?:debited\s+with|debit\s+transaction\s+of)\s+ETB\s*([\d,]+\.?\d*)""",
+        """(?:debited\s+with|debit\s+transaction\s+of|debited\s+for\s+.+?\s+with)\s+ETB\s*([\d,]+\.?\d*)""",
         RegexOption.IGNORE_CASE
     )
     private val scRe       = Regex("""Service\s+charge\s+(?:of\s+)?ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
@@ -52,11 +52,14 @@ class CbeDebitParser : BankParser {
     )
     private val totalRe    = Regex("""(?:with\s+a\s+)?total\s+of\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
     private val balanceRe  = Regex("""(?:Current\s+)?Balance\s+is\s+ETB\s*(-?[\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
-    private val refRe      = Regex("""[?&]id=([A-Z0-9]+)""", RegexOption.IGNORE_CASE)
+    private val refRe      = Regex("""(?:[?&]id=|BranchReceipt/)([A-Z0-9]+)""", RegexOption.IGNORE_CASE)
+    // "has been debited for AASTU CONSUMERS COOPERATIVES PLC  with ETB 210."
+    private val forRe      = Regex("""debited\s+for\s+(.+?)\s+with\s+ETB""", RegexOption.IGNORE_CASE)
 
     override fun canParse(sender: String, body: String): Boolean =
         sender.equals("CBE", ignoreCase = true) &&
         (body.contains("has been debited with ETB", ignoreCase = true) ||
+         forRe.containsMatchIn(body) ||
          body.contains("debit transaction of ETB",  ignoreCase = true))
 
     override fun parse(sms: SmsMessage): TransactionEntity? {
@@ -69,7 +72,7 @@ class CbeDebitParser : BankParser {
                 type          = TransactionType.DEBIT.name,
                 amount        = amount,
                 balance       = ParserUtils.parseAmount(balanceRe.find(body)?.groupValues?.get(1)),
-                counterparty  = null,
+                counterparty  = forRe.find(body)?.groupValues?.get(1)?.trim()?.replace(Regex("""\s+"""), " "),
                 // Strip trailing punctuation — the 2026 "on your account X."
                 // variant leaves a period at the end of the captured group.
                 accountNumber = accountRe.find(body)?.groupValues?.get(1)?.trimEnd('.', ',', ';'),

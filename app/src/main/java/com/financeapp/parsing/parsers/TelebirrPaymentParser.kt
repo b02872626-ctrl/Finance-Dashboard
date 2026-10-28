@@ -15,6 +15,8 @@ import com.financeapp.parsing.TransactionType
 class TelebirrPaymentParser : BankParser {
 
     private val amountRe    = Regex("""paid\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
+    // "You have Paid  ETB 2.00 to 513152 - KULU NETWORK PLC for Entertainment on 22/02/2024 …"
+    private val toCategoryRe = Regex("""ETB\s*[\d,]+\.?\d*\s+to\s+(.+?)\s+for\s+[A-Za-z ]+?\s+on\s+\d{2}/\d{2}/\d{4}""", RegexOption.IGNORE_CASE)
     // Merchant: "for goods/fuel purchased from <CODE - NAME>" or "for X payment to NAME"
     private val fromMerchantRe = Regex("""from\s+(.+?)\s+(?:on\s+\d{2}/\d{2}/\d{4}|for\s+plate\s+number)""", RegexOption.IGNORE_CASE)
     private val toMerchantRe   = Regex("""payment\s+to\s+(.+?)\s+with\s+Payment\s+Reference""", RegexOption.IGNORE_CASE)
@@ -31,7 +33,7 @@ class TelebirrPaymentParser : BankParser {
 
     override fun canParse(sender: String, body: String): Boolean =
         sender == "127" &&
-        body.contains("You have paid ETB", ignoreCase = true)
+        Regex("""You\s+have\s+paid\s+ETB""", RegexOption.IGNORE_CASE).containsMatchIn(body)
 
     override fun parse(sms: SmsMessage): TransactionEntity? {
         return try {
@@ -43,6 +45,7 @@ class TelebirrPaymentParser : BankParser {
             // Counterparty priority: explicit merchant > package name > generic purpose
             val counterparty = fromMerchantRe.find(body)?.groupValues?.get(1)?.trim()
                 ?: toMerchantRe.find(body)?.groupValues?.get(1)?.trim()
+                ?: toCategoryRe.find(body)?.groupValues?.get(1)?.trim()
                 ?: packageRe.find(body)?.groupValues?.get(1)?.trim()?.let { "Telecom package: $it" }
                 ?: purposeRe.find(body)?.groupValues?.get(1)?.trim()
 

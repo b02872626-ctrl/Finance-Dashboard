@@ -204,23 +204,25 @@ class SmsParserTest {
     }
 
     @Test
-    fun `Completely garbled CBE SMS returns UNKNOWN without crashing`() {
+    fun `Garbled CBE SMS with no amount is a notice, not a miss`() {
         val sms = SmsMessage(
             sender = "CBE",
             body = "!!!! GARBLED NONSENSE @@@@ 🤯 / nothing useful here",
             timestamp = System.currentTimeMillis()
         )
-        val tx = SmsParserEngine.parse(sms)
-        assertNotNull(tx)
-        assertEquals(TransactionType.UNKNOWN.name, tx!!.type)
+        assertNull(SmsParserEngine.parse(sms))
+    }
+
+    @Test
+    fun `Unreadable CBE SMS with an amount still returns UNKNOWN`() {
+        val sms = SmsMessage(sender = "CBE", body = "Xyz ETB 120.00 was debited somewhere odd", timestamp = 0L)
+        assertEquals(TransactionType.UNKNOWN.name, SmsParserEngine.parse(sms)!!.type)
     }
 
     @Test
     fun `Empty body does not crash parser`() {
         val sms = SmsMessage(sender = "CBE", body = "", timestamp = 0L)
-        val tx = SmsParserEngine.parse(sms)
-        assertNotNull(tx)
-        assertEquals(TransactionType.UNKNOWN.name, tx!!.type)
+        assertNull(SmsParserEngine.parse(sms))
     }
 
     @Test

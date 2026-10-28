@@ -27,7 +27,7 @@ class TelebirrTrafficPenaltyParser : BankParser {
     override fun canParse(sender: String, body: String): Boolean =
         sender == "127" &&
         body.contains("paid", ignoreCase = true) &&
-        body.contains("traffic penalty", ignoreCase = true)
+        Regex("""traffic[\s\u00A0]+penalty|Parking[\s\u00A0]+Payment""", RegexOption.IGNORE_CASE).containsMatchIn(body)
 
     override fun parse(sms: SmsMessage): TransactionEntity? {
         return try {

@@ -47,6 +47,23 @@ object ParserUtils {
         }
     }
 
+    /**
+     * Parse "yyyy-MM-dd HH:mm:ss" → epoch millis. Strict, and only years
+     * 2000 to next year: Telebirr has sent dates like "2611-05-24".
+     */
+    fun parseIsoDateTime(dateTime: String?): Long? {
+        if (dateTime.isNullOrBlank()) return null
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply { isLenient = false }
+            val ms = sdf.parse(dateTime.trim())?.time ?: return null
+            val year = java.util.Calendar.getInstance().apply { timeInMillis = ms }.get(java.util.Calendar.YEAR)
+            val thisYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            if (year in 2000..thisYear + 1) ms else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /** Compute MD5 hash of the SMS body for deduplication */
     fun md5(input: String): String {
         return try {

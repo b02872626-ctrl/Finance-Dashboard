@@ -3,6 +3,11 @@ package com.financeapp.parsing
 import com.financeapp.data.categorize.MerchantKey
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.parsing.parsers.AwashCreditParser
+import com.financeapp.parsing.parsers.TelebirrOwnMovesParser
+import com.financeapp.parsing.parsers.AwashSchoolFeeParser
+import com.financeapp.parsing.parsers.NibParser
+import com.financeapp.parsing.parsers.DashenMoreParser
+import com.financeapp.parsing.parsers.BoaPosHoldParser
 import com.financeapp.parsing.parsers.CbeFastLoanParser
 import com.financeapp.parsing.parsers.BerhanBankCreditParser
 import com.financeapp.parsing.parsers.BerhanBankDebitParser
@@ -27,6 +32,11 @@ import com.financeapp.parsing.parsers.TelebirrTransferParser
 import com.financeapp.parsing.parsers.TelebirrWalletCreditParser
 import com.financeapp.parsing.parsers.TelebirrWithdrawalParser
 import com.financeapp.parsing.parsers.UnknownBankParser
+import com.financeapp.parsing.parsers.AwashMoreParser
+import com.financeapp.parsing.parsers.BoaLegacyCreditParser
+import com.financeapp.parsing.parsers.CbeBirrLegacyParser
+import com.financeapp.parsing.parsers.CbeMoreParser
+import com.financeapp.parsing.parsers.TelebirrMoreParser
 
 /**
  * Orchestrates SMS parsing by routing each SMS to the first matching parser.
@@ -138,16 +148,26 @@ object SmsParserEngine {
         // CBEBirr parsers — match on sender == "CBEBirr" so they're safe
         // to keep next to the CBE parsers (which match on "CBE"). Order
         // them by specificity: withdrawal + transfer before credit.
+        CbeBirrLegacyParser(),
         CbeBirrWithdrawalParser(),
         CbeBirrTransferParser(),
         CbeBirrCreditParser(),
         CbeFastLoanParser(),
+        CbeMoreParser(),
+        BoaPosHoldParser(),
+        BoaLegacyCreditParser(),
+        DashenMoreParser(),
+        NibParser(),
+        AwashSchoolFeeParser(),
+        AwashMoreParser(),
         CbeCreditParser(),
         CbeTransferParser(),
         CbeDebitParser(),
         // Mela parsers must come before generic Telebirr parsers — they match more specific phrasing.
         TelebirrMelaCreditParser(),
         TelebirrMelaRepaymentParser(),
+        TelebirrOwnMovesParser(),
+        TelebirrMoreParser(),
         TelebirrWalletCreditParser(),
         TelebirrCreditParser(),
         TelebirrAirtimeParser(),
@@ -155,7 +175,7 @@ object SmsParserEngine {
         TelebirrPaymentParser(),
         TelebirrTransferParser(),
         TelebirrWithdrawalParser(),
-        UnknownBankParser()
+        // UnknownBankParser is the fallback in parse(), after the money check.
     )
 
     fun isFinancialSms(sender: String): Boolean =
@@ -234,14 +254,45 @@ object SmsParserEngine {
         Regex("""\bEKSIPOO\b|\bFEESTIVAALA\b""", RegexOption.IGNORE_CASE),
         Regex("""ኤክስፖ"""),           // "expo"
         Regex("""ቨርቹዋል"""),         // "virtual" (card offers)
+        // From the i_raw_data export (Oct 2026): notices that carry an amount
+        // but move no money, or repeat a payment another SMS already reports.
+        Regex("""using\s+Ethiotel\s+Credit""", RegexOption.IGNORE_CASE),   // the purchase has its own "You have paid" SMS
+        Regex("""pay\s+your\s+credit\s+within""", RegexOption.IGNORE_CASE),
+        Regex("""withdraw\s+secret\s+code\s+is""", RegexOption.IGNORE_CASE),          // code only; the withdrawal SMS comes later
+        Regex("""collect\s+transfer\s+amount\s+with\s+this\s+Secret\s+code""", RegexOption.IGNORE_CASE),
+        Regex("""lottery\s+ID""", RegexOption.IGNORE_CASE),
+        Regex("""bonus\s+that\s+is\s+used\s+for\s+airtime""", RegexOption.IGNORE_CASE),
+        Regex("""request\s+to\s+buy\s+package\s+was\s+unsuccessful""", RegexOption.IGNORE_CASE),
+        Regex("""airtime\s+from\s+\d""", RegexOption.IGNORE_CASE),       // airtime gifts, not money
+        Regex("""account\s+balance\s+is\s*:""", RegexOption.IGNORE_CASE), // CBE Birr balance check
+        Regex("""BIRR\s+School\s+Fee\s+for""", RegexOption.IGNORE_CASE), // Awash eSchool repeats the AwashPay SMS
+        Regex("""USD\s*[\d,.]+\s+is\s+Locked""", RegexOption.IGNORE_CASE),
+        Regex("""payment\s+request\s+of\s+ETB\s*[\d,.]+\s+is\s+pending""", RegexOption.IGNORE_CASE),
+        Regex("""Package\s+Purchase\s+request.*?is\s+reversed""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), // no amount; the purchase never went through
+        Regex("""to\s+your\s+\w+\s+account\s+from\s+Awash\s+Bank""", RegexOption.IGNORE_CASE), // the receiving bank sends the credit
     )
+
+    // An amount in birr next to a money verb: what every bank alert has.
+    private val amountRe = Regex("""(?:ETB|Birr|Br\.?)\s*[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?\s*(?:ETB|Birr|Br\b|ብር)""", RegexOption.IGNORE_CASE)
+    private val moneyVerbRe = Regex(
+        """\b(credited|debited|deposited|withdrawn|withdrew|transferred|transfered|received|paid|sent|purchased?|payment|refunded|reversed)\b|ገቢ|ወጪ|ተላልፏል|ተቀብለዋል|ተከፍሏል""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /**
+     * True when no parser claimed the SMS but it still reads like money
+     * moving — a real gap worth a parser. Everything else (promotions,
+     * security warnings, PIN notices) is a notice, not a transaction.
+     */
+    fun looksLikeTransaction(body: String): Boolean =
+        amountRe.containsMatchIn(body) && moneyVerbRe.containsMatchIn(body)
 
     /**
      * Bump whenever the ignore list or a parser changes. Devices re-send
      * every stored SMS's parse status once per version, so the admin bug
      * queue reflects what the current rules make of old messages.
      */
-    const val RULES_VERSION = 2
+    const val RULES_VERSION = 4
 
     /**
      * Parse the SMS and return a TransactionEntity.
@@ -268,6 +319,9 @@ object SmsParserEngine {
             }
         }
 
+        // No parser claimed it. Only money-shaped messages count as misses;
+        // the rest are notices (ignored, like the patterns above).
+        if (!looksLikeTransaction(sms.body)) return null
         return UnknownBankParser().parse(sms).withReceiptLinkFallback().withMerchantKey()
     }
 
