@@ -25,8 +25,8 @@ android {
         applicationId = "com.financeapp"
         minSdk = 23
         targetSdk = 34
-        versionCode = 30
-        versionName = "1.0.10"
+        versionCode = 31
+        versionName = "1.0.11"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Supabase config (set these in local.properties; do not commit secrets)

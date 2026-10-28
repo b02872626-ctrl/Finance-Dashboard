@@ -51,52 +51,57 @@ create trigger kash_txn_set_id
   before insert on public.i_transactions
   for each row execute function public.kash_txn_set_id();
 
--- 3. Merge the existing copies.
-begin;
+-- 3. Merge the existing copies. One DO block = one transaction, so it all
+--    happens or none of it does (the SQL editor commits statement by
+--    statement, which a begin/commit pair can't rely on).
+do $$
+begin
+  -- Every row with its SMS id. Keep one per SMS: a parsed row over UNKNOWN,
+  -- then the newest upload (the newest parser).
+  create temp table kash_rows as
+  select
+    t.user_id,
+    t.id,
+    public.kash_txn_key(t.sender, t.raw_body, t.ref_num) as nk,
+    row_number() over (
+      partition by t.user_id, public.kash_txn_key(t.sender, t.raw_body, t.ref_num)
+      order by (t.type = 'UNKNOWN'), t.created_at desc, t.id desc
+    ) as rn
+  from public.i_transactions t;
 
--- Every row with its SMS id. Keep one per SMS: a parsed row over UNKNOWN,
--- then the newest upload (the newest parser).
-create temp table kash_rows on commit drop as
-select
-  t.user_id,
-  t.id,
-  public.kash_txn_key(t.sender, t.raw_body, t.ref_num) as nk,
-  row_number() over (
-    partition by t.user_id, public.kash_txn_key(t.sender, t.raw_body, t.ref_num)
-    order by (t.type = 'UNKNOWN'), t.created_at desc, t.id desc
-  ) as rn
-from public.i_transactions t;
+  -- The user's own decision on any copy (newest first): never lose a category.
+  create temp table kash_decisions as
+  select distinct on (r.user_id, r.nk)
+    r.user_id, r.nk, t.category, t.review_status
+  from kash_rows r
+  join public.i_transactions t on t.user_id = r.user_id and t.id = r.id
+  where coalesce(t.review_status, 'PENDING') <> 'PENDING'
+  order by r.user_id, r.nk, t.created_at desc, t.id desc;
 
--- The user's own decision on any copy (newest first) — never lose a category.
-create temp table kash_decisions on commit drop as
-select distinct on (r.user_id, r.nk)
-  r.user_id, r.nk, t.category, t.review_status
-from kash_rows r
-join public.i_transactions t on t.user_id = r.user_id and t.id = r.id
-where coalesce(t.review_status, 'PENDING') <> 'PENDING'
-order by r.user_id, r.nk, t.created_at desc, t.id desc;
+  delete from public.i_transactions t
+  using kash_rows r
+  where t.user_id = r.user_id and t.id = r.id and r.rn > 1;
 
-delete from public.i_transactions t
-using kash_rows r
-where t.user_id = r.user_id and t.id = r.id and r.rn > 1;
+  update public.i_transactions t
+  set category = d.category,
+      review_status = d.review_status
+  from kash_rows r
+  join kash_decisions d on d.user_id = r.user_id and d.nk = r.nk
+  where t.user_id = r.user_id and t.id = r.id and r.rn = 1;
 
-update public.i_transactions t
-set category = d.category,
-    review_status = d.review_status
-from kash_rows r
-join kash_decisions d on d.user_id = r.user_id and d.nk = r.nk
-where t.user_id = r.user_id and t.id = r.id and r.rn = 1;
+  -- Move each kept row to its SMS id. Via negative ids so no step can clash
+  -- with a row that still has its old id.
+  update public.i_transactions t
+  set id = -r.nk
+  from kash_rows r
+  where t.user_id = r.user_id and t.id = r.id and r.rn = 1 and t.id <> r.nk;
 
--- Move each kept row to its SMS id. Via negative ids so no step can clash
--- with a row that still has its old id.
-update public.i_transactions t
-set id = -r.nk
-from kash_rows r
-where t.user_id = r.user_id and t.id = r.id and r.rn = 1 and t.id <> r.nk;
+  update public.i_transactions set id = -id where id < 0;
 
-update public.i_transactions set id = -id where id < 0;
-
-commit;
+  drop table kash_decisions;
+  drop table kash_rows;
+end;
+$$;
 
 -- 4. The bug queue: only SMS the device itself marked UNPARSED. Rows sent
 --    before 1.0.9 have no status; devices re-send them with one after they

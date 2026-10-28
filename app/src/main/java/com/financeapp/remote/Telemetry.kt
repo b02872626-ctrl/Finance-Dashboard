@@ -35,6 +35,8 @@ object Telemetry {
     const val SCAN_FAILED            = "scan_failed"
     const val PIN_SET                = "pin_set"
     const val ERROR                  = "error"
+    /** A business sender not on the bank list whose SMS read like money (name + count only). */
+    const val MONEY_SENDER_SEEN      = "money_sender_seen"
 
     private const val PREFS = "kash_telemetry"
     private const val KEY_INSTALL_ID = "install_id"

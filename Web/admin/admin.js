@@ -64,6 +64,7 @@ const logoutBtn      = $("logout-btn");
 const parseTable    = $("parse-table");
 const unparsedList  = $("unparsed-list");
 const captureTable  = $("capture-table");
+const moneySendersTable = $("money-senders-table");
 const accuracyTable = $("accuracy-table");
 const hotspotTable  = $("hotspot-table");
 const funnelEl      = $("funnel");
@@ -74,7 +75,7 @@ const errorList     = $("error-list");
 const deletionList  = $("deletion-list");
 
 const RENDER_TARGETS = [
-  parseTable, unparsedList, captureTable, accuracyTable, hotspotTable,
+  parseTable, unparsedList, captureTable, moneySendersTable, accuracyTable, hotspotTable,
   funnelEl, peopleList, cohortTable, deviceTable, errorList, deletionList,
 ];
 
@@ -229,12 +230,13 @@ async function loadOverview() {
   const since7d  = new Date(Date.now() - 7 * DAY_MS).toISOString();
 
   const [
-    parse, unparsed, capture, quality, accuracy, hotspots, catSummary,
+    parse, unparsed, capture, moneySenders, quality, accuracy, hotspots, catSummary,
     users, errors, deletions, downloads, installs,
   ] = await Promise.all([
     supabase.from("admin_parse_rate_7d").select("*").order("sort"),
     supabase.from("admin_unparsed_sms").select("*"),
     supabase.from("admin_capture_only_senders").select("*"),
+    supabase.from("admin_money_senders").select("*"),
     supabase.from("admin_txn_quality").select("*").maybeSingle(),
     supabase.from("admin_prediction_accuracy").select("*"),
     supabase.from("admin_category_hotspots").select("*"),
@@ -257,6 +259,7 @@ async function loadOverview() {
   guard(parse, [parseTable], () => renderParseRate(parse.data));
   guard(unparsed, [unparsedList], () => renderUnparsed(unparsed.data));
   guard(capture, [captureTable], () => renderCaptureOnly(capture.data));
+  guard(moneySenders, [moneySendersTable], () => renderMoneySenders(moneySenders.data));
   guard(quality, [], () => renderQuality(quality.data));
   guard(accuracy, [accuracyTable], () => renderAccuracy(accuracy.data));
   guard(hotspots, [hotspotTable], () => renderHotspots(hotspots.data));
@@ -350,6 +353,24 @@ function renderCaptureOnly(rows) {
         <td class="num">${num(r.users)}</td>
         <td class="muted">${formatRelative(r.last_received_at) || "—"}</td>
         <td class="sample" title="${escapeAttr(r.sample || "")}">${escapeHtml(r.sample || "")}</td>
+      </tr>`).join("")}
+    </tbody>`;
+}
+
+// Banks Kash doesn't follow yet (supabase/money_senders.sql).
+function renderMoneySenders(rows) {
+  if (!rows.length) { moneySendersTable.innerHTML = `<tbody><tr><td class="muted">None reported yet. Phones on 1.0.11+ report weekly.</td></tr></tbody>`; return; }
+  moneySendersTable.innerHTML = `
+    <thead><tr>
+      <th>Sender</th><th class="num">Users</th><th class="num">Messages</th><th>Last SMS</th><th>Reported</th>
+    </tr></thead>
+    <tbody>${rows.map((r) => `
+      <tr>
+        <td><strong>${escapeHtml(r.sender)}</strong></td>
+        <td class="num">${num(r.users)}</td>
+        <td class="num">${num(r.messages)}</td>
+        <td class="muted">${formatRelative(r.last_sms_at) || "—"}</td>
+        <td class="muted">${formatRelative(r.last_reported_at) || "—"}</td>
       </tr>`).join("")}
     </tbody>`;
 }
