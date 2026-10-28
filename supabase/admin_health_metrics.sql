@@ -365,6 +365,8 @@ from public.admin_raw_sms r
 left join public.i_users u on u.id = r.user_id
 where r.sender_group is not null
   and r.parse_status = 'UNPARSED'
+  -- Status reported by the device, not assumed (see dedupe_transactions_by_sms.sql).
+  and not r.status_inferred
 order by r.received_at desc
 limit 300;
 

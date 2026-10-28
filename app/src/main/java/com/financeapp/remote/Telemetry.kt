@@ -41,7 +41,8 @@ object Telemetry {
     private const val KEY_INSTALL_SENT = "install_sent"
     private const val KEY_QUEUE = "queue"
     private const val KEY_STATUS_SENT_AT = "status_sent_at"
-    private const val KEY_RAW_RESYNC_DONE = "raw_resync_v1"
+    // Rules version whose parse statuses this device last re-sent.
+    private const val KEY_RAW_RESYNC_RULES = "raw_resync_rules"
 
     /** Oldest events are dropped past this, so a crash loop can't grow it forever. */
     private const val MAX_QUEUE = 200
@@ -98,15 +99,17 @@ object Telemetry {
     }
 
     /**
-     * Raw SMS uploaded before 1.0.9 have no parse_status / received_at.
-     * Marks every raw row unsynced once so the next sync re-sends them with
-     * both (the upsert merges into the existing rows).
+     * Re-sends every stored SMS once per parser-rules version, so its
+     * parse_status (and received_at, missing before 1.0.9) reflects the
+     * current rules — the admin bug queue then only lists real misses.
+     * The upsert merges into the existing rows.
      */
     suspend fun resyncRawOnce(context: Context) {
         val p = prefs(context)
-        if (p.getBoolean(KEY_RAW_RESYNC_DONE, false)) return
+        val rules = com.financeapp.parsing.SmsParserEngine.RULES_VERSION
+        if (p.getInt(KEY_RAW_RESYNC_RULES, 0) >= rules) return
         AppDatabase.getInstance(context).rawSmsDao().markAllUnsynced()
-        p.edit().putBoolean(KEY_RAW_RESYNC_DONE, true).apply()
+        p.edit().putInt(KEY_RAW_RESYNC_RULES, rules).apply()
     }
 
     /**

@@ -3,6 +3,7 @@ package com.financeapp.parsing
 import com.financeapp.data.categorize.MerchantKey
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.parsing.parsers.AwashCreditParser
+import com.financeapp.parsing.parsers.CbeFastLoanParser
 import com.financeapp.parsing.parsers.BerhanBankCreditParser
 import com.financeapp.parsing.parsers.BerhanBankDebitParser
 import com.financeapp.parsing.parsers.AwashDebitParser
@@ -140,6 +141,7 @@ object SmsParserEngine {
         CbeBirrWithdrawalParser(),
         CbeBirrTransferParser(),
         CbeBirrCreditParser(),
+        CbeFastLoanParser(),
         CbeCreditParser(),
         CbeTransferParser(),
         CbeDebitParser(),
@@ -221,7 +223,25 @@ object SmsParserEngine {
         // English NBE Fayda notices — every bank sends these, no transaction
         Regex("""\bFayda\s+(ID|Alias\s+Number|FAN)\b""", RegexOption.IGNORE_CASE),
         Regex("""link\s+(?:your\s+)?Fayda""", RegexOption.IGNORE_CASE),
+        // Telebirr credit reminders and service notices: no money moved.
+        Regex("""\bis\s+\d+\s+days?\s+overdue\b""", RegexOption.IGNORE_CASE),
+        Regex("""\bsuccessfully\s+activated\s+the\b.*\bservice\b""", RegexOption.IGNORE_CASE),
+        // Any failed-for-funds notice ("balance … is insufficient").
+        Regex("""\binsufficient\b""", RegexOption.IGNORE_CASE),
+        // CBE terms-and-conditions links sent with loan offers.
+        Regex("""\bfor\s+T&C\b""", RegexOption.IGNORE_CASE),
+        // Promotions in Afaan Oromo and Amharic (CBE expo, BoA virtual card).
+        Regex("""\bEKSIPOO\b|\bFEESTIVAALA\b""", RegexOption.IGNORE_CASE),
+        Regex("""ኤክስፖ"""),           // "expo"
+        Regex("""ቨርቹዋል"""),         // "virtual" (card offers)
     )
+
+    /**
+     * Bump whenever the ignore list or a parser changes. Devices re-send
+     * every stored SMS's parse status once per version, so the admin bug
+     * queue reflects what the current rules make of old messages.
+     */
+    const val RULES_VERSION = 2
 
     /**
      * Parse the SMS and return a TransactionEntity.

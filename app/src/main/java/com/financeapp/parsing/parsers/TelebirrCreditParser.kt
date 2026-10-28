@@ -15,7 +15,9 @@ import com.financeapp.parsing.TransactionType
 class TelebirrCreditParser : BankParser {
 
     private val amountRe    = Regex("""received\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
-    private val txnRe       = Regex("""transaction\s+number\s+(?:is\s+)?(\S+)""", RegexOption.IGNORE_CASE)
+    // The reference is letters and digits; never the word "is" when the
+    // wording shifts ("transaction number is DJ7A1K0P2Q").
+    private val txnRe       = Regex("""transaction\s+number\s*(?:is\b\s*)?[:.]?\s*([A-Z0-9]*\d[A-Z0-9]*)""", RegexOption.IGNORE_CASE)
     // ISO date (bank-to-wallet: "on 2025-10-19 09:03:06")
     private val isoDateRe   = Regex("""on\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})""", RegexOption.IGNORE_CASE)
     // dd/MM/yyyy date (P2P: "on 20/10/2025 13:52:01")
