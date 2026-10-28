@@ -317,5 +317,28 @@
     </div>
   </footer>
 
+  <!-- APK download counter for the admin funnel (supabase/admin_health_metrics.sql).
+       Insert-only with the public anon key; no cookies, no identifiers. -->
+  <script>
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest('a[href$=".apk"]');
+      if (!a) return;
+      var m = a.getAttribute("href").match(/Kash-([\w.-]+)\.apk$/);
+      fetch("https://sadbxjnmcgzwtjbqqhbk.supabase.co/rest/v1/i_downloads", {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhZGJ4am5tY2d6d3RqYnFxaGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzg1NzcsImV4cCI6MjA5MDIxNDU3N30.aXA5I5CD--DjpnsbrHPZLebAmITNSDVmYDo1mkj3Gz4",
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          app_version: m ? m[1] : null,
+          referrer: (document.referrer || "").slice(0, 300) || null,
+          user_agent: navigator.userAgent.slice(0, 500)
+        })
+      }).catch(function () {});
+    });
+  </script>
 </body>
 </html>

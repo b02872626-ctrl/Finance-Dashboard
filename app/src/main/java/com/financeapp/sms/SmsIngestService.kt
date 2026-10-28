@@ -63,6 +63,9 @@ class SmsIngestService : Service() {
                     updateProgress(((i + 1) * 100).coerceAtMost(messages.size), messages.size)
                 }
                 val inserted = insertedTxs.size
+                com.financeapp.remote.Telemetry.track(applicationContext, com.financeapp.remote.Telemetry.SCAN_COMPLETED, mapOf(
+                    "source" to "service", "messages" to messages.size, "inserted" to inserted, "first_run" to firstRun
+                ))
                 com.financeapp.notifications.TransactionTriggers.onInserted(applicationContext, insertedTxs, batchIsHistorical = firstRun)
                 val pendingTransactions = repo.countUnsyncedTransactions()
                 val pendingRawMessages = repo.countUnsyncedRawMessages()
@@ -98,6 +101,9 @@ class SmsIngestService : Service() {
                     }
                 }
             } catch (e: Exception) {
+                com.financeapp.remote.Telemetry.track(applicationContext, com.financeapp.remote.Telemetry.SCAN_FAILED, mapOf(
+                    "source" to "service", "error" to "${e::class.java.simpleName}: ${e.message.orEmpty()}".take(300)
+                ))
                 ErrorLogRepository.fromContext(applicationContext).log("SMS ingest failed", e)
                 postResult("Couldn't read your SMS", "Pull down on Home to try again.")
             } finally {

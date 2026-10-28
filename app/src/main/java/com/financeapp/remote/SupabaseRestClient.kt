@@ -70,6 +70,75 @@ class SupabaseRestClient(
     }
 
     /**
+     * Anonymous install row for the admin funnel. Sent with the anon key;
+     * ignore-duplicates so a retry after a lost response is harmless.
+     */
+    fun insertInstall(installId: String, appVersion: String, device: String) {
+        val body = JSONObject()
+            .put("install_id", installId)
+            .put("app_version", appVersion)
+            .put("device", device)
+            .toString()
+        request(
+            method = "POST",
+            path = "i_installs?on_conflict=install_id",
+            body = body,
+            prefer = "resolution=ignore-duplicates,return=minimal"
+        )
+    }
+
+    /** Telemetry events queued by [Telemetry.track]. */
+    fun insertEvents(userId: String, events: JSONArray) {
+        val arr = JSONArray()
+        for (i in 0 until events.length()) {
+            val e = events.getJSONObject(i)
+            arr.put(
+                JSONObject()
+                    .put("user_id", userId)
+                    .put("name", e.getString("name"))
+                    .put("props", e.optJSONObject("props") ?: JSONObject())
+                    .put("app_version", e.optString("app_version"))
+                    .put("occurred_at", isoUtc.format(Date(e.getLong("occurred_at"))))
+            )
+        }
+        request(method = "POST", path = "i_events", body = arr.toString(), prefer = "return=minimal")
+    }
+
+    /** One row per user: the admin dashboard's sync-lag / version / PIN columns. */
+    fun upsertDeviceStatus(
+        userId: String,
+        installId: String,
+        appVersion: String,
+        unsyncedTransactions: Int,
+        unsyncedRaw: Int,
+        oldestUnsyncedAtMs: Long?,
+        lastSyncOkAtMs: Long?,
+        lastSyncError: String?,
+        hasPin: Boolean,
+        smsPermission: Boolean
+    ) {
+        val body = JSONObject()
+            .put("user_id", userId)
+            .put("install_id", installId)
+            .put("app_version", appVersion)
+            .put("unsynced_transactions", unsyncedTransactions)
+            .put("unsynced_raw", unsyncedRaw)
+            .put("oldest_unsynced_at", oldestUnsyncedAtMs?.let { isoUtc.format(Date(it)) } ?: JSONObject.NULL)
+            .put("last_sync_ok_at", lastSyncOkAtMs?.let { isoUtc.format(Date(it)) } ?: JSONObject.NULL)
+            .put("last_sync_error", lastSyncError?.take(500) ?: JSONObject.NULL)
+            .put("has_pin", hasPin)
+            .put("sms_permission", smsPermission)
+            .put("reported_at", isoUtc.format(Date()))
+            .toString()
+        request(
+            method = "POST",
+            path = "i_device_status?on_conflict=user_id",
+            body = body,
+            prefer = "resolution=merge-duplicates,return=minimal"
+        )
+    }
+
+    /**
      * Permanently deletes the signed-in user (and, via ON DELETE CASCADE, all
      * of their rows). See supabase/launch_account_deletion_and_banks.sql.
      */
@@ -113,6 +182,8 @@ class SupabaseRestClient(
                         .put("bank_name", raw.bankName.trim())
                         .put("sender_name", raw.senderName.trim())
                         .put("raw_message", raw.rawMessage)
+                        .put("received_at", isoUtc.format(Date(raw.receivedAt)))
+                        .put("parse_status", raw.parseStatus)
                 )
             }
 

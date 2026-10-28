@@ -28,6 +28,9 @@ interface RawSmsDao {
     @Query("UPDATE raw_sms SET isSynced = 1 WHERE id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
+    @Query("UPDATE raw_sms SET isSynced = 0")
+    suspend fun markAllUnsynced()
+
     @Query("DELETE FROM raw_sms")
     suspend fun clear()
 

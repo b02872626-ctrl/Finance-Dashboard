@@ -32,6 +32,19 @@ sealed class SupabaseSyncResult {
 class SupabaseSyncer(private val context: Context) {
 
     suspend fun syncPendingData(): SupabaseSyncResult = withContext(Dispatchers.IO) {
+        val result = syncPendingDataInner()
+        // Events + device status ride along with every pass (best-effort).
+        runCatching {
+            Telemetry.flush(
+                context,
+                lastSyncError = (result as? SupabaseSyncResult.Failed)?.message
+            )
+        }
+        result
+    }
+
+    private suspend fun syncPendingDataInner(): SupabaseSyncResult = withContext(Dispatchers.IO) {
+        if (activeSessionOrNull() != null) runCatching { Telemetry.resyncRawOnce(context) }
         val repo = TransactionRepository(AppDatabase.getInstance(context))
         val pendingTransactions = repo.getUnsyncedTransactions()
         val pendingRawMessages = repo.getUnsyncedRawMessages()
@@ -195,6 +208,7 @@ class SupabaseSyncer(private val context: Context) {
 
             AppDatabase.getInstance(context).clearAllTables()
             settingsRepo.clearAllExceptSession()
+            Telemetry.clear(context)
             settingsRepo.clearPin()
             settingsRepo.clearSupabaseSession()
         }.onFailure { e ->
@@ -250,6 +264,9 @@ class SupabaseSyncer(private val context: Context) {
         val cfg = SupabaseConfigProvider.fromBuildConfig() ?: return@withContext null
         ensureFreshSession(SettingsRepository(context), cfg)?.let { cfg to it }
     }
+
+    private fun activeSessionOrNull(): SupabaseSession? =
+        SupabaseConfigProvider.fromBuildConfig()?.let { SettingsRepository(context).getSupabaseSession() }
 
     private fun isDeadRefreshToken(e: Exception): Boolean {
         val msg = e.message ?: return false

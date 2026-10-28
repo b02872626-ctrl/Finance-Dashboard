@@ -19,7 +19,7 @@ import javax.crypto.spec.PBEKeySpec
  * Lockout: after [MAX_ATTEMPTS] wrong PINs the next attempt is blocked for
  * [LOCKOUT_MS]; the counter resets on success or when the lockout ends.
  */
-class PinManager(context: Context) {
+class PinManager(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -41,6 +41,7 @@ class PinManager(context: Context) {
             .remove(KEY_FAILED)
             .remove(KEY_LOCKED_UNTIL)
             .commit()
+        com.financeapp.remote.Telemetry.track(context, com.financeapp.remote.Telemetry.PIN_SET)
     }
 
     /** Remaining lockout end time, or 0 when not locked out. */

@@ -114,6 +114,7 @@ class SettingsRepository(context: Context) {
     }
     fun recordSyncProblem(message: String) =
         prefs.edit().putString(KEY_SYNC_PROBLEM, message).apply()
+    fun lastSyncSuccessAt(): Long = prefs.getLong(KEY_LAST_SYNC_OK_MS, 0L)
     fun lastSyncOkFlow(): Flow<Long> = prefFlow(KEY_LAST_SYNC_OK_MS, 0L)
     fun syncProblemFlow(): Flow<String> = prefFlow(KEY_SYNC_PROBLEM, "")
 

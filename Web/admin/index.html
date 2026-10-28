@@ -60,144 +60,132 @@
           </div>
         </header>
 
-        <!-- Top-level stat cards -->
-        <section class="stats-grid">
-          <div class="stat-card">
-            <p class="stat-label">Users</p>
-            <p class="stat-value" id="stat-users">—</p>
-            <p class="stat-sub muted small" id="stat-users-sub">total accounts</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label">New (7d)</p>
-            <p class="stat-value" id="stat-new-7d">—</p>
-            <p class="stat-sub muted small" id="stat-new-7d-sub">signups last 7 days</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label">Total time</p>
-            <p class="stat-value" id="stat-total-time">—</p>
-            <p class="stat-sub muted small" id="stat-total-time-sub">across all users</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label">Sessions</p>
-            <p class="stat-value" id="stat-total-sessions">—</p>
-            <p class="stat-sub muted small" id="stat-total-sessions-sub">all-time</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label">Avg session</p>
-            <p class="stat-value" id="stat-avg-session">—</p>
-            <p class="stat-sub muted small" id="stat-avg-session-sub">duration</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label">Active now</p>
-            <p class="stat-value" id="stat-active-now">—</p>
-            <p class="stat-sub muted small" id="stat-active-now-sub">heartbeat &lt; 2 min</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label">DAU (today)</p>
-            <p class="stat-value" id="stat-dau">—</p>
-            <p class="stat-sub muted small" id="stat-dau-sub">distinct users today</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label">WAU (7d)</p>
-            <p class="stat-value" id="stat-wau">—</p>
-            <p class="stat-sub muted small" id="stat-wau-sub">distinct last 7 days</p>
-          </div>
-        </section>
+        <nav class="section-nav">
+          <a href="#sec-parser">1 · Parser</a>
+          <a href="#sec-categories">2 · Categorization</a>
+          <a href="#sec-retention">3 · Retention</a>
+          <a href="#sec-health">4 · Health</a>
+        </nav>
 
-        <!-- Charts -->
-        <section class="charts-grid">
-          <div class="card chart-card chart-wide">
-            <header class="card-header">
-              <h3>Activity — last 30 days</h3>
-              <span class="muted small" id="chart-daily-sub">sessions per day</span>
-            </header>
-            <div class="chart" id="chart-daily"></div>
-          </div>
-          <div class="card chart-card">
-            <header class="card-header">
-              <h3>Hour of day</h3>
-              <span class="muted small">UTC offset: local</span>
-            </header>
-            <div class="chart" id="chart-hour"></div>
-          </div>
-          <div class="card chart-card">
-            <header class="card-header">
-              <h3>Day of week</h3>
-              <span class="muted small">sessions</span>
-            </header>
-            <div class="chart" id="chart-weekday"></div>
-          </div>
-          <div class="card chart-card chart-wide">
-            <header class="card-header">
-              <h3>Top users — total time</h3>
-              <span class="muted small">top 10</span>
-            </header>
-            <div class="chart" id="chart-top-users"></div>
-          </div>
-        </section>
-
-        <!-- Users table -->
-        <section class="card users-card">
-          <header class="card-header">
-            <h3>Users</h3>
-            <div class="users-toolbar">
-              <input type="search" id="users-search" placeholder="Search email or name…" />
-              <select id="users-sort">
-                <option value="last_session_at">Last seen</option>
-                <option value="total_seconds">Total time</option>
-                <option value="session_count">Sessions</option>
-                <option value="txn_count">Transactions</option>
-                <option value="account_created_at">Signed up</option>
-              </select>
-            </div>
+        <!-- ===== 1. Parser ===== -->
+        <section class="section" id="sec-parser">
+          <header class="section-header">
+            <h2>Is the parser working?</h2>
+            <p class="muted">Raw SMS captured vs. turned into transactions. Under 95% means a template broke or changed.</p>
           </header>
-          <div class="users-table-wrap">
-            <table class="users-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Signed up</th>
-                  <th>Last seen</th>
-                  <th>Version</th>
-                  <th class="num">Sessions</th>
-                  <th class="num">Total time</th>
-                  <th class="num">Txns</th>
-                  <th class="num">SMS</th>
-                </tr>
-              </thead>
-              <tbody id="users-tbody">
-                <tr><td colspan="8" class="muted">Loading…</td></tr>
-              </tbody>
-            </table>
+
+          <div class="card table-card">
+            <header class="card-header"><h3>Parse rate by bank</h3><span class="muted small">last 7 days, by SMS arrival</span></header>
+            <div class="table-wrap"><table class="data-table" id="parse-table"></table></div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card"><p class="stat-label">Duplicate rate (7d)</p><p class="stat-value" id="stat-dup-7d">—</p><p class="stat-sub muted small" id="stat-dup-7d-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Duplicate rate (all)</p><p class="stat-value" id="stat-dup-all">—</p><p class="stat-sub muted small" id="stat-dup-all-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">UNKNOWN-type share</p><p class="stat-value" id="stat-unknown">—</p><p class="stat-sub muted small" id="stat-unknown-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Bug queue</p><p class="stat-value" id="stat-unparsed">—</p><p class="stat-sub muted small">unparsed SMS, parser banks</p></div>
+          </div>
+
+          <div class="card">
+            <header class="card-header"><h3>Unparsed SMS — bug queue</h3><span class="muted small">senders with a parser, newest first</span></header>
+            <div class="sms-list" id="unparsed-list"></div>
+          </div>
+
+          <div class="card table-card">
+            <header class="card-header"><h3>Capture-only senders</h3><span class="muted small">no parser yet, ranked by volume</span></header>
+            <div class="table-wrap"><table class="data-table" id="capture-table"></table></div>
+          </div>
+        </section>
+
+        <!-- ===== 2. Categorization ===== -->
+        <section class="section" id="sec-categories">
+          <header class="section-header">
+            <h2>Is categorization good enough?</h2>
+            <p class="muted">Of reviewed transactions, how often the guess was kept, split by where the guess came from.</p>
+          </header>
+
+          <div class="stats-grid">
+            <div class="stat-card"><p class="stat-label">Prediction accuracy</p><p class="stat-value" id="stat-accuracy">—</p><p class="stat-sub muted small" id="stat-accuracy-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Pending after 7 days</p><p class="stat-value" id="stat-backlog">—</p><p class="stat-sub muted small" id="stat-backlog-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Transfers flagged</p><p class="stat-value" id="stat-transfers">—</p><p class="stat-sub muted small" id="stat-transfers-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Transfers missed</p><p class="stat-value" id="stat-transfers-missed">—</p><p class="stat-sub muted small">user set "Own accounts" by hand</p></div>
+          </div>
+
+          <div class="card table-card">
+            <header class="card-header"><h3>Accuracy by source</h3><span class="muted small">CONFIRMED vs CHANGED</span></header>
+            <div class="table-wrap"><table class="data-table" id="accuracy-table"></table></div>
+            <p class="muted small card-note">User-rule rows are auto-confirmed at parse time, so their "confirmed" means "not overridden later". Source is inferred from the stored confidence (seed 0.80, fallback 0.55, user rule ≥ 0.70).</p>
+          </div>
+
+          <div class="card table-card">
+            <header class="card-header"><h3>Seed-pattern candidates</h3><span class="muted small">counterparties landing in Other or changed most</span></header>
+            <div class="table-wrap"><table class="data-table" id="hotspot-table"></table></div>
+          </div>
+        </section>
+
+        <!-- ===== 3. Retention ===== -->
+        <section class="section" id="sec-retention">
+          <header class="section-header">
+            <h2>Do people stick?</h2>
+            <p class="muted">A review day is any day (Addis Ababa time) someone reviewed at least one transaction.</p>
+          </header>
+
+          <div class="stats-grid">
+            <div class="stat-card"><p class="stat-label">Review retention</p><p class="stat-value" id="stat-retention">—</p><p class="stat-sub muted small" id="stat-retention-sub">reviewed on 3+ of last 7 days</p></div>
+            <div class="stat-card"><p class="stat-label">Downloads</p><p class="stat-value" id="stat-downloads">—</p><p class="stat-sub muted small" id="stat-downloads-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Installs</p><p class="stat-value" id="stat-installs">—</p><p class="stat-sub muted small" id="stat-installs-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Signed up</p><p class="stat-value" id="stat-users">—</p><p class="stat-sub muted small" id="stat-users-sub"></p></div>
+          </div>
+
+          <div class="split">
+            <div class="card">
+              <header class="card-header"><h3>Activation funnel</h3><span class="muted small">all time</span></header>
+              <div id="funnel"></div>
+              <p class="muted small card-note">Downloads and installs are anonymous counts and only start once this release is live. Older builds don't send events, so their permission / scan / review steps are inferred from synced data.</p>
+            </div>
+            <div class="card">
+              <header class="card-header"><h3>Days since last review</h3><span class="muted small">per user</span></header>
+              <div class="people-list" id="people-list"></div>
+            </div>
+          </div>
+
+          <div class="card table-card">
+            <header class="card-header"><h3>Week-1 retention by signup cohort</h3><span class="muted small">active on days 1–7 after signup</span></header>
+            <div class="table-wrap"><table class="data-table" id="cohort-table"></table></div>
+          </div>
+        </section>
+
+        <!-- ===== 4. Health ===== -->
+        <section class="section" id="sec-health">
+          <header class="section-header">
+            <h2>Health</h2>
+            <p class="muted">Reported by each phone at most every 10 minutes while it syncs (1.0.9+).</p>
+          </header>
+
+          <div class="stats-grid">
+            <div class="stat-card"><p class="stat-label">Scan failures (24h)</p><p class="stat-value" id="stat-scan-fail">—</p><p class="stat-sub muted small" id="stat-scan-fail-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Worker errors (24h)</p><p class="stat-value" id="stat-errors">—</p><p class="stat-sub muted small" id="stat-errors-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">On an old version</p><p class="stat-value" id="stat-old-version">—</p><p class="stat-sub muted small" id="stat-old-version-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Account deletions</p><p class="stat-value" id="stat-deletions">—</p><p class="stat-sub muted small" id="stat-deletions-sub"></p></div>
+          </div>
+
+          <div class="card table-card">
+            <header class="card-header"><h3>Devices</h3><span class="muted small">sync lag and app version per user</span></header>
+            <div class="table-wrap"><table class="data-table" id="device-table"></table></div>
+          </div>
+
+          <div class="split">
+            <div class="card">
+              <header class="card-header"><h3>Scan failures and errors</h3><span class="muted small">last 24 hours</span></header>
+              <div class="event-list" id="error-list"></div>
+            </div>
+            <div class="card">
+              <header class="card-header"><h3>Account deletions</h3><span class="muted small">anonymous</span></header>
+              <div class="event-list" id="deletion-list"></div>
+            </div>
           </div>
         </section>
       </section>
-
-      <!-- ===== User drill-in pane ===== -->
-      <aside id="drill-pane" class="drill-pane hidden" aria-hidden="true">
-        <div class="drill-backdrop" data-drill-close></div>
-        <div class="drill-content">
-          <header class="drill-header">
-            <div>
-              <p class="muted small" id="drill-email">…</p>
-              <h2 id="drill-name">User</h2>
-            </div>
-            <button type="button" class="btn-ghost" data-drill-close>Close</button>
-          </header>
-          <div class="drill-stats">
-            <div><span class="muted small">Total time</span><strong id="drill-total-time">—</strong></div>
-            <div><span class="muted small">Sessions</span><strong id="drill-session-count">—</strong></div>
-            <div><span class="muted small">Avg session</span><strong id="drill-avg-session">—</strong></div>
-            <div><span class="muted small">Last seen</span><strong id="drill-last-seen">—</strong></div>
-            <div><span class="muted small">Transactions</span><strong id="drill-txns">—</strong></div>
-            <div><span class="muted small">SMS captured</span><strong id="drill-raw">—</strong></div>
-          </div>
-          <h3 class="drill-section-title">Session timeline</h3>
-          <div class="drill-sessions" id="drill-sessions">
-            <p class="muted">Loading…</p>
-          </div>
-        </div>
-      </aside>
     </main>
 
     <script type="module" src="admin.js"></script>
