@@ -106,10 +106,10 @@ privacy policy and the in-app disclosure. Two things to keep in step with it:
 
 - If the sender scout (1b) is removed, drop the "Banks we don't support yet"
   bullet from `Web/privacy.html` as well.
-- The Data safety form has an **Account deletion** section (section 4 below)
+- The Data safety form has an **Account deletion** section (section 3 below)
   that the declaration doc does not cover.
 
-## 4. Account deletion (App content → Data safety → Account deletion)
+## 3. Account deletion (App content → Data safety → Account deletion)
 
 Play requires an in-app deletion flow and a public web page that explains
 how to delete without the app. Both now exist:
@@ -122,7 +122,7 @@ how to delete without the app. Both now exist:
 The form also asks whether some data is kept: answer yes, and name the
 feedback answers (unlinked) and the anonymous install row.
 
-## 5. Other App content declarations
+## 4. Other App content declarations
 
 - **Privacy policy URL**: https://finance-dashboard-two-virid.vercel.app/privacy.html,
   in App content and in the store listing. The policy already covers SMS, Supabase, Google sign-in,
@@ -136,21 +136,21 @@ feedback answers (unlinked) and the anonymous install row.
   "Everyone".
 - **App category**: Finance.
 
-## 6. Testing requirements for a new personal developer account
+## 5. Testing requirements for a new personal developer account
 
 Personal accounts created after November 2023 must run a closed test with
 at least 12 testers opted in for 14 continuous days before production
 access is granted. Start the closed track first, invite testers, and only
 then apply for production. Organisation accounts skip this.
 
-## 7. Order of operations
+## 6. Order of operations
 
 1. Make the changes in 1a to 1d locally, run the tests, install the release
    bundle on a phone.
 2. Deploy the site so `/privacy.html` and `/delete-account.html` are live.
 3. Create the app in Play Console, upload the bundle to a closed track.
 4. Fill in App content from `docs/play-store-sms-declaration.md` plus
-   sections 4 and 5 here: Permissions (with video), Data safety, Account
+   sections 3 and 4 here: Permissions (with video), Data safety, Account
    deletion, Financial features, Ads, Target audience, Content rating.
 5. Store listing, then submit the closed track for review. SMS apps go to
    manual review and typically take 3 to 7 days.
