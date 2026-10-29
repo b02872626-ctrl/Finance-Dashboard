@@ -81,7 +81,7 @@ Removing is the safer choice for the first submission.
 `SupabaseSyncer` uploads the full text of each money-related bank SMS
 (`raw_message`; since 1.0.13 one-time codes and promotions stay on the
 phone) and the admin account can read it. This is disclosed in the privacy policy and is
-allowed for sync, but it must be declared honestly in Data safety (section 3)
+allowed for sync, but it must be declared honestly in Data safety (section 2)
 as "Messages: SMS" collected and shared with no one, encrypted in transit,
 deletable. If you can live without it, keep only the parsed transaction and
 a hash of the body, which makes both the declaration form and the Data
