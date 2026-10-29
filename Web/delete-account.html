@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delete your account · Kash</title>
+  <meta name="description" content="How to delete your Kash account and all of its data, from the app or by email." />
+  <style>
+    /* Kash tokens (design/kash-ui-handoff), matching the app and dashboard. */
+    :root {
+      --slate: #3D4859; --sand: #E9DFC6; --on-slate: #FFFFFF; --on-slate-muted: #C6CDD8;
+      --surface: #F4F5F7; --raised: #FFFFFF; --line: #E1E4E9; --handle: #CBD0D8;
+      --ink: #222A36; --ink-muted: #5F6877;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--slate); color: var(--ink); }
+    body { font-family: Figtree, system-ui, sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    .top { max-width: 720px; margin: 0 auto; padding: 28px 16px 64px; color: var(--on-slate); }
+    .top a { color: var(--on-slate); text-decoration: none; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+    .sheet { background: var(--surface); border-radius: 28px 28px 0 0; position: relative; min-height: 60vh; }
+    .sheet::before { content: ""; position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--handle); }
+    main { max-width: 720px; margin: 0 auto; padding: 40px 16px 80px; }
+    h1 { color: var(--ink); font-size: 32px; line-height: 1.12; letter-spacing: -0.035em; margin: 0 0 6px; }
+    h2 { color: var(--ink); font-size: 18px; letter-spacing: -0.02em; margin: 36px 0 8px; }
+    p, li { color: var(--ink); }
+    .muted { color: var(--ink-muted); font-size: 14px; }
+    .summary { background: var(--raised); border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; margin: 24px 0 8px; }
+    .summary ul { margin: 8px 0 0; padding-left: 20px; }
+    ul { padding-left: 22px; }
+    li { margin: 4px 0; }
+    a { color: var(--ink); }
+    hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0 16px; }
+  </style>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" />
+      <!-- Vercel Web Analytics (cookieless page views) -->
+      <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+      <script defer src="/_vercel/insights/script.js"></script>
+    </head>
+<body>
+  <div class="top"><a href="/download">kash</a></div>
+  <div class="sheet">
+  <main>
+    <h1>Delete your account</h1>
+    <p class="muted">Kash · Developer: Nahusenay Gebreamlak</p>
+
+    <div class="summary">
+      <strong>The short version</strong>
+      <ul>
+        <li>Delete your account from inside the app, or email us and we will do it for you.</li>
+        <li>Everything synced to your Kash account is deleted straight away: transactions, bank messages, categories, budgets, goals and sessions.</li>
+        <li>Nothing is kept except feedback survey answers, which are unlinked from you.</li>
+      </ul>
+    </div>
+
+    <h2>Option 1: in the app</h2>
+    <ol>
+      <li>Open Kash and go to <strong>Settings</strong>.</li>
+      <li>Tap <strong>Delete account</strong> at the bottom.</li>
+      <li>Confirm. Your account and its synced data are removed from our servers, and the copy on your phone is cleared.</li>
+    </ol>
+
+    <h2>Option 2: by email</h2>
+    <p>
+      If you no longer have the app or cannot sign in, email
+      <a href="mailto:nahusenaygebreamlak@gmail.com?subject=Delete%20my%20Kash%20account">nahusenaygebreamlak@gmail.com</a>
+      from the address you used to sign in, with the subject "Delete my Kash account".
+      We delete the account within 7 days and reply when it is done. We may ask you to confirm from that
+      same email address so nobody else can delete your account.
+    </p>
+
+    <h2>What is deleted</h2>
+    <ul>
+      <li>Your account (email, name and Google profile details if you used Google sign-in).</li>
+      <li>All synced transactions and the bank SMS they were read from.</li>
+      <li>Your categories, category rules, budgets, goals, income entries and review history.</li>
+      <li>Dashboard sessions and device status records.</li>
+    </ul>
+
+    <h2>What is kept</h2>
+    <ul>
+      <li>Answers you gave in the in-app feedback survey, with the link to your account removed so they are no longer about you.</li>
+      <li>An anonymous install record (a random ID, app version and phone model) that was never tied to your account.</li>
+    </ul>
+
+    <h2>Deleting only some data</h2>
+    <p>
+      To stop Kash reading new bank SMS without deleting your account, revoke the SMS permission in your phone's
+      settings. To remove the data on your phone only, uninstall the app; your synced copy stays until you delete the account.
+    </p>
+
+    <hr />
+    <p class="muted">See also the <a href="/privacy.html">privacy policy</a>. Questions? <a href="mailto:nahusenaygebreamlak@gmail.com">nahusenaygebreamlak@gmail.com</a></p>
+  </main>
+  </div>
+</body>
+</html>
