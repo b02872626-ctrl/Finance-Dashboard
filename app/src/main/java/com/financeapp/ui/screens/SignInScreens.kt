@@ -463,7 +463,11 @@ fun OnboardingPage(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             com.financeapp.ui.kash.components.KashIconButton(com.financeapp.ui.kash.KashIcon.Back, "Back", onBack)
-            com.financeapp.ui.kash.components.KashStepBar(current = step, total = 3, modifier = Modifier.weight(1f), label = "Step $step of 3")
+            if (step > 0) {
+                com.financeapp.ui.kash.components.KashStepBar(current = step, total = 3, modifier = Modifier.weight(1f), label = "Step $step of 3")
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
             Spacer(Modifier.size(44.dp))
         }
         Column(

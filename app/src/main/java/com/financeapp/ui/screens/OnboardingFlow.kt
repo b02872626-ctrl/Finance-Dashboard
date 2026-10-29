@@ -2,6 +2,7 @@ package com.financeapp.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import com.financeapp.R
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -325,18 +326,26 @@ private fun CardColumn(content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** AppAllowSMS · step 1 of 3. */
+/**
+ * AppAllowSMS · step 1 of 3. Also Google Play's "prominent disclosure" for
+ * READ_SMS / RECEIVE_SMS: it must come before every system prompt and say
+ * what is read, what is uploaded and why, so keep it in step with
+ * Web/privacy.html. [step] 0 hides the step bar (asking again after
+ * onboarding).
+ */
 @Composable
-private fun AllowSmsScreen(onBack: () -> Unit, onAllow: () -> Unit, onNotNow: () -> Unit) {
+internal fun AllowSmsScreen(onBack: () -> Unit, onAllow: () -> Unit, onNotNow: () -> Unit, step: Int = 1) {
+    val context = LocalContext.current
     OnboardingPage(
-        step = 1,
+        step = step,
         onBack = onBack,
         bottom = {
             CardColumn {
                 // The parsers cover CBE, CBE Birr, Telebirr, Awash, Dashen, BoA and Berhan.
                 FactRow(KashIcon.Sms, "Bank messages only", "CBE, Telebirr, Awash, Dashen and 3 more", true)
                 FactRow(KashIcon.History, "Your full SMS history, at once", "Then it keeps up, even offline", true)
-                FactRow(KashIcon.Lock, "Personal chats stay private", "Nothing is sold or shared", false)
+                FactRow(KashIcon.Share, "Synced to your Kash account", "Bank messages and transactions, so they're on the web and a new phone", true)
+                FactRow(KashIcon.Lock, "Personal chats stay private", "Never stored or uploaded. Nothing is sold or shared", false)
             }
             Spacer(Modifier.height(22.dp))
             KashButton("Allow SMS access", onAllow, Modifier.fillMaxWidth())
@@ -348,6 +357,15 @@ private fun AllowSmsScreen(onBack: () -> Unit, onAllow: () -> Unit, onNotNow: ()
             Text(
                 "Android asks for permission next. Here is exactly what Kash does with it.",
                 style = KashType.BodyL, color = KashColors.InkMuted, modifier = Modifier.padding(top = 14.dp),
+            )
+            KashButton(
+                "Read the privacy policy",
+                {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.privacy_policy_url))))
+                    }
+                },
+                Modifier.padding(top = 8.dp), KashButtonVariant.Quiet, icon = KashIcon.External,
             )
         }
     }
