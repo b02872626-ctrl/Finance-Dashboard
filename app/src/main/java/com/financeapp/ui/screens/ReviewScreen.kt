@@ -242,6 +242,7 @@ fun ReviewScreen(
                         userName = userName,
                         selected = selected,
                         recent = recentCategories,
+                        custom = customCategories,
                         all = allCategories,
                         onSelect = { haptic(Haptic.TAP); selected = it },
                         onMore = vm::openPickerSheet,
@@ -468,6 +469,7 @@ private fun CategoryChoice(
     userName: String,
     selected: String?,
     recent: List<String>,
+    custom: List<String>,
     all: List<String>,
     onSelect: (String) -> Unit,
     onMore: () -> Unit,
@@ -482,15 +484,29 @@ private fun CategoryChoice(
             )
         }
         Text("What was it?", style = KashType.Label, color = KashColors.InkMuted)
-        val chips = remember(selected, recent, all) {
-            (listOfNotNull(selected) + recent + listOf("Food", "Transport", "Bills", "Shopping"))
-                .filter { c -> all.any { it.equals(c, true) } || c == selected }
+        // Every category the user made, then their recent picks (minus
+        // those already shown); More opens the full catalog. A brand-new
+        // user with neither gets a few everyday starters.
+        val sections = remember(selected, recent, custom, all) {
+            val yours = custom.filter { c -> TransactionCategoryCatalog.defaultCategories.none { it.equals(c, true) } }
                 .distinctBy { it.lowercase() }
-                .take(4)
+            val shown = yours.map { it.lowercase() }.toSet()
+            val picks = (listOfNotNull(selected) + recent)
+                .filter { c -> c.isNotBlank() && (all.any { it.equals(c, true) } || c == selected) }
+                .distinctBy { it.lowercase() }
+                .filter { it.lowercase() !in shown }
+            buildList {
+                if (yours.isNotEmpty()) add("Yours" to yours)
+                if (picks.isNotEmpty()) add("Recent picks" to picks)
+                if (isEmpty()) add("" to listOf("Food", "Transport", "Bills", "Shopping"))
+            }
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            chips.forEach { c -> KashChip(c, c == selected, { onSelect(c) }, checkWhenSelected = true) }
-            KashChip("More", false, onMore, trailing = KashIcon.ChevronRight)
+        sections.forEachIndexed { i, (name, cats) ->
+            if (name.isNotEmpty()) Text(name, style = KashType.Caption, color = KashColors.InkMuted)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                cats.forEach { c -> KashChip(c, c.equals(selected, true), { onSelect(c) }, checkWhenSelected = true) }
+                if (i == sections.lastIndex) KashChip("More", false, onMore, trailing = KashIcon.ChevronRight)
+            }
         }
     }
 }
