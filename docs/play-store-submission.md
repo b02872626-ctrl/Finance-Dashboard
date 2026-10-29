@@ -78,8 +78,9 @@ Removing is the safer choice for the first submission.
 
 ### 1c. Raw SMS text uploaded to Supabase
 
-`SupabaseSyncer` uploads the full text of every bank SMS (`raw_message`) and
-the admin account can read it. This is disclosed in the privacy policy and is
+`SupabaseSyncer` uploads the full text of each money-related bank SMS
+(`raw_message`; since 1.0.13 one-time codes and promotions stay on the
+phone) and the admin account can read it. This is disclosed in the privacy policy and is
 allowed for sync, but it must be declared honestly in Data safety (section 3)
 as "Messages: SMS" collected and shared with no one, encrypted in transit,
 deletable. If you can live without it, keep only the parsed transaction and
@@ -97,61 +98,16 @@ safety form much simpler.
 - Keep `app/build/outputs/mapping/release/mapping.txt` and upload it with
   the bundle so crash traces are readable.
 
-## 2. SMS permission declaration (Play Console → App content → Permissions)
+## 2. SMS permission declaration, Data safety and store listing
 
-Kash fits the permitted use case **SMS-based money management** (apps that
-track and manage budget), which allows `READ_SMS` and `RECEIVE_SMS`. Both are
-in the manifest; declare both. Do not add any other SMS permission.
+The form answers, the Data safety table and the store description live in
+`docs/play-store-sms-declaration.md`. Use that file; it already matches the
+privacy policy and the in-app disclosure. Two things to keep in step with it:
 
-Core functionality, one sentence (the form asks for this):
-
-> Kash reads SMS sent by Ethiopian banks and mobile-money services (CBE,
-> Telebirr, Bank of Abyssinia, Awash, Dashen and others) and turns them
-> into a transaction history, balances and spending insights; the app has
-> no other way to get this data because these services do not offer APIs.
-
-Why each permission:
-
-> READ_SMS: on first launch, with the user's consent, the app scans the
-> existing inbox once so the history is complete from day one. Only messages
-> whose sender is on a fixed list of bank sender IDs are parsed and stored;
-> every other message is ignored and never leaves the phone.
->
-> RECEIVE_SMS: new bank messages are parsed as they arrive so balances stay
-> current without the user opening the app. The receiver drops any message
-> not from a listed bank sender.
-
-Also upload a short screen recording (under 30 s) that shows: the in-app
-"Let Kash read your bank SMS" screen, the system dialog, and a bank SMS
-appearing as a transaction. Reviewers approve SMS apps far more often when
-the video exists.
-
-The onboarding already has a prominent disclosure before the system dialog
-(`AllowSmsScreen`: what is read, why, and that only bank messages are kept).
-Keep it: the policy requires the disclosure before the runtime prompt.
-
-## 3. Data safety form (App content → Data safety)
-
-Answer from what the code actually does:
-
-| Data type | Collected | Shared | Required | Purpose |
-|---|---|---|---|---|
-| Personal info: name, email | Yes | No | Yes (for sync account) | App functionality, account management |
-| Financial info: other financial info (transactions, balances) | Yes | No | Yes | App functionality |
-| Messages: SMS | Yes | No | Yes | App functionality (bank SMS only) |
-| App activity: in-app actions (telemetry events, review completed, scan completed) | Yes | No | Yes | Analytics |
-| App info and performance: crash/diagnostics (error events) | Yes | No | Yes | Analytics |
-| Device or other IDs (install UUID) | Yes | No | Yes | Analytics |
-| Feedback survey answers (App activity: other) | Yes | No | No | Analytics |
-
-Also tick: data is encrypted in transit (HTTPS to Supabase), users can
-request deletion, and account creation is offered with a deletion path.
-"Shared" is No because Supabase, Google sign-in and Vercel are service
-providers, which Play does not count as sharing.
-
-If 1b is removed, nothing about non-bank senders needs declaring. If kept,
-add "Messages: SMS" metadata as collected for "App functionality /
-developer communications" and describe it.
+- If the sender scout (1b) is removed, drop the "Banks we don't support yet"
+  bullet from `Web/privacy.html` as well.
+- The Data safety form has an **Account deletion** section (section 4 below)
+  that the declaration doc does not cover.
 
 ## 4. Account deletion (App content → Data safety → Account deletion)
 
@@ -159,16 +115,17 @@ Play requires an in-app deletion flow and a public web page that explains
 how to delete without the app. Both now exist:
 
 - In app: Settings → Delete account (calls the `delete_my_account` RPC).
-- Web: `Web/delete-account.html`, served at `/delete-account.html` on the
-  Kash site. Paste that URL into the form.
+- Web: `Web/delete-account.html`, live once main is deployed at
+  https://finance-dashboard-two-virid.vercel.app/delete-account.html.
+  Paste that URL into the form.
 
 The form also asks whether some data is kept: answer yes, and name the
 feedback answers (unlinked) and the anonymous install row.
 
 ## 5. Other App content declarations
 
-- **Privacy policy URL**: the live `/privacy.html` URL. The same URL goes in
-  the store listing. The policy already covers SMS, Supabase, Google sign-in,
+- **Privacy policy URL**: https://finance-dashboard-two-virid.vercel.app/privacy.html,
+  in App content and in the store listing. The policy already covers SMS, Supabase, Google sign-in,
   retention and deletion; update it if 1b or 1c change.
 - **Financial features**: Kash shows transactions but does not move money,
   lend, trade or hold funds. Declare "My app does not provide any financial
@@ -179,32 +136,21 @@ feedback answers (unlinked) and the anonymous install row.
   "Everyone".
 - **App category**: Finance.
 
-## 6. Store listing
-
-- App name "Kash". Short description under 80 characters, full description
-  that names the supported banks and says explicitly that only bank SMS are
-  read and nothing is sold or used for ads (reviewers read this against the
-  permission form).
-- 512 px icon (export from `app/src/main/res/mipmap-anydpi-v26`), 1024 x 500
-  feature graphic, at least 4 phone screenshots. `design/home`,
-  `design/insights`, `design/onboarding` have the source frames.
-- Contact email that you will actually answer; Google writes there on
-  rejection.
-
-## 7. Testing requirements for a new personal developer account
+## 6. Testing requirements for a new personal developer account
 
 Personal accounts created after November 2023 must run a closed test with
 at least 12 testers opted in for 14 continuous days before production
 access is granted. Start the closed track first, invite testers, and only
 then apply for production. Organisation accounts skip this.
 
-## 8. Order of operations
+## 7. Order of operations
 
 1. Make the changes in 1a to 1d locally, run the tests, install the release
    bundle on a phone.
 2. Deploy the site so `/privacy.html` and `/delete-account.html` are live.
 3. Create the app in Play Console, upload the bundle to a closed track.
-4. Fill in App content: Permissions (with video), Data safety, Account
+4. Fill in App content from `docs/play-store-sms-declaration.md` plus
+   sections 4 and 5 here: Permissions (with video), Data safety, Account
    deletion, Financial features, Ads, Target audience, Content rating.
 5. Store listing, then submit the closed track for review. SMS apps go to
    manual review and typically take 3 to 7 days.
