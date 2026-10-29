@@ -601,7 +601,7 @@ refreshBtn.addEventListener("click", async () => {
     const before = state.allTxs.length;
     const { data, error } = await supabase
       .from("i_transactions")
-      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, ref_num, predicted_category, category_confidence, review_status, merchant_key")
+      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, account_number, ref_num, predicted_category, category_confidence, review_status, merchant_key")
       .eq("user_id", session.user.id)
       .order("occurred_at", { ascending: false })
       .limit(2000);
@@ -749,7 +749,7 @@ async function showDashboard(session) {
   const [profileResult, txResult] = await Promise.all([
     supabase.from("i_users").select("name, email").eq("id", userId).maybeSingle(),
     supabase.from("i_transactions")
-      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, ref_num, predicted_category, category_confidence, review_status, merchant_key")
+      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, account_number, ref_num, predicted_category, category_confidence, review_status, merchant_key")
       .eq("user_id", userId)
       .order("occurred_at", { ascending: false })
       .limit(2000),
@@ -2866,11 +2866,10 @@ function renderDailyReviewCard(allTxs) {
 }
 
 function renderHeaderStats(allTxs, inRange, range) {
-  // Latest balance per bank → total balance (independent of period filter).
-  const byBank = groupBy(allTxs, (t) => t.bank_name || "Unknown");
+  // Latest balance per account → total balance (independent of period filter).
   let totalBalance = 0;
   let accountCount = 0;
-  for (const [, list] of byBank) {
+  for (const { list } of groupAccounts(allTxs)) {
     const latestWithBalance = list.find((t) => typeof t.balance === "number" && t.balance >= 0);
     if (latestWithBalance) { totalBalance += latestWithBalance.balance; accountCount++; }
     else accountCount++;
@@ -2940,18 +2939,56 @@ function renderHeaderStats(allTxs, inRange, range) {
   }
 }
 
+// Last 4 digits of a masked account number ("1********6155" → "6155").
+// Mask length varies between SMS formats, so only the suffix identifies
+// the same account across them.
+function accountSuffix(accountNumber) {
+  const digits = (accountNumber || "").replace(/\D/g, "");
+  return digits.length >= 4 ? digits.slice(-4) : null;
+}
+
+function shortBankLabel(name) {
+  if (/commercial bank/i.test(name)) return "CBE";
+  if (/telebirr/i.test(name)) return "Telebirr";
+  if (/abyssinia/i.test(name)) return "BOA";
+  if (/awash/i.test(name)) return "Awash";
+  if (/dashen/i.test(name)) return "Dashen";
+  return name;
+}
+
+// One entry per account the user holds. Mirrors AccountGrouping.kt on
+// Android: a bank with one known account stays a single entry; a bank with
+// several account numbers is split into "CBE 1", "CBE 2", … numbered by
+// first-seen date. Rows with no account number at a split bank are left out.
+// Expects allTxs newest-first, like every list in this file.
+function groupAccounts(allTxs) {
+  const out = [];
+  for (const [bank, list] of groupBy(allTxs, (t) => t.bank_name || "Unknown")) {
+    const bySuffix = groupBy(list.filter((t) => accountSuffix(t.account_number)), (t) => accountSuffix(t.account_number));
+    if (bySuffix.size <= 1) {
+      out.push({ name: bank, suffix: null, list });
+      continue;
+    }
+    const firstSeen = (rows) => Math.min(...rows.map((t) => new Date(t.occurred_at).getTime()));
+    [...bySuffix.entries()]
+      .sort((a, b) => firstSeen(a[1]) - firstSeen(b[1]))
+      .forEach(([suffix, rows], i) => out.push({ name: `${shortBankLabel(bank)} ${i + 1}`, suffix, list: rows }));
+  }
+  return out;
+}
+
 function renderAccounts(allTxs) {
-  const byBank = groupBy(allTxs, (t) => t.bank_name || "Unknown");
-  const accounts = [...byBank.entries()].map(([name, list]) => {
+  const accounts = groupAccounts(allTxs).map(({ name, suffix, list }) => {
     const latestWithBalance = list.find((t) => typeof t.balance === "number" && t.balance >= 0);
     return {
       name,
+      suffix,
       balance: latestWithBalance?.balance ?? 0,
       count: list.length,
     };
   }).sort((a, b) => b.balance - a.balance);
 
-  accountsCount.textContent = `${accounts.length} bank${accounts.length === 1 ? "" : "s"}`;
+  accountsCount.textContent = `${accounts.length} account${accounts.length === 1 ? "" : "s"}`;
   accountsList.innerHTML = accounts.length === 0
     ? `<p class="muted">No accounts synced yet. Pull-to-refresh in the Android app to push your data.</p>`
     : accounts.map(renderAccountCard).join("");
@@ -2962,7 +2999,7 @@ function renderAccountCard(account) {
     <div class="bank-card">
       <span class="rail"></span>
       <div class="info">
-        <p class="name">${escapeHtml(account.name)}</p>
+        <p class="name">${escapeHtml(account.name)}${account.suffix ? ` · ••${escapeHtml(account.suffix)}` : ""}</p>
         <p class="balance">${formatNumber(account.balance)}<span class="unit">ETB</span></p>
       </div>
     </div>

@@ -228,6 +228,7 @@ class SupabaseRestClient(
                 obj.put("amount", tx.amount)
                 obj.put("balance", tx.balance ?: JSONObject.NULL)
                 obj.put("counterparty", tx.counterparty ?: JSONObject.NULL)
+                obj.put("account_number", tx.accountNumber ?: JSONObject.NULL)
                 obj.put("ref_num", tx.refNumber ?: JSONObject.NULL)
                 obj.put("total_charged", tx.totalCharged ?: JSONObject.NULL)
                 obj.put("recipt_link", tx.receiptLink ?: ParserUtils.extractFirstUrl(tx.rawBody) ?: JSONObject.NULL)
