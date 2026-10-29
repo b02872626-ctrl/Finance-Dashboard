@@ -3,6 +3,7 @@ package com.financeapp.viewmodel
 import com.financeapp.data.model.isIncome
 import com.financeapp.data.model.isSpending
 import androidx.lifecycle.*
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.ReviewStatus
 import com.financeapp.data.model.TransactionEntity
@@ -26,7 +27,11 @@ data class AccountSummary(
     /** Spending from this account since the 1st of this month. */
     val monthSpent: Double = 0.0,
     /** Spending from this account in the whole of last month. */
-    val lastMonthSpent: Double = 0.0
+    val lastMonthSpent: Double = 0.0,
+    /** Card title, e.g. "CBE 1" when the user has two CBE accounts. */
+    val label: String = bankName,
+    /** Last 4 digits when this card is one of several accounts at the bank. */
+    val accountSuffix: String? = null
 )
 
 data class WeekActivityPoint(
@@ -146,29 +151,29 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
         }
     }
 
-    /** Build one summary per detected bank. Includes accounts with zero / unknown
-     *  balance so the user sees every source they've imported. */
+    /** Build one summary per detected account — normally one per bank, but a
+     *  bank where the user holds several accounts gets one card each. Includes
+     *  accounts with zero / unknown balance so the user sees every source
+     *  they've imported. */
     private fun buildAccountBalances(all: List<TransactionEntity>): List<AccountSummary> {
-        return all.groupBy { it.bankName.ifBlank { it.sender } }
-            .map { (bankName, txns) ->
+        return AccountGrouping.group(all)
+            .map { group ->
+                val txns = group.transactions
                 val latestWithBalance = txns
                     .filter { it.balance != null && it.balance >= 0.0 }
                     .maxByOrNull { it.dateTime }
                 val latestBalance = latestWithBalance?.balance ?: 0.0
 
-                val latestWithAccount = txns
-                    .filter { !it.accountNumber.isNullOrBlank() }
-                    .maxByOrNull { it.dateTime }
-                val account = latestWithAccount?.accountNumber ?: ""
-
                 val monthStart = startOfMonth()
                 AccountSummary(
-                    bankName, account, latestBalance, txns.size,
+                    group.bankName, group.accountNumber, latestBalance, txns.size,
                     balanceAtMs = latestWithBalance?.dateTime,
                     monthSpent = txns.filter { it.isSpending() && it.dateTime >= monthStart }.sumOf { it.amount },
                     lastMonthSpent = txns.filter {
                         it.isSpending() && it.dateTime < monthStart && it.dateTime >= startOfLastMonth()
                     }.sumOf { it.amount },
+                    label = group.label,
+                    accountSuffix = group.accountSuffix,
                 )
             }
             .sortedByDescending { it.balance }

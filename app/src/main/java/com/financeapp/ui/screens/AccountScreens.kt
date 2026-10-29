@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.model.netAmount
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashIcon
@@ -103,7 +104,7 @@ fun AccountsTabScreen(
     vm: DashboardViewModel,
     hasSmsAccess: Boolean,
     tabBar: @Composable () -> Unit,
-    onOpenAccount: (bankName: String) -> Unit,
+    onOpenAccount: (bankName: String, accountSuffix: String?) -> Unit,
     onAdd: () -> Unit,
     onTxClick: (Long) -> Unit,
 ) {
@@ -142,11 +143,12 @@ fun AccountsTabScreen(
                     val a = accounts[page]
                     KashAccountCard(
                         bankName = a.bankName,
+                        title = a.label.takeIf { a.accountSuffix != null },
                         last4 = last4(a.accountNumber),
                         balance = a.balance,
                         updated = updatedLine(a.balanceAtMs, cal),
                         modifier = Modifier.fillMaxWidth().widthIn(max = 420.dp),
-                        onClick = { onOpenAccount(a.bankName) },
+                        onClick = { onOpenAccount(a.bankName, a.accountSuffix) },
                     )
                 }
                 if (accounts.size > 1) PagerDots(accounts.size, pager.currentPage)
@@ -178,13 +180,16 @@ fun AccountsTabScreen(
             return@KashScreen
         }
         selected ?: return@KashScreen
-        val rows = remember(state.recentTransactions, selected.bankName) {
-            state.recentTransactions.filter { it.bankName.equals(selected.bankName, true) }.take(6)
+        val rows = remember(state.recentTransactions, selected.bankName, selected.accountSuffix) {
+            state.recentTransactions.filter {
+                it.bankName.equals(selected.bankName, true) &&
+                    (selected.accountSuffix == null || AccountGrouping.accountSuffix(it.accountNumber) == selected.accountSuffix)
+            }.take(6)
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pad, verticalArrangement = Arrangement.spacedBy(0.dp)) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 14.dp)) {
-                    KashButton("History", { onOpenAccount(selected.bankName) }, Modifier.weight(1f), KashButtonVariant.Secondary, icon = KashIcon.History, compact = true)
+                    KashButton("History", { onOpenAccount(selected.bankName, selected.accountSuffix) }, Modifier.weight(1f), KashButtonVariant.Secondary, icon = KashIcon.History, compact = true)
                 }
             }
             item { SpentThisMonth(selected) }
@@ -193,7 +198,7 @@ fun AccountsTabScreen(
                     Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
                     Text(
                         "See all", style = KashType.Label, color = KashColors.InkMuted,
-                        modifier = Modifier.kashClickable { onOpenAccount(selected.bankName) }.padding(vertical = 6.dp),
+                        modifier = Modifier.kashClickable { onOpenAccount(selected.bankName, selected.accountSuffix) }.padding(vertical = 6.dp),
                     )
                 }
             }
@@ -312,7 +317,8 @@ fun AccountDetailScreen(
         heroGap = 22.dp,
         hero = {
             KashTopBar(
-                bank.shortName.let { if (it == "CBE") "Commercial Bank" else bank.fullName },
+                if (state.label != state.bankName) state.label
+                else bank.shortName.let { if (it == "CBE") "Commercial Bank" else bank.fullName },
                 onBack = onBack, centerTitle = true,
                 leading = { KashBankBadge(state.bankName, size = 32.dp) },
             )

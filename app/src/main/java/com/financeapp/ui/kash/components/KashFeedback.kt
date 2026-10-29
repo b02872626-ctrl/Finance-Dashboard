@@ -282,6 +282,8 @@ fun KashAccountCard(
     updated: String?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    /** Overrides the bank name, e.g. "CBE 1" when the user has several CBE accounts. */
+    title: String? = null,
 ) {
     val bank = kashBank(bankName)
     Column(
@@ -297,7 +299,7 @@ fun KashAccountCard(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             KashBankBadge(bankName, size = 40.dp)
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(bank.fullName, style = KashType.BodyStrong, color = KashColors.OnSlate, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title ?: bank.fullName, style = KashType.BodyStrong, color = KashColors.OnSlate, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!last4.isNullOrBlank()) Text("•••• $last4", style = KashType.Caption.num(), color = KashColors.OnSlateMuted)
             }
         }

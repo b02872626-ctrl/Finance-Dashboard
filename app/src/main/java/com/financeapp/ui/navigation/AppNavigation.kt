@@ -295,7 +295,10 @@ private fun MainNavigation(
     }
 
     fun openTx(id: Long) = navController.navigate("detail/$id")
-    fun openAccount(bankName: String) = navController.navigate("bank_analytics/${Uri.encode(bankName)}")
+    fun openAccount(bankName: String, accountSuffix: String? = null) {
+        val account = accountSuffix?.let { "?account=$it" } ?: ""
+        navController.navigate("bank_analytics/${Uri.encode(bankName)}$account")
+    }
     fun back() { navController.popBackStack() }
 
     Box(Modifier.fillMaxSize().background(KashColors.Slate)) {
@@ -332,7 +335,7 @@ private fun MainNavigation(
                 val dash by dashVm.state.collectAsState()
                 AddScreen(
                     vm = addVm,
-                    banks = dash.accountBalances.map { kashBank(it.bankName).shortName },
+                    banks = dash.accountBalances.map { kashBank(it.bankName).shortName }.distinct(),
                     customCategories = categories,
                     recentCategories = recentCategories,
                     onAddCategory = { setVm.addCustomCategory(it) },
@@ -351,11 +354,18 @@ private fun MainNavigation(
                 )
             }
             composable(
-                route = "bank_analytics/{bankName}",
-                arguments = listOf(navArgument("bankName") { type = NavType.StringType })
+                route = "bank_analytics/{bankName}?account={account}",
+                arguments = listOf(
+                    navArgument("bankName") { type = NavType.StringType },
+                    navArgument("account") { type = NavType.StringType; nullable = true }
+                )
             ) { backStackEntry ->
                 val bankName = backStackEntry.arguments?.getString("bankName")?.let(Uri::decode) ?: return@composable
-                val vm: BankAnalyticsViewModel = viewModel(key = "bank_$bankName", factory = BankAnalyticsViewModelFactory(repo, bankName))
+                val accountSuffix = backStackEntry.arguments?.getString("account")
+                val vm: BankAnalyticsViewModel = viewModel(
+                    key = "bank_${bankName}_$accountSuffix",
+                    factory = BankAnalyticsViewModelFactory(repo, bankName, accountSuffix)
+                )
                 AccountDetailScreen(vm = vm, onBack = ::back, onTxClick = ::openTx)
             }
             composable(
