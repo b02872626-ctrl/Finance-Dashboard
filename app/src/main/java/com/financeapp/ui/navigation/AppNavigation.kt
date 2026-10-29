@@ -1,6 +1,7 @@
 package com.financeapp.ui.navigation
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -54,6 +55,7 @@ import com.financeapp.ui.kash.components.kashBank
 import com.financeapp.ui.screens.AccountDetailScreen
 import com.financeapp.ui.screens.AccountsTabScreen
 import com.financeapp.ui.screens.AddScreen
+import com.financeapp.ui.screens.AllowSmsScreen
 import com.financeapp.ui.screens.AnalyticsTabScreen
 import com.financeapp.ui.screens.BanksFollowedPage
 import com.financeapp.ui.screens.CategoryScreen
@@ -167,13 +169,22 @@ fun AppNavigation(
             return@CompositionLocalProvider
         }
 
+        // No SMS access after onboarding (skipped, or revoked in Settings):
+        // once per launch, show the SMS disclosure again. Play requires it
+        // before every system prompt, so never call requestSmsAccess() bare.
         LaunchedEffect(hasSmsAccess) {
-            if (hasSmsAccess) {
-                smsRecoveryRequested = false
-            } else if (!smsRecoveryRequested) {
-                smsRecoveryRequested = true
-                requestSmsAccess()
-            }
+            if (hasSmsAccess) smsRecoveryRequested = false
+        }
+        if (!hasSmsAccess && !smsRecoveryRequested) {
+            val dismiss = { smsRecoveryRequested = true }
+            AllowSmsScreen(
+                onBack = dismiss,
+                onAllow = { dismiss(); requestSmsAccess() },
+                onNotNow = dismiss,
+                step = 0,
+            )
+            BackHandler(onBack = dismiss)
+            return@CompositionLocalProvider
         }
 
         // A tapped in-app notice navigates like a notification would.

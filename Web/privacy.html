@@ -61,15 +61,22 @@
 
     <h2>What we collect</h2>
     <ul>
-      <li><strong>Bank and wallet SMS.</strong> With your permission, the app reads text messages from a fixed list of Ethiopian banks and mobile-money services (for example CBE, Telebirr, Bank of Abyssinia, Awash and Dashen). Messages from anyone else are not stored by the app and their text is never uploaded.</li>
+      <li><strong>Bank and wallet SMS.</strong> With your permission, the app reads text messages from a fixed list of Ethiopian banks and mobile-money services (for example CBE, Telebirr, Bank of Abyssinia, Awash and Dashen). Messages from those senders about money (payments, transfers, balances) are stored and synced to your account. Other messages they send, such as one-time codes and promotions, are not uploaded. Messages from anyone else are not stored by the app and their text is never uploaded.</li>
       <li><strong>Banks we don't support yet.</strong> To learn which banks to add, once a week the app looks at messages from business sender names that aren't on the list (never phone numbers, so never personal chats). If such messages mention an amount in birr together with words like "credited" or "paid", the app sends us only the sender name, a message count and the date of the latest one. It never sends the text of those messages.</li>
     <li><strong>Transactions.</strong> From those messages the app extracts amounts, dates, balances, fees, reference numbers, the name or masked account of the other party, receipt links, and your own masked account number.</li>
       <li><strong>Your categories and reviews.</strong> The categories you assign and the rules the app learns from them.</li>
       <li><strong>Account details.</strong> Your email address, the name you enter, and, if you use Google sign-in, the basic profile Google shares (name and email).</li>
-      <li><strong>Web dashboard usage.</strong> When you use the web dashboard we record session start and end times, the app version and your browser's user-agent, so we can see whether the dashboard is being used and which versions are in use.</li>
+      <li><strong>App and dashboard usage.</strong> When you use the app or the web dashboard we record session start and end times and the app version, plus your browser's user-agent on the web or your phone's Android version and model in the app. The app also sends a random install ID, a few in-app events (for example finishing an SMS scan, setting a PIN, or an error) and its sync status (how many items are waiting to sync, the last sync error, and whether SMS access and a PIN are on). We use this to see which versions are in use and to find bugs.</li>
       <li><strong>Feedback.</strong> Answers you choose to give in the in-app feedback survey.</li>
     </ul>
     <p>We do not collect your contacts, location, photos, or your personal (non-bank) messages, and we never ask for your bank PIN or password.</p>
+
+    <h2>Phone permissions</h2>
+    <ul>
+      <li><strong>Read SMS and receive SMS.</strong> Reading bank SMS is the core of Kash: without it the app can't build your history. The app checks each message's sender and keeps only the ones from the bank and mobile-money list above. The app explains this on screen before Android asks, and works without it if you'd rather add transactions by hand.</li>
+      <li><strong>Notifications.</strong> To tell you about new transactions, reviews and reminders. You can turn them off at any time.</li>
+      <li><strong>Background work.</strong> To scan your SMS history the first time you open the app and to keep syncing when you're offline or the app is closed.</li>
+    </ul>
 
     <h2>How we use it</h2>
     <ul>

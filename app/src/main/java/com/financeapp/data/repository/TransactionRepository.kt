@@ -332,23 +332,24 @@ class TransactionRepository(
     suspend fun getUnsyncedTransactions(): List<TransactionEntity> =
         txnDao.getUnsyncedTransactions()
 
-    suspend fun getUnsyncedRawMessages(): List<RawSmsSyncPayload> =
-        rawDao.getUnsyncedRawSms().map { raw ->
+    /**
+     * Bank SMS waiting to upload. Ones the parser ignores (one-time codes,
+     * promos, notices) never leave the phone — they are marked synced here
+     * instead. A new RULES_VERSION re-queues everything (resyncRawOnce), so
+     * a message the new rules can read is uploaded then.
+     */
+    suspend fun getUnsyncedRawMessages(): List<RawSmsSyncPayload> {
+        val (ignored, uploads) = rawDao.getUnsyncedRawSms()
+            .map { it to rawParseStatus(SmsMessage(sender = it.sender, body = it.body, timestamp = it.receivedAt)) }
+            .partition { (_, status) -> status == RAW_IGNORED }
+        markRawMessagesSynced(ignored.map { (raw, _) -> raw.id })
+        return uploads.map { (raw, parseStatus) ->
             val sms = SmsMessage(
                 sender = raw.sender,
                 body = raw.body,
                 timestamp = raw.receivedAt
             )
             val bankName = SmsParserEngine.inferBankName(sms).trim()
-            // What the parser makes of it today, for the admin parse-rate
-            // view: null = ignore pattern (OTP, promo), UNKNOWN = no parser
-            // matched (a broken or new template, or a capture-only bank).
-            val parsed = SmsParserEngine.parse(sms)
-            val parseStatus = when {
-                parsed == null                                -> "IGNORED"
-                parsed.type == TransactionType.UNKNOWN.name   -> "UNPARSED"
-                else                                          -> "PARSED"
-            }
 
             RawSmsSyncPayload(
                 localId = raw.id,
@@ -359,6 +360,26 @@ class TransactionRepository(
                 parseStatus = parseStatus
             )
         }
+    }
+
+    companion object {
+        const val RAW_IGNORED = "IGNORED"
+
+        /**
+         * What the parser makes of a bank SMS today, for the admin parse-rate
+         * view: IGNORED = ignore pattern (OTP, promo) or not money-shaped,
+         * UNPARSED = no parser matched (a broken or new template, or a
+         * capture-only bank), PARSED = a transaction.
+         */
+        fun rawParseStatus(sms: SmsMessage): String {
+            val parsed = SmsParserEngine.parse(sms)
+            return when {
+                parsed == null                                -> RAW_IGNORED
+                parsed.type == TransactionType.UNKNOWN.name   -> "UNPARSED"
+                else                                          -> "PARSED"
+            }
+        }
+    }
 
     suspend fun countUnsyncedTransactions(): Int =
         txnDao.countUnsynced()

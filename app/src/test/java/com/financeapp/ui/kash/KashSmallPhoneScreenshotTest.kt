@@ -113,4 +113,12 @@ class KashSmallPhoneScreenshotTest {
             }
         }
     }
+
+    // Google Play's prominent disclosure for SMS: all four facts, the policy
+    // link and both buttons must fit at 360 dp.
+    @Test
+    fun allowSmsDisclosure() = shot { com.financeapp.ui.screens.AllowSmsScreen({}, {}, {}) }
+
+    @Test
+    fun allowSmsAgainAfterOnboarding() = shot { com.financeapp.ui.screens.AllowSmsScreen({}, {}, {}, step = 0) }
 }
