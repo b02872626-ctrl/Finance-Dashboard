@@ -77,7 +77,6 @@ import com.financeapp.util.KashDates
 import com.financeapp.util.LocalCalendarSystem
 import com.financeapp.viewmodel.AnalyticsViewModel
 import com.financeapp.viewmodel.MonthReport
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -116,10 +115,6 @@ fun AnalyticsTabScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("Money in", if (r.isLoading) null else KashMoney.whole(r.moneyIn), Modifier.weight(1f))
                 StatTile("Left over", if (r.isLoading) null else leftOver(r), Modifier.weight(1f))
-                StatTile(
-                    "vs " + KashDates.monthShort(r.prevFromMs + 86_400_000L, cal),
-                    if (r.isLoading) null else versus(r), Modifier.weight(1f),
-                )
             }
         },
     ) { pad ->
@@ -173,18 +168,6 @@ fun AnalyticsTabScreen(
 private fun leftOver(r: MonthReport): String {
     val v = r.moneyIn - r.spent
     return (if (v < 0) KashMoney.MINUS else "") + KashMoney.whole(v)
-}
-
-/** "8% less", "12% more", "Same", or "—" with nothing to compare. */
-private fun versus(r: MonthReport): String {
-    val prev = r.prevSpent ?: return "—"
-    if (prev <= 0) return "—"
-    val pct = ((r.spent - prev) / prev * 100).roundToInt()
-    return when {
-        pct == 0 -> "Same"
-        pct < 0 -> "${abs(pct)}% less"
-        else -> "$pct% more"
-    }
 }
 
 @Composable

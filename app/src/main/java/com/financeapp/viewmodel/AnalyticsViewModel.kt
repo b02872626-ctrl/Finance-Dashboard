@@ -78,9 +78,6 @@ data class MonthReport(
     val isCurrent: Boolean = true,
     val spent: Double = 0.0,
     val moneyIn: Double = 0.0,
-    /** Spending in the month before; null when there is none to compare. */
-    val prevSpent: Double? = null,
-    val prevFromMs: Long = 0L,
     /** Six months ending with this one, oldest first. */
     val sixMonths: List<MonthInOut> = emptyList(),
     /** Categories with spending this month, biggest first. */
@@ -140,8 +137,6 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
         val isCurrent = now in from until to
         val inMonth = all.filter { it.dateTime in from until to }
         val spending = inMonth.filter { it.isSpending() }
-        val prevFrom = dates.monthBounds(from - 1, cal).first
-        val prevSpending = all.filter { it.dateTime in prevFrom until from && it.isSpending() }
 
         val six = (0 until 6).fold(listOf(from)) { acc, _ -> acc + dates.monthBounds(acc.last() - 1, cal).first }
             .take(6).reversed()
@@ -179,8 +174,6 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
             isCurrent = isCurrent,
             spent = spending.sumOf { it.amount },
             moneyIn = inMonth.filter { it.isIncome() }.sumOf { it.amount },
-            prevSpent = prevSpending.sumOf { it.amount }.takeIf { prevSpending.isNotEmpty() },
-            prevFromMs = prevFrom,
             sixMonths = six,
             categories = categories,
             days = days.toList(),
