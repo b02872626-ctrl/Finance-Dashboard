@@ -1,6 +1,7 @@
 package com.financeapp.viewmodel
 
 import androidx.lifecycle.*
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.TransactionRepository
@@ -13,6 +14,8 @@ import java.util.Locale
 
 data class BankAnalyticsState(
     val bankName: String = "",
+    /** Header title — bank name, or "CBE 2" when viewing one of several accounts. */
+    val label: String = bankName,
     val accountNumber: String? = null,
     val totalBalance: Double = 0.0,
     val totalIncome: Double = 0.0,
@@ -27,7 +30,9 @@ data class BankAnalyticsState(
 
 class BankAnalyticsViewModel(
     private val repo: TransactionRepository,
-    private val bankFilter: String
+    private val bankFilter: String,
+    /** Last 4 digits of one account at this bank; null shows the whole bank. */
+    private val accountSuffix: String? = null
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BankAnalyticsState(bankName = bankFilter))
@@ -39,7 +44,11 @@ class BankAnalyticsViewModel(
             repo.getAllTransactions(), // We could optimize by having repo.getTransactionsForBank but this works
             repo.getMonthlyAggregates(oneYearAgo)
         ) { all, rawMonthly ->
-            val bankTxns = all.filter { it.bankName.equals(bankFilter, ignoreCase = true) || it.sender.equals(bankFilter, ignoreCase = true) }
+            val allBankTxns = all.filter { it.bankName.equals(bankFilter, ignoreCase = true) || it.sender.equals(bankFilter, ignoreCase = true) }
+            val account = accountSuffix?.let { suffix ->
+                AccountGrouping.group(allBankTxns).firstOrNull { it.accountSuffix == suffix }
+            }
+            val bankTxns = account?.transactions ?: allBankTxns
             
             val totalBalance = bankTxns.maxByOrNull { it.dateTime }?.balance ?: 0.0
             
@@ -84,6 +93,7 @@ class BankAnalyticsViewModel(
 
             BankAnalyticsState(
                 bankName = bankFilter,
+                label = account?.label ?: bankFilter,
                 accountNumber = accountNumber,
                 totalBalance = totalBalance,
                 totalIncome = totalIncome,
@@ -99,10 +109,13 @@ class BankAnalyticsViewModel(
     }
 }
 
-class BankAnalyticsViewModelFactory(private val repo: TransactionRepository, private val bank: String) :
-    ViewModelProvider.Factory {
+class BankAnalyticsViewModelFactory(
+    private val repo: TransactionRepository,
+    private val bank: String,
+    private val accountSuffix: String? = null
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
-        return BankAnalyticsViewModel(repo, bank) as T
+        return BankAnalyticsViewModel(repo, bank, accountSuffix) as T
     }
 }

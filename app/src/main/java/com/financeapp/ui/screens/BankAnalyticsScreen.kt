@@ -107,6 +107,7 @@ fun BankAnalyticsScreen(vm: BankAnalyticsViewModel, onBack: () -> Unit) {
             item {
                 AccountBalanceCard(
                     bankName = state.bankName,
+                    label = state.label,
                     balance = state.totalBalance,
                     accountNumber = state.accountNumber,
                     txCount = state.txCount
@@ -241,6 +242,7 @@ private fun AccountsHeader(onBack: () -> Unit) {
 @Composable
 private fun AccountBalanceCard(
     bankName: String,
+    label: String,
     balance: Double,
     accountNumber: String?,
     txCount: Int
@@ -267,7 +269,7 @@ private fun AccountBalanceCard(
             BankLogo(bankName = bankName, size = 36.dp)
         }
         Spacer(Modifier.height(14.dp))
-        Text(text = bankName, color = Headline, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = label, color = Headline, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))
         accountNumber?.takeIf { it.isNotBlank() }?.let {
             Text(text = "Account - $it", color = BodyMuted, fontSize = 12.sp)

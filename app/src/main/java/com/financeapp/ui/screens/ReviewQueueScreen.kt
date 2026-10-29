@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.categorize.CategoryPredictor
 import com.financeapp.data.model.TransactionCategoryCatalog
 import com.financeapp.data.model.TransactionEntity
@@ -719,22 +720,13 @@ private fun SourcePill(label: String) {
         else                                                  -> Brown to Color(0xFF2A2520)
     }
     Text(
-        shortBankLabel(label),
+        AccountGrouping.shortBankLabel(label),
         color = fg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(bg)
             .padding(horizontal = 10.dp, vertical = 3.dp)
     )
-}
-
-private fun shortBankLabel(name: String): String = when {
-    name.contains("Commercial Bank", ignoreCase = true) -> "CBE"
-    name.contains("Telebirr", ignoreCase = true)        -> "Telebirr"
-    name.contains("Abyssinia", ignoreCase = true)       -> "BOA"
-    name.contains("Awash", ignoreCase = true)           -> "Awash"
-    name.contains("Dashen", ignoreCase = true)          -> "Dashen"
-    else -> name
 }
 
 @Composable

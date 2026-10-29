@@ -476,7 +476,7 @@ private fun BanksSection(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             visible.forEach { acc ->
                 Box(modifier = Modifier.weight(1f)) {
-                    BankCard(name = acc.bankName, balance = acc.balance, onClick = onAccountsClick)
+                    BankCard(name = acc.label, balance = acc.balance, onClick = onAccountsClick)
                 }
             }
             if (visible.size == 1) {

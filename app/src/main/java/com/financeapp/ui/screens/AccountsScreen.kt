@@ -75,7 +75,7 @@ private val BodyMuted  = Color(0xFFB7B3AC)
 private val FooterGrey = Color(0xFF7C7872)
 
 @Composable
-fun AccountsScreen(vm: DashboardViewModel, onAccountClick: (String) -> Unit) {
+fun AccountsScreen(vm: DashboardViewModel, onAccountClick: (bankName: String, accountSuffix: String?) -> Unit) {
     val state by vm.state.collectAsState()
     val accounts = state.accountBalances
 
@@ -93,7 +93,7 @@ fun AccountsScreen(vm: DashboardViewModel, onAccountClick: (String) -> Unit) {
         if (accounts.isEmpty()) {
             EmptyState()
         } else {
-            CardDeck(accounts = accounts, onOpen = { bank -> onAccountClick(bank) })
+            CardDeck(accounts = accounts, onOpen = { acc -> onAccountClick(acc.bankName, acc.accountSuffix) })
         }
     }
 }
@@ -141,17 +141,17 @@ private fun AccountsHeader() {
 @Composable
 private fun CardDeck(
     accounts: List<AccountSummary>,
-    onOpen: (String) -> Unit
+    onOpen: (AccountSummary) -> Unit
 ) {
     if (accounts.isEmpty()) return
 
-    // Track which bank is at the front. Persists across rotations.
+    // Track which account is at the front. Persists across rotations.
     var frontKey by rememberSaveable(accounts.size) {
-        mutableStateOf(accounts.lastOrNull()?.bankName ?: "")
+        mutableStateOf(accounts.lastOrNull()?.key ?: "")
     }
     val ordered = remember(accounts, frontKey) {
         val list = accounts.toMutableList()
-        val idx = list.indexOfFirst { it.bankName == frontKey }
+        val idx = list.indexOfFirst { it.key == frontKey }
         if (idx >= 0) {
             val front = list.removeAt(idx)
             list.add(front) // append the chosen front last so it draws on top + lives at the bottom of the stack
@@ -186,7 +186,7 @@ private fun CardDeck(
                     dampingRatio = Spring.DampingRatioLowBouncy,
                     stiffness = Spring.StiffnessMediumLow
                 ),
-                label = "baseY-${account.bankName}"
+                label = "baseY-${account.key}"
             )
             val extraY = if (isFront) swipeOffset.value.dp else 0.dp
 
@@ -197,7 +197,7 @@ private fun CardDeck(
                 .let { mod ->
                     if (isFront && canCycle) {
                         mod
-                            .pointerInput(account.bankName) {
+                            .pointerInput(account.key) {
                                 detectVerticalDragGestures(
                                     onDragStart = {},
                                     onDragCancel = {
@@ -219,8 +219,8 @@ private fun CardDeck(
                                                 // Step 2 — pick the card that was peeking just above it as the new front.
                                                 val newFront = ordered
                                                     .getOrNull(ordered.lastIndex - 1)
-                                                    ?.bankName
-                                                    ?: accounts.first().bankName
+                                                    ?.key
+                                                    ?: accounts.first().key
                                                 frontKey = newFront
                                                 // Step 3 — reset offset. The cycled card is now at drawIndex 0
                                                 // (drawn behind the rest); animateDpAsState slides it back into
@@ -244,15 +244,15 @@ private fun CardDeck(
                                     }
                                 )
                             }
-                            .pointerInput(account.bankName) {
-                                detectTapGestures(onTap = { onOpen(account.bankName) })
+                            .pointerInput(account.key) {
+                                detectTapGestures(onTap = { onOpen(account) })
                             }
                     } else {
                         mod.clickable(
-                            interactionSource = remember(account.bankName) { MutableInteractionSource() },
+                            interactionSource = remember(account.key) { MutableInteractionSource() },
                             indication = null
                         ) {
-                            if (isFront) onOpen(account.bankName) else frontKey = account.bankName
+                            if (isFront) onOpen(account) else frontKey = account.key
                         }
                     }
                 }
@@ -296,7 +296,7 @@ private fun BalanceCard(
         if (isFront) {
             Spacer(Modifier.weight(1f))
             Text(
-                text = account.bankName,
+                text = account.label,
                 color = Headline,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold

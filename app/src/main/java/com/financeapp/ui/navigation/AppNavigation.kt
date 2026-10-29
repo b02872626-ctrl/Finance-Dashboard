@@ -260,16 +260,23 @@ private fun MainNavigation(
             composable(Screen.Accounts.route) {
                 AccountsScreen(
                     vm = dashVm,
-                    onAccountClick = { bankName -> navController.navigate("bank_analytics/$bankName") }
+                    onAccountClick = { bankName, accountSuffix ->
+                        val account = accountSuffix?.let { "?account=$it" } ?: ""
+                        navController.navigate("bank_analytics/$bankName$account")
+                    }
                 )
             }
             composable(
-                route = "bank_analytics/{bankName}",
-                arguments = listOf(navArgument("bankName") { type = NavType.StringType })
+                route = "bank_analytics/{bankName}?account={account}",
+                arguments = listOf(
+                    navArgument("bankName") { type = NavType.StringType },
+                    navArgument("account") { type = NavType.StringType; nullable = true }
+                )
             ) { backStackEntry ->
                 val bankName = backStackEntry.arguments?.getString("bankName") ?: return@composable
+                val accountSuffix = backStackEntry.arguments?.getString("account")
                 val vm: BankAnalyticsViewModel = viewModel(
-                    factory = BankAnalyticsViewModelFactory(repo, bankName)
+                    factory = BankAnalyticsViewModelFactory(repo, bankName, accountSuffix)
                 )
                 BankAnalyticsScreen(vm = vm, onBack = { navController.popBackStack() })
             }
