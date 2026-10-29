@@ -1,0 +1,38 @@
+#!/bin/sh
+# Refuse to push commits that are behind origin/main.
+# A branch cut from an old main rolls back everything merged since then.
+# Bypass on purpose with: ALLOW_STALE_PUSH=1 git push ...
+
+[ "$ALLOW_STALE_PUSH" = "1" ] && exit 0
+
+remote="$1"
+zero=0000000000000000000000000000000000000000
+
+if ! git fetch --quiet "$remote" main 2>/dev/null; then
+  echo "pre-push: could not fetch $remote/main; skipping freshness check." >&2
+  exit 0
+fi
+main_sha=$(git rev-parse FETCH_HEAD)
+
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue   # branch deletion
+  if ! git merge-base --is-ancestor "$main_sha" "$local_sha"; then
+    behind=$(git rev-list --count "$local_sha..$main_sha")
+    echo "pre-push: ${local_ref#refs/heads/} is $behind commit(s) behind $remote/main." >&2
+    status=1
+  fi
+done
+
+if [ $status -ne 0 ]; then
+  cat >&2 <<EOF
+
+Pushing this would put stale code on the remote and can roll back work
+that is already on main. Bring the branch up to date first:
+
+  git fetch $remote && git rebase $remote/main
+
+Then rerun the tests and push again.
+EOF
+fi
+exit $status

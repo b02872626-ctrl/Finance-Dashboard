@@ -1,0 +1,29 @@
+name: Up to date with main
+
+# Fails when a branch or pull request is behind main, so stale work
+# (which would roll back newer changes) is flagged before it ships.
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Branch contains latest main
+        run: |
+          git fetch origin main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo "Up to date with main."
+          else
+            behind=$(git rev-list --count HEAD..origin/main)
+            echo "::error::This branch is $behind commit(s) behind main. Run: git fetch origin && git rebase origin/main"
+            exit 1
+          fi
