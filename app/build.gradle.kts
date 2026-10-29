@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("app.cash.paparazzi")
 }
@@ -19,14 +20,14 @@ fun buildConfigString(value: String): String =
 
 android {
     namespace = "com.financeapp"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.financeapp"
+        applicationId = "et.kash.app"
         minSdk = 23
-        targetSdk = 34
-        versionCode = 33
-        versionName = "1.0.13"
+        targetSdk = 36
+        versionCode = 34
+        versionName = "1.0.14"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Supabase config (set these in local.properties; do not commit secrets)
@@ -94,7 +95,6 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.10" }
 }
 
 // Paparazzi finds the SDK through ANDROID_HOME; point it at the one in local.properties.

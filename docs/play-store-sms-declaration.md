@@ -83,6 +83,8 @@ Policy requires the SMS feature to be prominent in the description.
 
 **Privacy policy URL:** https://finance-dashboard-two-virid.vercel.app/privacy.html
 
+**Account deletion URL:** https://finance-dashboard-two-virid.vercel.app/delete-account.html
+
 ## 4. Before submitting
 
 - [ ] `supabase/drop_ignored_raw_sms.sql` has been run, so no one-time codes

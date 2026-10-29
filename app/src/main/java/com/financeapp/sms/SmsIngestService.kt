@@ -67,8 +67,6 @@ class SmsIngestService : Service() {
                     "source" to "service", "messages" to messages.size, "inserted" to inserted, "first_run" to firstRun
                 ))
                 com.financeapp.notifications.TransactionTriggers.onInserted(applicationContext, insertedTxs, batchIsHistorical = firstRun)
-                // Banks Kash doesn't follow yet: sender names + counts, weekly.
-                runCatching { MoneySenderScout.reportWeekly(applicationContext) }
                 val pendingTransactions = repo.countUnsyncedTransactions()
                 val pendingRawMessages = repo.countUnsyncedRawMessages()
                 val totalPending = pendingTransactions + pendingRawMessages

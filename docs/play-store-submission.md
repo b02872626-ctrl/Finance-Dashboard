@@ -10,6 +10,25 @@ Policy sources: [SMS and Call Log permissions](https://support.google.com/google
 [Account deletion](https://support.google.com/googleplay/android-developer/answer/13327111),
 [Data safety](https://support.google.com/googleplay/android-developer/answer/10787469).
 
+## Status (1.0.14)
+
+- Package ID is **`et.kash.app`** (Kotlin packages stay `com.financeapp`).
+  Permanent once uploaded. Google sign-in needs an Android OAuth client for
+  `et.kash.app` with both the upload key's SHA-1 and, after the first
+  upload, Play App Signing's SHA-1 (Play Console → Test and release → App
+  integrity).
+- 1a done: compileSdk/targetSdk 36, AGP 8.9.1, Gradle 8.11.1, Kotlin 2.0.21.
+  Release build installed and run on a Galaxy S22 (Android 16). The
+  Paparazzi screenshot tests don't run on SDK 36 yet (1.3.5 can't render
+  it; 2.0 needs Gradle on Java 21); the other unit tests pass.
+- 1b done: `MoneySenderScout` removed, and its paragraph in the privacy policy.
+- 1c partly: one-time codes, promos and notices are no longer uploaded
+  (1.0.13); money SMS still are, so declare Messages: SMS.
+- Paste-ready text for section 2 is in `docs/play-store-sms-declaration.md`.
+- The SMS demo video for the declaration was recorded on the owner's phone.
+  It shows real (masked) account numbers, so it is kept out of this public
+  repo: upload it unlisted and paste the link.
+
 ## 1. Blockers in the code (fix before the first upload)
 
 ### 1a. Target API 36
