@@ -47,7 +47,7 @@ Upload it unlisted to YouTube or Google Drive and paste the link.
 
 Data **collected** (sent off the phone), all **encrypted in transit**, users
 **can request deletion** (Settings → Delete account). Nothing is **shared**
-with third parties (Supabase/Vercel/Google/Sentry are service providers, which
+with third parties (Supabase/Cloudflare/Google/Sentry are service providers, which
 Google does not count as sharing).
 
 | Data type | Collected | Purpose | Optional? |
@@ -81,9 +81,9 @@ Policy requires the SMS feature to be prominent in the description.
 > uploaded. Your data syncs to your Kash account so you can see it on the
 > web, and you can delete it at any time.
 
-**Privacy policy URL:** https://finance-dashboard-two-virid.vercel.app/privacy.html
+**Privacy policy URL:** https://kash-140.pages.dev/privacy.html
 
-**Account deletion URL:** https://finance-dashboard-two-virid.vercel.app/delete-account.html
+**Account deletion URL:** https://kash-140.pages.dev/delete-account.html
 
 ## 4. Before submitting
 

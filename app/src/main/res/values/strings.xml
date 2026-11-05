@@ -2,6 +2,6 @@
     <string name="app_name">Kash</string>
     <!-- Settings → Support opens a pre-filled email to this address. -->
     <string name="support_email" translatable="false">nahusenaygebreamlak@gmail.com</string>
-    <!-- Hosted from Web/privacy.html on Vercel. -->
-    <string name="privacy_policy_url" translatable="false">https://finance-dashboard-two-virid.vercel.app/privacy.html</string>
+    <!-- Hosted from Web/privacy.html on Cloudflare Pages. -->
+    <string name="privacy_policy_url" translatable="false">https://kash-140.pages.dev/privacy.html</string>
 </resources>

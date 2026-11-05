@@ -1,0 +1,15 @@
+# Cloudflare Pages response headers (same rules vercel.json had).
+
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
+/apk/*
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment
+  Cache-Control: public, max-age=3600
+
+# Installed apps poll this for the "update available" notice.
+/version.json
+  Cache-Control: public, max-age=300
+  Access-Control-Allow-Origin: *

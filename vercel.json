@@ -2,62 +2,22 @@
   "cleanUrls": false,
   "redirects": [
     {
-      "source": "/admin",
-      "destination": "/admin/",
-      "permanent": false
+      "source": "/((?!version\\.json$).*)",
+      "destination": "https://kash-140.pages.dev/$1",
+      "statusCode": 301
     }
   ],
   "rewrites": [
     {
-      "source": "/download",
-      "destination": "/Web/download.html"
-    },
-    {
-      "source": "/",
-      "destination": "/Web/index.html"
-    },
-    {
-      "source": "/admin/",
-      "destination": "/Web/admin/index.html"
-    },
-    {
-      "source": "/admin/:path+",
-      "destination": "/Web/admin/:path+"
-    },
-    {
-      "source": "/:path+",
-      "destination": "/Web/:path+"
+      "source": "/version.json",
+      "destination": "/Web/version.json"
     }
   ],
   "headers": [
     {
-      "source": "/admin/(.*)",
+      "source": "/version.json",
       "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, nofollow"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
-      ]
-    },
-    {
-      "source": "/apk/(.*)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/vnd.android.package-archive"
-        },
-        {
-          "key": "Content-Disposition",
-          "value": "attachment"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=300" }
       ]
     }
   ]

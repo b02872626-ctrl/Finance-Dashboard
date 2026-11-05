@@ -21,6 +21,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- Keep the Vercel project `finance-dashboard` running: it redirects the old
+  address and serves `/version.json` to 1.0.20 installs.
+- Play Console (when filling it in): privacy policy and account-deletion
+  URLs are now on `kash-140.pages.dev`.
 
 
 - Play Console: SMS permission declaration (text in
@@ -33,6 +37,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-05 1.0.21: site moved to Cloudflare Pages (`kash-140.pages.dev`);
+  app, privacy policy and Play docs point there; Vercel redirects to it.
 - 2026-11-05 1.0.20: "Kash x.y.z is available" notification. The app reads
   `/version.json` at start and every 12 h; off for Play installs. First
   real test is when 1.0.21 ships.

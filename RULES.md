@@ -25,7 +25,7 @@ anything.
   - `parsing/` — `SmsParserEngine` and one `BankParser` per SMS shape.
   - `sms/` — reading and receiving SMS. `remote/` — Supabase auth and sync.
   - `ui/kash/` — the Kash design system. `ui/screens/` — the screens.
-- `Web/` — static site on Vercel (deploys from `main`): landing, download
+- `Web/` — static site on Cloudflare Pages, `kash-140.pages.dev` (deploys from `main`; every branch gets a preview link): landing, download
   page, privacy policy, account deletion, admin dashboard (`Web/admin/`).
   `Web/apk/` holds the one current APK.
 - `supabase/` — SQL files run by hand in the Supabase SQL editor.

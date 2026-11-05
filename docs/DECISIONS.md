@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-05 — Site moved from Vercel to Cloudflare Pages
+
+Owner's call, without a custom domain for now. The site is the Pages project
+`kash` at `kash-140.pages.dev` (`kash.pages.dev` was taken), deployed from
+`main` with output folder `Web/`; every branch gets a preview link. Header
+rules moved from `vercel.json` to `Web/_headers`; the Vercel analytics
+script was removed.
+
+The old `finance-dashboard-two-virid.vercel.app` stays up as a 301 redirect
+to the new address, because installed apps (≤ 1.0.20) and old links use it.
+Exception: Vercel still serves `/version.json` directly (no redirect), so
+1.0.20's update check can't break on a redirect. Keep that Vercel project
+alive until no tester runs 1.0.20 or older. If Kash gets its own domain
+later, the address changes once more (app, Play forms, this redirect).
+
 ## 2026-11-05 — The app tells testers about new versions itself
 
 Kash never had its own update notice; testers used to hear about builds

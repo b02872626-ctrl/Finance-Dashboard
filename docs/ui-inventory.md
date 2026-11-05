@@ -219,7 +219,7 @@ Many screens also define their own **local** color constants (`CardBg = 0xFF231E
 Back; avatar; `"NAME"` field (`"Your name"`); `"EMAIL ADDRESS"` (read-only); **Save Changes** (disabled until the name changes) → saves and goes back.
 
 ### 2.17 Privacy & Data — `AccountSecurityScreen` (`profile_security`)
-Compact profile header; back; `"How your data is handled"`; facts **Only bank messages**, **Synced to your account**, **Who can see it**, **On this phone** (text in code); **Read the privacy policy** → opens `https://finance-dashboard-two-virid.vercel.app/privacy.html`; **Delete account** link (same dialog as 2.15).
+Compact profile header; back; `"How your data is handled"`; facts **Only bank messages**, **Synced to your account**, **Who can see it**, **On this phone** (text in code); **Read the privacy policy** → opens `https://kash-140.pages.dev/privacy.html`; **Delete account** link (same dialog as 2.15).
 
 ### 2.18 Notifications — `NotificationPreferencesScreen` (`profile_notifications`)
 Compact header; back; `"Notifications"`; toggle **Transaction alerts** — `"A reminder to review new transactions, and updates when syncing is waiting for an internet connection."`; note `"You can also turn Kash notifications off in your phone's settings."`

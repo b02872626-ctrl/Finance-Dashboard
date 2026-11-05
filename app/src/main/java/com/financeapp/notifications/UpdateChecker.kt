@@ -36,8 +36,8 @@ import java.util.concurrent.TimeUnit
  * not allow apps to point users at other update sources.
  */
 object UpdateChecker {
-    const val VERSION_URL = "https://finance-dashboard-two-virid.vercel.app/version.json"
-    const val DOWNLOAD_URL = "https://finance-dashboard-two-virid.vercel.app/download"
+    const val VERSION_URL = "https://kash-140.pages.dev/version.json"
+    const val DOWNLOAD_URL = "https://kash-140.pages.dev/download"
     private const val CHANNEL = "kash_updates"
     private const val NOTIFICATION_ID = 4000
     private const val PREFS = "kash_update_check"

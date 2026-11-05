@@ -135,7 +135,7 @@ how to delete without the app. Both now exist:
 
 - In app: Settings → Delete account (calls the `delete_my_account` RPC).
 - Web: `Web/delete-account.html`, live once main is deployed at
-  https://finance-dashboard-two-virid.vercel.app/delete-account.html.
+  https://kash-140.pages.dev/delete-account.html.
   Paste that URL into the form.
 
 The form also asks whether some data is kept: answer yes, and name the
@@ -143,7 +143,7 @@ feedback answers (unlinked) and the anonymous install row.
 
 ## 4. Other App content declarations
 
-- **Privacy policy URL**: https://finance-dashboard-two-virid.vercel.app/privacy.html,
+- **Privacy policy URL**: https://kash-140.pages.dev/privacy.html,
   in App content and in the store listing. The policy already covers SMS, Supabase, Google sign-in,
   retention and deletion; update it if 1b or 1c change.
 - **Financial features**: Kash shows transactions but does not move money,
