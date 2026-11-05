@@ -7,8 +7,9 @@ items to Done with the date, add what is next or blocked.
 
 - Play Store first upload: follow `docs/play-store-submission.md` §6
   (order of operations).
-- `docs/SECURITY.md`: list every Supabase table and policy, one line each,
-  and which test or check covers it.
+- Staging Supabase project, then automated tests that one user can't read
+  or change another's rows and that non-admins see only their own totals in
+  the admin views (gaps listed at the end of `docs/SECURITY.md`).
 
 - Readable crash traces: release builds are minified, so Sentry shows
   renamed classes. Either add the Sentry Gradle plugin with an auth token to
@@ -23,6 +24,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- Supabase → Authentication → Sign In / Providers → Email: check that
+  **Confirm email** is on. Admin access is decided by email, so it must be
+  verified (`docs/SECURITY.md`, Who is an admin).
+
 
 - Play Console: SMS permission declaration (text in
   `docs/play-store-sms-declaration.md`), Data safety, account deletion link,
@@ -34,6 +39,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-05 `docs/SECURITY.md`: every table, policy, admin view and
+  privileged function; live anonymous probe passed (no rows, writes refused).
 - 2026-11-05 CI (`.github/workflows/ci.yml`): unit tests and a debug build
   on every push and pull request.
 - 2026-11-05 1.0.18: Sentry crash reporting (crash-only, scrubbed). Sentry

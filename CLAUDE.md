@@ -12,6 +12,8 @@ Project memory lives in `docs/`. Read only what your task needs:
 - `docs/PROGRESS.md`: always read first (next up, blocked, owner tasks, done).
 - `docs/DECISIONS.md`: why things are the way they are. Do not reverse a
   logged decision without asking.
+- `docs/SECURITY.md`: who can read and change each Supabase table. Read it
+  before touching `supabase/`, sync, or the admin dashboard.
 - `docs/play-store-submission.md`: where the Play Store launch stands.
 
 Before you finish every session:

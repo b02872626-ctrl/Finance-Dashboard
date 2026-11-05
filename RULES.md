@@ -46,7 +46,9 @@ anything.
 5. **Transfers between the user's own accounts are not spending or income.**
 6. **Row Level Security on every Supabase table.** A user only ever sees
    their own rows. The admin dashboard reads only through `admin_*` views
-   that check the caller is an admin; never open a table to it directly.
+   that are `security_invoker = on`; never open a table to it directly.
+   Every policy is listed in `docs/SECURITY.md`; update it in the same
+   commit as any policy change.
 7. **Releases come only from up-to-date `main`** (see Git workflow in
    `CLAUDE.md`). The APK on the site is always signed with the same key
    (SHA-256 `24f79763…0f1509`) so it installs as an update.
