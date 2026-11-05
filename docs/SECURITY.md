@@ -26,6 +26,11 @@ sign-in. These Supabase Auth settings must stay as they are (checked
 - **Secure email change: on**, so nobody can switch their email to an
   admin's without both inboxes confirming.
 - **Allow anonymous sign-ins: off.**
+- **Redirect URLs** (Authentication → URL Configuration): only Kash's own
+  sites may receive a sign-in: `https://kash-140.pages.dev/**` (added
+  2026-11-05) and the two old Vercel addresses. Site URL is still the old
+  Vercel address, which redirects to Cloudflare. Never add a wildcard that
+  covers other people's sites (such as `https://*.pages.dev`).
 
 Google sign-in emails are already verified.
 
