@@ -7,8 +7,6 @@ items to Done with the date, add what is next or blocked.
 
 - Play Store first upload: follow `docs/play-store-submission.md` §6
   (order of operations).
-- CI: a GitHub workflow that runs `./gradlew testDebugUnitTest` on every
-  push, next to `up-to-date.yml`.
 - `docs/SECURITY.md`: list every Supabase table and policy, one line each,
   and which test or check covers it.
 
@@ -20,7 +18,8 @@ items to Done with the date, add what is next or blocked.
 
 - Paparazzi screenshot tests (`KashComponentsScreenshotTest`,
   `KashSmallPhoneScreenshotTest`) don't run on SDK 36: 1.3.5 can't render
-  it, 2.0 needs Gradle on Java 21.
+  it, 2.0 needs Gradle on Java 21. Skipped by default (CI too); run them
+  with `./gradlew testDebugUnitTest -PscreenshotTests`.
 
 ## Owner tasks
 
@@ -35,6 +34,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-05 CI (`.github/workflows/ci.yml`): unit tests and a debug build
+  on every push and pull request.
 - 2026-11-05 1.0.18: Sentry crash reporting (crash-only, scrubbed). Sentry
   org `kash-r2`, EU region; DSN in `local.properties` as `sentry.dsn`.
   Privacy policy and Data safety text updated.

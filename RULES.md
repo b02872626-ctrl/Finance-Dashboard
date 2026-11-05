@@ -80,7 +80,8 @@ anything.
 - The PIN (`PinManagerTest`) and Ethiopian dates (`EthiopianCalendarTest`).
 - Any bug that bit once: add a test that would have caught it.
 
-Run them with `./gradlew testDebugUnitTest`.
+Run them with `./gradlew testDebugUnitTest`. CI (`.github/workflows/ci.yml`)
+runs them on every push; never merge or release while it is red.
 
 ## Naming
 
