@@ -24,9 +24,6 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
-- Supabase → Authentication → Sign In / Providers → Email: check that
-  **Confirm email** is on. Admin access is decided by email, so it must be
-  verified (`docs/SECURITY.md`, Who is an admin).
 
 
 - Play Console: SMS permission declaration (text in
@@ -40,7 +37,8 @@ items to Done with the date, add what is next or blocked.
 ## Done
 
 - 2026-11-05 `docs/SECURITY.md`: every table, policy, admin view and
-  privileged function; live anonymous probe passed (no rows, writes refused).
+  privileged function; live anonymous probe passed (no rows, writes refused);
+  Auth checked: confirm email and secure email change on, anonymous off.
 - 2026-11-05 CI (`.github/workflows/ci.yml`): unit tests and a debug build
   on every push and pull request.
 - 2026-11-05 1.0.18: Sentry crash reporting (crash-only, scrubbed). Sentry

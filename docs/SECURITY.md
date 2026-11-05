@@ -20,8 +20,14 @@ gate. It is true when the signed-in email is on a fixed list in that function
 run the file, and log it in `docs/DECISIONS.md`.
 
 The email comes from the sign-in token, so it is only as trustworthy as the
-sign-in: keep **Confirm email** on in Supabase Auth, or anyone could sign up
-with an admin's address. Google sign-in emails are already verified.
+sign-in. These Supabase Auth settings must stay as they are (checked
+2026-11-05 under Authentication → Sign In / Providers):
+- **Confirm email: on**, so nobody can sign up with an admin's address.
+- **Secure email change: on**, so nobody can switch their email to an
+  admin's without both inboxes confirming.
+- **Allow anonymous sign-ins: off.**
+
+Google sign-in emails are already verified.
 
 ## Tables
 
@@ -99,6 +105,7 @@ who is calling.
 | Check | Covers | Last run |
 |---|---|---|
 | Anonymous probe: read every table and admin view, try to insert, delete and call `delete_my_account` with only the public key | anon sees no rows (admin views show zeros), writes and account deletion refused | 2026-11-05, passed |
+| Auth settings in the Supabase dashboard | Confirm email on, secure email change on, anonymous sign-ins off | 2026-11-05, passed |
 | `RawSmsUploadTest`, `SupabaseTransactionKeyTest` | What leaves the phone, one row per SMS | CI, every push |
 | `CrashReportingTest` | Crash-report scrubbing | CI, every push |
 
