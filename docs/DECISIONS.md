@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-05 — The app tells testers about new versions itself
+
+Kash never had its own update notice; testers used to hear about builds
+from Firebase App Distribution, which stopped when releases moved to the
+download page and the package became `et.kash.app`. Now `UpdateChecker`
+reads `Web/version.json` (at start and every 12 hours, online only) and
+posts one notification per newer version, opening the download page. It is
+off for Google Play installs, which Play updates itself (Play does not allow
+pointing users at other update sources). No new library: plain
+`HttpURLConnection` and WorkManager.
+
 ## 2026-11-05 — Upload R8 mappings to Sentry from the build
 
 Release builds are minified, so crash reports showed renamed classes. Added

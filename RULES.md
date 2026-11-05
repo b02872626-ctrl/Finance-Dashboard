@@ -85,6 +85,18 @@ anything.
 Run them with `./gradlew testDebugUnitTest`. CI (`.github/workflows/ci.yml`)
 runs them on every push; never merge or release while it is red.
 
+## Releasing to the download page
+
+1. Bump `versionCode` and `versionName` in `app/build.gradle.kts` and set the
+   same two numbers in `Web/version.json` (`UpdateCheckerTest` fails if they
+   differ). Installed apps read that file to show "Kash x.y.z is available".
+2. Build the signed release with `sentry.authToken` set, so the mapping
+   uploads.
+3. Replace `Web/apk/Kash-<old>.apk` with `Kash-<new>.apk`, update every link,
+   version and size in `Web/download.html`.
+4. Push to `main` only after CI is green; confirm the live `/apk/` URL and
+   `/version.json`.
+
 ## Naming
 
 - Supabase tables start with `i_` (`i_users`, `i_transactions`, `i_banks`,

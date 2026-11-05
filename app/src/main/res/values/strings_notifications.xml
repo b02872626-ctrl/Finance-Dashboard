@@ -85,4 +85,9 @@
     <string name="notif_sms_lost_text">SMS access is off, so new transactions aren\'t being added. Tap to turn it back on.</string>
 
     <string name="notif_uncategorized">Uncategorized</string>
+
+    <string name="notif_channel_updates">App updates</string>
+    <string name="notif_channel_updates_desc">When a new version of Kash is ready to download</string>
+    <string name="notif_update_title">Kash %1$s is available</string>
+    <string name="notif_update_text">Tap to download the update. Your data stays on your phone.</string>
 </resources>

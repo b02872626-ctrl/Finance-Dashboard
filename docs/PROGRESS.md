@@ -33,6 +33,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-05 1.0.20: "Kash x.y.z is available" notification. The app reads
+  `/version.json` at start and every 12 h; off for Play installs. First
+  real test is when 1.0.21 ships.
 - 2026-11-05 1.0.19: readable crash traces. The Sentry Gradle plugin
   uploads each release's R8 mapping to Sentry project `android`
   (org `kash-r2`); needs `sentry.authToken` in `local.properties`.
