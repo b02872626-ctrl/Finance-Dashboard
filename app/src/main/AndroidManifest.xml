@@ -28,6 +28,9 @@
         android:theme="@style/Theme.FinanceApp"
         tools:targetApi="34">
 
+        <!-- Sentry starts from CrashReporting.init, with money data scrubbed. -->
+        <meta-data android:name="io.sentry.auto-init" android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

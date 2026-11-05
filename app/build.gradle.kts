@@ -46,6 +46,12 @@ android {
             "GOOGLE_WEB_CLIENT_ID",
             buildConfigString(localProperties.getProperty("google.webClientId", ""))
         )
+        // Sentry crash reports. Empty = crash reporting off (debug builds are always off).
+        buildConfigField(
+            "String",
+            "SENTRY_DSN",
+            buildConfigString(localProperties.getProperty("sentry.dsn", ""))
+        )
     }
 
     // Release-signing config — paths + creds come from local.properties so
@@ -125,6 +131,8 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("androidx.credentials:credentials:1.2.1")
     implementation("androidx.credentials:credentials-play-services-auth:1.2.1")
+    // Crash reports only (no NDK, no replay, no tracing). Set up in CrashReporting.kt.
+    implementation("io.sentry:sentry-android-core:8.60.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("junit:junit:4.13.2")

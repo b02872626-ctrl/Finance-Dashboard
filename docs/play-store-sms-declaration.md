@@ -47,7 +47,7 @@ Upload it unlisted to YouTube or Google Drive and paste the link.
 
 Data **collected** (sent off the phone), all **encrypted in transit**, users
 **can request deletion** (Settings → Delete account). Nothing is **shared**
-with third parties (Supabase/Vercel/Google are service providers, which
+with third parties (Supabase/Vercel/Google/Sentry are service providers, which
 Google does not count as sharing).
 
 | Data type | Collected | Purpose | Optional? |
@@ -56,7 +56,7 @@ Google does not count as sharing).
 | Messages → SMS or MMS | Yes (money SMS from bank and wallet senders only; no codes or promos) | App functionality | Required for automatic tracking |
 | Personal info → Email address, Name | Yes | Account management | Required |
 | App activity → App interactions | Yes | Analytics | Required |
-| App info and performance → Crash logs / Diagnostics | Yes | Analytics | Required |
+| App info and performance → Crash logs / Diagnostics | Yes (Sentry crash reports, scrubbed of money data) | Analytics | Required |
 | Device or other IDs | Yes (random install ID) | Analytics | Required |
 
 Not collected: location, contacts, photos, files, audio, health, web history.

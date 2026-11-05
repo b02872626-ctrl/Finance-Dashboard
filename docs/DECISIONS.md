@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-05 — Sentry for crashes; no PostHog, no Cloudflare for now
+
+Kash had no crash reporting, so crashes on testers' phones were invisible.
+Added `io.sentry:sentry-android-core` (no NDK, replay, tracing, screenshots
+or breadcrumbs). Before sending, `CrashReporting.scrub` drops breadcrumbs,
+extras and user details except the install ID, and masks numbers and quoted
+text in error messages. Off in debug builds and when no DSN is set.
+PostHog was not added: `Telemetry` already sends a short list of named
+events to Supabase. Cloudflare was not added: the site works on Vercel;
+revisit for DNS when Kash gets its own domain.
+
 ## 2026-11-05 — Project memory lives in the repo
 
 Adopted the Mela Playbook layout: `CLAUDE.md` points to `RULES.md`,

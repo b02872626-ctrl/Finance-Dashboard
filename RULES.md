@@ -58,7 +58,10 @@ anything.
 - Every database change is a new SQL file in `supabase/`, named for what it
   does. Never change the schema only in the dashboard. Never ship a file that
   drops tables with user data without the owner saying so.
-- Secrets only in `local.properties` (Supabase URL/key, signing) or Supabase
+- Crash reports go to Sentry through `remote/CrashReporting.kt` only. Never
+  attach SMS text, amounts, balances, accounts, names or phones to a report;
+  `CrashReporting.scrub` must keep passing `CrashReportingTest`.
+- Secrets only in `local.properties` (Supabase URL/key, `sentry.dsn`, signing) or Supabase
   secrets. Never in code, never in chat, never in a commit.
 - Ask before adding any new library.
 - One feature per session and per branch. At the end, say in plain English
@@ -73,6 +76,7 @@ anything.
 - Money totals: spending, income, own-account transfers (`SpendingTest`).
 - The sync key and what is uploaded (`SupabaseTransactionKeyTest`,
   `RawSmsUploadTest`).
+- Crash-report scrubbing (`CrashReportingTest`).
 - The PIN (`PinManagerTest`) and Ethiopian dates (`EthiopianCalendarTest`).
 - Any bug that bit once: add a test that would have caught it.
 
