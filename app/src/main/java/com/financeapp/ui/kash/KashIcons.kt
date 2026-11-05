@@ -46,6 +46,8 @@ enum class KashIcon(vararg val paths: String) {
     Transfer("M7 10h10l-3-3M17 14H7l3 3"),
     External("M14 4h6v6M20 4l-9 9M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"),
     Pause("M10 4v16M14 4v16"),
+    /** Added for hiding an account (Eye with a slash). */
+    EyeOff("M3 3l18 18", "M10.6 5.1A10 10 0 0 1 12 5c4 0 8 3 10 7a13 13 0 0 1-2.6 3.6", "M6.6 6.6C4.6 7.9 3 9.8 2 12c2 4 6 7 10 7 1.9 0 3.7-.6 5.3-1.6", "M9.9 9.9a3 3 0 0 0 4.2 4.2"),
     Eye("M2 12c2-4 6-7 10-7s8 3 10 7c-2 4-6 7-10 7S4 16 2 12z", "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"),
     Check("M5 12.5l4.5 4.5L19 7.5"),
     Backspace("M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7z", "M12 9.5l5 5M17 9.5l-5 5"),

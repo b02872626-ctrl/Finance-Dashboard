@@ -91,5 +91,11 @@ data class TransactionEntity(
     /** When this record was inserted into the DB */
     val createdAt: Long = System.currentTimeMillis(),
     /** False until the row is confirmed in Supabase. */
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    /**
+     * True when the row belongs to an account the user hid (one CBE sends
+     * alerts for but that isn't theirs). Read queries skip hidden rows, so
+     * the account leaves every screen and total. Local only, never synced.
+     */
+    val hidden: Boolean = false
 )

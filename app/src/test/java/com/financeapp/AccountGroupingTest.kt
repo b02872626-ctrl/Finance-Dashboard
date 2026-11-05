@@ -66,4 +66,47 @@ class AccountGroupingTest {
         assertEquals(listOf("$cbe#6155", "$cbe#8506"), cbeGroups.map { it.key })
         assertEquals("Telebirr", groups.single { it.bankName == "Telebirr" }.label)
     }
+
+    // ── Hidden accounts ──────────────────────────────────────────────────
+
+    @Test
+    fun `account key matches the group key whatever the mask length`() {
+        val rows = listOf(
+            tx(cbe, "1********6155", 1), tx(cbe, "1*********6155", 2),
+            tx(cbe, "1********8565", 3), tx(cbe, "1*********8565", 4),
+        )
+        val groups = AccountGrouping.group(rows)
+        assertEquals(2, groups.size)
+        groups.forEach { g ->
+            g.transactions.forEach { t ->
+                assertEquals(g.key, AccountGrouping.accountKeyOf(t.bankName, t.sender, t.accountNumber))
+            }
+        }
+    }
+
+    @Test
+    fun `account key falls back to sender and needs an account number`() {
+        assertEquals("CBE#6155", AccountGrouping.accountKeyOf("", "CBE", "1****6155"))
+        assertNull(AccountGrouping.accountKeyOf(cbe, "CBE", null))
+    }
+
+    @Test
+    fun `account key round trips`() {
+        val key = AccountGrouping.accountKey(cbe, "8565")
+        assertEquals(cbe to "8565", AccountGrouping.parseAccountKey(key))
+        assertNull(AccountGrouping.parseAccountKey("no-hash"))
+        assertNull(AccountGrouping.parseAccountKey("bank#"))
+    }
+
+    @Test
+    fun `hiding two of four accounts renumbers the rest`() {
+        val rows = listOf(
+            tx(cbe, "1********6155", 1), tx(cbe, "1********8506", 2),
+            tx(cbe, "1********8565", 3), tx(cbe, "1********1287", 4),
+        )
+        val hidden = setOf(AccountGrouping.accountKey(cbe, "8565"), AccountGrouping.accountKey(cbe, "1287"))
+        val visible = rows.filter { AccountGrouping.accountKeyOf(it.bankName, it.sender, it.accountNumber) !in hidden }
+        assertEquals(listOf("CBE 1" to "6155", "CBE 2" to "8506"),
+            AccountGrouping.group(visible).map { it.label to it.accountSuffix })
+    }
 }

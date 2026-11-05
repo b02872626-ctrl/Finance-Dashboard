@@ -58,6 +58,7 @@ import com.financeapp.ui.kash.components.KashButton
 import com.financeapp.ui.kash.components.KashButtonVariant
 import com.financeapp.ui.kash.components.KashChip
 import com.financeapp.ui.kash.components.KashDayHeader
+import com.financeapp.ui.kash.components.KashDialog
 import com.financeapp.ui.kash.components.KashEmptyState
 import com.financeapp.ui.kash.components.KashFigure
 import com.financeapp.ui.kash.components.KashIconButton
@@ -292,6 +293,8 @@ fun AccountDetailScreen(
     vm: BankAnalyticsViewModel,
     onBack: () -> Unit,
     onTxClick: (Long) -> Unit,
+    /** Set when this is one of several accounts at the bank; hides it and leaves. */
+    onHide: (() -> Unit)? = null,
 ) {
     KashSystemBars(darkIcons = false)
     val state by vm.state.collectAsState()
@@ -312,6 +315,24 @@ fun AccountDetailScreen(
     val groups = remember(rows) { groupByDay(rows) }
     val bank = kashBank(state.bankName)
     val last4 = last4(state.accountNumber)
+    // Only a split account (label "CBE 3", not the bank name) can be hidden.
+    val canHide = onHide != null && !state.isLoading && state.label != state.bankName
+    var confirmHide by rememberSaveable { mutableStateOf(false) }
+
+    if (confirmHide && onHide != null) {
+        KashDialog(
+            title = "Hide ${state.label}?",
+            description = listOfNotNull(last4?.let { "•••• $it. " }).joinToString("") +
+                "Its balance and transactions leave every screen and total. " +
+                "Use this for an account that isn't yours. Show it again from Settings › Banks Kash follows.",
+            onDismiss = { confirmHide = false },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                KashButton("Hide account", { confirmHide = false; onHide() }, Modifier.fillMaxWidth())
+                KashButton("Cancel", { confirmHide = false }, Modifier.fillMaxWidth(), KashButtonVariant.Quiet)
+            }
+        }
+    }
 
     KashScreen(
         heroGap = 22.dp,
@@ -321,6 +342,9 @@ fun AccountDetailScreen(
                 else bank.shortName.let { if (it == "CBE") "Commercial Bank" else bank.fullName },
                 onBack = onBack, centerTitle = true,
                 leading = { KashBankBadge(state.bankName, size = 32.dp) },
+                actions = {
+                    if (canHide) KashIconButton(KashIcon.EyeOff, "Hide this account", { confirmHide = true }, onSlate = true)
+                },
             )
             Column {
                 Text(

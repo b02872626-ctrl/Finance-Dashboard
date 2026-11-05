@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -522,7 +523,14 @@ private fun clock(minute: Int) = "%d:%02d".format(minute / 60, minute % 60)
 
 /** Banks Kash follows: the same switches as Choose sources. */
 @Composable
-fun BanksFollowedPage(sources: List<SmsSource>, onToggle: (String, Boolean) -> Unit, onBack: () -> Unit) {
+fun BanksFollowedPage(
+    sources: List<SmsSource>,
+    onToggle: (String, Boolean) -> Unit,
+    onBack: () -> Unit,
+    /** Accounts the user hid, as (bank name, last 4). */
+    hiddenAccounts: List<Pair<String, String>> = emptyList(),
+    onShowAccount: (bankName: String, suffix: String) -> Unit = { _, _ -> },
+) {
     SettingsPage("Banks Kash follows", onBack) { pad ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (sources.isEmpty()) {
@@ -551,6 +559,31 @@ fun BanksFollowedPage(sources: List<SmsSource>, onToggle: (String, Boolean) -> U
                 }
                 Text(
                     "Kash stops reading new SMS from a bank you switch off. Turn it back on any time.",
+                    style = KashType.Caption, color = KashColors.InkMuted, modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+            if (hiddenAccounts.isNotEmpty()) {
+                SectionLabel("Hidden accounts")
+                KashListGroup {
+                    hiddenAccounts.forEachIndexed { i, (bankName, suffix) ->
+                        val bank = kashBank(bankName)
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            KashBankBadge(bankName)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(bank.fullName, style = KashType.BodyStrong, color = KashColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("•••• $suffix", style = KashType.Caption.num(), color = KashColors.InkMuted)
+                            }
+                            KashButton("Show", { onShowAccount(bankName, suffix) }, Modifier.width(96.dp), KashButtonVariant.Secondary, compact = true)
+                        }
+                        if (i < hiddenAccounts.lastIndex) KashDivider()
+                    }
+                }
+                Text(
+                    "A hidden account stays out of your balances and totals. Its SMS are still read, so showing it brings everything back.",
                     style = KashType.Caption, color = KashColors.InkMuted, modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }

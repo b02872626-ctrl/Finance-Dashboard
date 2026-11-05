@@ -20,7 +20,7 @@ import com.financeapp.data.model.TransactionEntity
         CategoryRuleEntity::class,
         SentNotificationEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -50,6 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_8_9)
                     .addMigrations(MIGRATION_9_10)
                     .addMigrations(MIGRATION_10_11)
+                    .addMigrations(MIGRATION_11_12)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
@@ -204,6 +205,13 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_sent_notifications_dedupKey` ON `sent_notifications` (`dedupKey`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_sent_notifications_tier_sentAt` ON `sent_notifications` (`tier`, `sentAt`)")
+            }
+        }
+
+        /** Hidden accounts: rows of an account the user hid drop out of every read. */
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `hidden` INTEGER NOT NULL DEFAULT 0")
             }
         }
 

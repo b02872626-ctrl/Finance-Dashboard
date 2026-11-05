@@ -41,6 +41,23 @@ object AccountGrouping {
     }
 
     /**
+     * Identity of one account for hiding: "bank#1234". Same shape as
+     * [AccountGroup.key] for a bank split into several accounts.
+     */
+    fun accountKey(bankName: String, suffix: String): String = "$bankName#$suffix"
+
+    /** [accountKey] of the account a row belongs to; null when the SMS named no account. */
+    fun accountKeyOf(bankName: String, sender: String, accountNumber: String?): String? =
+        accountSuffix(accountNumber)?.let { accountKey(bankName.ifBlank { sender }, it) }
+
+    /** "bank#1234" back to (bank, "1234"); null for anything else. */
+    fun parseAccountKey(key: String): Pair<String, String>? {
+        val i = key.lastIndexOf('#')
+        if (i <= 0 || i == key.lastIndex) return null
+        return key.substring(0, i) to key.substring(i + 1)
+    }
+
+    /**
      * Groups transactions into accounts. A bank with one known account (or
      * none, like Telebirr) stays a single group holding all its rows. A bank
      * with two or more account suffixes is split, numbered by first-seen

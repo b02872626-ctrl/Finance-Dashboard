@@ -21,13 +21,21 @@ data class MerchantKeyBackfillRow(
     val counterparty: String?
 )
 
+/** Row projection for hiding one account's rows. */
+data class AccountRow(
+    val id: Long,
+    val sender: String,
+    val bankName: String,
+    val accountNumber: String?
+)
+
 @Dao
 interface TransactionDao {
 
-    @Query("SELECT * FROM transactions ORDER BY dateTime DESC")
+    @Query("SELECT * FROM transactions WHERE hidden = 0 ORDER BY dateTime DESC")
     fun getAllTransactions(): kotlinx.coroutines.flow.Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions ORDER BY dateTime DESC LIMIT :limit")
+    @Query("SELECT * FROM transactions WHERE hidden = 0 ORDER BY dateTime DESC LIMIT :limit")
     fun getRecentTransactions(limit: Int = 10): kotlinx.coroutines.flow.Flow<List<TransactionEntity>>
 
     @Query("SELECT * FROM transactions WHERE id = :id")
@@ -63,7 +71,8 @@ interface TransactionDao {
 
     @Query("""
         SELECT * FROM transactions
-        WHERE (:sender IS NULL OR sender = :sender)
+        WHERE hidden = 0
+          AND (:sender IS NULL OR sender = :sender)
           AND (:type IS NULL OR type = :type)
           AND dateTime >= :fromMs AND dateTime <= :toMs
         ORDER BY dateTime DESC
@@ -77,7 +86,8 @@ interface TransactionDao {
 
     @Query("""
         SELECT * FROM transactions
-        WHERE dateTime >= :fromMs
+        WHERE hidden = 0
+          AND dateTime >= :fromMs
           AND dateTime <= :toMs
           AND (category IS NULL OR TRIM(category) = '')
         ORDER BY dateTime DESC
@@ -89,7 +99,8 @@ interface TransactionDao {
 
     @Query("""
         SELECT COUNT(*) FROM transactions
-        WHERE dateTime >= :fromMs
+        WHERE hidden = 0
+          AND dateTime >= :fromMs
           AND dateTime <= :toMs
           AND (category IS NULL OR TRIM(category) = '')
     """)
@@ -100,7 +111,8 @@ interface TransactionDao {
             COUNT(*) AS transactionCount,
             COALESCE(SUM(amount), 0.0) AS totalAmount
         FROM transactions
-        WHERE counterparty IS NOT NULL
+        WHERE hidden = 0
+          AND counterparty IS NOT NULL
           AND LOWER(TRIM(counterparty)) = LOWER(TRIM(:counterparty))
           AND type IN ('DEBIT', 'TRANSFER_OUT', 'PAYMENT')
     """)
@@ -112,7 +124,8 @@ interface TransactionDao {
             SUM(CASE WHEN type = 'CREDIT' THEN amount ELSE 0.0 END) AS totalIncome,
             SUM(CASE WHEN type IN ('DEBIT','TRANSFER_OUT','PAYMENT') THEN amount ELSE 0.0 END) AS totalExpense
         FROM transactions
-        WHERE dateTime >= :fromMs
+        WHERE hidden = 0
+          AND dateTime >= :fromMs
           -- Same exclusion as Spending.kt isOwnAccountTransfer()
           AND COALESCE(category, '') != '${Spending.OWN_ACCOUNTS}'
         GROUP BY month
@@ -158,7 +171,8 @@ interface TransactionDao {
     /** Today's pending queue, ordered chronologically for the swipe stream. */
     @Query("""
         SELECT * FROM transactions
-         WHERE dateTime >= :fromMs AND dateTime <= :toMs
+         WHERE hidden = 0
+           AND dateTime >= :fromMs AND dateTime <= :toMs
            AND reviewStatus = 'PENDING'
          ORDER BY dateTime ASC
     """)
@@ -173,7 +187,8 @@ interface TransactionDao {
      */
     @Query("""
         SELECT * FROM transactions
-         WHERE reviewStatus = 'PENDING'
+         WHERE hidden = 0
+           AND reviewStatus = 'PENDING'
          ORDER BY dateTime DESC
     """)
     fun getAllPendingReview(): kotlinx.coroutines.flow.Flow<List<TransactionEntity>>
@@ -181,7 +196,8 @@ interface TransactionDao {
     /** Count of PENDING rows older than today — drives the Home "older" link. */
     @Query("""
         SELECT COUNT(*) FROM transactions
-         WHERE reviewStatus = 'PENDING'
+         WHERE hidden = 0
+           AND reviewStatus = 'PENDING'
            AND dateTime < :startOfTodayMs
     """)
     fun countOlderPendingReview(
@@ -191,7 +207,8 @@ interface TransactionDao {
     /** Snapshot version for one-shot reads. */
     @Query("""
         SELECT * FROM transactions
-         WHERE dateTime >= :fromMs AND dateTime <= :toMs
+         WHERE hidden = 0
+           AND dateTime >= :fromMs AND dateTime <= :toMs
            AND reviewStatus = 'PENDING'
          ORDER BY dateTime ASC
     """)
@@ -199,7 +216,8 @@ interface TransactionDao {
 
     @Query("""
         SELECT COUNT(*) FROM transactions
-         WHERE dateTime >= :fromMs AND dateTime <= :toMs
+         WHERE hidden = 0
+           AND dateTime >= :fromMs AND dateTime <= :toMs
            AND reviewStatus = :status
     """)
     fun countByStatusBetween(
@@ -209,7 +227,7 @@ interface TransactionDao {
     ): kotlinx.coroutines.flow.Flow<Int>
 
     /** Last SMS we ingested (any status), used by the "empty" home card. */
-    @Query("SELECT MAX(dateTime) FROM transactions")
+    @Query("SELECT MAX(dateTime) FROM transactions WHERE hidden = 0")
     suspend fun latestTransactionMs(): Long?
 
     @Query("""
@@ -280,11 +298,11 @@ interface TransactionDao {
     suspend fun applyCategoryToAllForMerchant(merchantKey: String, category: String): Int
 
     /** Count of ALL transactions (any status) sharing a merchant_key. */
-    @Query("SELECT COUNT(*) FROM transactions WHERE merchantKey = :merchantKey")
+    @Query("SELECT COUNT(*) FROM transactions WHERE hidden = 0 AND merchantKey = :merchantKey")
     suspend fun countTransactionsByMerchantKey(merchantKey: String): Int
 
     /** Newest rows sharing a merchant_key (the "Apply to all?" list). */
-    @Query("SELECT * FROM transactions WHERE merchantKey = :merchantKey ORDER BY dateTime DESC LIMIT :limit")
+    @Query("SELECT * FROM transactions WHERE hidden = 0 AND merchantKey = :merchantKey ORDER BY dateTime DESC LIMIT :limit")
     suspend fun getByMerchantKey(merchantKey: String, limit: Int): List<TransactionEntity>
 
     /**
@@ -358,13 +376,22 @@ interface TransactionDao {
     // ── Notifications ────────────────────────────────────────────────────
 
     /** Rows dated in [fromMs, toMs), for summaries and the low-balance floor. */
-    @Query("SELECT * FROM transactions WHERE dateTime >= :fromMs AND dateTime < :toMs ORDER BY dateTime ASC")
+    @Query("SELECT * FROM transactions WHERE hidden = 0 AND dateTime >= :fromMs AND dateTime < :toMs ORDER BY dateTime ASC")
     suspend fun snapshotBetween(fromMs: Long, toMs: Long): List<TransactionEntity>
 
     /** Rows Kash added since [sinceMs] (by insert time, not SMS date). */
-    @Query("SELECT * FROM transactions WHERE createdAt >= :sinceMs ORDER BY dateTime ASC")
+    @Query("SELECT * FROM transactions WHERE hidden = 0 AND createdAt >= :sinceMs ORDER BY dateTime ASC")
     suspend fun snapshotCreatedSince(sinceMs: Long): List<TransactionEntity>
 
-    @Query("SELECT COUNT(*) FROM transactions WHERE reviewStatus = 'PENDING' AND type != 'UNKNOWN'")
+    @Query("SELECT COUNT(*) FROM transactions WHERE hidden = 0 AND reviewStatus = 'PENDING' AND type != 'UNKNOWN'")
     suspend fun countAllPending(): Int
+
+    // ── Hidden accounts ──────────────────────────────────────────────────
+
+    /** Every row that names an account, hidden or not, for (un)hiding by account. */
+    @Query("SELECT id, sender, bankName, accountNumber FROM transactions WHERE accountNumber IS NOT NULL")
+    suspend fun getAccountRows(): List<AccountRow>
+
+    @Query("UPDATE transactions SET hidden = :hidden WHERE id IN (:ids)")
+    suspend fun setHidden(ids: List<Long>, hidden: Boolean)
 }

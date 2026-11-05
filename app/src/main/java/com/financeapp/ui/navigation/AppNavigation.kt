@@ -40,6 +40,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.financeapp.BuildConfig
 import com.financeapp.R
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
@@ -377,7 +378,12 @@ private fun MainNavigation(
                     key = "bank_${bankName}_$accountSuffix",
                     factory = BankAnalyticsViewModelFactory(repo, bankName, accountSuffix)
                 )
-                AccountDetailScreen(vm = vm, onBack = ::back, onTxClick = ::openTx)
+                AccountDetailScreen(
+                    vm = vm, onBack = ::back, onTxClick = ::openTx,
+                    onHide = accountSuffix?.let { suffix ->
+                        { dashVm.setAccountHidden(bankName, suffix, true); back() }
+                    },
+                )
             }
             composable(
                 route = "${Screen.Transactions.route}?search={search}",
@@ -474,7 +480,15 @@ private fun MainNavigation(
             composable("profile_notifications") { NotificationsPage(vm = setVm, onBack = ::back) }
             composable("profile_banks") {
                 val sources by sourcesVm.sources.collectAsState()
-                BanksFollowedPage(sources = sources, onToggle = sourcesVm::setSourceEnabled, onBack = ::back)
+                val hiddenKeys by remember { settingsRepo.hiddenAccountsFlow() }
+                    .collectAsState(initial = settingsRepo.getHiddenAccounts())
+                BanksFollowedPage(
+                    sources = sources,
+                    onToggle = sourcesVm::setSourceEnabled,
+                    onBack = ::back,
+                    hiddenAccounts = hiddenKeys.mapNotNull(AccountGrouping::parseAccountKey).sortedBy { it.first + it.second },
+                    onShowAccount = { bank, suffix -> dashVm.setAccountHidden(bank, suffix, false) },
+                )
             }
             composable("profile_pin") {
                 val pm = remember { PinManager(context) }

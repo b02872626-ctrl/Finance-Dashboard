@@ -144,6 +144,11 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
         _chartRange.value = range
     }
 
+    /** Hide one account (or show it again) everywhere in the app. */
+    fun setAccountHidden(bankName: String, suffix: String, hidden: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) { repo.setAccountHidden(bankName, suffix, hidden) }
+    }
+
     fun clearAndReimport(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             repo.clearAllData()

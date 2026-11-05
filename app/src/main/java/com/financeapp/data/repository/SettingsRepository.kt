@@ -161,6 +161,29 @@ class SettingsRepository(context: Context) {
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
+    /**
+     * Accounts the user hid, as AccountGrouping.accountKey ("bank#1234").
+     * Their rows stay in the database but drop out of every screen, and new
+     * SMS for them arrive hidden.
+     */
+    fun getHiddenAccounts(): Set<String> =
+        prefs.getStringSet(KEY_HIDDEN_ACCOUNTS, emptySet()) ?: emptySet()
+
+    fun setAccountHidden(key: String, hidden: Boolean) {
+        val current = getHiddenAccounts().toMutableSet()
+        if (hidden) current.add(key) else current.remove(key)
+        prefs.edit().putStringSet(KEY_HIDDEN_ACCOUNTS, current).apply()
+    }
+
+    fun hiddenAccountsFlow(): Flow<Set<String>> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, k ->
+            if (k == KEY_HIDDEN_ACCOUNTS) trySend(getHiddenAccounts())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        trySend(getHiddenAccounts())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
     fun getCustomCategories(): List<String> =
         (prefs.getStringSet(KEY_CUSTOM_CATEGORIES, emptySet()) ?: emptySet())
             .map(TransactionCategoryCatalog::normalize)
@@ -300,6 +323,7 @@ class SettingsRepository(context: Context) {
         const val KEY_PENDING_SYNC_NOTIFICATION = "pending_sync_notification"
         const val KEY_DISABLED_SENDERS = "disabled_senders"
         const val KEY_CUSTOM_CATEGORIES = "custom_categories"
+        const val KEY_HIDDEN_ACCOUNTS = "hidden_accounts"
         const val KEY_RECENT_CATEGORIES = "recent_categories"
         /** Max length of the recents row in the picker (kept tight to fit on one line). */
         const val RECENT_CAP = 6

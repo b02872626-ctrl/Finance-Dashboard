@@ -1,6 +1,7 @@
 package com.financeapp.data.repository
 
 import androidx.room.withTransaction
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.categorize.CategoryPredictor
 import com.financeapp.data.db.AppDatabase
 import com.financeapp.data.db.CounterpartyAggregate
@@ -323,6 +324,23 @@ class TransactionRepository(
         txnDao.updateReviewStatus(id, ReviewStatus.PENDING)
     }
 
+    /**
+     * Hide (or show again) one account: every row naming it, and every row
+     * that arrives for it later. Needs [settings]; a no-op without it.
+     */
+    suspend fun setAccountHidden(bankName: String, suffix: String, hidden: Boolean) {
+        val settings = settings ?: return
+        val key = AccountGrouping.accountKey(bankName, suffix)
+        settings.setAccountHidden(key, hidden)
+        val ids = txnDao.getAccountRows()
+            .filter { AccountGrouping.accountKeyOf(it.bankName, it.sender, it.accountNumber) == key }
+            .map { it.id }
+        db.withTransaction {
+            // Stay under SQLite's bound-variable limit.
+            ids.chunked(500).forEach { txnDao.setHidden(it, hidden) }
+        }
+    }
+
     suspend fun clearAllData() {
         txnDao.clear()
         rawDao.clear()
@@ -481,7 +499,9 @@ class TransactionRepository(
         val prediction = predictor.predict(parsed.merchantKey, parsed.counterpartyId, parsed.type)
         val autoConfirm = prediction.source == CategoryPredictor.Source.USER_RULE
                           && prediction.category != null
+        val hiddenKey = AccountGrouping.accountKeyOf(parsed.bankName, parsed.sender, parsed.accountNumber)
         val entity = parsed.copy(
+            hidden             = hiddenKey != null && settings?.getHiddenAccounts()?.contains(hiddenKey) == true,
             predictedCategory  = prediction.category,
             categoryConfidence = prediction.confidence.takeIf { it > 0.0 },
             category           = if (autoConfirm) prediction.category else null,
