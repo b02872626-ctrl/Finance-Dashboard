@@ -24,9 +24,6 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
-- Sentry: create a free account and an Android project named Kash, then add
-  its DSN to `local.properties` as `sentry.dsn=…` (never paste it in chat).
-  Until then release builds send no crash reports.
 
 - Play Console: SMS permission declaration (text in
   `docs/play-store-sms-declaration.md`), Data safety, account deletion link,
@@ -38,8 +35,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
-- 2026-11-05 Sentry crash reporting in the app (crash-only, scrubbed, off
-  until `sentry.dsn` is set); privacy policy and Data safety text updated.
+- 2026-11-05 1.0.18: Sentry crash reporting (crash-only, scrubbed). Sentry
+  org `kash-r2`, EU region; DSN in `local.properties` as `sentry.dsn`.
+  Privacy policy and Data safety text updated.
 - 2026-11-05 Project memory files: `RULES.md`, `docs/PROGRESS.md`,
   `docs/DECISIONS.md`.
 - 2026-11-05 1.0.17: hide an account that isn't yours.
