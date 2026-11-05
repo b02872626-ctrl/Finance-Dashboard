@@ -6,6 +6,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("app.cash.paparazzi")
+    id("io.sentry.android.gradle")
 }
 
 val localProperties = Properties().apply {
@@ -26,8 +27,8 @@ android {
         applicationId = "et.kash.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 38
-        versionName = "1.0.18"
+        versionCode = 39
+        versionName = "1.0.19"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Supabase config (set these in local.properties; do not commit secrets)
@@ -101,6 +102,25 @@ android {
         compose = true
         buildConfig = true
     }
+}
+
+// Sentry Gradle plugin: only tags each release build with a mapping ID and,
+// when sentry.authToken is set in local.properties, uploads R8's mapping.txt
+// so crash reports show real class and method names. Everything else it can
+// do (adding SDKs, bytecode instrumentation, source upload) stays off.
+sentry {
+    val sentryAuthToken = localProperties.getProperty("sentry.authToken", "").trim()
+    org.set("kash-r2")
+    projectName.set(localProperties.getProperty("sentry.project", "android"))
+    if (sentryAuthToken.isNotEmpty()) authToken.set(sentryAuthToken)
+    includeProguardMapping.set(true)
+    autoUploadProguardMapping.set(sentryAuthToken.isNotEmpty())
+    includeSourceContext.set(false)
+    uploadNativeSymbols.set(false)
+    includeDependenciesReport.set(false)
+    telemetry.set(false)
+    autoInstallation { enabled.set(false) }
+    tracingInstrumentation { enabled.set(false) }
 }
 
 // Paparazzi finds the SDK through ANDROID_HOME; point it at the one in local.properties.

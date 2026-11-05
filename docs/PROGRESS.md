@@ -11,9 +11,6 @@ items to Done with the date, add what is next or blocked.
   or change another's rows and that non-admins see only their own totals in
   the admin views (gaps listed at the end of `docs/SECURITY.md`).
 
-- Readable crash traces: release builds are minified, so Sentry shows
-  renamed classes. Either add the Sentry Gradle plugin with an auth token to
-  upload `mapping.txt`, or keep each release's mapping and retrace by hand.
 
 ## Blocked
 
@@ -36,6 +33,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-05 1.0.19: readable crash traces. The Sentry Gradle plugin
+  uploads each release's R8 mapping to Sentry project `android`
+  (org `kash-r2`); needs `sentry.authToken` in `local.properties`.
 - 2026-11-05 `docs/SECURITY.md`: every table, policy, admin view and
   privileged function; live anonymous probe passed (no rows, writes refused);
   Auth checked: confirm email and secure email change on, anonymous off.

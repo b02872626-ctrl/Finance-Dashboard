@@ -6,6 +6,16 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-05 — Upload R8 mappings to Sentry from the build
+
+Release builds are minified, so crash reports showed renamed classes. Added
+the Sentry Gradle plugin (`io.sentry.android.gradle` 6.23.0) only to tag
+each release with a mapping ID and upload `mapping.txt`. Its other features
+(auto-adding SDKs, bytecode instrumentation, source upload, telemetry) are
+off. The upload needs an organization token (`sentry.authToken`); without
+one the build still works and skips the upload. 1.0.18 and earlier stay
+unreadable because they carry no mapping ID.
+
 ## 2026-11-05 — Sentry for crashes; no PostHog, no Cloudflare for now
 
 Kash had no crash reporting, so crashes on testers' phones were invisible.

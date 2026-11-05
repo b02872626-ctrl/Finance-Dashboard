@@ -87,6 +87,7 @@ who is calling.
 | Supabase URL and anon key | `local.properties` → `BuildConfig` | Treated as public; safety comes from the policies above |
 | Supabase service-role key | Supabase dashboard only | Never in the app, the site, the repo or chat |
 | Sentry DSN | `local.properties` (`sentry.dsn`) | Not in the repo or chat |
+| Sentry organization token (uploads only) | `local.properties` (`sentry.authToken`) | Not in the repo, CI or chat; revoke in Sentry if leaked |
 | Release keystore and password | `~/.keystores/`, `local.properties` | Not in the repo or chat |
 | Google web client ID | `local.properties` | — |
 
