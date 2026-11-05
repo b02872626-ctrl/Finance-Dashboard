@@ -1,0 +1,48 @@
+# Progress
+
+Read this first in every session. Update it before you finish: move finished
+items to Done with the date, add what is next or blocked.
+
+## Next up
+
+- Play Store first upload: follow `docs/play-store-submission.md` §6
+  (order of operations).
+- CI: a GitHub workflow that runs `./gradlew testDebugUnitTest` on every
+  push, next to `up-to-date.yml`.
+- `docs/SECURITY.md`: list every Supabase table and policy, one line each,
+  and which test or check covers it.
+
+## Blocked
+
+- Paparazzi screenshot tests (`KashComponentsScreenshotTest`,
+  `KashSmallPhoneScreenshotTest`) don't run on SDK 36: 1.3.5 can't render
+  it, 2.0 needs Gradle on Java 21.
+
+## Owner tasks
+
+- Play Console: SMS permission declaration (text in
+  `docs/play-store-sms-declaration.md`), Data safety, account deletion link,
+  unlisted upload of the SMS demo video.
+- Android OAuth client for `et.kash.app` with the upload key's SHA-1, then
+  Play App Signing's SHA-1 after the first upload.
+- Closed test with testers before production (new personal developer
+  account rule, see the submission checklist §5).
+
+## Done
+
+- 2026-11-05 Project memory files: `RULES.md`, `docs/PROGRESS.md`,
+  `docs/DECISIONS.md`.
+- 2026-11-05 1.0.17: hide an account that isn't yours.
+- 2026-10-31 1.0.16: Analytics without the vs-last-month tile.
+- 2026-10-29 1.0.15: Review shows Yours and Recent picks.
+- 2026-10-29 1.0.14: API 36, package `et.kash.app`, money-sender scout removed.
+- 2026-10-29 1.0.13: one-time codes, promos and notices no longer uploaded;
+  public account-deletion page; Play submission checklist.
+- 2026-10-29 Several accounts at one bank shown as separate cards.
+- 2026-10-29 Guards against pushing branches that are behind `main`.
+- 2026-10-28 1.0.8–1.0.12: admin dashboard locked to admins, parser /
+  categorization / retention / health metrics, one cloud row per SMS,
+  unparsed-SMS export, parser trained on the `i_raw_data` export.
+- 2026-10-27 1.0.1–1.0.7: Kash redesign, PIN, loading screen, touch feedback,
+  notifications, review and data animations.
+- 2026-10-26 Renamed Finance Lore to Kash; download page serves the APK.

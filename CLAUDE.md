@@ -3,6 +3,23 @@
 Android app (Kotlin) that parses Ethiopian bank SMS. Parsers live in
 `app/src/main/java/com/financeapp/parsing/`. The download site is in `Web/`.
 
+## Read first
+
+Read `RULES.md` at the start of every session and follow it for everything.
+If a request conflicts with it, stop and ask the owner before doing anything.
+
+Project memory lives in `docs/`. Read only what your task needs:
+- `docs/PROGRESS.md`: always read first (next up, blocked, owner tasks, done).
+- `docs/DECISIONS.md`: why things are the way they are. Do not reverse a
+  logged decision without asking.
+- `docs/play-store-submission.md`: where the Play Store launch stands.
+
+Before you finish every session:
+1. Update `docs/PROGRESS.md` (move finished items to Done with the date).
+2. Add a dated entry to `docs/DECISIONS.md` for any decision that changes how
+   the app is built or behaves.
+3. Tell the owner in plain English what changed and how to test it.
+
 ## Git workflow (read before touching git)
 
 Several sessions work on this repo at once, each on its own `claude/*` branch.
