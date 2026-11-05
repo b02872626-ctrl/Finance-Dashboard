@@ -26,8 +26,8 @@ android {
         applicationId = "et.kash.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 37
-        versionName = "1.0.17"
+        versionCode = 38
+        versionName = "1.0.18"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Supabase config (set these in local.properties; do not commit secrets)
