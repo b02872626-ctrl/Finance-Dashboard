@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-06 — Staging database, and every SQL change goes there first
+
+`kash-staging` is a second Supabase project rebuilt from the files in
+`supabase/` (`supabase/staging/build_setup.sh`), so the database rules can be
+tested without touching real data. `supabase/staging/isolation_test.py` signs
+up two throwaway users there and checks that neither can read, change, delete
+or create the other's rows; it is Python with only the standard library,
+because the app's Kotlin unit tests run on Android's HTTP stack, which can't
+send the PATCH requests the attacks need. Staging has Confirm email off (live
+keeps it on). New SQL runs on staging, then the test, then live.
+
+Comparing the two found a hand-made live table with RLS off that anyone with
+the public key could read. It was locked (not deleted) on 2026-11-05.
+Rule since: no hand-made tables in `public`; see `docs/SECURITY.md`.
+
 ## 2026-11-05 — Site moved from Vercel to Cloudflare Pages
 
 Owner's call, without a custom domain for now. The site is the Pages project

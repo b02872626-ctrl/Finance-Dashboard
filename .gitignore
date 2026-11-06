@@ -15,3 +15,4 @@ local.properties
 *.db-*
 .DS_Store
 dist/
+supabase/staging/setup.sql

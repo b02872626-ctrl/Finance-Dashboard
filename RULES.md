@@ -13,7 +13,7 @@ anything.
   and syncs to Supabase.
 - Screens: Home, Review, History, Analytics, Accounts, Add, Settings, behind a
   4-digit PIN. Dates can be shown in the Ethiopian calendar.
-- Package `et.kash.app`, version 1.0.17 (versionCode 37), minSdk 23,
+- Package `et.kash.app`, version 1.0.21 (versionCode 41), minSdk 23,
   targetSdk 36. Testers install the APK from the download page; Play Store
   submission is in progress (`docs/play-store-submission.md`).
 - Not paid. No in-app purchases.
@@ -60,6 +60,10 @@ anything.
 - Every database change is a new SQL file in `supabase/`, named for what it
   does. Never change the schema only in the dashboard. Never ship a file that
   drops tables with user data without the owner saying so.
+- Run new SQL on staging first (`supabase/staging/README.md`), then
+  `python3 supabase/staging/isolation_test.py`, then on live. Add every new
+  SQL file to `supabase/staging/build_setup.sh` (CI fails otherwise). Never
+  create tables in `public` by hand.
 - Crash reports go to Sentry through `remote/CrashReporting.kt` only. Never
   attach SMS text, amounts, balances, accounts, names or phones to a report;
   `CrashReporting.scrub` must keep passing `CrashReportingTest`.
@@ -76,6 +80,7 @@ anything.
 - Every parser (`app/src/test/java/com/financeapp/`), including the real-SMS corpus
   tests (`RawDataParserTest`, `BugQueueParserTest`).
 - Money totals: spending, income, own-account transfers (`SpendingTest`).
+- Users can't touch each other's rows (`supabase/staging/isolation_test.py`).
 - The sync key and what is uploaded (`SupabaseTransactionKeyTest`,
   `RawSmsUploadTest`).
 - Crash-report scrubbing (`CrashReportingTest`).

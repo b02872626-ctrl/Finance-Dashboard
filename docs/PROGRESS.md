@@ -7,9 +7,6 @@ items to Done with the date, add what is next or blocked.
 
 - Play Store first upload: follow `docs/play-store-submission.md` §6
   (order of operations).
-- Staging Supabase project, then automated tests that one user can't read
-  or change another's rows and that non-admins see only their own totals in
-  the admin views (gaps listed at the end of `docs/SECURITY.md`).
 
 
 ## Blocked
@@ -21,12 +18,16 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- Decide whether to delete the live table `i_transactions_backup_20260406`
+  (a hand-made copy of transactions from 6 Apr 2026). It is locked now;
+  deleting it is permanent.
+- Optional: add GitHub secrets `STAGING_SUPABASE_URL` and
+  `STAGING_SUPABASE_ANON_KEY` (values in `local.properties`) so CI runs the
+  isolation test on every push.
 - Keep the Vercel project `finance-dashboard` running: it redirects the old
   address and serves `/version.json` to 1.0.20 installs.
 - Play Console (when filling it in): privacy policy and account-deletion
   URLs are now on `kash-140.pages.dev`.
-
-
 - Play Console: SMS permission declaration (text in
   `docs/play-store-sms-declaration.md`), Data safety, account deletion link,
   unlisted upload of the SMS demo video.
@@ -37,6 +38,13 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-06 Staging Supabase `kash-staging`, built from `supabase/` by
+  `supabase/staging/build_setup.sh`; rules match live. Cross-user isolation
+  test (`supabase/staging/isolation_test.py`, 214 checks) passes, and fails
+  when a leaky rule is added on purpose. It found a live leak: the
+  hand-made table `i_transactions_backup_20260406` (6,272 rows) was readable
+  with the public key; locked 2026-11-05 (`lock_transactions_backup.sql`).
+- 2026-11-05 Supabase Auth redirect URLs include `kash-140.pages.dev/**`.
 - 2026-11-05 1.0.21: site moved to Cloudflare Pages (`kash-140.pages.dev`);
   app, privacy policy and Play docs point there; Vercel redirects to it.
 - 2026-11-05 1.0.20: "Kash x.y.z is available" notification. The app reads

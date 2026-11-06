@@ -58,6 +58,18 @@ Google sign-in emails are already verified.
 Every table has Row Level Security on. "—" means no policy, so the database
 returns nothing or refuses.
 
+Rule: never create a table in `public` by hand (backups, scratch copies).
+Supabase grants new tables to `anon`, so a table without RLS is readable by
+anyone with the public key. Put copies in a schema the API doesn't expose, or
+turn RLS on in the same statement. `policies_snapshot.sql` (below) lists every
+table's RLS switch; any `rls|<table>|false` line is a leak.
+
+Live-only table (not in any repo file): `i_transactions_backup_20260406`, a
+hand-made copy of transactions. Until 2026-11-05 it had RLS off and was
+readable with the public key (6,272 rows). Locked by
+`lock_transactions_backup.sql` (RLS on, API grants removed; data kept, still
+visible in the SQL editor). Whether to drop it is the owner's call.
+
 ## Admin views
 
 The admin dashboard (`Web/admin/`) reads only these views. All are
@@ -114,10 +126,18 @@ who is calling.
 | Auth settings in the Supabase dashboard | Confirm email on, secure email change on, anonymous sign-ins off | 2026-11-05, passed |
 | `RawSmsUploadTest`, `SupabaseTransactionKeyTest` | What leaves the phone, one row per SMS | CI, every push |
 | `CrashReportingTest` | Crash-report scrubbing | CI, every push |
+| `supabase/staging/isolation_test.py` on staging: two throwaway users; B tries to read, change, delete, forge and take over A's rows in all 16 per-user tables; signed-out reads; admin-only tables and all admin views; bank list; `delete_my_account` | One user can't touch another's rows; non-admins see only their own data in admin views; deleting one account leaves others alone | 2026-11-05, 214 checks passed. Proven to catch a leak: a deliberate `using (true)` policy on staging made it fail. CI runs it once the staging secrets are set |
+| `supabase/staging/policies_snapshot.sql` on live and staging | Same rules on both; no table with RLS off | 2026-11-05: rules match (two policies differ only by name; two functions only by comments); found and locked the backup table above |
 
-Not yet covered by automated tests (see `docs/PROGRESS.md`):
-- One user cannot read or change another user's rows (needs two test
-  accounts against a staging database).
-- A non-admin user sees only their own totals in the admin views.
-- There is no staging database yet: the SQL files are run by hand against
-  the one live project, in the order their dates suggest.
+## Staging
+
+`kash-staging` (`qajkfxidpabvpqjsljtp`, separate from live
+`sadbxjnmcgzwtjbqqhbk`) is built from `supabase/` by
+`supabase/staging/build_setup.sh`. It differs from live only in Auth:
+**Confirm email is off** there so the test can sign up throwaway users.
+Its URL and publishable key are in `local.properties` as
+`staging.supabase.url` / `staging.supabase.anonKey`. New SQL runs on staging
+first, then the isolation test, then live. See `supabase/staging/README.md`.
+
+Not yet covered: the Google sign-in path and the admin dashboard's own
+page logic (the database rules behind them are covered above).

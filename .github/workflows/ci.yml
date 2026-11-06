@@ -29,6 +29,16 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace
       - name: Debug build
         run: ./gradlew assembleDebug
+      # Fails when a new supabase/*.sql file is missing from the staging list.
+      - name: Staging setup script is complete
+        run: sh supabase/staging/build_setup.sh
+      # One user can't touch another's rows (supabase/staging/README.md).
+      # Skipped when the two staging secrets aren't set.
+      - name: Cross-user isolation test (staging)
+        env:
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+        run: python3 supabase/staging/isolation_test.py
       - name: Test report
         if: failure()
         uses: actions/upload-artifact@v4
