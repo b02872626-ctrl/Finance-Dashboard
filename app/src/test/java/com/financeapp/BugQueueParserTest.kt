@@ -70,4 +70,76 @@ class BugQueueParserTest {
         )
         notices.forEach { (sender, body) -> assertNull(body.take(60), parse(sender, body)) }
     }
+
+    // ── Admin Parser tab "Fix next" (Nov 2026): already parsed by today's
+    // rules; listed only because old installs sent stale statuses. Masked.
+
+    @Test fun `Dashen check payment received is money in`() {
+        val tx = parse(
+            "DashenBank",
+            "Dear Customer, KULU NETWORK PLC has transferred ETB 165,565.22 as check payment to your account " +
+                "'0145******011' on 09/10/2026 at 03:39:35 PM. Your current balance is ETB 171,754.53.\n" +
+                "Dashen Bank - Always one step ahead!.\n Feedback: https://forms.gle/XXXXXXXXXXXXXXXXX",
+        )
+        assertNotNull(tx)
+        assertEquals(TransactionType.CREDIT.name, tx!!.type)
+        assertEquals(165565.22, tx.amount, 0.001)
+        assertEquals(171754.53, tx.balance!!, 0.001)
+        assertEquals("KULU NETWORK PLC", tx.counterparty)
+    }
+
+    @Test fun `Dashen check payment debited is money out`() {
+        val tx = parse(
+            "DashenBank",
+            "Dear Customer, ABEBE KEBEDE TESFAYE has debited ETB 24,000.00 as check payment from your account " +
+                "'0145******011' on 13/02/2024. Your current balance is ETB 263,890.00.\n" +
+                "Dashen Bank - Always one step ahead!",
+        )
+        assertNotNull(tx)
+        assertEquals(TransactionType.DEBIT.name, tx!!.type)
+        assertEquals(24000.0, tx.amount, 0.001)
+        assertEquals("ABEBE KEBEDE TESFAYE", tx.counterparty)
+    }
+
+    @Test fun `Awash school fees payment is a payment`() {
+        val tx = parse(
+            "Awash Bank",
+            "Dear Customer,  School fees payment of 2,200.00 ETB to SUNRISE SCHOOL for 3300000001 - Student Name " +
+                "on 2025-06-21 14:15:58. Ref 250621000000000.  Receipt  Link: https://awashpay.awashbank.com:8225/-XXXXXXXXXX-XXXXXX.\n" +
+                "Earned ProCoins: 20. ProCoin Balance: 45.00. Help us do better – Please take our mini survey: " +
+                "https://shorturl.at/WISQB  Thank You. Awash Bank!",
+        )
+        assertNotNull(tx)
+        assertEquals(TransactionType.PAYMENT.name, tx!!.type)
+        assertEquals(2200.0, tx.amount, 0.001)
+        assertEquals("SUNRISE SCHOOL", tx.counterparty)
+    }
+
+    @Test fun `Awash school fees payment with charges is a payment`() {
+        val tx = parse(
+            "Awash Bank",
+            "Dear Customer,  School fees payment of 4,200.00 ETB charge- 0.00 VAT 0 EDRRF 0 ETB to SUNRISE SCHOOL " +
+                "for 3300000002 - Student Name on 2026-10-09 20:44:46. Ref 261009000000000.  Receipt  Link: " +
+                "https://awashpay.awashbank.com:8225/-XXXXXXXXXX-XXXXXX.\nHelp us do better – Please take our mini " +
+                "survey: https://shorturl.at/WISQB  Thank You. Awash Bank!",
+        )
+        assertNotNull(tx)
+        assertEquals(TransactionType.PAYMENT.name, tx!!.type)
+        assertEquals(4200.0, tx.amount, 0.001)
+        assertEquals("SUNRISE SCHOOL", tx.counterparty)
+    }
+
+    @Test fun `CBE debited for merchant is money out`() {
+        val tx = parse(
+            "CBE",
+            "Dear Abebe your Account 1********0000 has been debited for CAMPUS CONSUMERS COOPERATIVES PLC  with " +
+                "ETB 210. Your Current Balance is ETB 12238.53. Thank you for Banking with CBE!. For feedback " +
+                "https://shorturl.at/auUX0 https://apps.cbe.com.et:100/BranchReceipt/FT00000XXXXX&00000000",
+        )
+        assertNotNull(tx)
+        assertEquals(TransactionType.DEBIT.name, tx!!.type)
+        assertEquals(210.0, tx.amount, 0.001)
+        assertEquals(12238.53, tx.balance!!, 0.001)
+        assertEquals("CAMPUS CONSUMERS COOPERATIVES PLC", tx.counterparty)
+    }
 }

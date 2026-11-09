@@ -292,7 +292,7 @@ object SmsParserEngine {
      * every stored SMS's parse status once per version, so the admin bug
      * queue reflects what the current rules make of old messages.
      */
-    const val RULES_VERSION = 4
+    const val RULES_VERSION = 5
 
     /**
      * Parse the SMS and return a TransactionEntity.
