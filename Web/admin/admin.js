@@ -777,10 +777,15 @@ function renderParseRate(rows, queue) {
 
   const bad = rate != null && rate < PARSE_RATE_TARGET;
   parserVerdict.className = `verdict ${missed === 0 ? "verdict-good" : bad ? "verdict-bad" : "verdict-warn"}`;
+  // Older misses still in the queue: real gaps even when this week is clean.
+  const older = Math.max(0, (queue || []).filter((r) => isMoneyText(r.raw_message)).length - missed);
+  const olderNote = older
+    ? ` ${num(older)} older money text${older === 1 ? " is" : "s are"} still unparsed; their shapes are under “Fix next”.`
+    : "";
   parserVerdict.innerHTML = missed === 0
-    ? `<strong>The parser is healthy.</strong> No money texts were missed in the last 7 days. Everything left unparsed is a notice.`
+    ? `<strong>The parser is healthy this week.</strong> No money texts were missed in the last 7 days; everything unparsed this week is a notice.${olderNote}`
     : `<strong>${num(missed)} money text${missed === 1 ? "" : "s"} missed in the last 7 days</strong> (${
-        missedBanks.map((r) => `${escapeHtml(r.sender_group)} ${r.missed}`).join(", ")}). The shapes to fix are under “Fix next”.`;
+        missedBanks.map((r) => `${escapeHtml(r.sender_group)} ${r.missed}`).join(", ")}).${older ? olderNote : " The shapes to fix are under “Fix next”."}`;
 
   parseTable.innerHTML = `
     <thead><tr>
