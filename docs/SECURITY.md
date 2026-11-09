@@ -68,7 +68,8 @@ Live-only table (not in any repo file): `i_transactions_backup_20260406`, a
 hand-made copy of transactions. Until 2026-11-05 it had RLS off and was
 readable with the public key (6,272 rows). Locked by
 `lock_transactions_backup.sql` (RLS on, API grants removed; data kept, still
-visible in the SQL editor). Whether to drop it is the owner's call.
+visible in the SQL editor). On 2026-11-09 the owner chose to keep it,
+locked; never re-grant it to `anon` or `authenticated`.
 
 ## Admin views
 

@@ -18,9 +18,6 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
-- Decide whether to delete the live table `i_transactions_backup_20260406`
-  (a hand-made copy of transactions from 6 Apr 2026). It is locked now;
-  deleting it is permanent.
 - Optional: add GitHub secrets `STAGING_SUPABASE_URL` and
   `STAGING_SUPABASE_ANON_KEY` (values in `local.properties`) so CI runs the
   isolation test on every push.
