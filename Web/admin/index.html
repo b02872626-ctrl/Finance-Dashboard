@@ -155,25 +155,39 @@
         <section class="section hidden" id="sec-parser" data-panel="parser">
           <header class="section-header">
             <h2>Is the parser working?</h2>
-            <p class="muted">Raw SMS captured vs. turned into transactions. Under 95% means a template broke or changed.</p>
+            <p class="muted">Do bank texts turn into transactions? Notices (codes, promos, ID links, queue tokens) don't count: the app ignores them on purpose.</p>
           </header>
 
+          <div id="parser-verdict" class="verdict"></div>
+
+          <div class="stats-grid">
+            <div class="stat-card"><p class="stat-label">Real parse rate (7d)</p><p class="stat-value" id="stat-real-rate">—</p><p class="stat-sub muted small" id="stat-real-rate-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Money texts missed (7d)</p><p class="stat-value" id="stat-missed">—</p><p class="stat-sub muted small" id="stat-missed-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Duplicates (7d)</p><p class="stat-value" id="stat-dup-7d">—</p><p class="stat-sub muted small" id="stat-dup-7d-sub"></p></div>
+            <div class="stat-card"><p class="stat-label">Unknown type</p><p class="stat-value" id="stat-unknown">—</p><p class="stat-sub muted small" id="stat-unknown-sub"></p></div>
+          </div>
+
           <div class="card table-card">
-            <header class="card-header"><h3>Parse rate by bank</h3><span class="muted small">last 7 days, by SMS arrival</span></header>
+            <header class="card-header"><h3>Fix next</h3><span class="muted small">money texts no parser understood, grouped by shape · each row is a parser to write or fix</span></header>
+            <div class="table-wrap"><table class="data-table" id="fix-table"></table></div>
+          </div>
+
+          <div class="card table-card">
+            <header class="card-header"><h3>Parse rate by bank</h3><span class="muted small">last 7 days · notices left out</span></header>
             <div class="table-wrap"><table class="data-table" id="parse-table"></table></div>
           </div>
 
-          <div class="stats-grid">
-            <div class="stat-card"><p class="stat-label">Duplicate rate (7d)</p><p class="stat-value" id="stat-dup-7d">—</p><p class="stat-sub muted small" id="stat-dup-7d-sub"></p></div>
-            <div class="stat-card"><p class="stat-label">Duplicate rate (all)</p><p class="stat-value" id="stat-dup-all">—</p><p class="stat-sub muted small" id="stat-dup-all-sub"></p></div>
-            <div class="stat-card"><p class="stat-label">UNKNOWN-type share</p><p class="stat-value" id="stat-unknown">—</p><p class="stat-sub muted small" id="stat-unknown-sub"></p></div>
-            <div class="stat-card"><p class="stat-label">Bug queue</p><p class="stat-value" id="stat-unparsed">—</p><p class="stat-sub muted small">unparsed SMS, parser banks</p></div>
-          </div>
+          <details class="card fold">
+            <summary><h3>Notices in the queue</h3><span class="muted small" id="notice-count"></span></summary>
+            <p class="muted small fold-note">Texts that move no money. Phones on older app versions still report them as unparsed; the current app drops them. Nothing to fix unless a real payment shows up here.</p>
+            <div class="table-wrap"><table class="data-table" id="notice-table"></table></div>
+          </details>
 
-          <div class="card">
-            <header class="card-header"><h3>Unparsed SMS — bug queue</h3><span class="muted small">senders with a parser, newest first · <button type="button" id="export-sms-btn" class="link-btn">Download all unparsed SMS (CSV)</button></span></header>
+          <details class="card fold">
+            <summary><h3>All unparsed texts</h3><span class="muted small" id="stat-unparsed-sub"></span></summary>
+            <p class="muted small fold-note">Senders with a parser, newest first (up to 300). <button type="button" id="export-sms-btn" class="link-btn">Download every unparsed SMS (CSV)</button></p>
             <div class="sms-list" id="unparsed-list"></div>
-          </div>
+          </details>
 
           <div class="card table-card">
             <header class="card-header"><h3>Capture-only senders</h3><span class="muted small">no parser yet, ranked by volume</span></header>

@@ -629,3 +629,37 @@ code {
 /* Inline text button (e.g. "Download all unparsed SMS"). */
 .link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--headline); text-decoration: underline; cursor: pointer; }
 .link-btn:disabled { opacity: .6; cursor: progress; }
+
+/* ====== Parser tab ====== */
+.verdict {
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid var(--tile-border);
+  background: var(--card-bg);
+}
+.verdict:empty { display: none; }
+.verdict-good { background: #EEF8F1; border-color: #CBE8D4; color: #1F5F33; }
+.verdict-warn { background: #FFF6E8; border-color: #F3DDB4; color: #7A4E00; }
+.verdict-bad  { background: #FCEEEA; border-color: #F0CFC7; color: var(--coral); }
+
+.fold > summary {
+  display: flex; align-items: baseline; gap: 12px;
+  cursor: pointer; list-style: none;
+}
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: "▸"; color: var(--body-muted); font-size: 12px; transition: transform 120ms ease; }
+.fold[open] > summary::before { transform: rotate(90deg); }
+.fold-note { margin: 12px 0; }
+.fold .table-wrap { margin: 0 -20px -20px; }
+
+.shape-cell { max-width: 560px; }
+.shape-cell summary {
+  cursor: pointer; list-style: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--headline);
+}
+.shape-cell summary::-webkit-details-marker { display: none; }
+.shape-cell details[open] summary { white-space: normal; }
+.shape-cell .sms-body { margin: 8px 0 2px; }
