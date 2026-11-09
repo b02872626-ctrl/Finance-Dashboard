@@ -27,8 +27,8 @@ android {
         applicationId = "et.kash.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 42
-        versionName = "1.0.22"
+        versionCode = 43
+        versionName = "1.0.23"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Supabase config (set these in local.properties; do not commit secrets)
@@ -58,6 +58,12 @@ android {
             "String",
             "POSTHOG_API_KEY",
             buildConfigString(localProperties.getProperty("posthog.apiKey", ""))
+        )
+        // `-Pposthog.debug=true` makes PostHog log what it does (diagnostic builds only).
+        buildConfigField(
+            "boolean",
+            "POSTHOG_DEBUG",
+            (project.findProperty("posthog.debug")?.toString() == "true").toString()
         )
     }
 
@@ -120,7 +126,10 @@ sentry {
     projectName.set(localProperties.getProperty("sentry.project", "android"))
     if (sentryAuthToken.isNotEmpty()) authToken.set(sentryAuthToken)
     includeProguardMapping.set(true)
-    autoUploadProguardMapping.set(sentryAuthToken.isNotEmpty())
+    // `-Psentry.noUpload=true` skips the upload (practice release runs).
+    autoUploadProguardMapping.set(
+        sentryAuthToken.isNotEmpty() && project.findProperty("sentry.noUpload")?.toString() != "true"
+    )
     includeSourceContext.set(false)
     uploadNativeSymbols.set(false)
     includeDependenciesReport.set(false)

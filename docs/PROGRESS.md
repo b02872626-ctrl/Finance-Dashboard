@@ -22,6 +22,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- Make a Telegram group (or pick another channel) for testers; the release
+  script prints the message to paste there. Pick a weekly release day.
 - PostHog: if not done yet, turn on "Discard client IP data" (PostHog →
   Settings → Project → General).
 - Turn off preview builds if not done yet: Cloudflare → Workers & Pages →
@@ -49,6 +51,16 @@ items to Done with the date, add what is next or blocked.
   (notices left out), "Fix next" (missed money texts grouped by shape),
   per-bank table, notices and raw list folded away. Overview "Parsed this
   week" uses the real rate. Checked signed in with live data.
+- 2026-11-09 Work process (NAH-31): `docs/WORKFLOW.md` (Linear issue →
+  branch → PR → merge → deploy → tester release) and `scripts/release.sh`
+  (`prepare` builds, checks and opens the release PR; `verify` checks the
+  live site and prints the tester message). Practice run passed and undid
+  itself; not yet used for a real release.
+- 2026-11-09 1.0.23: app events reach PostHog (sent right away). Installed
+  on the owner's Galaxy S22.
+- 2026-11-09 App events reach PostHog: they were stuck on the phone
+  (PostHog waited for 20). Checked on the owner's Galaxy S22 with a
+  diagnostic build: each event is sent within a second.
 - 2026-11-09 Admin fix 2: the Overview still stuck on "Loading…". The
   redesign had deleted the `guard()` helper that paints each card, so
   painting crashed once data arrived. Restored; checked signed in with live

@@ -15,6 +15,27 @@ next to a money word") in `Web/admin/admin.js`, and leaves notices out of
 the parse rate. The two copies must stay in sync: when `RULES_VERSION`
 changes, update `NOTICE_PATTERNS`, `AMOUNT_RE` and `MONEY_VERB_RE` too.
 
+## 2026-11-09 — Tester releases go through `scripts/release.sh`, weekly
+
+Releases were made by hand (bump, build, swap APK, edit four files), which
+is slow and easy to get wrong. Now `scripts/release.sh prepare` does it from
+the latest main, refuses an APK not signed with the Kash key, opens the PR,
+and undoes everything if a step fails; `verify` checks the live site.
+Release notes live in `Web/version.json` (`notes`) and are reused for the
+tester message. One tester release a week, same-day only for crashes or
+broken core flows. A bad release is fixed forward (revert, release again),
+since Android can't install an older version over a newer one. Full process
+in `docs/WORKFLOW.md`.
+
+## 2026-11-09 — PostHog sends each app event right away
+
+1.0.22 sent nothing from phones: PostHog Android waits until 20 events are
+queued (`flushAt`), and Kash makes only a few per visit, so they sat on the
+phone. `flushAt = 1` now; volume is tiny. Found with a diagnostic build
+(`./gradlew assembleRelease -Pposthog.debug=true`, then `adb logcat -s
+PostHog`), which is how to debug PostHog on a phone again. Setup failures
+now log a one-line warning (class name only).
+
 ## 2026-11-09 — The web dashboard uses the sidebar-and-panel layout
 
 Owner's call, from the same reference design as the admin. The slate hero

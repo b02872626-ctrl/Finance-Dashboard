@@ -1,6 +1,7 @@
 package com.financeapp.remote
 
 import android.content.Context
+import android.util.Log
 import com.financeapp.BuildConfig
 import com.posthog.PersonProfiles
 import com.posthog.PostHog
@@ -24,6 +25,8 @@ object ProductAnalytics {
     /** Free-text properties that can carry pieces of an SMS. */
     private val TEXT_KEYS = setOf("error", "summary")
 
+    private const val TAG = "KashAnalytics"
+
     @Volatile private var started = false
 
     fun init(context: Context) {
@@ -38,11 +41,15 @@ object ProductAnalytics {
                 preloadFeatureFlags = false
                 sendFeatureFlagEvent = false
                 personProfiles = PersonProfiles.IDENTIFIED_ONLY
+                debug = BuildConfig.POSTHOG_DEBUG
+                // Kash makes only a few events per visit; PostHog's default
+                // waits for 20, so they sat on the phone. Send each one now.
+                flushAt = 1
             }
             PostHogAndroid.setup(context.applicationContext, config)
             PostHog.identify(Telemetry.installId(context))
             started = true
-        }
+        }.onFailure { Log.w(TAG, "PostHog setup failed: ${it::class.java.simpleName}") }
     }
 
     fun capture(name: String, props: Map<String, Any?> = emptyMap()) {
