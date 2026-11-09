@@ -211,11 +211,11 @@ Run \`scripts/release.sh verify\`, then send testers the message it prints.
 # ----------------------------------------------------------------- verify --
 verify() {
   git fetch --quiet origin
-  local json code name apk_size
+  local json code name
   json=$(git show origin/main:Web/version.json)
   code=$(echo "$json" | sed -nE 's/.*"versionCode": ([0-9]+).*/\1/p')
   name=$(echo "$json" | sed -nE 's/.*"versionName": "([^"]+)".*/\1/p')
-  apk_size=$(git cat-file -s "origin/main:Web/apk/Kash-$name.apk") ||
+  git cat-file -e "origin/main:Web/apk/Kash-$name.apk" 2>/dev/null ||
     die "Web/apk/Kash-$name.apk isn't on main yet; merge the release PR first"
 
   step "Waiting for $SITE to serve $name ($code)"
@@ -229,13 +229,25 @@ verify() {
   done
   echo "version.json: $code"
 
-  local headers status length
-  headers=$(curl -fsSI "$SITE/apk/Kash-$name.apk") || die "APK URL doesn't answer: $SITE/apk/Kash-$name.apk"
-  status=$(echo "$headers" | sed -n 1p | awk '{print $2}')
-  length=$(echo "$headers" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-length" {print $2}')
-  [ "$status" = "200" ] || die "APK URL returned $status"
-  [ -z "$length" ] || [ "$length" = "$apk_size" ] || die "live APK is $length bytes, main has $apk_size"
-  [[ "$(curl -fsS "$SITE/download")" == *"Kash-$name.apk"* ]] || die "download page doesn't link Kash-$name.apk yet"
+  # Download the live APK and compare it with main's byte for byte
+  # (Cloudflare's cache can answer HEAD with a wrong Content-Length).
+  local want got
+  want=$(git show "origin/main:Web/apk/Kash-$name.apk" | shasum -a 256 | cut -d' ' -f1)
+  tries=0
+  while :; do
+    got=$(curl -fsS "$SITE/apk/Kash-$name.apk" 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
+    [ "$got" = "$want" ] && break
+    tries=$((tries + 1))
+    [ $tries -ge 15 ] && die "live $SITE/apk/Kash-$name.apk doesn't match main's APK after 5 minutes"
+    sleep 20
+  done
+  # The page can lag version.json by a few seconds while Pages deploys.
+  tries=0
+  until [[ "$(curl -fsS "$SITE/download?t=$(date +%s)" 2>/dev/null)" == *"Kash-$name.apk"* ]]; do
+    tries=$((tries + 1))
+    [ $tries -ge 15 ] && die "download page still doesn't link Kash-$name.apk after 5 minutes"
+    sleep 20
+  done
   echo "APK and download page: live"
 
   local notes=()
