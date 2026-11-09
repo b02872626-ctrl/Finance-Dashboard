@@ -7,6 +7,18 @@ decision without asking the owner.
 Entries before 2026-11-05 were reconstructed from the git history.
 
 
+## 2026-11-09 — Tester releases go through `scripts/release.sh`, weekly
+
+Releases were made by hand (bump, build, swap APK, edit four files), which
+is slow and easy to get wrong. Now `scripts/release.sh prepare` does it from
+the latest main, refuses an APK not signed with the Kash key, opens the PR,
+and undoes everything if a step fails; `verify` checks the live site.
+Release notes live in `Web/version.json` (`notes`) and are reused for the
+tester message. One tester release a week, same-day only for crashes or
+broken core flows. A bad release is fixed forward (revert, release again),
+since Android can't install an older version over a newer one. Full process
+in `docs/WORKFLOW.md`.
+
 ## 2026-11-09 — PostHog sends each app event right away
 
 1.0.22 sent nothing from phones: PostHog Android waits until 20 events are
