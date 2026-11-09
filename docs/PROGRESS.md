@@ -41,6 +41,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Admin fix 2: the Overview still stuck on "Loading…". The
+  redesign had deleted the `guard()` helper that paints each card, so
+  painting crashed once data arrived. Restored; checked signed in with live
+  data (all cards fill).
 - 2026-11-09 Web dashboard redesign: sidebar tabs, one white panel, greeting
   and period control in the panel head, six numbers in one block with
   icons. Checked with sample numbers at desktop and phone width; not yet
