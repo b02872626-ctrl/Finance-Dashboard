@@ -2303,3 +2303,17 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 /* Lists read like the app: hairlines, no zebra. */
 .tx-table thead th { color: var(--k-ink-muted); font-weight: 500; text-transform: none; letter-spacing: 0; border-bottom: 1px solid var(--k-line); }
 .tx-table tbody td { border-bottom: 1px solid var(--k-line); }
+
+/* ===== Settings modal ===== */
+.settings-body { display: flex; flex-direction: column; gap: 24px; }
+.settings-section { display: flex; flex-direction: column; gap: 12px; }
+.settings-heading { margin: 0; font-size: 14px; font-weight: 600; color: var(--k-ink); }
+.settings-list { margin: 0; border: 1px solid var(--k-line); border-radius: 16px; overflow: hidden; }
+.settings-list > div {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 12px 16px; border-bottom: 1px solid var(--k-line);
+}
+.settings-list > div:last-child { border-bottom: none; }
+.settings-list dt { color: var(--k-ink-muted); font-size: 14px; }
+.settings-list dd { margin: 0; color: var(--k-ink); font-size: 14px; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.settings-form { display: flex; flex-direction: column; gap: 14px; }

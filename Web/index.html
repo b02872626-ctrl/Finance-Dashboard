@@ -98,6 +98,7 @@
                 <span></span><span></span><span></span>
               </button>
               <div id="header-menu-panel" class="header-menu-panel hidden" role="menu">
+                <button id="settings-btn"  class="header-menu-item" role="menuitem">Settings</button>
                 <button id="feedback-btn"  class="header-menu-item" role="menuitem">Feedback</button>
                 <button id="refresh-btn"   class="header-menu-item" role="menuitem">Refresh</button>
                 <button id="logout-btn"    class="header-menu-item" role="menuitem">Log out</button>
@@ -1050,6 +1051,52 @@
               <button type="button" id="tx-detail-close" class="tx-modal-close" aria-label="Close details">×</button>
             </header>
             <div id="tx-detail-body" class="tx-modal-body"></div>
+          </div>
+        </div>
+
+        <!-- ===== Settings modal: sign-in account + change password ===== -->
+        <div id="settings-backdrop" class="tx-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <div class="tx-modal settings-modal" role="document">
+            <header class="tx-modal-header">
+              <h3 id="settings-title">Settings</h3>
+              <button type="button" id="settings-close" class="tx-modal-close" aria-label="Close settings">×</button>
+            </header>
+            <div class="tx-modal-body settings-body">
+              <section class="settings-section">
+                <h4 class="settings-heading">My account</h4>
+                <dl class="settings-list">
+                  <div><dt>Name</dt><dd id="settings-name">—</dd></div>
+                  <div><dt>Email</dt><dd id="settings-email">—</dd></div>
+                  <div><dt>Signs in with</dt><dd id="settings-provider">—</dd></div>
+                  <div><dt>Member since</dt><dd id="settings-since">—</dd></div>
+                </dl>
+              </section>
+
+              <section class="settings-section">
+                <h4 class="settings-heading">Change password</h4>
+                <p id="settings-no-password" class="muted small hidden">
+                  You sign in with Google, so there's no Kash password to change.
+                  Manage your password in your Google account.
+                </p>
+                <form id="password-form" class="settings-form">
+                  <input type="email" id="password-form-email" autocomplete="username" hidden />
+                  <label class="field">
+                    <span class="label">Current password</span>
+                    <input type="password" id="current-password" required autocomplete="current-password" />
+                  </label>
+                  <label class="field">
+                    <span class="label">New password</span>
+                    <input type="password" id="new-password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" />
+                  </label>
+                  <label class="field">
+                    <span class="label">Repeat new password</span>
+                    <input type="password" id="confirm-password" required minlength="8" autocomplete="new-password" />
+                  </label>
+                  <div id="password-error" class="error hidden"></div>
+                  <button type="submit" id="password-save-btn" class="btn-primary">Change password</button>
+                </form>
+              </section>
+            </div>
           </div>
         </div>
 

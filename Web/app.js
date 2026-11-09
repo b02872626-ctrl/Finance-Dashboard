@@ -3972,6 +3972,113 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && feedbackBackdrop && !feedbackBackdrop.classList.contains("hidden")) closeFeedback();
 });
 
+// ----------------------------------------------------------------------------
+// Settings modal — the signed-in account and a change-password form.
+// ----------------------------------------------------------------------------
+const settingsBtn       = $("settings-btn");
+const settingsBackdrop  = $("settings-backdrop");
+const settingsClose     = $("settings-close");
+const passwordForm      = $("password-form");
+const passwordFormEmail = $("password-form-email");
+const currentPasswordEl = $("current-password");
+const newPasswordEl     = $("new-password");
+const confirmPasswordEl = $("confirm-password");
+const passwordError     = $("password-error");
+const passwordSaveBtn   = $("password-save-btn");
+const noPasswordNote    = $("settings-no-password");
+
+const PROVIDER_LABELS = { email: "Email and password", google: "Google" };
+
+async function openSettings() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { showToast("Not signed in.", "error"); return; }
+  const user = session.user;
+  const providers = user.app_metadata?.providers || [user.app_metadata?.provider].filter(Boolean);
+
+  $("settings-name").textContent =
+    user.user_metadata?.name || user.user_metadata?.full_name || "—";
+  $("settings-email").textContent = user.email || "—";
+  $("settings-provider").textContent =
+    providers.map((p) => PROVIDER_LABELS[p] || p).join(" and ") || "—";
+  $("settings-since").textContent = user.created_at
+    ? new Date(user.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    : "—";
+
+  // Google-only accounts have no Kash password to check or change.
+  const hasPassword = providers.includes("email");
+  passwordForm.classList.toggle("hidden", !hasPassword);
+  noPasswordNote.classList.toggle("hidden", hasPassword);
+  passwordForm.reset();
+  passwordFormEmail.value = user.email || "";
+  hidePasswordError();
+
+  settingsBackdrop.classList.remove("hidden");
+}
+
+function closeSettings() {
+  settingsBackdrop.classList.add("hidden");
+  passwordForm.reset();
+  hidePasswordError();
+}
+
+// Checks the current password on a separate, unsaved client, then changes the
+// password through that freshly signed-in session (Supabase may refuse a
+// password change on an older session). The page's own session is untouched.
+passwordForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  hidePasswordError();
+  const email = passwordFormEmail.value;
+  const current = currentPasswordEl.value;
+  const next = newPasswordEl.value;
+  if (next.length < 8) return showPasswordError("Use at least 8 characters.");
+  if (next !== confirmPasswordEl.value) return showPasswordError("The two new passwords don't match.");
+  if (next === current) return showPasswordError("Choose a password different from your current one.");
+
+  passwordSaveBtn.disabled = true;
+  passwordSaveBtn.textContent = "Changing…";
+  const verifier = createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "kash-password-check" },
+  });
+  try {
+    const { error: signInError } = await verifier.auth.signInWithPassword({ email, password: current });
+    if (signInError) {
+      showPasswordError(/invalid login credentials/i.test(signInError.message)
+        ? "Your current password is wrong."
+        : prettyAuthError(signInError.message));
+      currentPasswordEl.focus();
+      return;
+    }
+    const { error: updateError } = await verifier.auth.updateUser({ password: next });
+    if (updateError) {
+      showPasswordError(/different from the old/i.test(updateError.message)
+        ? "Choose a password different from your current one."
+        : prettyAuthError(updateError.message));
+      return;
+    }
+    closeSettings();
+    showToast("Password changed. Use the new one next time you sign in.", "success");
+  } catch (err) {
+    console.warn("Password change failed:", err);
+    showPasswordError("Couldn't change the password. Check your connection and try again.");
+  } finally {
+    await verifier.auth.signOut({ scope: "local" }).catch(() => {});
+    passwordSaveBtn.disabled = false;
+    passwordSaveBtn.textContent = "Change password";
+  }
+});
+
+function showPasswordError(msg) { passwordError.textContent = msg; passwordError.classList.remove("hidden"); }
+function hidePasswordError() { passwordError.classList.add("hidden"); }
+
+if (settingsBtn) settingsBtn.addEventListener("click", openSettings);
+if (settingsClose) settingsClose.addEventListener("click", closeSettings);
+if (settingsBackdrop) settingsBackdrop.addEventListener("click", (e) => {
+  if (e.target === settingsBackdrop) closeSettings();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && settingsBackdrop && !settingsBackdrop.classList.contains("hidden")) closeSettings();
+});
+
 function exportCsv() {
   const rows = applyTxFilters(state.allTxs);
   if (rows.length === 0) return;
