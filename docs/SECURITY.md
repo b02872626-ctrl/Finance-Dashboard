@@ -36,8 +36,8 @@ Google sign-in emails are already verified.
 
 Admin password reset (`Web/admin/`, "Forgot password?") uses Supabase's
 reset email. The link can only return to an address on the Redirect URLs
-list above. From anywhere else (a branch preview, or "Send password
-recovery" in the Supabase dashboard) Supabase falls back to the Site URL,
+list above. From anywhere else (such as "Send password recovery" in the
+Supabase dashboard) Supabase falls back to the Site URL,
 which lands on the home page; the web dashboard (`Web/app.js`) then asks
 for a new password itself. The web dashboard's own "Forgot password?" (sign
 in page and Settings) also returns to the home page. A reset link signs the

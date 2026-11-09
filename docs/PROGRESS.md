@@ -18,6 +18,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- Turn off preview builds if not done yet: Cloudflare → Workers & Pages →
+  kash → Settings → Build → Branch control → Preview branch: None. Optional:
+  stop Vercel `finance-dashboard` building branches other than `main`
+  (Settings → Git); keep the project itself, it serves the redirect.
 - Optional: add GitHub secrets `STAGING_SUPABASE_URL` and
   `STAGING_SUPABASE_ANON_KEY` (values in `local.properties`) so CI runs the
   isolation test on every push.
