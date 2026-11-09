@@ -90,14 +90,54 @@ const cohortTable   = $("cohort-table");
 const deviceTable   = $("device-table");
 const errorList     = $("error-list");
 const deletionList  = $("deletion-list");
+const dauChart      = $("dau-chart");
+const bankPanel     = $("bank-panel");
+const phonesTable   = $("phones-table");
 
 const RENDER_TARGETS = [
-  parseTable, unparsedList, captureTable, moneySendersTable, accuracyTable, hotspotTable,
+  dauChart, bankPanel, phonesTable, parseTable, unparsedList, captureTable, moneySendersTable, accuracyTable, hotspotTable,
   funnelEl, peopleList, cohortTable, deviceTable, errorList, deletionList,
 ];
 
 const PARSE_RATE_TARGET = 95;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Addis Ababa is UTC+3 all year (no daylight saving).
+const ADDIS_OFFSET_MS = 3 * 60 * 60 * 1000;
+const DAU_DAYS = 30;
+// A phone counts as a current install if it reported sync status this recently.
+const CURRENT_INSTALL_DAYS = 7;
+
+// ----------------------------------------------------------------------------
+// Tabs — Overview first; the detailed sections sit behind their own tabs.
+// ----------------------------------------------------------------------------
+const tabButtons = [...document.querySelectorAll(".side-nav .tab")];
+const tabPanels  = [...document.querySelectorAll("[data-panel]")];
+
+const TAB_SUBTITLES = {
+  overview:   "How Kash is doing right now.",
+  parser:     "Is the parser working?",
+  categories: "Is categorization good enough?",
+  retention:  "Do people stick?",
+  health:     "Are the phones healthy?",
+};
+
+function showTab(name) {
+  if (!tabPanels.some((p) => p.dataset.panel === name)) name = "overview";
+  for (const b of tabButtons) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  const btn = tabButtons.find((b) => b.dataset.tab === name);
+  $("crumb-current").textContent = btn ? btn.textContent.trim() : "Overview";
+  $("panel-sub").textContent = TAB_SUBTITLES[name] || "";
+  for (const p of tabPanels) p.classList.toggle("hidden", p.dataset.panel !== name);
+  try { sessionStorage.setItem("kash-admin-tab", name); } catch {}
+}
+for (const b of tabButtons) b.addEventListener("click", () => showTab(b.dataset.tab));
+for (const b of document.querySelectorAll("[data-goto]")) b.addEventListener("click", () => showTab(b.dataset.goto));
+
+function setGreeting() {
+  const h = new Date(Date.now() + ADDIS_OFFSET_MS).getUTCHours();
+  $("greeting").textContent = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+try { showTab(sessionStorage.getItem("kash-admin-tab") || "overview"); } catch { showTab("overview"); }
 
 // ----------------------------------------------------------------------------
 // Boot
@@ -154,8 +194,10 @@ function showSetPassword(email) {
 // Wipe rendered user data so nothing lingers in the DOM once locked.
 function clearAdminData() {
   for (const el of RENDER_TARGETS) el.innerHTML = "";
-  for (const el of adminShell.querySelectorAll(".stat-value")) el.textContent = "—";
-  for (const el of adminShell.querySelectorAll(".stat-sub[id]")) el.textContent = "";
+  for (const el of adminShell.querySelectorAll(".stat-value, .kpi-value")) el.textContent = "—";
+  for (const el of adminShell.querySelectorAll(".stat-sub[id], .kpi-foot[id], .trend[id]")) el.textContent = "";
+  for (const el of adminShell.querySelectorAll(".trend[id]")) el.className = "trend";
+  $("stat-parsed-7d").textContent = "—";
 }
 
 // ----------------------------------------------------------------------------
@@ -208,6 +250,7 @@ async function showAdmin(session) {
   adminEmail.textContent = session.user.email;
   hideLoginError();
   startIdleLock();
+  setGreeting();
   await loadOverview();
 }
 
@@ -337,6 +380,9 @@ async function loadOverview() {
   const since24h = new Date(Date.now() - DAY_MS).toISOString();
   const since7d  = new Date(Date.now() - 7 * DAY_MS).toISOString();
 
+  // Overview numbers load on their own so a slow detail view never holds them up.
+  const keyNumbers = loadKeyNumbers(since24h);
+
   const [
     parse, unparsed, capture, moneySenders, quality, accuracy, hotspots, catSummary,
     users, errors, deletions, downloads, installs,
@@ -383,19 +429,198 @@ async function loadOverview() {
   guard(installs, [], () => renderCountTile("installs", installs.data, since7d));
   guard(errors, [errorList], () => renderErrors(errors.data, emailById));
   guard(deletions, [deletionList], () => renderDeletions(deletions.data));
+  guard(users, [phonesTable], () => {
+    renderCurrentInstalls(userRows, installs.data);
+    renderPhones(userRows);
+  });
+  guard(parse, [bankPanel], () => renderBankPanel(parse.data));
+  await keyNumbers;
 }
 
-function guard(res, targets, render) {
-  if (res.error) {
-    const msg = /does not exist|schema cache/i.test(res.error.message) ? SCHEMA_HINT : escapeHtml(res.error.message);
-    for (const el of targets) el.innerHTML = `<p class="muted">${msg}</p>`;
-    console.warn(res.error);
-    return;
+// ----------------------------------------------------------------------------
+// Overview
+// ----------------------------------------------------------------------------
+async function loadKeyNumbers(since24h) {
+  const since48h = new Date(Date.now() - 2 * DAY_MS).toISOString();
+  const dauSince = new Date(addisDayStart(Date.now()) - (DAU_DAYS - 1) * DAY_MS).toISOString();
+  const [parsedAll, parsed24h, parsedPrev, sessions] = await Promise.all([
+    supabase.from("i_transactions").select("id", { count: "exact", head: true }),
+    supabase.from("i_transactions").select("id", { count: "exact", head: true }).gte("created_at", since24h),
+    supabase.from("i_transactions").select("id", { count: "exact", head: true })
+      .gte("created_at", since48h).lt("created_at", since24h),
+    fetchAll(() => supabase.from("i_sessions")
+      .select("user_id, started_at")
+      .eq("client", "android")
+      .or("app_version.is.null,app_version.neq.backfill-v1")
+      .gte("started_at", dauSince)
+      .order("started_at")),
+  ]);
+  if (adminShell.classList.contains("hidden")) return;
+
+  if (parsedAll.error) { console.warn(parsedAll.error); setStat("parsed", "—", "Couldn't load"); }
+  else {
+    setStat("parsed", num(parsedAll.count), "Bank SMS turned into transactions, all time");
+    if (!parsed24h.error) {
+      setTrend("parsed", `+${num(parsed24h.count)} today`,
+        parsedPrev.error ? "flat" : trendDir(parsed24h.count, parsedPrev.count));
+    }
   }
-  try { render(); } catch (e) {
-    console.error(e);
-    for (const el of targets) el.innerHTML = `<p class="muted">Couldn't render: ${escapeHtml(e.message)}</p>`;
+
+  guard(sessions, [dauChart], () => renderDau(sessions.data));
+}
+
+// Pages past Supabase's 1,000-row cap.
+async function fetchAll(build) {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await build().range(from, from + 999);
+    if (error) return { data: null, error };
+    rows.push(...data);
+    if (data.length < 1000) return { data: rows, error: null };
   }
+}
+
+function setTrend(key, text, dir) {
+  const el = $(`trend-${key}`);
+  if (!el) return;
+  const arrow = dir === "up" ? "↗" : dir === "down" ? "↘" : "→";
+  el.textContent = `${arrow} ${text}`;
+  el.className = `trend trend-${dir}`;
+}
+function trendDir(now, before) {
+  if (now > before) return "up";
+  if (now < before) return "down";
+  return "flat";
+}
+
+function renderCurrentInstalls(users, installs) {
+  const cutoff = Date.now() - CURRENT_INSTALL_DAYS * DAY_MS;
+  const current = users.filter((u) => u.status_reported_at && new Date(u.status_reported_at) >= cutoff).length;
+  setStat("current-installs", num(current), `Phones that synced in the last ${CURRENT_INSTALL_DAYS} days`);
+  if (installs) {
+    const weekAgo = Date.now() - 7 * DAY_MS;
+    const fresh = installs.filter((r) => new Date(r.created_at) >= weekAgo).length;
+    setTrend("current-installs", `${num(fresh)} new this week`, fresh > 0 ? "up" : "flat");
+  }
+}
+
+function addisDayStart(ms) {
+  return Math.floor((ms + ADDIS_OFFSET_MS) / DAY_MS) * DAY_MS - ADDIS_OFFSET_MS;
+}
+function addisDayKey(ms) {
+  return new Date(ms + ADDIS_OFFSET_MS).toISOString().slice(0, 10);
+}
+function addisLabel(ms, opts = { month: "short", day: "numeric" }) {
+  return new Date(ms + ADDIS_OFFSET_MS).toLocaleDateString(undefined, { ...opts, timeZone: "UTC" });
+}
+
+// Block chart: each column is a stack of rounded cells. Filled cells are that
+// day's active users; grey cells pad every column up to the busiest day.
+function renderDau(sessions) {
+  const today = addisDayStart(Date.now());
+  const days = Array.from({ length: DAU_DAYS }, (_, i) => {
+    const start = today - (DAU_DAYS - 1 - i) * DAY_MS;
+    return { key: addisDayKey(start), start, users: new Set() };
+  });
+  const byKey = new Map(days.map((d) => [d.key, d]));
+  for (const s of sessions) byKey.get(addisDayKey(new Date(s.started_at).getTime()))?.users.add(s.user_id);
+
+  const counts = days.map((d) => d.users.size);
+  const todayCount = counts[counts.length - 1];
+  const yesterday = counts[counts.length - 2];
+  const last7 = counts.slice(-8, -1); // the 7 full days before today
+  const avg7 = last7.reduce((a, b) => a + b, 0) / last7.length;
+  setStat("dau", num(todayCount), `Yesterday ${num(yesterday)} · 7-day average ${avg7.toFixed(1)}`);
+  setTrend("dau", `vs ${avg7.toFixed(1)} avg`, trendDir(todayCount, Math.round(avg7 * 10) / 10));
+
+  const max = Math.max(1, ...counts);
+  const rows = Math.min(10, Math.max(4, max));           // cells per column
+  const perCell = max / rows;
+  const peak = counts.indexOf(max);
+  const ticks = [max, Math.round(max / 2), 0];
+
+  dauChart.innerHTML = `
+    <div class="blk-plot">
+      <div class="blk-y">${ticks.map((t) => `<span>${t}</span>`).join("")}</div>
+      <div class="blk-cols">${days.map((d, i) => {
+        const n = d.users.size;
+        const filled = n === 0 ? 0 : Math.max(1, Math.round(n / perCell));
+        const cells = Array.from({ length: rows }, (_, r) =>
+          `<i class="${rows - r <= filled ? "on" : ""}"></i>`).join("");
+        return `<div class="blk-col${i === days.length - 1 ? " is-today" : ""}${i === peak && max > 0 ? " is-peak" : ""}"
+          data-label="${escapeAttr(addisLabel(d.start, { weekday: "short", month: "short", day: "numeric" }))}" data-n="${n}">${cells}</div>`;
+      }).join("")}</div>
+    </div>
+    <div class="blk-x">${days.map((d, i) =>
+      `<span>${i % 5 === 0 || i === days.length - 1 ? escapeHtml(i === days.length - 1 ? "Today" : addisLabel(d.start)) : ""}</span>`).join("")}</div>
+    <div class="blk-tip hidden" role="status"></div>`;
+
+  const tip = dauChart.querySelector(".blk-tip");
+  const plot = dauChart.querySelector(".blk-cols");
+  const show = (col) => {
+    if (!col) { tip.classList.add("hidden"); return; }
+    tip.innerHTML = `<strong>${escapeHtml(col.dataset.label)}</strong><span>Active users <b>${col.dataset.n}</b></span>`;
+    tip.classList.remove("hidden");
+    const box = dauChart.getBoundingClientRect();
+    const c = col.getBoundingClientRect();
+    const x = Math.min(Math.max(c.left - box.left + c.width / 2, 70), box.width - 70);
+    tip.style.left = `${x}px`;
+  };
+  plot.addEventListener("pointerover", (e) => show(e.target.closest(".blk-col")));
+  plot.addEventListener("pointerleave", () => show(null));
+}
+
+const BANK_TONES = ["tone-green", "tone-orange", "tone-blue"];
+
+function renderBankPanel(rows) {
+  const banks = [...rows].filter((r) => Number(r.captured) > 0)
+    .sort((a, b) => Number(b.parsed) - Number(a.parsed));
+  const parsed = sum(banks, "parsed");
+  const captured = sum(banks, "captured");
+  $("stat-parsed-7d").textContent = num(parsed);
+  if (captured) {
+    const rate = (parsed / captured) * 100;
+    setTrend("banks", `${rate.toFixed(1)}% parsed`, rate >= PARSE_RATE_TARGET ? "up" : "down");
+  }
+  if (!banks.length) { bankPanel.innerHTML = `<p class="muted small">No bank SMS in the last 7 days.</p>`; return; }
+
+  const top = banks.slice(0, 3);
+  bankPanel.innerHTML = `
+    <div class="pillars">${top.map((b, i) => {
+      const rate = Math.min(100, (Number(b.parsed) / Number(b.captured)) * 100);
+      return `<div class="pillar ${BANK_TONES[i]}" title="${escapeAttr(b.sender_group)}: ${rate.toFixed(1)}% parsed">
+        <div class="pillar-track"><div class="pillar-fill" style="height:${rate}%"></div></div>
+        <span>${rate.toFixed(0)}%</span></div>`;
+    }).join("")}</div>
+    <p class="nav-label">Parse rate, top banks · last 7 days</p>
+    <ul class="bank-list">${banks.slice(0, 5).map((b, i) => `
+      <li><span class="dot-c ${BANK_TONES[i] || "tone-grey"}"></span><span class="bank-name">${escapeHtml(b.sender_group)}</span>
+      <span class="bank-num">${num(b.parsed)}</span></li>`).join("")}
+    </ul>`;
+}
+
+function renderPhones(users) {
+  const rows = users.filter((u) => u.status_reported_at)
+    .sort((a, b) => new Date(b.status_reported_at) - new Date(a.status_reported_at))
+    .slice(0, 6);
+  if (!rows.length) { phonesTable.innerHTML = `<tbody><tr><td class="muted">No phone has reported yet.</td></tr></tbody>`; return; }
+  const latest = users.map((u) => versionOf(u.app_version)).filter(Boolean).sort(compareVersions).pop();
+  phonesTable.innerHTML = `
+    <thead><tr><th>User</th><th>App version</th><th>Last sync</th><th class="num">Waiting to sync</th><th>Status</th></tr></thead>
+    <tbody>${rows.map((u) => {
+      const v = versionOf(u.app_version);
+      const waiting = Number(u.unsynced_transactions || 0) + Number(u.unsynced_raw || 0);
+      const status = u.last_sync_error ? ["pill-bad", "Sync error"]
+        : v && latest && compareVersions(v, latest) < 0 ? ["pill-warn", "Old version"]
+        : ["pill-good", "Healthy"];
+      return `<tr>
+        <td><div class="user-cell"><span class="name">${escapeHtml(u.name || u.email || "—")}</span>${u.name ? `<span class="email">${escapeHtml(u.email || "")}</span>` : ""}</div></td>
+        <td>${v ? escapeHtml(v) : `<span class="muted">—</span>`}</td>
+        <td class="muted">${u.last_sync_ok_at ? formatRelative(u.last_sync_ok_at) : "—"}</td>
+        <td class="num">${num(waiting)}</td>
+        <td><span class="pill ${status[0]}">● ${status[1]}</span></td>
+      </tr>`;
+    }).join("")}</tbody>`;
 }
 
 // ----------------------------------------------------------------------------

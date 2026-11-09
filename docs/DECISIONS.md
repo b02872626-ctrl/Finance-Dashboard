@@ -6,6 +6,20 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — Admin dashboard opens on three numbers
+
+The owner found the admin a wall of equal-weight numbers. It now opens on
+an Overview with only current installs, parsed messages and daily active
+users, laid out after a reference design the owner picked (sidebar, white
+panel, KPI row, block chart). The four old sections (Parser,
+Categorization, Retention, Health) are unchanged but sit behind sidebar
+tabs. Definitions: a current install is a phone that reported sync status
+in the last 7 days (`i_device_status`, so signed-in 1.0.9+ installs only);
+parsed messages is the row count of `i_transactions` (one row per SMS);
+a daily active user is anyone with an Android `i_sessions` row started
+that Addis Ababa day, skipping the `backfill-v1` rows. No SQL changes: the
+admin already reads these tables.
+
 ## 2026-11-09 — No preview builds; the site builds only from `main`
 
 Owner's call: per-branch preview builds on Cloudflare Pages (and Vercel)
