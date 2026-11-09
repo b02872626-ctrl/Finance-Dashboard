@@ -42,6 +42,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Web dashboard redesign: sidebar tabs, one white panel, greeting
+  and period control in the panel head, six numbers in one block with
+  icons. Checked with sample numbers at desktop and phone width; not yet
+  checked signed in with real data.
 - 2026-11-09 PostHog analytics (EU) wired into the app
   (`remote/ProductAnalytics.kt`, mirrors every `Telemetry` event plus app
   opened/installed/updated) and the site (`Web/analytics.js`: page views and

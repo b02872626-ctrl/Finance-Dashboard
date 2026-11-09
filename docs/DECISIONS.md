@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — The web dashboard uses the sidebar-and-panel layout
+
+Owner's call, from the same reference design as the admin. The slate hero
+(header, tab chips and period chips on a dark band over a light sheet) is
+gone. Tabs are now a left sidebar (a swipeable row on phones), the GC/EC
+toggle and menu sit top right, and every view lives in one white panel
+whose head holds the greeting and a compact period control. The six
+dashboard numbers are one divided block with coloured icons. Money colours
+stay: coral for spending, green for income. No behaviour changed; the
+script finds tabs and periods by the same ids and classes.
+
 ## 2026-11-09 — PostHog for product analytics (reverses 2026-11-05)
 
 Owner's call: add PostHog (EU cloud, `eu.i.posthog.com`) to the app and the
