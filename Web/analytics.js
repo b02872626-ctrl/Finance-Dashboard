@@ -10,7 +10,7 @@
 // POSTHOG_KEY is the project's public "phc_..." key (write-only, like the
 // Supabase anon key in app.js). Empty = analytics off and nothing loads.
 (function () {
-  var POSTHOG_KEY = "";
+  var POSTHOG_KEY = "phc_BmcNF4FadG3suoHWZGjoYqa35Tsej3b2GrhihJXkXcfa";
   var POSTHOG_HOST = "https://eu.i.posthog.com";
   var LIB = "https://cdn.jsdelivr.net/npm/posthog-js@1.438.21/dist/array.no-external.js";
   var LIB_SRI = "sha384-jVwiCZzKpfd2ToNCud6WsPEZ2vt4k1gma4T7j0kj5L5u5+5bCRPVYxiQhu2JXA+o";
