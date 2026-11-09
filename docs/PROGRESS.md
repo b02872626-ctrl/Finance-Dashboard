@@ -19,8 +19,7 @@ items to Done with the date, add what is next or blocked.
 ## Owner tasks
 
 - PostHog: if not done yet, turn on "Discard client IP data" (PostHog →
-  Settings → Project → General). The key is set; phones send once the next
-  release ships.
+  Settings → Project → General).
 - Turn off preview builds if not done yet: Cloudflare → Workers & Pages →
   kash → Settings → Build → Branch control → Preview branch: None. Optional:
   stop Vercel `finance-dashboard` building branches other than `main`
@@ -46,6 +45,13 @@ items to Done with the date, add what is next or blocked.
   and period control in the panel head, six numbers in one block with
   icons. Checked with sample numbers at desktop and phone width; not yet
   checked signed in with real data.
+- 2026-11-09 Admin fix: the Overview stuck on "Loading…" after sign-in.
+  The page loaded twice, and the second load ran inside Supabase's auth
+  callback, which hangs every request. Routing now waits a tick, the same
+  admin is never reloaded by a repeat auth event, older loads can't paint
+  over newer ones, and any request that hangs shows "Timed out" after 25 s.
+- 2026-11-09 1.0.22: PostHog analytics on (app events go to PostHog EU as
+  well as Supabase). Not yet installed on a real phone.
 - 2026-11-09 PostHog analytics (EU) wired into the app
   (`remote/ProductAnalytics.kt`, mirrors every `Telemetry` event plus app
   opened/installed/updated) and the site (`Web/analytics.js`: page views and
