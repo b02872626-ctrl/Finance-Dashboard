@@ -74,27 +74,85 @@
       </section>
 
       <!-- ===== Admin shell ===== -->
-      <section id="admin-shell" class="view admin-shell hidden">
-        <header class="dashboard-header">
-          <div>
-            <p class="muted small">Signed in as <span id="admin-email" class="mono"></span></p>
-            <h2>Admin <span class="badge-admin">Live</span></h2>
-          </div>
-          <div class="header-actions">
-            <button id="refresh-btn" class="btn-ghost" title="Refresh data">Refresh</button>
+      <section id="admin-shell" class="admin-shell hidden">
+        <aside class="sidebar">
+          <div class="logo"><span class="logo-mark">K</span><span>Kash</span><span class="badge-admin">Admin</span></div>
+          <p class="nav-label">Main menu</p>
+          <nav class="side-nav" role="tablist" aria-label="Admin sections">
+            <button type="button" class="tab" role="tab" data-tab="overview" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button>
+            <button type="button" class="tab" role="tab" data-tab="parser" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/></svg><span>Parser</span></button>
+            <button type="button" class="tab" role="tab" data-tab="categories" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12 12 3h8v8l-9 9z"/><circle cx="16" cy="8" r="1.5"/></svg><span>Categorization</span></button>
+            <button type="button" class="tab" role="tab" data-tab="retention" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg><span>Retention</span></button>
+            <button type="button" class="tab" role="tab" data-tab="health" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg><span>Health</span></button>
+          </nav>
+          <div class="sidebar-foot">
+            <p class="nav-label">Signed in as</p>
+            <p id="admin-email" class="side-email"></p>
             <button id="logout-btn" class="btn-ghost" title="Sign out">Sign out</button>
           </div>
-        </header>
+        </aside>
 
-        <nav class="section-nav">
-          <a href="#sec-parser">1 · Parser</a>
-          <a href="#sec-categories">2 · Categorization</a>
-          <a href="#sec-retention">3 · Retention</a>
-          <a href="#sec-health">4 · Health</a>
-        </nav>
+        <div class="main">
+          <div class="topbar">
+            <p class="crumb"><span class="muted">Admin</span> <span class="muted">›</span> <span id="crumb-current">Overview</span></p>
+          </div>
+
+          <div class="panel">
+            <header class="panel-head">
+              <div>
+                <h1 id="greeting">Good morning</h1>
+                <p class="muted" id="panel-sub">How Kash is doing right now.</p>
+              </div>
+              <button id="refresh-btn" class="btn-dark" title="Refresh data">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+                Refresh
+              </button>
+            </header>
+
+        <!-- ===== Overview: the three numbers that matter ===== -->
+        <section id="sec-overview" data-panel="overview">
+          <div class="kpi-row">
+            <div class="kpi">
+              <div class="kpi-head"><span class="kpi-icon tone-purple"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span><span class="kpi-title">Current installs</span></div>
+              <div class="kpi-mid"><p class="kpi-value" id="stat-current-installs">—</p><span class="trend" id="trend-current-installs"></span></div>
+              <p class="kpi-foot" id="stat-current-installs-sub"></p>
+            </div>
+            <div class="kpi">
+              <div class="kpi-head"><span class="kpi-icon tone-orange"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/><path d="M8.5 10.5l2 2 4-4"/></svg></span><span class="kpi-title">Parsed messages</span></div>
+              <div class="kpi-mid"><p class="kpi-value" id="stat-parsed">—</p><span class="trend" id="trend-parsed"></span></div>
+              <p class="kpi-foot" id="stat-parsed-sub"></p>
+            </div>
+            <div class="kpi">
+              <div class="kpi-head"><span class="kpi-icon tone-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.9-3.7 3.6-5.7 7-5.7s6.1 2 7 5.7"/></svg></span><span class="kpi-title">Active users today</span></div>
+              <div class="kpi-mid"><p class="kpi-value" id="stat-dau">—</p><span class="trend" id="trend-dau"></span></div>
+              <p class="kpi-foot" id="stat-dau-sub"></p>
+            </div>
+          </div>
+
+          <div class="ov-split">
+            <div class="ov-chart">
+              <header class="ov-head">
+                <div><h3>Daily active users</h3><p class="muted small">People who opened the app each day, last 30 days (Addis Ababa time).</p></div>
+                <span class="chip">Last 30 days</span>
+              </header>
+              <div class="legend"><span class="lg lg-on"></span>Active users <span class="lg lg-off"></span>Peak</div>
+              <div id="dau-chart" class="blk-chart"></div>
+            </div>
+            <div class="ov-side">
+              <header class="ov-head"><h3>Parsed this week</h3><span class="trend" id="trend-banks"></span></header>
+              <p class="side-big" id="stat-parsed-7d">—</p>
+              <div id="bank-panel"></div>
+            </div>
+          </div>
+
+          <div class="ov-table">
+            <header class="ov-head"><h3>Recently synced phones</h3><button type="button" class="btn-outline" data-goto="health">View all devices</button></header>
+            <div class="table-wrap"><table class="data-table" id="phones-table"></table></div>
+          </div>
+        </section>
 
         <!-- ===== 1. Parser ===== -->
-        <section class="section" id="sec-parser">
+        <section class="section hidden" id="sec-parser" data-panel="parser">
           <header class="section-header">
             <h2>Is the parser working?</h2>
             <p class="muted">Raw SMS captured vs. turned into transactions. Under 95% means a template broke or changed.</p>
@@ -129,7 +187,7 @@
         </section>
 
         <!-- ===== 2. Categorization ===== -->
-        <section class="section" id="sec-categories">
+        <section class="section hidden" id="sec-categories" data-panel="categories">
           <header class="section-header">
             <h2>Is categorization good enough?</h2>
             <p class="muted">Of reviewed transactions, how often the guess was kept, split by where the guess came from.</p>
@@ -155,7 +213,7 @@
         </section>
 
         <!-- ===== 3. Retention ===== -->
-        <section class="section" id="sec-retention">
+        <section class="section hidden" id="sec-retention" data-panel="retention">
           <header class="section-header">
             <h2>Do people stick?</h2>
             <p class="muted">A review day is any day (Addis Ababa time) someone reviewed at least one transaction.</p>
@@ -187,7 +245,7 @@
         </section>
 
         <!-- ===== 4. Health ===== -->
-        <section class="section" id="sec-health">
+        <section class="section hidden" id="sec-health" data-panel="health">
           <header class="section-header">
             <h2>Health</h2>
             <p class="muted">Reported by each phone at most every 10 minutes while it syncs (1.0.9+).</p>
@@ -216,6 +274,8 @@
             </div>
           </div>
         </section>
+          </div>
+        </div>
       </section>
     </main>
 

@@ -39,6 +39,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Admin dashboard redesign: opens on Overview with current
+  installs, parsed messages and active users today (with trend pills), a
+  30-day active-users block chart, parse rate by bank this week, and the
+  most recently synced phones. Parser / Categorization / Retention / Health
+  moved to sidebar tabs. Checked with sample data at desktop and phone
+  width; not yet checked signed in against live data.
 - 2026-11-09 Web dashboard "Forgot password?" on the sign-in page and in
   Settings (under Current password). The emailed link opens the dashboard
   with Settings set to "Set a new password" (no old password needed).
