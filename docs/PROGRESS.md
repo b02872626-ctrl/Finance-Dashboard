@@ -41,6 +41,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Admin fix: the Overview stuck on "Loading…" after sign-in.
+  The page loaded twice, and the second load ran inside Supabase's auth
+  callback, which hangs every request. Routing now waits a tick, the same
+  admin is never reloaded by a repeat auth event, older loads can't paint
+  over newer ones, and any request that hangs shows "Timed out" after 25 s.
 - 2026-11-09 1.0.22: PostHog analytics on (app events go to PostHog EU as
   well as Supabase). Not yet installed on a real phone.
 - 2026-11-09 PostHog analytics (EU) wired into the app
