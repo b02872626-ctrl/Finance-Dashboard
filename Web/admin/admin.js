@@ -152,7 +152,10 @@ try { showTab(sessionStorage.getItem("kash-admin-tab") || "overview"); } catch {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") recoveryMode = true;
-    routeFromSession(session);
+    // Never query Supabase inside this callback: it holds the auth lock, so
+    // any request made here waits on it forever and the dashboard sticks on
+    // "Loading…". Route on the next tick instead.
+    setTimeout(() => routeFromSession(session), 0);
   });
 })();
 
@@ -170,6 +173,7 @@ function routeFromSession(session) {
 // Views
 // ----------------------------------------------------------------------------
 function showLogin() {
+  shownAdminId = null;
   stopIdleLock();
   clearAdminData();
   loginView.classList.remove("hidden");
@@ -179,6 +183,7 @@ function showLogin() {
 }
 
 function showSetPassword(email) {
+  shownAdminId = null;
   stopIdleLock();
   clearAdminData();
   resetEmail.textContent = email;
@@ -235,6 +240,7 @@ async function checkIdle() {
 }
 
 function showDenied(email) {
+  shownAdminId = null;
   deniedEmail.textContent = email || "unknown";
   loginView.classList.add("hidden");
   resetView.classList.add("hidden");
@@ -242,7 +248,13 @@ function showDenied(email) {
   adminShell.classList.add("hidden");
 }
 
+// Which admin the dashboard is showing, so a repeat sign-in event (the
+// initial session, a token refresh) doesn't reload everything.
+let shownAdminId = null;
+
 async function showAdmin(session) {
+  if (shownAdminId === session.user.id && !adminShell.classList.contains("hidden")) return;
+  shownAdminId = session.user.id;
   loginView.classList.add("hidden");
   resetView.classList.add("hidden");
   deniedView.classList.add("hidden");
@@ -374,14 +386,35 @@ function hideLoginNotice() { loginNotice.classList.add("hidden"); }
 const SCHEMA_HINT =
   `Schema is out of date — run <code>supabase/admin_health_metrics.sql</code> in the Supabase SQL editor.`;
 
+// Each load gets a number; a slower, older load never paints over a newer one.
+let loadGen = 0;
+const QUERY_TIMEOUT_MS = 25_000;
+
+// Resolve to an error result instead of hanging forever.
+function withTimeout(promise) {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ data: null, count: null, error: { message: "Timed out. Press Refresh to try again." } }), QUERY_TIMEOUT_MS);
+  });
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
+}
+
+function isStale(gen) {
+  return gen !== loadGen || adminShell.classList.contains("hidden");
+}
+
 async function loadOverview() {
+  const gen = ++loadGen;
   for (const el of RENDER_TARGETS) el.innerHTML = `<p class="muted">Loading…</p>`;
+  for (const k of ["current-installs", "parsed", "dau"]) setStat(k, "—", "");
+  for (const el of adminShell.querySelectorAll(".trend[id]")) { el.textContent = ""; el.className = "trend"; }
+  $("stat-parsed-7d").textContent = "—";
 
   const since24h = new Date(Date.now() - DAY_MS).toISOString();
   const since7d  = new Date(Date.now() - 7 * DAY_MS).toISOString();
 
   // Overview numbers load on their own so a slow detail view never holds them up.
-  const keyNumbers = loadKeyNumbers(since24h);
+  const keyNumbers = loadKeyNumbers(since24h, gen);
 
   const [
     parse, unparsed, capture, moneySenders, quality, accuracy, hotspots, catSummary,
@@ -402,10 +435,10 @@ async function loadOverview() {
     supabase.from("i_account_deletions").select("*").order("deleted_at", { ascending: false }),
     supabase.from("i_downloads").select("created_at, app_version"),
     supabase.from("i_installs").select("install_id, created_at, app_version"),
-  ]);
+  ].map(withTimeout));
 
-  // Locked while the requests were in flight — don't paint data back in.
-  if (adminShell.classList.contains("hidden")) return;
+  // Locked, or a newer load started, while the requests were in flight.
+  if (isStale(gen)) return;
 
   const userRows = users.data || [];
   const emailById = new Map(userRows.map((u) => [u.id, u.email || u.name || u.id.slice(0, 8)]));
@@ -440,7 +473,7 @@ async function loadOverview() {
 // ----------------------------------------------------------------------------
 // Overview
 // ----------------------------------------------------------------------------
-async function loadKeyNumbers(since24h) {
+async function loadKeyNumbers(since24h, gen) {
   const since48h = new Date(Date.now() - 2 * DAY_MS).toISOString();
   const dauSince = new Date(addisDayStart(Date.now()) - (DAU_DAYS - 1) * DAY_MS).toISOString();
   const [parsedAll, parsed24h, parsedPrev, sessions] = await Promise.all([
@@ -454,8 +487,8 @@ async function loadKeyNumbers(since24h) {
       .or("app_version.is.null,app_version.neq.backfill-v1")
       .gte("started_at", dauSince)
       .order("started_at")),
-  ]);
-  if (adminShell.classList.contains("hidden")) return;
+  ].map(withTimeout));
+  if (isStale(gen)) return;
 
   if (parsedAll.error) { console.warn(parsedAll.error); setStat("parsed", "—", "Couldn't load"); }
   else {
