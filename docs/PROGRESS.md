@@ -18,11 +18,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
-- PostHog (code is in, off until these are done): create a project on
-  PostHog **EU** cloud; in its settings turn on "Discard client IP data";
-  paste the public project key (`phc_...`) into `local.properties` as
-  `posthog.apiKey=` and into `POSTHOG_KEY` in `Web/analytics.js` (it is
-  public, safe to commit). Then ship a new app version so phones send.
+- PostHog: if not done yet, turn on "Discard client IP data" (PostHog →
+  Settings → Project → General). The key is set; phones send once the next
+  release ships.
 - Turn off preview builds if not done yet: Cloudflare → Workers & Pages →
   kash → Settings → Build → Branch control → Preview branch: None. Optional:
   stop Vercel `finance-dashboard` building branches other than `main`
@@ -49,6 +47,8 @@ items to Done with the date, add what is next or blocked.
   opened/installed/updated) and the site (`Web/analytics.js`: page views and
   APK download clicks, URLs cut before `?`/`#`, not on `/admin/`). Off until
   the key is set. Privacy policy and Data safety text updated.
+- 2026-11-09 PostHog key added to `Web/analytics.js` (site sends) and to
+  `local.properties` (next release build sends).
 - 2026-11-09 Admin dashboard redesign: opens on Overview with current
   installs, parsed messages and active users today (with trend pills), a
   30-day active-users block chart, parse rate by bank this week, and the
