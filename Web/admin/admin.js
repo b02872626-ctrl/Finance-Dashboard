@@ -680,7 +680,7 @@ function renderPhones(users) {
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // Money text or notice? Mirrors SmsParserEngine (app/src/main/java/com/
-// financeapp/parsing/SmsParserEngine.kt, RULES_VERSION 4): a text is a notice
+// financeapp/parsing/SmsParserEngine.kt, RULES_VERSION 6): a text is a notice
 // if it matches an ignore pattern, otherwise it is money only when it has a
 // birr amount next to a money word. Keep the two in sync.
 // ----------------------------------------------------------------------------
@@ -701,12 +701,19 @@ const NOTICE_PATTERNS = [
   /airtime\s+from\s+\d/i, /account\s+balance\s+is\s*:/i, /BIRR\s+School\s+Fee\s+for/i,
   /USD\s*[\d,.]+\s+is\s+Locked/i, /payment\s+request\s+of\s+ETB\s*[\d,.]+\s+is\s+pending/i,
   /Package\s+Purchase\s+request.*?is\s+reversed/is, /to\s+your\s+\w+\s+account\s+from\s+Awash\s+Bank/i,
+  /ያልታሰበ ሲሳይ/,
+];
+// Safety lines banks add to real alerts (BoA Fayda link, Awash PIN alert):
+// cut off before NOTICE_PATTERNS run, like noticeFooters in the app.
+const NOTICE_FOOTERS = [
+  /Link\s+your\s+Fayda:\s*\S+/gi,
+  /Alert:\s*Awash\s+Bank\s+will\s+never\s+ask\b[\s\S]*/gi,
 ];
 const AMOUNT_RE = /(?:ETB|Birr|Br\.?)\s*[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?\s*(?:ETB|Birr|Br\b|ብር)/i;
 const MONEY_VERB_RE = /\b(credited|debited|deposited|withdrawn|withdrew|transferred|transfered|received|paid|sent|purchased?|payment|refunded|reversed)\b|ገቢ|ወጪ|ተላልፏል|ተቀብለዋል|ተከፍሏል/i;
 
 function isMoneyText(body) {
-  const text = String(body || "");
+  const text = NOTICE_FOOTERS.reduce((t, re) => t.replace(re, " "), String(body || ""));
   if (NOTICE_PATTERNS.some((re) => re.test(text))) return false;
   return AMOUNT_RE.test(text) && MONEY_VERB_RE.test(text);
 }

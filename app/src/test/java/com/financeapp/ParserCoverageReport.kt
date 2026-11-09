@@ -15,7 +15,8 @@ import java.io.File
  *   KASH_RAW_CSV=/path/to/i_raw_data_rows.csv ./gradlew testDebugUnitTest \
  *     --tests '*ParserCoverageReport*'
  *
- * Output: build/parser-coverage.txt (per-sender counts + every unread SMS).
+ * Output: build/parser-coverage.txt (per-sender counts + every unread SMS)
+ * and build/parser-ignored.txt (ignored SMS by shape, to spot dropped money texts).
  * Skipped when KASH_RAW_CSV isn't set.
  */
 class ParserCoverageReport {
@@ -32,6 +33,7 @@ class ParserCoverageReport {
         data class Tally(var parsed: Int = 0, var ignored: Int = 0, var unread: Int = 0, var notTracked: Int = 0)
         val tally = sortedMapOf<String, Tally>()
         val unread = mutableListOf<Pair<String, String>>()
+        val ignored = mutableListOf<Pair<String, String>>()
         rows.drop(1).forEach { r ->
             val sender = r.getOrNull(iSender)?.trim().orEmpty()
             val body = r.getOrNull(iBody).orEmpty()
@@ -41,7 +43,7 @@ class ParserCoverageReport {
                 else -> {
                     val tx = SmsParserEngine.parse(SmsMessage(sender, body, 0L))
                     when {
-                        tx == null -> t.ignored++
+                        tx == null -> { t.ignored++; ignored += sender to body }
                         tx.type == TransactionType.UNKNOWN.name || tx.bankName.startsWith("Unknown") -> { t.unread++; unread += sender to body }
                         else -> t.parsed++
                     }
@@ -58,7 +60,23 @@ class ParserCoverageReport {
             }
         }
         File("build/parser-coverage.txt").writeText(out)
+        File("build/parser-ignored.txt").writeText(shapes(ignored))
         println(out.lineSequence().take(tally.size + 2).joinToString("\n"))
+    }
+
+    /**
+     * Ignored SMS grouped by shape (every digit run becomes #), most common
+     * first, with one example each: shows whether real money texts are being
+     * dropped as notices. Output: build/parser-ignored.txt.
+     */
+    private fun shapes(rows: List<Pair<String, String>>): String = buildString {
+        rows.groupBy({ it.first }, { it.second }).forEach { (sender, bodies) ->
+            appendLine("===== $sender (${bodies.size} ignored)")
+            bodies.groupBy { it.replace(Regex("[0-9][0-9,.]*"), "#").replace(Regex("\\s+"), " ").take(90) }
+                .entries.sortedByDescending { it.value.size }
+                .forEach { (shape, same) -> appendLine("%5d  %s".format(same.size, same.first().replace('\n', ' '))) }
+            appendLine()
+        }
     }
 
     /** RFC 4180 CSV: quoted fields, doubled quotes, newlines inside quotes. */

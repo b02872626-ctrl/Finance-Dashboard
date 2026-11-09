@@ -3,6 +3,8 @@ package com.financeapp.parsing
 import com.financeapp.data.categorize.MerchantKey
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.parsing.parsers.AwashCreditParser
+import com.financeapp.parsing.parsers.AwashWalletParser
+import com.financeapp.parsing.parsers.CbeAtmWithdrawalParser
 import com.financeapp.parsing.parsers.TelebirrOwnMovesParser
 import com.financeapp.parsing.parsers.AwashSchoolFeeParser
 import com.financeapp.parsing.parsers.NibParser
@@ -141,6 +143,7 @@ object SmsParserEngine {
         BoaDebitParser(),
         AwashCreditParser(),
         AwashDebitParser(),
+        AwashWalletParser(),
         DashenCreditParser(),
         DashenDebitParser(),
         BerhanBankCreditParser(),
@@ -153,6 +156,7 @@ object SmsParserEngine {
         CbeBirrTransferParser(),
         CbeBirrCreditParser(),
         CbeFastLoanParser(),
+        CbeAtmWithdrawalParser(),
         CbeMoreParser(),
         BoaPosHoldParser(),
         BoaLegacyCreditParser(),
@@ -270,7 +274,23 @@ object SmsParserEngine {
         Regex("""payment\s+request\s+of\s+ETB\s*[\d,.]+\s+is\s+pending""", RegexOption.IGNORE_CASE),
         Regex("""Package\s+Purchase\s+request.*?is\s+reversed""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), // no amount; the purchase never went through
         Regex("""to\s+your\s+\w+\s+account\s+from\s+Awash\s+Bank""", RegexOption.IGNORE_CASE), // the receiving bank sends the credit
+        Regex("""ያልታሰበ ሲሳይ"""),   // BoA "unexpected windfall" prize promo
     )
+
+    /**
+     * Safety lines banks now add to the end of real alerts (BoA since Oct
+     * 2026, Awash wallet). They contain "Fayda" / "do not share" / "OTP",
+     * so they are cut off before the ignore patterns run; otherwise every
+     * alert carrying them is dropped as a notice. Parsers still see the
+     * whole SMS. Mirror in Web/admin/admin.js (NOTICE_FOOTERS).
+     */
+    private val noticeFooters: List<Regex> = listOf(
+        Regex("""Link\s+your\s+Fayda:\s*\S+""", RegexOption.IGNORE_CASE),
+        Regex("""Alert:\s*Awash\s+Bank\s+will\s+never\s+ask\b.*""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)),
+    )
+
+    private fun withoutFooters(body: String): String =
+        noticeFooters.fold(body) { text, footer -> footer.replace(text, " ") }
 
     // An amount in birr next to a money verb: what every bank alert has.
     private val amountRe = Regex("""(?:ETB|Birr|Br\.?)\s*[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?\s*(?:ETB|Birr|Br\b|ብር)""", RegexOption.IGNORE_CASE)
@@ -294,7 +314,7 @@ object SmsParserEngine {
      * every stored SMS's parse status once per version, so the admin bug
      * queue reflects what the current rules make of old messages.
      */
-    const val RULES_VERSION = 5
+    const val RULES_VERSION = 6
 
     /**
      * Parse the SMS and return a TransactionEntity.
@@ -307,8 +327,9 @@ object SmsParserEngine {
 
         // Fast-fail on known non-transaction patterns. Walks the list once;
         // any match short-circuits.
+        val screened = withoutFooters(sms.body)
         for (pattern in ignorePatterns) {
-            if (pattern.containsMatchIn(sms.body)) return null
+            if (pattern.containsMatchIn(screened)) return null
         }
 
         for (parser in parsers) {
@@ -323,7 +344,7 @@ object SmsParserEngine {
 
         // No parser claimed it. Only money-shaped messages count as misses;
         // the rest are notices (ignored, like the patterns above).
-        if (!looksLikeTransaction(sms.body)) return null
+        if (!looksLikeTransaction(screened)) return null
         return UnknownBankParser().parse(sms).withReceiptLinkFallback().withMerchantKey()
     }
 
