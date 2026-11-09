@@ -470,6 +470,20 @@ async function loadOverview() {
   await keyNumbers;
 }
 
+// Paints one card: its error, or its data. A failing card never breaks the rest.
+function guard(res, targets, render) {
+  if (res.error) {
+    const msg = /does not exist|schema cache/i.test(res.error.message) ? SCHEMA_HINT : escapeHtml(res.error.message);
+    for (const el of targets) el.innerHTML = `<p class="muted">${msg}</p>`;
+    console.warn(res.error);
+    return;
+  }
+  try { render(); } catch (e) {
+    console.error(e);
+    for (const el of targets) el.innerHTML = `<p class="muted">Couldn't render: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
 // ----------------------------------------------------------------------------
 // Overview
 // ----------------------------------------------------------------------------
