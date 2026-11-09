@@ -10,6 +10,8 @@ If a request conflicts with it, stop and ask the owner before doing anything.
 
 Project memory lives in `docs/`. Read only what your task needs:
 - `docs/PROGRESS.md`: always read first (next up, blocked, owner tasks, done).
+- `docs/WORKFLOW.md`: the work process, from Linear issue to branch, PR,
+  merge, deploy and tester release (`scripts/release.sh`). Follow it.
 - `docs/DECISIONS.md`: why things are the way they are. Do not reverse a
   logged decision without asking.
 - `docs/SECURITY.md`: who can read and change each Supabase table. Read it
@@ -41,6 +43,7 @@ was cut (this once nearly shipped the pre-Kash screens over the redesign).
    top of main's version.
 4. **Releases come only from up-to-date `main`.** Version bumps and the APK in
    `Web/apk` are made after the work is on `main`, never from a side branch.
+   Use `scripts/release.sh` (see `docs/WORKFLOW.md` §5), not a hand-made release.
 5. **Keep it small and short-lived.** One change per branch; merge it the same
    day if possible. After it lands on `main`, delete the branch (local and
    remote).
