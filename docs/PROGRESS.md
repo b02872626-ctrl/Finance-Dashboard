@@ -19,8 +19,7 @@ items to Done with the date, add what is next or blocked.
 ## Owner tasks
 
 - PostHog: if not done yet, turn on "Discard client IP data" (PostHog →
-  Settings → Project → General). The key is set; phones send once the next
-  release ships.
+  Settings → Project → General).
 - Turn off preview builds if not done yet: Cloudflare → Workers & Pages →
   kash → Settings → Build → Branch control → Preview branch: None. Optional:
   stop Vercel `finance-dashboard` building branches other than `main`
@@ -42,6 +41,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 1.0.22: PostHog analytics on (app events go to PostHog EU as
+  well as Supabase). Not yet installed on a real phone.
 - 2026-11-09 PostHog analytics (EU) wired into the app
   (`remote/ProductAnalytics.kt`, mirrors every `Telemetry` event plus app
   opened/installed/updated) and the site (`Web/analytics.js`: page views and
