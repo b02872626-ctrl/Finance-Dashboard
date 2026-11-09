@@ -35,6 +35,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Admin dashboard "Forgot password?": emails a reset link (admin
+  addresses only) that comes back to `/admin/` and asks for a new password
+  before the dashboard opens. Expired links say so. Works on
+  `kash-140.pages.dev`, not on branch preview links.
 - 2026-11-06 Staging Supabase `kash-staging`, built from `supabase/` by
   `supabase/staging/build_setup.sh`; rules match live. Cross-user isolation
   test (`supabase/staging/isolation_test.py`, 214 checks) passes, and fails

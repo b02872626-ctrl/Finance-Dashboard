@@ -30,8 +30,34 @@
           </label>
 
           <div id="login-error" class="error hidden"></div>
+          <div id="login-notice" class="notice hidden" role="status"></div>
 
           <button type="submit" id="login-btn" class="btn-primary">Sign in</button>
+          <button type="button" id="forgot-btn" class="btn-link">Forgot password?</button>
+        </form>
+      </section>
+
+      <!-- ===== Set new password (after the emailed reset link) ===== -->
+      <section id="reset-view" class="view login-view hidden">
+        <div class="brand-block">
+          <h1>Kash <span class="badge-admin">Admin</span></h1>
+          <p class="muted">Choose a new password for <span id="reset-email" class="mono"></span>.</p>
+        </div>
+
+        <form id="reset-form" class="card login-card">
+          <label class="field">
+            <span class="label">New password</span>
+            <input type="password" id="reset-password" name="new-password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" />
+          </label>
+          <label class="field">
+            <span class="label">Repeat new password</span>
+            <input type="password" id="reset-confirm" name="confirm-password" required minlength="8" autocomplete="new-password" />
+          </label>
+
+          <div id="reset-error" class="error hidden"></div>
+
+          <button type="submit" id="reset-btn" class="btn-primary">Save new password</button>
+          <button type="button" id="reset-cancel-btn" class="btn-link">Cancel and sign out</button>
         </form>
       </section>
 

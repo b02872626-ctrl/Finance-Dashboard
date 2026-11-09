@@ -24,6 +24,13 @@ const ADMIN_EMAILS = [
   "nahusenaygebreamlak@gmail.com",
 ];
 
+// Password reset: the emailed link lands back on this page with
+// "#...type=recovery" (or "#error_code=otp_expired" once it is stale). Read it
+// before createClient, which consumes and strips the hash.
+const URL_HASH = new URLSearchParams(window.location.hash.slice(1));
+let recoveryMode = URL_HASH.get("type") === "recovery";
+const recoveryLinkError = URL_HASH.get("error_code") || URL_HASH.get("error");
+
 // The admin keeps its own sign-in. With the default storage the page shared
 // the main web app's localStorage token (same origin), so anyone signed in to
 // Kash on that browser — the admin included — landed straight on the data
@@ -55,7 +62,17 @@ const loginEmail     = $("login-email");
 const loginPassword  = $("login-password");
 const loginBtn       = $("login-btn");
 const loginError     = $("login-error");
-const deniedEmail    = $("denied-email");
+const loginNotice    = $("login-notice");
+const forgotBtn      = $("forgot-btn");
+const resetView      = $("reset-view");
+const resetForm      = $("reset-form");
+const resetEmail     = $("reset-email");
+const resetPassword  = $("reset-password");
+const resetConfirm   = $("reset-confirm");
+const resetBtn       = $("reset-btn");
+const resetError     = $("reset-error");
+const resetCancel    = $("reset-cancel-btn");
+const deniedEmail   = $("denied-email");
 const deniedLogout   = $("denied-logout-btn");
 const adminEmail     = $("admin-email");
 const refreshBtn     = $("refresh-btn");
@@ -89,15 +106,23 @@ const DAY_MS = 24 * 60 * 60 * 1000;
   const { data: { session } } = await supabase.auth.getSession();
   routeFromSession(session);
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  if (!session && recoveryLinkError) {
+    showLoginError("That reset link has expired or was already used. Send a new one.");
+  }
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") recoveryMode = true;
     routeFromSession(session);
   });
 })();
 
 function routeFromSession(session) {
-  if (!session) { showLogin(); return; }
+  if (!session) { recoveryMode = false; showLogin(); return; }
   const email = session.user?.email || "";
   if (!ADMIN_EMAILS.includes(email)) { showDenied(email); return; }
+  // A reset link signs the admin in; make them choose a password before the
+  // dashboard opens.
+  if (recoveryMode) { showSetPassword(email); return; }
   showAdmin(session);
 }
 
@@ -108,8 +133,22 @@ function showLogin() {
   stopIdleLock();
   clearAdminData();
   loginView.classList.remove("hidden");
+  resetView.classList.add("hidden");
   deniedView.classList.add("hidden");
   adminShell.classList.add("hidden");
+}
+
+function showSetPassword(email) {
+  stopIdleLock();
+  clearAdminData();
+  resetEmail.textContent = email;
+  resetForm.reset();
+  resetError.classList.add("hidden");
+  loginView.classList.add("hidden");
+  resetView.classList.remove("hidden");
+  deniedView.classList.add("hidden");
+  adminShell.classList.add("hidden");
+  resetPassword.focus();
 }
 
 // Wipe rendered user data so nothing lingers in the DOM once locked.
@@ -156,12 +195,14 @@ async function checkIdle() {
 function showDenied(email) {
   deniedEmail.textContent = email || "unknown";
   loginView.classList.add("hidden");
+  resetView.classList.add("hidden");
   deniedView.classList.remove("hidden");
   adminShell.classList.add("hidden");
 }
 
 async function showAdmin(session) {
   loginView.classList.add("hidden");
+  resetView.classList.add("hidden");
   deniedView.classList.add("hidden");
   adminShell.classList.remove("hidden");
   adminEmail.textContent = session.user.email;
@@ -176,6 +217,7 @@ async function showAdmin(session) {
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   hideLoginError();
+  hideLoginNotice();
   setLoginBusy(true);
   const email = loginEmail.value.trim();
   const password = loginPassword.value;
@@ -214,8 +256,74 @@ logoutBtn.addEventListener("click", async () => {
 
 refreshBtn.addEventListener("click", () => { loadOverview(); });
 
+// Forgot password: email a reset link that comes back to this page. Only the
+// admin addresses get one, so this page can't be used to send reset mail to
+// app users; the message is the same either way so it doesn't reveal which
+// addresses are admins.
+forgotBtn.addEventListener("click", async () => {
+  hideLoginError();
+  hideLoginNotice();
+  const email = loginEmail.value.trim().toLowerCase();
+  if (!loginEmail.value.trim() || !loginEmail.checkValidity()) {
+    showLoginError("Type your admin email above, then tap Forgot password.");
+    loginEmail.focus();
+    return;
+  }
+  forgotBtn.disabled = true;
+  forgotBtn.textContent = "Sending…";
+  let failed = null;
+  if (ADMIN_EMAILS.includes(email)) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+    failed = error;
+  }
+  forgotBtn.disabled = false;
+  forgotBtn.textContent = "Forgot password?";
+  if (failed) {
+    showLoginError(/rate limit|security purposes/i.test(failed.message)
+      ? "Too many reset emails. Wait a few minutes and try again."
+      : prettyAuthError(failed.message));
+    return;
+  }
+  showLoginNotice(`If ${email} is an admin address, a reset link is on its way. Open it in this browser.`);
+});
+
+resetForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  resetError.classList.add("hidden");
+  const password = resetPassword.value;
+  if (password.length < 8) return showResetError("Use at least 8 characters.");
+  if (password !== resetConfirm.value) return showResetError("The two passwords don't match.");
+  resetBtn.disabled = true;
+  resetBtn.textContent = "Saving…";
+  const { data, error } = await supabase.auth.updateUser({ password });
+  resetBtn.disabled = false;
+  resetBtn.textContent = "Save new password";
+  if (error) {
+    showResetError(/different from the old/i.test(error.message)
+      ? "Choose a password different from your old one."
+      : prettyAuthError(error.message));
+    return;
+  }
+  recoveryMode = false;
+  resetForm.reset();
+  const { data: { session } } = await supabase.auth.getSession();
+  routeFromSession(session ?? (data?.user ? { user: data.user } : null));
+});
+
+resetCancel.addEventListener("click", async () => {
+  recoveryMode = false;
+  await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+  showLogin();
+});
+
+function showResetError(msg) { resetError.textContent = msg; resetError.classList.remove("hidden"); }
+
 function showLoginError(msg) { loginError.textContent = msg; loginError.classList.remove("hidden"); }
 function hideLoginError() { loginError.classList.add("hidden"); }
+function showLoginNotice(msg) { loginNotice.textContent = msg; loginNotice.classList.remove("hidden"); }
+function hideLoginNotice() { loginNotice.classList.add("hidden"); }
 
 // ----------------------------------------------------------------------------
 // Data loading — one request per card, so a missing view only blanks its card.

@@ -34,6 +34,13 @@ sign-in. These Supabase Auth settings must stay as they are (checked
 
 Google sign-in emails are already verified.
 
+Admin password reset (`Web/admin/`, "Forgot password?") uses Supabase's
+reset email. The link can only return to an address on the Redirect URLs
+list above, so it works from `kash-140.pages.dev/admin/`; on a branch
+preview link Supabase falls back to the Site URL. The page sends a reset
+only for its own admin list, and the reset grants nothing by itself: access
+is still `is_admin()`.
+
 ## Tables
 
 | Table | What it holds | anon | owner | admin | Set in |
