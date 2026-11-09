@@ -6,6 +6,16 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+
+## 2026-11-09 — PostHog sends each app event right away
+
+1.0.22 sent nothing from phones: PostHog Android waits until 20 events are
+queued (`flushAt`), and Kash makes only a few per visit, so they sat on the
+phone. `flushAt = 1` now; volume is tiny. Found with a diagnostic build
+(`./gradlew assembleRelease -Pposthog.debug=true`, then `adb logcat -s
+PostHog`), which is how to debug PostHog on a phone again. Setup failures
+now log a one-line warning (class name only).
+
 ## 2026-11-09 — The web dashboard uses the sidebar-and-panel layout
 
 Owner's call, from the same reference design as the admin. The slate hero
