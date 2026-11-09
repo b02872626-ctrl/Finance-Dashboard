@@ -35,6 +35,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Web dashboard Settings (☰ menu → Settings): shows the signed-in
+  account (name, email, sign-in method, member since) and changes the
+  password after checking the current one. Google-only accounts see a note
+  instead of the form.
 - 2026-11-09 Admin dashboard "Forgot password?": emails a reset link (admin
   addresses only) that comes back to `/admin/` and asks for a new password
   before the dashboard opens. Expired links say so. Reset links that land

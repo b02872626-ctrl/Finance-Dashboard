@@ -6,6 +6,15 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — Changing the web password needs the current one
+
+The web dashboard's Settings asks for the current password before changing
+it, so someone at an unlocked, signed-in browser can't take over the
+account. `Web/app.js` checks it with a second Supabase client that saves
+nothing, changes the password through that fresh session (Supabase can
+refuse a change on an old one), then signs that client out; the page's own
+session is not touched. Google-only accounts have no Kash password, so the
+form is hidden for them. No new library and no database change.
 ## 2026-11-09 — Admins reset their own password from the dashboard
 
 The owner forgot the admin password and the only way back in was SQL in the
