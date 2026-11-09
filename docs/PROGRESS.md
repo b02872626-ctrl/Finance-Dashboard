@@ -41,6 +41,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 1.0.23: app events reach PostHog (sent right away). Installed
+  on the owner's Galaxy S22.
 - 2026-11-09 App events reach PostHog: they were stuck on the phone
   (PostHog waited for 20). Checked on the owner's Galaxy S22 with a
   diagnostic build: each event is sent within a second.
