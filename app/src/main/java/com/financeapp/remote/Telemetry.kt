@@ -25,6 +25,8 @@ import java.util.UUID
  *    by the next sync pass so nothing is lost offline or before sign-in;
  *  - i_device_status: sync backlog, app version, PIN and SMS state.
  *
+ * Every tracked event is also sent to PostHog through [ProductAnalytics].
+ *
  * Best-effort throughout — telemetry never surfaces an error to the user.
  */
 object Telemetry {
@@ -96,6 +98,7 @@ object Telemetry {
             }
             p.edit().putString(KEY_QUEUE, trimmed.toString()).apply()
         }
+        ProductAnalytics.capture(name, props)
     }
 
     /**
@@ -167,5 +170,6 @@ object Telemetry {
                 .remove(KEY_STATUS_SENT_AT)
                 .apply()
         }
+        ProductAnalytics.reset()
     }
 }

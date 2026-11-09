@@ -6,6 +6,24 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — PostHog for product analytics (reverses 2026-11-05)
+
+Owner's call: add PostHog (EU cloud, `eu.i.posthog.com`) to the app and the
+website, next to the Supabase `Telemetry` that feeds the admin dashboard
+(that stays as it is). App: `com.posthog:posthog-android` 3.75.0, set up in
+`remote/ProductAnalytics.kt`. Every `Telemetry.track` event is also sent to
+PostHog, plus PostHog's app opened / installed / updated events. Off: screen
+views, deep links, session replay, feature flags, surveys. The phone is
+identified only by the random install ID (same as Sentry); properties named
+`error`/`summary` are masked with `CrashReporting.scrubText`; Delete account
+calls `PostHog.reset()`. Off in debug builds and when `posthog.apiKey` is not
+in `local.properties`. Site: `Web/analytics.js` on the landing/dashboard,
+download, privacy and delete-account pages (not `/admin/`): page views, page
+leaves and `apk_download_clicked`, no autocapture or replay, no person
+profiles, URLs cut before `?`/`#` (reset links carry tokens there).
+posthog-js 1.438.21 is pinned on jsDelivr with an SRI hash and loads only
+when the public key is filled in. The `i_downloads` counter stays.
+
 ## 2026-11-09 — Admin dashboard opens on three numbers
 
 The owner found the admin a wall of equal-weight numbers. It now opens on
