@@ -9,15 +9,6 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="styles.css" />
     <script>
-      // Password reset links land here when Supabase falls back to the Site
-      // URL (a branch preview, or "Send password recovery" in the Supabase
-      // dashboard). Only the admin page can set a new password, so pass the
-      // link on to it before app.js signs the token into the user dashboard.
-      if (/(^#|&)type=recovery(&|$)/.test(location.hash)) {
-        location.replace("/admin/" + location.hash);
-      }
-    </script>
-    <script>
       // Pre-paint: pick the right starting view by checking localStorage
       // synchronously. Stops the login page from flashing on refresh when
       // the user already has a valid Supabase session cached.
@@ -59,8 +50,10 @@
           </label>
 
           <div id="login-error" class="error hidden"></div>
+          <div id="login-notice" class="notice hidden" role="status"></div>
 
           <button type="submit" id="login-btn" class="btn-primary">Sign in</button>
+          <button type="button" id="login-forgot-btn" class="btn-link">Forgot password?</button>
           <button type="button" id="retry-btn" class="btn-secondary hidden">Try again</button>
 
           <div class="auth-divider"><span>or</span></div>
@@ -1073,17 +1066,23 @@
               </section>
 
               <section class="settings-section">
-                <h4 class="settings-heading">Change password</h4>
+                <h4 id="password-heading" class="settings-heading">Change password</h4>
                 <p id="settings-no-password" class="muted small hidden">
                   You sign in with Google, so there's no Kash password to change.
                   Manage your password in your Google account.
                 </p>
                 <form id="password-form" class="settings-form">
                   <input type="email" id="password-form-email" autocomplete="username" hidden />
-                  <label class="field">
-                    <span class="label">Current password</span>
-                    <input type="password" id="current-password" required autocomplete="current-password" />
-                  </label>
+                  <div id="current-password-group" class="settings-current">
+                    <label class="field">
+                      <span class="label">Current password</span>
+                      <input type="password" id="current-password" required autocomplete="current-password" />
+                    </label>
+                    <button type="button" id="settings-forgot-btn" class="btn-link">Forgot your current password?</button>
+                  </div>
+                  <p id="recovery-note" class="muted small hidden">
+                    You opened a password reset link. Choose a new password; you won't need the old one.
+                  </p>
                   <label class="field">
                     <span class="label">New password</span>
                     <input type="password" id="new-password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" />
@@ -1093,6 +1092,7 @@
                     <input type="password" id="confirm-password" required minlength="8" autocomplete="new-password" />
                   </label>
                   <div id="password-error" class="error hidden"></div>
+                  <div id="password-notice" class="notice hidden" role="status"></div>
                   <button type="submit" id="password-save-btn" class="btn-primary">Change password</button>
                 </form>
               </section>

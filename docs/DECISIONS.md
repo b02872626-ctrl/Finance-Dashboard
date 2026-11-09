@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — The web dashboard handles its own password reset links
+
+Owners didn't know their current password, so the web dashboard got
+"Forgot password?" on the sign-in page and in Settings, using Supabase's
+reset email with the home page as the return address. A link that opens the
+dashboard shows Settings as "Set a new password" without the old one; the
+emailed link is the proof. This replaces the earlier rule (same day) that
+forwarded every `type=recovery` link from the home page to `/admin/`: that
+would show regular users "Access denied". Admin resets started on `/admin/`
+still return to `/admin/`; one that falls back to the home page is now
+finished there, which sets the same account's password. The sign-in page
+shows the same message whether or not the email has an account.
+
 ## 2026-11-09 — Changing the web password needs the current one
 
 The web dashboard's Settings asks for the current password before changing
