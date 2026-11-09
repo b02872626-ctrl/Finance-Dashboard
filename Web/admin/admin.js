@@ -80,6 +80,9 @@ const logoutBtn      = $("logout-btn");
 
 const parseTable    = $("parse-table");
 const unparsedList  = $("unparsed-list");
+const fixTable      = $("fix-table");
+const noticeTable   = $("notice-table");
+const parserVerdict = $("parser-verdict");
 const captureTable  = $("capture-table");
 const moneySendersTable = $("money-senders-table");
 const accuracyTable = $("accuracy-table");
@@ -95,7 +98,7 @@ const bankPanel     = $("bank-panel");
 const phonesTable   = $("phones-table");
 
 const RENDER_TARGETS = [
-  dauChart, bankPanel, phonesTable, parseTable, unparsedList, captureTable, moneySendersTable, accuracyTable, hotspotTable,
+  dauChart, bankPanel, phonesTable, parseTable, fixTable, noticeTable, parserVerdict, unparsedList, captureTable, moneySendersTable, accuracyTable, hotspotTable,
   funnelEl, peopleList, cohortTable, deviceTable, errorList, deletionList,
 ];
 
@@ -443,8 +446,12 @@ async function loadOverview() {
   const userRows = users.data || [];
   const emailById = new Map(userRows.map((u) => [u.id, u.email || u.name || u.id.slice(0, 8)]));
 
-  guard(parse, [parseTable], () => renderParseRate(parse.data));
-  guard(unparsed, [unparsedList], () => renderUnparsed(unparsed.data));
+  // Parser tab: the queue says which unparsed texts are money and which are
+  // notices, so the rates below leave notices out.
+  const queue = unparsed.error ? null : unparsed.data;
+  const parserRows = parse.error ? null : parserStats(parse.data, queue);
+  guard(unparsed, [unparsedList, fixTable, noticeTable], () => renderUnparsed(unparsed.data));
+  guard(parse, [parseTable, parserVerdict], () => renderParseRate(parserRows, queue));
   guard(capture, [captureTable], () => renderCaptureOnly(capture.data));
   guard(moneySenders, [moneySendersTable], () => renderMoneySenders(moneySenders.data));
   guard(quality, [], () => renderQuality(quality.data));
@@ -466,7 +473,7 @@ async function loadOverview() {
     renderCurrentInstalls(userRows, installs.data);
     renderPhones(userRows);
   });
-  guard(parse, [bankPanel], () => renderBankPanel(parse.data));
+  guard(parse, [bankPanel], () => renderBankPanel(parserRows));
   await keyNumbers;
 }
 
@@ -620,29 +627,27 @@ function renderDau(sessions) {
 const BANK_TONES = ["tone-green", "tone-orange", "tone-blue"];
 
 function renderBankPanel(rows) {
-  const banks = [...rows].filter((r) => Number(r.captured) > 0)
-    .sort((a, b) => Number(b.parsed) - Number(a.parsed));
+  const banks = rows.filter((r) => r.texts > 0).sort((a, b) => b.parsed - a.parsed);
   const parsed = sum(banks, "parsed");
-  const captured = sum(banks, "captured");
+  const texts = sum(banks, "texts");
   $("stat-parsed-7d").textContent = num(parsed);
-  if (captured) {
-    const rate = (parsed / captured) * 100;
-    setTrend("banks", `${rate.toFixed(1)}% parsed`, rate >= PARSE_RATE_TARGET ? "up" : "down");
+  if (texts) {
+    const rate = (parsed / texts) * 100;
+    const approx = banks.some((r) => r.approx) ? "≈" : "";
+    setTrend("banks", `${approx}${rate.toFixed(1)}% parsed`, rate >= PARSE_RATE_TARGET ? "up" : "down");
   }
   if (!banks.length) { bankPanel.innerHTML = `<p class="muted small">No bank SMS in the last 7 days.</p>`; return; }
 
   const top = banks.slice(0, 3);
   bankPanel.innerHTML = `
-    <div class="pillars">${top.map((b, i) => {
-      const rate = Math.min(100, (Number(b.parsed) / Number(b.captured)) * 100);
-      return `<div class="pillar ${BANK_TONES[i]}" title="${escapeAttr(b.sender_group)}: ${rate.toFixed(1)}% parsed">
-        <div class="pillar-track"><div class="pillar-fill" style="height:${rate}%"></div></div>
-        <span>${rate.toFixed(0)}%</span></div>`;
-    }).join("")}</div>
-    <p class="nav-label">Parse rate, top banks · last 7 days</p>
+    <div class="pillars">${top.map((b, i) => `
+      <div class="pillar ${BANK_TONES[i]}" title="${escapeAttr(b.sender_group)}: ${b.rate.toFixed(1)}% of money texts parsed">
+        <div class="pillar-track"><div class="pillar-fill" style="height:${Math.min(100, b.rate)}%"></div></div>
+        <span>${b.rate.toFixed(0)}%</span></div>`).join("")}</div>
+    <p class="nav-label">Parse rate, top banks · notices left out</p>
     <ul class="bank-list">${banks.slice(0, 5).map((b, i) => `
       <li><span class="dot-c ${BANK_TONES[i] || "tone-grey"}"></span><span class="bank-name">${escapeHtml(b.sender_group)}</span>
-      <span class="bank-num">${num(b.parsed)}</span></li>`).join("")}
+      <span class="bank-num">${num(b.parsed)}${b.missed ? ` <span class="text-bad">· ${num(b.missed)} missed</span>` : ""}</span></li>`).join("")}
     </ul>`;
 }
 
@@ -673,31 +678,138 @@ function renderPhones(users) {
 // ----------------------------------------------------------------------------
 // 1. Parser
 // ----------------------------------------------------------------------------
-function renderParseRate(rows) {
+// ----------------------------------------------------------------------------
+// Money text or notice? Mirrors SmsParserEngine (app/src/main/java/com/
+// financeapp/parsing/SmsParserEngine.kt, RULES_VERSION 4): a text is a notice
+// if it matches an ignore pattern, otherwise it is money only when it has a
+// birr amount next to a money word. Keep the two in sync.
+// ----------------------------------------------------------------------------
+const NOTICE_PATTERNS = [
+  /\bOTP\b/i, /\bverification code\b/i, /\bone[- ]time password\b/i, /\bsecurity code\b/i,
+  /\bactivation code\b/i, /^<#>\s*\d+/m, /\bYour otp is\b/i, /\bPIN[\s:]+\d{3,}\b/i,
+  /please keep this code private/i, /\b(do not share|don't share|please don't share)\b/i,
+  /ATM withdrawal secret code/i, /CBE Birr ATM cash out voucher/i,
+  /insufficient balance/i, /\bSorry,\s*You have insufficient/i,
+  /combanketh\.et[^\s]*\/holidays/i, /\blottery ticket\b/i,
+  /እንኳን/, /ዓለም ዋንጫ/, /ኢድ ሙባረክ/, /መልካም በዓል/, /BYD/, /ፋይዳ/,
+  /\bFayda\s+(ID|Alias\s+Number|FAN)\b/i, /link\s+(?:your\s+)?Fayda/i,
+  /\bis\s+\d+\s+days?\s+overdue\b/i, /\bsuccessfully\s+activated\s+the\b.*\bservice\b/i,
+  /\binsufficient\b/i, /\bfor\s+T&C\b/i, /\bEKSIPOO\b|\bFEESTIVAALA\b/i, /ኤክስፖ/, /ቨርቹዋል/,
+  /using\s+Ethiotel\s+Credit/i, /pay\s+your\s+credit\s+within/i, /withdraw\s+secret\s+code\s+is/i,
+  /collect\s+transfer\s+amount\s+with\s+this\s+Secret\s+code/i, /lottery\s+ID/i,
+  /bonus\s+that\s+is\s+used\s+for\s+airtime/i, /request\s+to\s+buy\s+package\s+was\s+unsuccessful/i,
+  /airtime\s+from\s+\d/i, /account\s+balance\s+is\s*:/i, /BIRR\s+School\s+Fee\s+for/i,
+  /USD\s*[\d,.]+\s+is\s+Locked/i, /payment\s+request\s+of\s+ETB\s*[\d,.]+\s+is\s+pending/i,
+  /Package\s+Purchase\s+request.*?is\s+reversed/is, /to\s+your\s+\w+\s+account\s+from\s+Awash\s+Bank/i,
+];
+const AMOUNT_RE = /(?:ETB|Birr|Br\.?)\s*[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?\s*(?:ETB|Birr|Br\b|ብር)/i;
+const MONEY_VERB_RE = /\b(credited|debited|deposited|withdrawn|withdrew|transferred|transfered|received|paid|sent|purchased?|payment|refunded|reversed)\b|ገቢ|ወጪ|ተላልፏል|ተቀብለዋል|ተከፍሏል/i;
+
+function isMoneyText(body) {
+  const text = String(body || "");
+  if (NOTICE_PATTERNS.some((re) => re.test(text))) return false;
+  return AMOUNT_RE.test(text) && MONEY_VERB_RE.test(text);
+}
+
+// The same template with different amounts, dates, accounts and names gets
+// one key, so ten "debited ETB …" texts show as one thing to fix.
+function smsShape(body) {
+  return String(body || "")
+    .replace(/https?:\/\/\S+/gi, "‹link›")
+    .replace(/^Dear\s+(?:[^\s,!]+\s+){1,3}?(?=(?:your|you)\b)/i, "Dear ‹name› ")
+    .replace(/^Dear\s+[^,!]{1,40}[,!]/i, "Dear ‹name›,")
+    .replace(/[\d*Xx]{4,}/g, "‹#›")
+    .replace(/\d[\d,.:/-]*/g, "‹#›")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function groupByShape(rows) {
+  const groups = new Map();
+  for (const r of rows) {
+    const shape = smsShape(r.raw_message);
+    const key = `${r.sender_group}|${shape.slice(0, 70)}`;
+    let g = groups.get(key);
+    if (!g) groups.set(key, g = { bank: r.sender_group, shape, sample: r.raw_message, count: 0, users: new Set(), last: r.received_at });
+    g.count++;
+    g.users.add(r.user_id);
+    if (r.received_at > g.last) { g.last = r.received_at; g.sample = r.raw_message; }
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count || String(b.last).localeCompare(String(a.last)));
+}
+
+// Per bank, last 7 days: texts that should become transactions, how many did,
+// and which unparsed ones were really notices. The queue holds the 300 newest
+// unparsed texts; if it doesn't reach back 7 days the split is approximate.
+function parserStats(parseRows, queue) {
+  const since = Date.now() - 7 * DAY_MS;
+  const recent = (queue || []).filter((r) => new Date(r.received_at).getTime() >= since);
+  const reachesBack = !queue || queue.length < 300 ||
+    queue.some((r) => new Date(r.received_at).getTime() < since);
+  return parseRows.map((r) => {
+    const parsed = Number(r.parsed || 0);
+    const unparsed = Number(r.unparsed || 0);
+    const mine = recent.filter((q) => q.sender_group === r.sender_group);
+    const missed = queue ? mine.filter((q) => isMoneyText(q.raw_message)).length : unparsed;
+    const notices = Math.max(0, unparsed - missed) + Number(r.ignored || 0);
+    const texts = parsed + missed;
+    return {
+      ...r, parsed, missed, notices, texts,
+      rate: texts ? (parsed / texts) * 100 : null,
+      approx: !reachesBack,
+    };
+  });
+}
+
+function renderParseRate(rows, queue) {
+  const parsed = sum(rows, "parsed");
+  const missed = sum(rows, "missed");
+  const texts = parsed + missed;
+  const approx = rows.some((r) => r.approx);
+  const rate = texts ? (parsed / texts) * 100 : null;
+
+  setStat("real-rate", rate == null ? "—" : `${approx ? "≈" : ""}${rate.toFixed(1)}%`,
+    texts ? `${num(parsed)} of ${num(texts)} money texts became transactions` : "no bank texts this week");
+  const missedBanks = rows.filter((r) => r.missed > 0);
+  setStat("missed", num(missed), missed
+    ? missedBanks.map((r) => `${r.sender_group} ${r.missed}`).join(" · ")
+    : "nothing slipped through");
+
+  const bad = rate != null && rate < PARSE_RATE_TARGET;
+  parserVerdict.className = `verdict ${missed === 0 ? "verdict-good" : bad ? "verdict-bad" : "verdict-warn"}`;
+  // Older misses still in the queue: real gaps even when this week is clean.
+  const older = Math.max(0, (queue || []).filter((r) => isMoneyText(r.raw_message)).length - missed);
+  const olderNote = older
+    ? ` ${num(older)} older money text${older === 1 ? " is" : "s are"} still unparsed; their shapes are under “Fix next”.`
+    : "";
+  parserVerdict.innerHTML = missed === 0
+    ? `<strong>The parser is healthy this week.</strong> No money texts were missed in the last 7 days; everything unparsed this week is a notice.${olderNote}`
+    : `<strong>${num(missed)} money text${missed === 1 ? "" : "s"} missed in the last 7 days</strong> (${
+        missedBanks.map((r) => `${escapeHtml(r.sender_group)} ${r.missed}`).join(", ")}).${older ? olderNote : " The shapes to fix are under “Fix next”."}`;
+
   parseTable.innerHTML = `
     <thead><tr>
-      <th>Bank</th><th class="num">Captured</th><th class="num">Parsed</th>
-      <th class="num">Unparsed</th><th class="num">Ignored</th><th class="num">Users</th>
-      <th>Last SMS</th><th class="num">Parse rate</th>
+      <th>Bank</th><th class="num">Money texts</th><th class="num">Parsed</th><th class="num">Missed</th>
+      <th class="num">Notices</th><th class="num">Users</th><th>Last SMS</th><th class="num">Parse rate</th>
     </tr></thead>
     <tbody>${rows.map((r) => `
       <tr>
         <td><strong>${escapeHtml(r.sender_group)}</strong></td>
-        <td class="num">${num(r.captured)}</td>
+        <td class="num">${num(r.texts)}</td>
         <td class="num">${num(r.parsed)}</td>
-        <td class="num ${r.unparsed > 0 ? "text-bad" : ""}">${num(r.unparsed)}</td>
-        <td class="num muted">${num(r.ignored)}</td>
+        <td class="num ${r.missed > 0 ? "text-bad" : "muted"}">${num(r.missed)}</td>
+        <td class="num muted">${num(r.notices)}</td>
         <td class="num">${num(r.users)}</td>
         <td class="muted">${formatRelative(r.last_received_at) || "—"}</td>
-        <td class="num">${rateBadge(r.parse_rate)}</td>
+        <td class="num">${r.texts ? rateBadge(r.rate, r.approx) : `<span class="muted">${r.notices ? "only notices" : "no SMS"}</span>`}</td>
       </tr>`).join("")}
     </tbody>`;
 }
 
-function rateBadge(rate) {
+function rateBadge(rate, approx = false) {
   if (rate == null) return `<span class="muted">no SMS</span>`;
   const r = Number(rate);
-  return `<span class="pill ${r < PARSE_RATE_TARGET ? "pill-bad" : "pill-good"}">${r.toFixed(1)}%</span>`;
+  return `<span class="pill ${r < PARSE_RATE_TARGET ? "pill-bad" : "pill-good"}">${approx ? "≈" : ""}${r.toFixed(1)}%</span>`;
 }
 
 // Every SMS not turned into a transaction, for writing parsers: sender,
@@ -741,7 +853,13 @@ async function exportUnparsedSms(btn) {
 document.getElementById("export-sms-btn")?.addEventListener("click", (e) => exportUnparsedSms(e.currentTarget));
 
 function renderUnparsed(rows) {
-  $("stat-unparsed").textContent = rows.length >= 300 ? "300+" : num(rows.length);
+  const money = rows.filter((r) => isMoneyText(r.raw_message));
+  const notices = rows.filter((r) => !isMoneyText(r.raw_message));
+  const capped = rows.length >= 300 ? "+" : "";
+  $("stat-unparsed-sub").textContent = `${num(rows.length)}${capped} texts · ${num(money.length)} money · ${num(notices.length)} notices`;
+  $("notice-count").textContent = `${num(notices.length)}${capped} texts · nothing to fix`;
+  renderShapes(fixTable, groupByShape(money), "No money texts are waiting. Every unparsed text is a notice. 🎉");
+  renderShapes(noticeTable, groupByShape(notices), "No notices in the queue.");
   if (!rows.length) { unparsedList.innerHTML = `<p class="muted">Nothing unparsed. 🎉</p>`; return; }
   unparsedList.innerHTML = rows.map((r) => `
     <details class="sms-row">
@@ -756,6 +874,21 @@ function renderUnparsed(rows) {
         ${r.status_inferred ? ` · <span title="Uploaded by a pre-1.0.9 build; not matched to any transaction">status inferred</span>` : ""}
       </p>
     </details>`).join("");
+}
+
+function renderShapes(table, groups, emptyText) {
+  if (!groups.length) { table.innerHTML = `<tbody><tr><td class="muted">${emptyText}</td></tr></tbody>`; return; }
+  table.innerHTML = `
+    <thead><tr><th>Bank</th><th>Shape</th><th class="num">Texts</th><th class="num">Users</th><th>Last seen</th></tr></thead>
+    <tbody>${groups.slice(0, 40).map((g) => `
+      <tr>
+        <td><span class="pill">${escapeHtml(g.bank)}</span></td>
+        <td class="shape-cell"><details><summary title="Show the newest full text">${escapeHtml(g.shape)}</summary><pre class="sms-body">${escapeHtml(g.sample)}</pre></details></td>
+        <td class="num"><strong>${num(g.count)}</strong></td>
+        <td class="num">${num(g.users.size)}</td>
+        <td class="muted">${formatRelative(g.last) || "—"}</td>
+      </tr>`).join("")}
+    </tbody>`;
 }
 
 function renderCaptureOnly(rows) {
@@ -798,8 +931,7 @@ function renderMoneySenders(rows) {
 function renderQuality(q) {
   if (!q) return;
   setStat("dup-7d", pct(q.duplicates_7d, q.total_7d), `${num(q.duplicates_7d)} of ${num(q.total_7d)} new rows`);
-  setStat("dup-all", pct(q.duplicates, q.total), `${num(q.duplicates)} of ${num(q.total)} rows`);
-  setStat("unknown", pct(q.unknown, q.total), `${num(q.unknown)} UNKNOWN rows · ${num(q.unknown_7d)} this week`);
+  setStat("unknown", pct(q.unknown, q.total), `${num(q.unknown)} rows typed UNKNOWN · ${num(q.unknown_7d)} this week`);
 }
 
 // ----------------------------------------------------------------------------

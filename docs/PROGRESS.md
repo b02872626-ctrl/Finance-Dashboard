@@ -50,6 +50,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Admin Parser tab rebuilt: verdict line, real 7-day parse rate
+  (notices left out), "Fix next" (missed money texts grouped by shape),
+  per-bank table, notices and raw list folded away. Overview "Parsed this
+  week" uses the real rate. Checked signed in with live data.
 - 2026-11-09 Parser "Fix next" check: 9 of the 14 listed shapes (Dashen
   withdrawal and check payments, Awash school fees, credit and other-bank
   transfer, CBE short transfer and "debited for", CBE Birr reversal,

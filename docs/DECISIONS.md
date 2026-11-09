@@ -6,6 +6,14 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — The admin sorts unparsed texts into money and notices
+
+The bug queue mixed notices (activation, Fayda links, queue tokens) with
+real misses, so parse rates looked under target. The admin now applies the
+app's own rule from `SmsParserEngine` (ignore patterns, then "birr amount
+next to a money word") in `Web/admin/admin.js`, and leaves notices out of
+the parse rate. The two copies must stay in sync: when `RULES_VERSION`
+changes, update `NOTICE_PATTERNS`, `AMOUNT_RE` and `MONEY_VERB_RE` too.
 
 ## 2026-11-09 — Replay real SMS before writing a parser for a "Fix next" item
 
