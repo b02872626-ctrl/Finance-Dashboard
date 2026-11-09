@@ -10,6 +10,7 @@ class FinanceApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         com.financeapp.remote.CrashReporting.init(this)
+        com.financeapp.remote.ProductAnalytics.init(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "sms_sync_channel",

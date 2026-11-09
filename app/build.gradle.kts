@@ -53,6 +53,12 @@ android {
             "SENTRY_DSN",
             buildConfigString(localProperties.getProperty("sentry.dsn", ""))
         )
+        // PostHog product analytics (EU cloud). Empty key = off (debug builds are always off).
+        buildConfigField(
+            "String",
+            "POSTHOG_API_KEY",
+            buildConfigString(localProperties.getProperty("posthog.apiKey", ""))
+        )
     }
 
     // Release-signing config — paths + creds come from local.properties so
@@ -158,6 +164,7 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.2.1")
     // Crash reports only (no NDK, no replay, no tracing). Set up in CrashReporting.kt.
     implementation("io.sentry:sentry-android-core:8.60.0")
+    implementation("com.posthog:posthog-android:3.75.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("junit:junit:4.13.2")

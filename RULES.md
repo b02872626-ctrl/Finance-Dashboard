@@ -67,7 +67,12 @@ anything.
 - Crash reports go to Sentry through `remote/CrashReporting.kt` only. Never
   attach SMS text, amounts, balances, accounts, names or phones to a report;
   `CrashReporting.scrub` must keep passing `CrashReportingTest`.
-- Secrets only in `local.properties` (Supabase URL/key, `sentry.dsn`, signing) or Supabase
+- Product analytics go to PostHog (EU) through `remote/ProductAnalytics.kt`
+  (app) and `Web/analytics.js` (site) only: named events, no autocapture,
+  no session replay, never money data. New app events go through
+  `Telemetry.track`, which sends to both Supabase and PostHog;
+  `ProductAnalyticsTest` must keep passing. Never load PostHog on `/admin/`.
+- Secrets only in `local.properties` (Supabase URL/key, `sentry.dsn`, `posthog.apiKey`, signing) or Supabase
   secrets. Never in code, never in chat, never in a commit.
 - Ask before adding any new library.
 - One feature per session and per branch. At the end, say in plain English
@@ -83,7 +88,8 @@ anything.
 - Users can't touch each other's rows (`supabase/staging/isolation_test.py`).
 - The sync key and what is uploaded (`SupabaseTransactionKeyTest`,
   `RawSmsUploadTest`).
-- Crash-report scrubbing (`CrashReportingTest`).
+- Crash-report and analytics scrubbing (`CrashReportingTest`,
+  `ProductAnalyticsTest`).
 - The PIN (`PinManagerTest`) and Ethiopian dates (`EthiopianCalendarTest`).
 - Any bug that bit once: add a test that would have caught it.
 
