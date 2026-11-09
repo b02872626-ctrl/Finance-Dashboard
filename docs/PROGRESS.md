@@ -5,6 +5,13 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- Parser gaps still open (from the admin Parser tab, Nov 2026), waiting on
+  the owner's admin export `kash_unparsed_sms.csv` (Parser → All unparsed
+  texts → Download every unparsed SMS) for real examples: Awash water bill,
+  Awash electric bill, CBE "received ETB … from your account … to your
+  account", Berhan "transferred … to TeleBirr number", and two Telebirr
+  Amharic ተቀብለዋል shapes. Also: a BoA Amharic promo ("ያልታሰበ ሲሳይ!…") is
+  counted as a money text; add it to the ignore list (mirror in admin.js).
 - Play Store first upload: follow `docs/play-store-submission.md` §6
   (order of operations).
 
@@ -41,6 +48,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Parser "Fix next" check: 9 of the 14 listed shapes (Dashen
+  withdrawal and check payments, Awash school fees, credit and other-bank
+  transfer, CBE short transfer and "debited for", CBE Birr reversal,
+  Telebirr parking) already parse with today's rules; they were stale
+  statuses from old installs. Added masked tests for the uncovered ones and
+  bumped `RULES_VERSION` to 5 so phones re-send statuses and the list clears.
 - 2026-11-09 1.0.23: app events reach PostHog (sent right away). Installed
   on the owner's Galaxy S22.
 - 2026-11-09 App events reach PostHog: they were stuck on the phone

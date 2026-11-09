@@ -7,6 +7,15 @@ decision without asking the owner.
 Entries before 2026-11-05 were reconstructed from the git history.
 
 
+## 2026-11-09 — Replay real SMS before writing a parser for a "Fix next" item
+
+The admin Parser tab lists SMS whose last status from a phone was
+unparsed, and old installs report with old rules. Before writing a parser,
+replay the shape through today's code (`ParserCoverageReport`, with
+`KASH_RAW_CSV` pointing at an i_raw_data export). Of 14 shapes listed in
+Nov 2026, 9 already parsed. Those got tests and a `RULES_VERSION` bump (to 5)
+instead of new parsers, so phones re-send statuses and the list clears.
+
 ## 2026-11-09 — PostHog sends each app event right away
 
 1.0.22 sent nothing from phones: PostHog Android waits until 20 events are
