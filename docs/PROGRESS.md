@@ -35,6 +35,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Web dashboard "Forgot password?" on the sign-in page and in
+  Settings (under Current password). The emailed link opens the dashboard
+  with Settings set to "Set a new password" (no old password needed).
+  Expired links say so.
 - 2026-11-09 Web dashboard Settings (☰ menu → Settings): shows the signed-in
   account (name, email, sign-in method, member since) and changes the
   password after checking the current one. Google-only accounts see a note

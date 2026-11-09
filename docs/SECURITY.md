@@ -38,8 +38,11 @@ Admin password reset (`Web/admin/`, "Forgot password?") uses Supabase's
 reset email. The link can only return to an address on the Redirect URLs
 list above. From anywhere else (a branch preview, or "Send password
 recovery" in the Supabase dashboard) Supabase falls back to the Site URL,
-which lands on the home page; `Web/index.html` passes any `type=recovery`
-link on to `/admin/` before the user dashboard can sign it in. The page sends a reset
+which lands on the home page; the web dashboard (`Web/app.js`) then asks
+for a new password itself. The web dashboard's own "Forgot password?" (sign
+in page and Settings) also returns to the home page. A reset link signs the
+account in, so it is only as safe as the inbox, the same as any password
+reset. The page sends a reset
 only for its own admin list, and the reset grants nothing by itself: access
 is still `is_admin()`.
 

@@ -21,6 +21,13 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
 const APP_VERSION = "web-beta17";
 
+// Password reset links come back here with "#...type=recovery" (or
+// "#error_code=otp_expired" once stale). Read the hash before createClient,
+// which signs the link's session in and strips it.
+const URL_HASH = new URLSearchParams(window.location.hash.slice(1));
+let recoveryMode = URL_HASH.get("type") === "recovery";
+const recoveryLinkError = URL_HASH.get("error_code") || URL_HASH.get("error");
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: true, autoRefreshToken: true },
 });
@@ -37,6 +44,8 @@ const loginBtn       = $("login-btn");
 const retryBtn       = $("retry-btn");
 const errorBox       = $("login-error");
 const emailInput     = $("email");
+const loginNotice    = $("login-notice");
+const loginForgotBtn = $("login-forgot-btn");
 const passwordInput  = $("password");
 const userNameEl     = $("user-name");
 const greetingEl     = $("greeting");
@@ -390,14 +399,18 @@ const PERIOD_LABELS = {
   if (session) {
     await showDashboard(session);
     startSessionTracking(session);
+    if (recoveryMode) openSettings();
   } else {
     showLogin();
+    if (recoveryLinkError) showError("That reset link has expired or was already used. Send a new one.");
   }
 
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     if (session) {
+      if (event === "PASSWORD_RECOVERY") recoveryMode = true;
       await showDashboard(session);
       startSessionTracking(session);
+      if (recoveryMode && settingsBackdrop.classList.contains("hidden")) openSettings();
     } else {
       endSessionBeacon();
       stopSessionTracking();
@@ -636,6 +649,7 @@ refreshBtn.addEventListener("click", async () => {
 
 async function attemptLogin() {
   hideError();
+  hideLoginNotice();
   setLoginBusy(true);
   const email = emailInput.value.trim();
   const password = passwordInput.value;
@@ -3987,6 +4001,12 @@ const passwordError     = $("password-error");
 const passwordSaveBtn   = $("password-save-btn");
 const noPasswordNote    = $("settings-no-password");
 
+const passwordNotice    = $("password-notice");
+const passwordHeading   = $("password-heading");
+const currentPwGroup    = $("current-password-group");
+const recoveryNote      = $("recovery-note");
+const settingsForgotBtn = $("settings-forgot-btn");
+
 const PROVIDER_LABELS = { email: "Email and password", google: "Google" };
 
 async function openSettings() {
@@ -3999,43 +4019,74 @@ async function openSettings() {
     user.user_metadata?.name || user.user_metadata?.full_name || "—";
   $("settings-email").textContent = user.email || "—";
   $("settings-provider").textContent =
-    providers.map((p) => PROVIDER_LABELS[p] || p).join(" and ") || "—";
+    providers.map((p) => PROVIDER_LABELS[p] || p).join(", ") || "—";
   $("settings-since").textContent = user.created_at
     ? new Date(user.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
     : "—";
 
-  // Google-only accounts have no Kash password to check or change.
+  // Opened from a reset link: the emailed link already proved who this is, so
+  // ask only for the new password. Otherwise Google-only accounts have no Kash
+  // password to check or change.
   const hasPassword = providers.includes("email");
-  passwordForm.classList.toggle("hidden", !hasPassword);
-  noPasswordNote.classList.toggle("hidden", hasPassword);
+  const showForm = recoveryMode || hasPassword;
+  passwordForm.classList.toggle("hidden", !showForm);
+  noPasswordNote.classList.toggle("hidden", showForm);
+  currentPwGroup.classList.toggle("hidden", recoveryMode);
+  currentPasswordEl.required = !recoveryMode;
+  recoveryNote.classList.toggle("hidden", !recoveryMode);
+  passwordHeading.textContent = recoveryMode ? "Set a new password" : "Change password";
+  passwordSaveBtn.textContent = recoveryMode ? "Save new password" : "Change password";
   passwordForm.reset();
   passwordFormEmail.value = user.email || "";
   hidePasswordError();
+  hidePasswordNotice();
 
   settingsBackdrop.classList.remove("hidden");
+  if (recoveryMode) newPasswordEl.focus();
 }
 
 function closeSettings() {
   settingsBackdrop.classList.add("hidden");
   passwordForm.reset();
   hidePasswordError();
+  hidePasswordNotice();
+  recoveryMode = false;
+}
+
+passwordForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  hidePasswordError();
+  hidePasswordNotice();
+  const next = newPasswordEl.value;
+  if (next.length < 8) return showPasswordError("Use at least 8 characters.");
+  if (next !== confirmPasswordEl.value) return showPasswordError("The two new passwords don't match.");
+  if (recoveryMode) return saveRecoveredPassword(next);
+  return changePasswordWithCurrent(passwordFormEmail.value, currentPasswordEl.value, next);
+});
+
+// From a reset link: the page's session came from the emailed link, so set
+// the new password on it directly.
+async function saveRecoveredPassword(next) {
+  setPasswordBusy(true, "Saving…");
+  try {
+    const { error } = await supabase.auth.updateUser({ password: next });
+    if (error) return showPasswordError(prettyPasswordError(error.message));
+    closeSettings();
+    showToast("New password saved. Use it next time you sign in.", "success");
+  } catch (err) {
+    console.warn("Password reset failed:", err);
+    showPasswordError("Couldn't save the password. Check your connection and try again.");
+  } finally {
+    setPasswordBusy(false);
+  }
 }
 
 // Checks the current password on a separate, unsaved client, then changes the
 // password through that freshly signed-in session (Supabase may refuse a
 // password change on an older session). The page's own session is untouched.
-passwordForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  hidePasswordError();
-  const email = passwordFormEmail.value;
-  const current = currentPasswordEl.value;
-  const next = newPasswordEl.value;
-  if (next.length < 8) return showPasswordError("Use at least 8 characters.");
-  if (next !== confirmPasswordEl.value) return showPasswordError("The two new passwords don't match.");
+async function changePasswordWithCurrent(email, current, next) {
   if (next === current) return showPasswordError("Choose a password different from your current one.");
-
-  passwordSaveBtn.disabled = true;
-  passwordSaveBtn.textContent = "Changing…";
+  setPasswordBusy(true, "Changing…");
   const verifier = createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "kash-password-check" },
   });
@@ -4043,18 +4094,13 @@ passwordForm.addEventListener("submit", async (e) => {
     const { error: signInError } = await verifier.auth.signInWithPassword({ email, password: current });
     if (signInError) {
       showPasswordError(/invalid login credentials/i.test(signInError.message)
-        ? "Your current password is wrong."
+        ? "Your current password is wrong. Forgot it? Use the link above."
         : prettyAuthError(signInError.message));
       currentPasswordEl.focus();
       return;
     }
     const { error: updateError } = await verifier.auth.updateUser({ password: next });
-    if (updateError) {
-      showPasswordError(/different from the old/i.test(updateError.message)
-        ? "Choose a password different from your current one."
-        : prettyAuthError(updateError.message));
-      return;
-    }
+    if (updateError) return showPasswordError(prettyPasswordError(updateError.message));
     closeSettings();
     showToast("Password changed. Use the new one next time you sign in.", "success");
   } catch (err) {
@@ -4062,13 +4108,75 @@ passwordForm.addEventListener("submit", async (e) => {
     showPasswordError("Couldn't change the password. Check your connection and try again.");
   } finally {
     await verifier.auth.signOut({ scope: "local" }).catch(() => {});
-    passwordSaveBtn.disabled = false;
-    passwordSaveBtn.textContent = "Change password";
+    setPasswordBusy(false);
   }
+}
+
+function setPasswordBusy(busy, label) {
+  passwordSaveBtn.disabled = busy;
+  passwordSaveBtn.textContent = busy ? label : (recoveryMode ? "Save new password" : "Change password");
+}
+
+function prettyPasswordError(raw) {
+  if (/different from the old/i.test(raw)) return "Choose a password different from your current one.";
+  return prettyAuthError(raw);
+}
+
+// Emails a reset link that comes back to this page (see recoveryMode).
+async function sendPasswordReset(email) {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + "/",
+  });
+}
+
+function resetSentMessage(email) {
+  return `We sent a reset link to ${email}. Open it in this browser to choose a new password.`;
+}
+
+function prettyResetError(raw) {
+  if (/rate limit|security purposes/i.test(raw)) return "Too many reset emails. Wait a few minutes and try again.";
+  return prettyAuthError(raw);
+}
+
+settingsForgotBtn.addEventListener("click", async () => {
+  hidePasswordError();
+  hidePasswordNotice();
+  const email = passwordFormEmail.value;
+  if (!email) return showPasswordError("No email on this account.");
+  settingsForgotBtn.disabled = true;
+  settingsForgotBtn.textContent = "Sending…";
+  const { error } = await sendPasswordReset(email).catch((err) => ({ error: err }));
+  settingsForgotBtn.disabled = false;
+  settingsForgotBtn.textContent = "Forgot your current password?";
+  if (error) return showPasswordError(prettyResetError(error.message || ""));
+  showPasswordNotice(resetSentMessage(email));
+});
+
+loginForgotBtn.addEventListener("click", async () => {
+  hideError();
+  hideLoginNotice();
+  const email = emailInput.value.trim();
+  if (!email || !emailInput.checkValidity()) {
+    showError("Type your email above, then tap Forgot password.");
+    emailInput.focus();
+    return;
+  }
+  loginForgotBtn.disabled = true;
+  loginForgotBtn.textContent = "Sending…";
+  const { error } = await sendPasswordReset(email).catch((err) => ({ error: err }));
+  loginForgotBtn.disabled = false;
+  loginForgotBtn.textContent = "Forgot password?";
+  if (error) return showError(prettyResetError(error.message || ""));
+  // Same message whether or not the address has an account.
+  showLoginNotice(`If ${email} has a Kash account, a reset link is on its way. Open it in this browser.`);
 });
 
 function showPasswordError(msg) { passwordError.textContent = msg; passwordError.classList.remove("hidden"); }
 function hidePasswordError() { passwordError.classList.add("hidden"); }
+function showPasswordNotice(msg) { passwordNotice.textContent = msg; passwordNotice.classList.remove("hidden"); }
+function hidePasswordNotice() { passwordNotice.classList.add("hidden"); }
+function showLoginNotice(msg) { loginNotice.textContent = msg; loginNotice.classList.remove("hidden"); }
+function hideLoginNotice() { loginNotice.classList.add("hidden"); }
 
 if (settingsBtn) settingsBtn.addEventListener("click", openSettings);
 if (settingsClose) settingsClose.addEventListener("click", closeSettings);
