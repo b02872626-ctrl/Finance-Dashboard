@@ -9,6 +9,15 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="styles.css" />
     <script>
+      // Password reset links land here when Supabase falls back to the Site
+      // URL (a branch preview, or "Send password recovery" in the Supabase
+      // dashboard). Only the admin page can set a new password, so pass the
+      // link on to it before app.js signs the token into the user dashboard.
+      if (/(^#|&)type=recovery(&|$)/.test(location.hash)) {
+        location.replace("/admin/" + location.hash);
+      }
+    </script>
+    <script>
       // Pre-paint: pick the right starting view by checking localStorage
       // synchronously. Stops the login page from flashing on refresh when
       // the user already has a valid Supabase session cached.

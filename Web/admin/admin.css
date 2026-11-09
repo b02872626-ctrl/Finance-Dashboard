@@ -178,6 +178,30 @@ h3 { font-size: 16px; font-weight: 600; color: var(--headline); margin: 0; }
   font-size: 13px;
 }
 
+.notice {
+  color: var(--green-income);
+  background: rgba(62, 122, 74, 0.08);
+  border: 1px solid rgba(62, 122, 74, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.btn-link {
+  align-self: center;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  color: var(--body-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.btn-link:hover { color: var(--headline); }
+.btn-link[disabled] { opacity: 0.6; cursor: default; }
+
 /* ====== Dashboard header ====== */
 .dashboard-header {
   display: flex;

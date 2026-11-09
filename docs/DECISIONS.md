@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — Admins reset their own password from the dashboard
+
+The owner forgot the admin password and the only way back in was SQL in the
+Supabase editor. `Web/admin/` now has "Forgot password?", using Supabase's
+own reset email (`resetPasswordForEmail`) with the admin page as the return
+address, then `updateUser` to save the new password. The page only sends a
+reset for addresses on its admin list, so it can't be used to mail app
+users, and it shows the same message for any address so it doesn't reveal
+which ones are admins. Who is an admin is still decided only by `is_admin()`
+in the database. No new library and no database change.
+
 ## 2026-11-06 — Staging database, and every SQL change goes there first
 
 `kash-staging` is a second Supabase project rebuilt from the files in
