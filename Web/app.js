@@ -699,6 +699,9 @@ viewTabs.addEventListener("click", (e) => {
 function switchView(name) {
   state.view = name;
   viewTabs.querySelectorAll(".view-tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
+  const crumb = document.getElementById("k-crumb-view");
+  const activeTab = viewTabs.querySelector(`.view-tab[data-view="${name}"] .view-tab-label`);
+  if (crumb && activeTab) crumb.textContent = activeTab.textContent;
   dashboardView.classList.toggle("hidden", name !== "dashboard");
   transactionsView.classList.toggle("hidden", name !== "transactions");
   categoriesView.classList.toggle("hidden", name !== "categories");

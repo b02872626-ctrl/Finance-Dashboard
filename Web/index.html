@@ -74,19 +74,29 @@
 
       <!-- ===== Authenticated shell (wraps Dashboard + Category Analysis) ===== -->
       <section id="auth-shell" class="view auth-shell hidden">
-        <div class="k-hero">
-        <header class="dashboard-header">
-          <div>
-            <span class="k-wordmark">kash</span>
-            <p class="muted small" id="greeting">Welcome back,</p>
-            <h2 id="user-name">…</h2>
+        <aside class="k-sidebar">
+          <span class="k-wordmark"><span class="k-mark">k</span>kash</span>
+          <p class="k-nav-label">Menu</p>
+          <div id="view-tabs" class="view-tabs" role="tablist" aria-label="Sections">
+            <button class="view-tab active" data-view="dashboard" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="view-tab-label">Dashboard</span></button>
+            <button class="view-tab" data-view="transactions" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg><span class="view-tab-label">Transactions</span></button>
+            <button class="view-tab" data-view="categories" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12 12 3h8v8l-9 9z"/><circle cx="16" cy="8" r="1.5"/></svg><span class="view-tab-label">Categories</span></button>
+            <button class="view-tab" data-view="ledger" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><span class="view-tab-label">Ledger</span><span id="ledger-badge" class="view-tab-badge hidden">0</span></button>
+            <button class="view-tab" data-view="income" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5M6 11l6-6 6 6"/></svg><span class="view-tab-label">Income</span><span id="income-badge" class="view-tab-badge income-badge hidden">0</span></button>
+            <button class="view-tab" data-view="goals" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg><span class="view-tab-label">Goals</span><span id="goals-badge" class="view-tab-badge goals-badge hidden">0</span></button>
+            <button class="view-tab" data-view="budgets" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v12H3z"/><path d="M3 7l3-4h12l3 4M16 13h2"/></svg><span class="view-tab-label">Budgets</span><span id="budgets-badge" class="view-tab-badge budgets-badge hidden">0</span></button>
           </div>
-          <div class="header-actions">
-            <div class="calendar-toggle" role="group" aria-label="Calendar system">
+        </aside>
+
+        <div class="k-main">
+          <div class="k-topbar">
+            <p class="k-crumb"><span class="muted">Kash</span> <span class="muted">›</span> <span id="k-crumb-view">Dashboard</span></p>
+            <div class="header-actions">
+              <div class="calendar-toggle" role="group" aria-label="Calendar system">
               <button type="button" class="calendar-toggle-btn active" data-cal="gregorian" title="Gregorian calendar">GC</button>
               <button type="button" class="calendar-toggle-btn" data-cal="ethiopian" title="Ethiopian calendar">EC</button>
             </div>
-            <div class="header-menu">
+              <div class="header-menu">
               <button type="button" id="header-menu-btn" class="hamburger-btn" aria-label="Open menu" aria-haspopup="true" aria-expanded="false">
                 <span></span><span></span><span></span>
               </button>
@@ -97,34 +107,16 @@
                 <button id="logout-btn"    class="header-menu-item" role="menuitem">Log out</button>
               </div>
             </div>
+            </div>
           </div>
-        </header>
 
-        <!-- View tabs -->
-        <div id="view-tabs" class="view-tabs" role="tablist">
-          <button class="view-tab active" data-view="dashboard" role="tab">Dashboard</button>
-          <button class="view-tab" data-view="transactions" role="tab">Transactions</button>
-          <button class="view-tab" data-view="categories" role="tab">Categories</button>
-          <button class="view-tab" data-view="ledger" role="tab">
-            Ledger
-            <span id="ledger-badge" class="view-tab-badge hidden">0</span>
-          </button>
-          <button class="view-tab" data-view="income" role="tab">
-            Income
-            <span id="income-badge" class="view-tab-badge income-badge hidden">0</span>
-          </button>
-          <button class="view-tab" data-view="goals" role="tab">
-            Goals
-            <span id="goals-badge" class="view-tab-badge goals-badge hidden">0</span>
-          </button>
-          <button class="view-tab" data-view="budgets" role="tab">
-            Budgets
-            <span id="budgets-badge" class="view-tab-badge budgets-badge hidden">0</span>
-          </button>
-        </div>
-
-        <!-- Period selector (shared across views) -->
-        <div id="period-bar" class="period-bar" role="tablist" aria-label="Period">
+          <div class="k-panel">
+            <header class="k-panel-head">
+              <div>
+                <h1><span id="greeting">Welcome back,</span> <span id="user-name">…</span></h1>
+                <p class="muted">Your money, read from your bank SMS.</p>
+              </div>
+              <div id="period-bar" class="period-bar" role="tablist" aria-label="Period">
           <button class="period-pill active" data-period="month" role="tab">This month</button>
           <button class="period-pill" data-period="last-month" role="tab">Last month</button>
           <button class="period-pill" data-period="30d" role="tab">30 days</button>
@@ -132,7 +124,8 @@
           <button class="period-pill" data-period="year" role="tab">This year</button>
           <button class="period-pill" data-period="all" role="tab">All time</button>
         </div>
-        </div><!-- /.k-hero -->
+            </header>
+
 
         <!-- ===== Dashboard view ===== -->
         <section id="dashboard-view" class="view dashboard-view">
@@ -162,32 +155,32 @@
           <!-- 6 stat cards -->
           <section class="grid grid-3 stat-grid">
             <div class="card stat-card">
-              <p class="label">Total Balance</p>
+              <p class="label"><span class="k-ico tone-ink" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M16 12.5h2M3 10h18"/></svg></span>Total Balance</p>
               <p class="big-number teal" id="stat-balance">—</p>
               <p class="muted small" id="stat-balance-sub">across all accounts</p>
             </div>
             <div class="card stat-card">
-              <p class="label">Spend <span id="stat-period-label-1" class="muted small">this month</span></p>
+              <p class="label"><span class="k-ico tone-coral" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></svg></span>Spend <span id="stat-period-label-1" class="muted small">this month</span></p>
               <p class="big-number coral" id="stat-month-spend">—</p>
               <p class="muted small" id="stat-month-spend-sub">—</p>
             </div>
             <div class="card stat-card">
-              <p class="label">Income <span id="stat-period-label-2" class="muted small">this month</span></p>
+              <p class="label"><span class="k-ico tone-green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20V5M6 11l6-6 6 6"/></svg></span>Income <span id="stat-period-label-2" class="muted small">this month</span></p>
               <p class="big-number income" id="stat-month-income">—</p>
               <p class="muted small" id="stat-month-income-sub">—</p>
             </div>
             <div class="card stat-card">
-              <p class="label">Net Cashflow</p>
+              <p class="label"><span class="k-ico tone-blue" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-7"/><path d="M15 8h5v5"/></svg></span>Net Cashflow</p>
               <p class="big-number" id="stat-net">—</p>
               <p class="muted small" id="stat-net-sub">income − spend</p>
             </div>
             <div class="card stat-card">
-              <p class="label">Avg Daily Spend</p>
+              <p class="label"><span class="k-ico tone-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span>Avg Daily Spend</p>
               <p class="big-number teal" id="stat-avg-daily">—</p>
               <p class="muted small" id="stat-avg-daily-sub">—</p>
             </div>
             <div class="card stat-card">
-              <p class="label">Largest Expense</p>
+              <p class="label"><span class="k-ico tone-purple" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg></span>Largest Expense</p>
               <p class="big-number coral" id="stat-largest">—</p>
               <p class="muted small" id="stat-largest-sub">—</p>
             </div>
@@ -1017,6 +1010,8 @@
             <div id="budget-card-grid" class="budget-grid hidden"></div>
           </section>
         </section>
+          </div><!-- /.k-panel -->
+        </div><!-- /.k-main -->
 
         <!-- Kept for app.js; not shown (no backend names in the UI). -->
         <p class="footer muted small hidden">Project <code id="project-ref">…</code></p>
