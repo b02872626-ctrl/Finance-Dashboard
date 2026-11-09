@@ -14,7 +14,8 @@ import com.financeapp.parsing.TransactionType
 class AwashDebitParser : BankParser {
 
     private val accountRe  = Regex("""Account\s+(\S+)\s+has\s+been\s+Debited""", RegexOption.IGNORE_CASE)
-    private val amountRe   = Regex("""Debited\s+with\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
+    // Some Awash alerts write the amount negative: "Debited with ETB -2930.75".
+    private val amountRe   = Regex("""Debited\s+with\s+ETB\s*-?\s*(\d[\d,]*(?:\.\d+)?|\.\d+)""", RegexOption.IGNORE_CASE)
     private val toRe       = Regex("""by\s+(.+?)(?:\s+via\s+|\.\s+Your)""", RegexOption.IGNORE_CASE)
     private val balanceRe  = Regex("""balance\s+now\s+is\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
 

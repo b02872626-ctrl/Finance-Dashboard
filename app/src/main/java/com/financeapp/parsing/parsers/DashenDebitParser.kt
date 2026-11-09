@@ -14,8 +14,9 @@ import com.financeapp.parsing.TransactionType
  */
 class DashenDebitParser : BankParser {
 
-    private val accountRe  = Regex("""Account\s+'([^']+)'\s+has\s+been\s+debited""", RegexOption.IGNORE_CASE)
-    private val amountRe   = Regex("""debited\s+with\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
+    private val accountRe  = Regex("""Account\s+'([^']+)'\s+(?:has\s+been|is)\s+debited""", RegexOption.IGNORE_CASE)
+    // Amounts under 1 birr come without the zero: "debited with ETB .90".
+    private val amountRe   = Regex("""debited\s+with\s+ETB\s*(\d[\d,]*(?:\.\d+)?|\.\d+)""", RegexOption.IGNORE_CASE)
     private val toRe       = Regex("""to\s+(.+?)\s+on\s+\d""", RegexOption.IGNORE_CASE)
     private val balanceRe  = Regex("""current\s+balance\s+is\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
 

@@ -6,6 +6,18 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — Safety footers are cut off before the ignore rules run
+
+Banks now end real alerts with safety lines: BoA "Link your Fayda: <url>"
+and Awash "Alert: Awash Bank will never ask for your PIN … OTP. Do not
+share …". Those words are ignore patterns for notices, so every alert with
+the footer was dropped (all BoA alerts since 1.0.12). The engine now strips
+known footers (`noticeFooters`) before the ignore patterns and the money
+check; parsers still get the full SMS. The Fayda pattern stays for real
+Fayda notices. Mirrored in `Web/admin/admin.js` (`NOTICE_FOOTERS`).
+BoA USD-account alerts stay ignored until Kash supports a second currency,
+so dollars never mix into birr totals.
+
 ## 2026-11-09 — The admin sorts unparsed texts into money and notices
 
 The bug queue mixed notices (activation, Fayda links, queue tokens) with

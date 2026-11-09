@@ -5,6 +5,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- NAH-29 part 2: the export has no money SMS at all from Hibret, Debub
+  Global or NIB (only notices), and none from Zemen, Coop, Wegagen, Bunna,
+  Oromia, Amhara, Enat, Global, Abay. New parsers need real samples from
+  testers (or the beta-only collection in NAH-29 part 3). Also open: BoA
+  USD-account alerts (21 in the export) need currency support first.
 - Parser gaps still open (from the admin Parser tab, Nov 2026), waiting on
   the owner's admin export `kash_unparsed_sms.csv` (Parser → All unparsed
   texts → Download every unparsed SMS) for real examples: Awash water bill,
@@ -25,6 +30,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- Export a fresh `i_raw_data` CSV (the one in Downloads ends 28 Oct) so
+  parser work sees November SMS.
 - Make a Telegram group (or pick another channel) for testers; the release
   script prints the message to paste there. Pick a weekly release day.
 - PostHog: if not done yet, turn on "Discard client IP data" (PostHog →
@@ -50,6 +57,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 NAH-29 part 1: ~557 real money SMS that were dropped as
+  "ignored" now parse (replayed on the 27,479-row i_raw_data export to
+  28 Oct). BoA's new "Link your Fayda" footer (since 1.0.12) dropped every
+  BoA alert (+408); Berhan's May 2026 "debited 2000 on …" wording (+135);
+  Awash "You have sent", Telebirr transfer, "you have received", negative
+  debits (+10); CBE ATM withdrawals; Dashen amounts under 1 birr.
+  `RULES_VERSION` 6. `ParserCoverageReport` also writes
+  `build/parser-ignored.txt` (ignored SMS by shape). Not yet on a phone.
 - 2026-11-09 Admin Parser tab rebuilt: verdict line, real 7-day parse rate
   (notices left out), "Fix next" (missed money texts grouped by shape),
   per-bank table, notices and raw list folded away. Overview "Parsed this

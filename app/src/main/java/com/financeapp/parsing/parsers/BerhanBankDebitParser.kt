@@ -33,7 +33,8 @@ import com.financeapp.parsing.TransactionType
  */
 class BerhanBankDebitParser : BankParser {
 
-    private val amountRe   = Regex("""debited\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
+    // "debited ETB100.00" (to early 2026) and "debited 2000" (from May 2026).
+    private val amountRe   = Regex("""debited\s+(?:ETB\s*)?(\d[\d,]*(?:\.\d+)?)""", RegexOption.IGNORE_CASE)
     private val accountRe  = Regex("""A/C\s+No\.\s*(\S+)""", RegexOption.IGNORE_CASE)
     private val dateRe     = Regex("""on\s+(\d{2})-(\d{2})-(\d{4})""")
     private val refRe      = Regex("""Ref\.\s*(\S+?)\.""", RegexOption.IGNORE_CASE)
