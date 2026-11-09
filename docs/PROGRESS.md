@@ -57,6 +57,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 1.0.24: BoA and Berhan transactions show up again; Reads Awash wallet transfers and CBE ATM withdrawals. Not yet installed on a real phone.
 - 2026-11-09 NAH-29 part 1: ~557 real money SMS that were dropped as
   "ignored" now parse (replayed on the 27,479-row i_raw_data export to
   28 Oct). BoA's new "Link your Fayda" footer (since 1.0.12) dropped every
