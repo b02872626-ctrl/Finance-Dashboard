@@ -288,7 +288,9 @@ object SmsParserEngine {
         amountRe.containsMatchIn(body) && moneyVerbRe.containsMatchIn(body)
 
     /**
-     * Bump whenever the ignore list or a parser changes. Devices re-send
+     * Bump whenever the ignore list or a parser changes. When the ignore
+     * list or [looksLikeTransaction] changes, mirror it in Web/admin/admin.js
+     * (NOTICE_PATTERNS, AMOUNT_RE, MONEY_VERB_RE) so the admin agrees. Devices re-send
      * every stored SMS's parse status once per version, so the admin bug
      * queue reflects what the current rules make of old messages.
      */

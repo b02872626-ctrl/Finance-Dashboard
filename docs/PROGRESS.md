@@ -5,6 +5,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- Parsers for the shapes in the admin's Parser → "Fix next" list (Dashen
+  withdrawals and check payments, Awash school-fee and bill payments,
+  Awash/CBE transfers, CBE Birr reversals). Each needs a masked real-SMS
+  test (RULES.md).
 - Play Store first upload: follow `docs/play-store-submission.md` §6
   (order of operations).
 
@@ -41,6 +45,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 Admin Parser tab rebuilt: verdict line, real 7-day parse rate
+  (notices left out), "Fix next" (missed money texts grouped by shape),
+  per-bank table, notices and raw list folded away. Overview "Parsed this
+  week" uses the real rate. Checked signed in with live data.
 - 2026-11-09 Admin fix 2: the Overview still stuck on "Loading…". The
   redesign had deleted the `guard()` helper that paints each card, so
   painting crashed once data arrived. Restored; checked signed in with live
