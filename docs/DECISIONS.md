@@ -6,6 +6,15 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-09 — No preview builds; the site builds only from `main`
+
+Owner's call: per-branch preview builds on Cloudflare Pages (and Vercel)
+were noise. Cloudflare's Preview branch setting is None, so only merges to
+`main` build and go live at `kash-140.pages.dev`. This replaces "every
+branch gets a preview link" in the 2026-11-05 Cloudflare entry. To try a
+change before merging, run `Web/` locally. Supabase reset links never
+worked on previews anyway (they aren't on the Redirect URLs list).
+
 ## 2026-11-09 — The web dashboard handles its own password reset links
 
 Owners didn't know their current password, so the web dashboard got
