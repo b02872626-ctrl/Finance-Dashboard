@@ -126,7 +126,10 @@ sentry {
     projectName.set(localProperties.getProperty("sentry.project", "android"))
     if (sentryAuthToken.isNotEmpty()) authToken.set(sentryAuthToken)
     includeProguardMapping.set(true)
-    autoUploadProguardMapping.set(sentryAuthToken.isNotEmpty())
+    // `-Psentry.noUpload=true` skips the upload (practice release runs).
+    autoUploadProguardMapping.set(
+        sentryAuthToken.isNotEmpty() && project.findProperty("sentry.noUpload")?.toString() != "true"
+    )
     includeSourceContext.set(false)
     uploadNativeSymbols.set(false)
     includeDependenciesReport.set(false)
