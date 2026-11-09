@@ -59,6 +59,12 @@ android {
             "POSTHOG_API_KEY",
             buildConfigString(localProperties.getProperty("posthog.apiKey", ""))
         )
+        // `-Pposthog.debug=true` makes PostHog log what it does (diagnostic builds only).
+        buildConfigField(
+            "boolean",
+            "POSTHOG_DEBUG",
+            (project.findProperty("posthog.debug")?.toString() == "true").toString()
+        )
     }
 
     // Release-signing config — paths + creds come from local.properties so

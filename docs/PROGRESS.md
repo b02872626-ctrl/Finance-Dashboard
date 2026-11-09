@@ -41,6 +41,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-09 App events reach PostHog: they were stuck on the phone
+  (PostHog waited for 20). Checked on the owner's Galaxy S22 with a
+  diagnostic build: each event is sent within a second.
 - 2026-11-09 Admin fix 2: the Overview still stuck on "Loading…". The
   redesign had deleted the `guard()` helper that paints each card, so
   painting crashed once data arrived. Restored; checked signed in with live
