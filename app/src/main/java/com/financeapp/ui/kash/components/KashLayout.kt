@@ -246,7 +246,6 @@ fun KashTopBar(
 
 enum class KashTab(val label: String, val icon: KashIcon) {
     Home("Home", KashIcon.Home),
-    Accounts("Accounts", KashIcon.Card),
     History("History", KashIcon.History),
     Analytics("Analytics", KashIcon.Chart),
 }

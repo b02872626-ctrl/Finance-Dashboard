@@ -54,7 +54,6 @@ import com.financeapp.ui.kash.components.KashTab
 import com.financeapp.ui.kash.components.KashTabBar
 import com.financeapp.ui.kash.components.kashBank
 import com.financeapp.ui.screens.AccountDetailScreen
-import com.financeapp.ui.screens.AccountsTabScreen
 import com.financeapp.ui.screens.AddScreen
 import com.financeapp.ui.screens.AllowSmsScreen
 import com.financeapp.ui.screens.AnalyticsTabScreen
@@ -272,13 +271,12 @@ private fun MainNavigation(
         }
     }
 
-    // The tab bar for the four tab screens (icons only, dot under the active one).
+    // The tab bar for the three tab screens (icons only, dot under the active one).
     val tabBar: (KashTab) -> (@Composable () -> Unit) = { active ->
         {
             KashTabBar(active, onSelect = { tab ->
                 val target = when (tab) {
                     KashTab.Home -> Screen.Dashboard
-                    KashTab.Accounts -> Screen.Accounts
                     KashTab.History -> Screen.Transactions
                     KashTab.Analytics -> Screen.Analytics
                 }
@@ -341,6 +339,7 @@ private fun MainNavigation(
                     onAdd = { navController.navigate(Screen.AddTransaction.route) },
                     onReviewToday = { navController.navigate(Screen.DailyReview.route) { launchSingleTop = true } },
                     onReviewOlder = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
+                    onOpenAccount = ::openAccount,
                 )
             }
             composable(Screen.AddTransaction.route) {
@@ -356,15 +355,14 @@ private fun MainNavigation(
                     onClose = ::back,
                 )
             }
+            // The Accounts tab is part of Home now (NAH-28); old links land on Home.
             composable(Screen.Accounts.route) {
-                AccountsTabScreen(
-                    vm = dashVm,
-                    hasSmsAccess = hasSmsAccess,
-                    tabBar = tabBar(KashTab.Accounts),
-                    onOpenAccount = ::openAccount,
-                    onAdd = { navController.navigate(Screen.AddTransaction.route) },
-                    onTxClick = ::openTx,
-                )
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(navController.graph.findStartDestination().id)
+                        launchSingleTop = true
+                    }
+                }
             }
             composable(
                 route = "bank_analytics/{bankName}?account={account}",
