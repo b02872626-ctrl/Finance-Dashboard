@@ -56,6 +56,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-10 1.0.25: A card on Home tells you when a new version is ready; Settings → Updates shows your version and what's new; Settings shows when your phone blocks Kash notifications, and how to fix it. Not yet installed on a real phone.
 - 2026-11-10 NAH-15 (notifications part): Settings → Notifications shows
   "Your phone is blocking Kash notifications" with Allow notifications
   (Android's prompt) or Open phone settings, and the Settings row says
