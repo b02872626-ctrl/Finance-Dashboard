@@ -56,6 +56,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-10 1.0.26: Your accounts are on Home now: swipe the row under your total and tap one for its history; Three tabs instead of four: Home, History, Analytics; A low-balance alert opens that account's history. Not yet installed on a real phone.
 - 2026-11-10 NAH-28: Home and the Accounts tab are one page. Under the
   total balance, a row of account cards (bank mark, name, balance) you swipe
   sideways; tap one for that account's history. Amounts hide with the total.

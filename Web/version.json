@@ -1,10 +1,10 @@
 {
-  "versionCode": 45,
-  "versionName": "1.0.25",
+  "versionCode": 46,
+  "versionName": "1.0.26",
   "url": "https://kash-140.pages.dev/download",
   "notes": [
-    "A card on Home tells you when a new version is ready",
-    "Settings → Updates shows your version and what's new",
-    "Settings shows when your phone blocks Kash notifications, and how to fix it"
+    "Your accounts are on Home now: swipe the row under your total and tap one for its history",
+    "Three tabs instead of four: Home, History, Analytics",
+    "A low-balance alert opens that account's history"
   ]
 }
