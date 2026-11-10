@@ -6,6 +6,15 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-10 — New tester builds show as a card on Home, not only a notification
+
+The update notification needs notification permission, which onboarding
+never asks for on Android 13+, so many testers never saw it. `UpdateChecker`
+now keeps the last `version.json` it read (with `notes`) and Home shows a
+card for a newer build; "Later" hides it until a newer one. Settings →
+Updates shows the versions and a "Check now". Play installs never see the
+card (Play updates the app and forbids other update sources).
+
 ## 2026-11-09 — Safety footers are cut off before the ignore rules run
 
 Banks now end real alerts with safety lines: BoA "Link your Fayda: <url>"

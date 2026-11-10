@@ -93,6 +93,24 @@ private fun initials(name: String, email: String): String {
     }.uppercase(Locale.US).ifBlank { "K" }
 }
 
+/** Settings → Updates: installed and latest version, what's new, Check now. */
+@Composable
+fun UpdatesPage(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val s by com.financeapp.notifications.UpdateChecker.state.collectAsState()
+    val cal = com.financeapp.util.LocalCalendarSystem.current
+    SettingsPage("Updates", onBack, headline = "Kash ${s.installedName}") { pad ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad)) {
+            UpdatesContent(
+                s, cal,
+                onCheckNow = { scope.launch { com.financeapp.notifications.UpdateChecker.checkNow(context) } },
+                onDownload = { url -> openDownloadPage(context, url) },
+            )
+        }
+    }
+}
+
 /** Sub-page frame: back + title-xs, optional big title, then the sheet. */
 @Composable
 private fun SettingsPage(
@@ -127,7 +145,9 @@ fun SettingsHomeScreen(
     onBanks: () -> Unit,
     onExport: () -> Unit,
     onSupport: () -> Unit,
+    onUpdates: () -> Unit,
 ) {
+    val update by com.financeapp.notifications.UpdateChecker.state.collectAsState()
     val name by vm.userName.collectAsState()
     val email by vm.supabaseEmail.collectAsState()
     val notifications by vm.notificationsEnabled.collectAsState()
@@ -169,6 +189,7 @@ fun SettingsHomeScreen(
                 KashListRow("Change PIN", icon = KashIcon.Lock, onClick = onChangePin)
                 KashListRow("Banks Kash follows", icon = KashIcon.Card, value = followedBanks.toString(), onClick = onBanks)
                 KashListRow("Export transactions", icon = KashIcon.Export, onClick = onExport)
+                KashListRow("Updates", icon = KashIcon.Info, value = updatesRowValue(update), onClick = onUpdates)
                 KashListRow("Email support", icon = KashIcon.External, showDivider = false, onClick = onSupport)
             }
             Row(

@@ -55,4 +55,40 @@ class UpdateCheckerTest {
         assertFalse(UpdateChecker.shouldNotify(39, null, 0, null))
         assertFalse(UpdateChecker.shouldNotify(39, v20, 0, "com.android.vending"))
     }
+
+    @Test
+    fun readsReleaseNotes() {
+        val latest = UpdateChecker.parse(
+            """{"versionCode":44,"versionName":"1.0.24","url":"https://kash-140.pages.dev/download",
+               "notes":["BoA and Berhan transactions show up again","  ",""]}"""
+        )!!
+        assertEquals(listOf("BoA and Berhan transactions show up again"), latest.notes)
+        assertEquals(emptyList<String>(), UpdateChecker.parse("""{"versionCode":40,"versionName":"1.0.20"}""")!!.notes)
+    }
+
+    @Test
+    fun cardShowsForANewerTesterBuildUntilLater() {
+        val s = UpdateChecker.State(installedCode = 39, installedName = "1.0.19", latest = v20)
+        assertTrue(s.updateAvailable)
+        assertEquals(v20, s.cardVersion)
+        assertNull("Later hides it", s.copy(dismissedCode = 40).cardVersion)
+        assertEquals("a newer build shows again", v20.copy(versionCode = 41), s.copy(dismissedCode = 40, latest = v20.copy(versionCode = 41)).cardVersion)
+    }
+
+    @Test
+    fun noCardWhenUpToDateOrFromPlay() {
+        assertNull(UpdateChecker.State(installedCode = 40, latest = v20).cardVersion)
+        assertNull(UpdateChecker.State(installedCode = 39, latest = null).cardVersion)
+        val play = UpdateChecker.State(installedCode = 39, latest = v20, fromPlay = true)
+        assertFalse(play.updateAvailable)
+        assertNull(play.cardVersion)
+    }
+
+    @Test
+    fun settingsRowSaysWhereThingsStand() {
+        assertEquals("1.0.20 ready", com.financeapp.ui.screens.updatesRowValue(UpdateChecker.State(installedCode = 39, latest = v20)))
+        assertEquals("Up to date", com.financeapp.ui.screens.updatesRowValue(UpdateChecker.State(installedCode = 40, latest = v20, checkedAt = 1L)))
+        assertEquals("Google Play", com.financeapp.ui.screens.updatesRowValue(UpdateChecker.State(fromPlay = true)))
+        assertEquals("1.0.19", com.financeapp.ui.screens.updatesRowValue(UpdateChecker.State(installedName = "1.0.19")))
+    }
 }

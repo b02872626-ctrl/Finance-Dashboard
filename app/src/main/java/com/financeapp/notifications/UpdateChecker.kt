@@ -20,7 +20,11 @@ import androidx.work.WorkerParameters
 import com.financeapp.BuildConfig
 import com.financeapp.R
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -31,6 +35,10 @@ import java.util.concurrent.TimeUnit
  * so nothing else tells them about a new build. Reads `Web/version.json` from
  * the site twice a day (and at app start) and posts one notification per new
  * version. Tapping it opens the download page.
+ *
+ * The last result is kept ([state]) so Home can show an update card and
+ * Settings → Updates can show the version, the notes and "Check now". The
+ * card works even when notifications are off or never allowed.
  *
  * Off for installs from Google Play: Play updates the app itself and does
  * not allow apps to point users at other update sources.
@@ -45,8 +53,42 @@ object UpdateChecker {
     private const val PERIODIC = "kash_update_check"
     private const val NOW = "kash_update_check_now"
     private const val PLAY_INSTALLER = "com.android.vending"
+    private const val KEY_LATEST = "latest_json"
+    private const val KEY_CHECKED_AT = "checked_at"
+    private const val KEY_FAILED = "last_check_failed"
+    private const val KEY_DISMISSED_CODE = "dismissed_version_code"
 
-    data class Latest(val versionCode: Int, val versionName: String, val url: String)
+    data class Latest(
+        val versionCode: Int,
+        val versionName: String,
+        val url: String,
+        /** Release notes for testers (`notes` in version.json), newest build only. */
+        val notes: List<String> = emptyList(),
+    )
+
+    /** What the app knows about updates; drives the Home card and Settings → Updates. */
+    data class State(
+        val installedCode: Int = BuildConfig.VERSION_CODE,
+        val installedName: String = BuildConfig.VERSION_NAME,
+        val latest: Latest? = null,
+        /** Epoch millis of the last successful check; null before the first. */
+        val checkedAt: Long? = null,
+        /** The last check couldn't reach the site (offline, timeout). */
+        val lastCheckFailed: Boolean = false,
+        /** Installed from Google Play: Play handles updates, Kash stays quiet. */
+        val fromPlay: Boolean = false,
+        /** The user tapped "Later" on the card for this version. */
+        val dismissedCode: Int = 0,
+        /** A "Check now" is running. */
+        val checking: Boolean = false,
+    ) {
+        val updateAvailable: Boolean get() = !fromPlay && latest != null && latest.versionCode > installedCode
+        /** The newer build for the Home card, or null when there's nothing to show. */
+        val cardVersion: Latest? get() = latest?.takeIf { updateAvailable && it.versionCode > dismissedCode }
+    }
+
+    private val _state = MutableStateFlow(State())
+    val state: StateFlow<State> = _state.asStateFlow()
 
     /** Parses version.json; null when it is missing a field or malformed. */
     internal fun parse(json: String): Latest? = runCatching {
@@ -54,9 +96,16 @@ object UpdateChecker {
         val code = o.getInt("versionCode")
         val name = o.getString("versionName").trim()
         val url = o.optString("url", DOWNLOAD_URL).trim()
+        val notes = o.optJSONArray("notes")?.let { a ->
+            (0 until a.length()).mapNotNull { a.optString(it).trim().takeIf(String::isNotEmpty) }
+        }.orEmpty()
         if (code <= 0 || name.isEmpty() || !url.startsWith("https://")) null
-        else Latest(code, name, url)
+        else Latest(code, name, url, notes)
     }.getOrNull()
+
+    private fun Latest.toJson(): String = JSONObject()
+        .put("versionCode", versionCode).put("versionName", versionName).put("url", url)
+        .put("notes", JSONArray(notes)).toString()
 
     /** Notify only for a newer build we haven't told the user about yet. */
     internal fun shouldNotify(
@@ -72,6 +121,7 @@ object UpdateChecker {
 
     /** App start: check now (when online) and book the twice-daily check. */
     fun ensureScheduled(context: Context) {
+        load(context)
         val wm = WorkManager.getInstance(context.applicationContext)
         val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         wm.enqueueUniquePeriodicWork(
@@ -86,15 +136,61 @@ object UpdateChecker {
         )
     }
 
-    suspend fun check(context: Context) {
-        val installer = installerOf(context)
-        if (installer == PLAY_INSTALLER) return
-        val latest = fetch() ?: return
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val notified = prefs.getInt(KEY_NOTIFIED_CODE, 0)
-        if (!shouldNotify(BuildConfig.VERSION_CODE, latest, notified, installer)) return
-        if (post(context, latest)) prefs.edit().putInt(KEY_NOTIFIED_CODE, latest.versionCode).apply()
+    /** Reads the saved result so the card shows right away, before any network. */
+    fun load(context: Context) {
+        val p = prefs(context)
+        _state.value = State(
+            latest = p.getString(KEY_LATEST, null)?.let(::parse),
+            checkedAt = p.getLong(KEY_CHECKED_AT, 0L).takeIf { it > 0 },
+            lastCheckFailed = p.getBoolean(KEY_FAILED, false),
+            fromPlay = installerOf(context) == PLAY_INSTALLER,
+            dismissedCode = p.getInt(KEY_DISMISSED_CODE, 0),
+        )
     }
+
+    /** Background check (start of the app and twice a day): saves, then notifies once per version. */
+    suspend fun check(context: Context) {
+        val latest = refresh(context) ?: return
+        val installer = installerOf(context)
+        val p = prefs(context)
+        val notified = p.getInt(KEY_NOTIFIED_CODE, 0)
+        if (!shouldNotify(BuildConfig.VERSION_CODE, latest, notified, installer)) return
+        if (post(context, latest)) p.edit().putInt(KEY_NOTIFIED_CODE, latest.versionCode).apply()
+    }
+
+    /** Settings → Updates "Check now". Never posts a notification. */
+    suspend fun checkNow(context: Context) {
+        _state.value = _state.value.copy(checking = true)
+        refresh(context)
+        _state.value = _state.value.copy(checking = false)
+    }
+
+    /** "Later" on the Home card: hide it until a newer build than this one. */
+    fun dismiss(context: Context, versionCode: Int) {
+        prefs(context).edit().putInt(KEY_DISMISSED_CODE, versionCode).apply()
+        _state.value = _state.value.copy(dismissedCode = versionCode)
+    }
+
+    /** Fetches version.json and saves the outcome; returns the latest build or null. */
+    private suspend fun refresh(context: Context): Latest? {
+        if (installerOf(context) == PLAY_INSTALLER) {
+            _state.value = _state.value.copy(fromPlay = true)
+            return null
+        }
+        val latest = fetch()
+        val p = prefs(context)
+        if (latest == null) {
+            p.edit().putBoolean(KEY_FAILED, true).apply()
+            _state.value = _state.value.copy(lastCheckFailed = true)
+            return null
+        }
+        val now = System.currentTimeMillis()
+        p.edit().putString(KEY_LATEST, latest.toJson()).putLong(KEY_CHECKED_AT, now).putBoolean(KEY_FAILED, false).apply()
+        _state.value = _state.value.copy(latest = latest, checkedAt = now, lastCheckFailed = false)
+        return latest
+    }
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private suspend fun fetch(): Latest? = withContext(Dispatchers.IO) {
         runCatching {
@@ -131,7 +227,8 @@ object UpdateChecker {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val title = context.getString(R.string.notif_update_title, latest.versionName)
-        val text = context.getString(R.string.notif_update_text)
+        val text = latest.notes.firstOrNull()?.let { "$it. " + context.getString(R.string.notif_update_text) }
+            ?: context.getString(R.string.notif_update_text)
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_kash)
             .setColor(0xFF3D4859.toInt())

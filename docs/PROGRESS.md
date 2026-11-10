@@ -5,6 +5,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- Onboarding never asks for the notification permission (Android 13+), so
+  those phones get no Kash notifications at all, update notices included.
+  Belongs to NAH-15 (onboarding review).
 - NAH-29 part 2: the export has no money SMS at all from Hibret, Debub
   Global or NIB (only notices), and none from Zemen, Coop, Wegagen, Bunna,
   Oromia, Amhara, Enat, Global, Abay. New parsers need real samples from
@@ -57,6 +60,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-10 NAH-26: update card on Home ("Kash x.y.z is ready", the
+  release notes, Update / Later) and Settings → Updates (installed and
+  latest version, what's new, last checked, Check now; "Google Play" for
+  Play installs). The notification now leads with the first release note.
+  Unit tests pass; not yet seen on a phone (no device connected).
 - 2026-11-09 1.0.24: BoA and Berhan transactions show up again; Reads Awash wallet transfers and CBE ATM withdrawals. Not yet installed on a real phone.
 - 2026-11-09 NAH-29 part 1: ~557 real money SMS that were dropped as
   "ignored" now parse (replayed on the 27,479-row i_raw_data export to
