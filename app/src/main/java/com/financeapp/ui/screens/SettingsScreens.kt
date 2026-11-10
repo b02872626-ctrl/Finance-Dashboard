@@ -151,6 +151,7 @@ fun SettingsHomeScreen(
     val name by vm.userName.collectAsState()
     val email by vm.supabaseEmail.collectAsState()
     val notifications by vm.notificationsEnabled.collectAsState()
+    val systemNotifications = rememberSystemNotificationsAllowed()
     val cal by vm.calendarSystem.collectAsState()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
@@ -185,7 +186,7 @@ fun SettingsHomeScreen(
         ) {
             KashListGroup {
                 KashListRow("Privacy and data", icon = KashIcon.Eye, onClick = onPrivacy)
-                KashListRow("Notifications", icon = KashIcon.Sms, value = if (notifications) "On" else "Off", onClick = onNotifications)
+                KashListRow("Notifications", icon = KashIcon.Sms, value = notificationsRowValue(notifications, systemNotifications), onClick = onNotifications)
                 KashListRow("Change PIN", icon = KashIcon.Lock, onClick = onChangePin)
                 KashListRow("Banks Kash follows", icon = KashIcon.Card, value = followedBanks.toString(), onClick = onBanks)
                 KashListRow("Export transactions", icon = KashIcon.Export, onClick = onExport)
@@ -385,12 +386,14 @@ fun NotificationsPage(vm: SettingsViewModel, onBack: () -> Unit) {
     // Re-read prefs on every change.
     val tick by remember { prefs.changes() }.collectAsState(initial = Unit)
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+    val systemAllowed = rememberSystemNotificationsAllowed()
 
     SettingsPage("Notifications", onBack, headline = "When Kash\ntaps your shoulder") { pad ->
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (enabled && !systemAllowed) NotificationsBlockedCard()
             Row(
                 Modifier
                     .fillMaxWidth()
