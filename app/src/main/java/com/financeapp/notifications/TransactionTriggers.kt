@@ -49,7 +49,7 @@ object TransactionTriggers {
                         dedupKey = "${Trigger.LOW_BALANCE}:${account.first}:${account.second}:$today",
                         title = context.getString(R.string.notif_low_balance_title, kashBank(latest.bankName).shortName),
                         text = context.getString(R.string.notif_low_balance_text, KashMoney.whole(balance), KashMoney.whole(floor)),
-                        route = ROUTE_ACCOUNTS,
+                        route = accountRoute(latest.bankName, latest.accountNumber),
                     ), nowMs)
                 }
         }
@@ -123,5 +123,8 @@ object TransactionTriggers {
 
     const val ROUTE_REVIEW = com.financeapp.remote.SyncNotificationHelper.CATEGORY_ROUTE
     const val ROUTE_ANALYTICS = "analytics"
-    const val ROUTE_ACCOUNTS = "accounts"
+    /** That account's history (Home has no Accounts tab since NAH-28). */
+    fun accountRoute(bankName: String, accountNumber: String?): String =
+        "bank_analytics/" + android.net.Uri.encode(bankName) +
+            (com.financeapp.data.accounts.AccountGrouping.accountSuffix(accountNumber)?.let { "?account=$it" } ?: "")
 }

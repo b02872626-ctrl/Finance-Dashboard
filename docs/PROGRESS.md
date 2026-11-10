@@ -56,6 +56,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-10 NAH-28: Home and the Accounts tab are one page. Under the
+  total balance, a row of account cards (bank mark, name, balance) you swipe
+  sideways; tap one for that account's history. Amounts hide with the total.
+  The tab bar is Home · History · Analytics. The low-balance notification
+  opens that account's history; old "accounts" links land on Home.
 - 2026-11-10 1.0.25: A card on Home tells you when a new version is ready; Settings → Updates shows your version and what's new; Settings shows when your phone blocks Kash notifications, and how to fix it. Not yet installed on a real phone.
 - 2026-11-10 NAH-15 (notifications part): Settings → Notifications shows
   "Your phone is blocking Kash notifications" with Allow notifications

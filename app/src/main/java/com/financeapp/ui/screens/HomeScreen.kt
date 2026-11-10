@@ -21,7 +21,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.TextOverflow
+import com.financeapp.ui.kash.KashSpace
+import com.financeapp.ui.kash.components.KashBankBadge
+import com.financeapp.ui.kash.components.kashBank
+import com.financeapp.viewmodel.AccountSummary
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -74,8 +83,10 @@ import java.util.Calendar
 
 /**
  * Home (AppHome, AppHomeEmpty, AppHomeCaughtUp, AppHomeOlder). The slate hero
- * holds the total balance (hidden on every launch), the review button and
- * the week; the sheet lists the latest transactions by day.
+ * holds the total balance (hidden on every launch), a strip of the accounts
+ * behind it (tap one for its history; NAH-28 merged the Accounts tab in
+ * here), the review button and the week; the sheet lists the latest
+ * transactions by day.
  */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -88,6 +99,7 @@ fun HomeScreen(
     onAdd: () -> Unit,
     onReviewToday: () -> Unit,
     onReviewOlder: () -> Unit,
+    onOpenAccount: (bankName: String, accountSuffix: String?) -> Unit,
 ) {
     KashSystemBars(darkIcons = false)
     val state by vm.state.collectAsState()
@@ -128,6 +140,9 @@ fun HomeScreen(
                     }
                 }
                 BalanceBlock(state, hasAny, balanceVisible) { balanceVisible = !balanceVisible }
+                if (!state.isLoading && state.accountBalances.isNotEmpty()) {
+                    AccountStrip(state.accountBalances, hidden = !balanceVisible, onOpen = onOpenAccount)
+                }
                 if (!state.isLoading) {
                     ReviewBlock(state, hasAny, onReviewToday, onReviewOlder)
                     if (hasAny) WeekBlock(state)
@@ -230,6 +245,53 @@ private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolea
                 KashFigure(total, Modifier.padding(top = 4.dp), hidden = hasAny && !visible, countUp = true)
             }
         }
+    }
+}
+
+/**
+ * One small card per account, swiped sideways. Runs past the hero's right
+ * padding so the next card peeks in at the edge. Amounts hide with the total.
+ */
+@Composable
+private fun AccountStrip(accounts: List<AccountSummary>, hidden: Boolean, onOpen: (String, String?) -> Unit) {
+    LazyRow(
+        Modifier.layout { m, c ->
+            val extra = KashSpace.InsetApp.roundToPx()
+            val p = m.measure(c.copy(minWidth = c.maxWidth + extra, maxWidth = c.maxWidth + extra))
+            layout(c.maxWidth, p.height) { p.place(0, 0) }
+        },
+        contentPadding = PaddingValues(end = KashSpace.InsetApp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(accounts, key = { "${it.bankName}#${it.accountSuffix}" }) { a ->
+            AccountChip(a, hidden) { onOpen(a.bankName, a.accountSuffix) }
+        }
+    }
+}
+
+/** "CBE 1" when the bank has several accounts, else the bank's short name ("BoA"). */
+internal fun accountChipName(a: AccountSummary): String =
+    a.label.takeIf { a.accountSuffix != null } ?: kashBank(a.bankName).shortName
+
+/** "CBE 1" / "BoA" with its bank mark and balance; opens the account's history. */
+@Composable
+private fun AccountChip(a: AccountSummary, hidden: Boolean, onClick: () -> Unit) {
+    val name = accountChipName(a)
+    Column(
+        Modifier
+            .widthIn(min = 124.dp, max = 168.dp)
+            .clip(KashShapes.Control)
+            .background(KashColors.GhostFill)
+            .border(1.dp, KashColors.GhostLine, KashShapes.Control)
+            .kashClickable(onClickLabel = "Open $name history", onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KashBankBadge(a.bankName, size = 22.dp)
+            Text(name, style = KashType.Label, color = KashColors.OnSlateMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        KashFigure(a.balance, style = KashType.FigureS, showDecimals = false, hidden = hidden)
     }
 }
 

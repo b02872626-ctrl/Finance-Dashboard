@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-10 — Accounts live on Home; the Accounts tab is gone
+
+Owner picked "strip under the total" from three layouts (strip, a list in
+the sheet, tap the total to expand). Each account is a small card under the
+total balance in the hero; the strip scrolls sideways so Review and the week
+stay above the fold. Its amounts follow the total's eye toggle (hidden on
+every launch). Tapping a card opens Account detail (the NAH-5 screen). The
+Accounts tab, its swipeable big cards and "Spent this month" were removed;
+the `accounts` route stays only to send old notification links to Home.
+Replaces most of NAH-12 (Banks page redesign).
+
 ## 2026-11-10 — Blocked notifications are shown in Settings, not asked for on launch
 
 Onboarding asks for notifications in the same Android prompt as SMS. Anyone
