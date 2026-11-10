@@ -5,9 +5,6 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- Onboarding never asks for the notification permission (Android 13+), so
-  those phones get no Kash notifications at all, update notices included.
-  Belongs to NAH-15 (onboarding review).
 - NAH-29 part 2: the export has no money SMS at all from Hibret, Debub
   Global or NIB (only notices), and none from Zemen, Coop, Wegagen, Bunna,
   Oromia, Amhara, Enat, Global, Abay. New parsers need real samples from
@@ -18,8 +15,7 @@ items to Done with the date, add what is next or blocked.
   texts → Download every unparsed SMS) for real examples: Awash water bill,
   Awash electric bill, CBE "received ETB … from your account … to your
   account", Berhan "transferred … to TeleBirr number", and two Telebirr
-  Amharic ተቀብለዋል shapes. Also: a BoA Amharic promo ("ያልታሰበ ሲሳይ!…") is
-  counted as a money text; add it to the ignore list (mirror in admin.js).
+  Amharic ተቀብለዋል shapes.
 - Play Store first upload: follow `docs/play-store-submission.md` §6
   (order of operations).
 
@@ -60,6 +56,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-10 NAH-15 (notifications part): Settings → Notifications shows
+  "Your phone is blocking Kash notifications" with Allow notifications
+  (Android's prompt) or Open phone settings, and the Settings row says
+  "Blocked". Onboarding already asked together with SMS; this is the way
+  back for anyone who said no or switched them off.
 - 2026-11-10 NAH-26: update card on Home ("Kash x.y.z is ready", the
   release notes, Update / Later) and Settings → Updates (installed and
   latest version, what's new, last checked, Check now; "Google Play" for

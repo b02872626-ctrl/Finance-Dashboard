@@ -6,6 +6,15 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-10 — Blocked notifications are shown in Settings, not asked for on launch
+
+Onboarding asks for notifications in the same Android prompt as SMS. Anyone
+who refused, or turned them off in the phone's settings, used to see
+"Notifications: On" in Kash and get nothing. Settings now checks what
+Android allows: the row says "Blocked" and Settings → Notifications shows a
+card that asks again (once) or opens the phone's settings. We don't nag on
+every launch; the one-time ask stays in onboarding.
+
 ## 2026-11-10 — New tester builds show as a card on Home, not only a notification
 
 The update notification needs notification permission, which onboarding
