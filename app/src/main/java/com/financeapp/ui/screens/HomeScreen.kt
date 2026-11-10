@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.financeapp.notifications.UpdateChecker
 import com.financeapp.sms.SmsIngestService
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashIcon
@@ -94,6 +95,7 @@ fun HomeScreen(
     val cal = LocalCalendarSystem.current
     // Privacy first: hidden on every fresh launch, kept within a session.
     var balanceVisible by rememberSaveable { mutableStateOf(false) }
+    val update by UpdateChecker.state.collectAsState()
 
     // Pull down to rescan the inbox (also the retry path for scan failures).
     val pull = rememberPullToRefreshState()
@@ -137,40 +139,52 @@ fun HomeScreen(
                 !hasAny -> 1
                 else -> 2
             }
-            Crossfade(phase, label = "home") { p -> Column { when (p) {
-                0 -> Column {
-                    KashSkeleton(width = 120.dp, height = 16.dp)
-                    repeat(5) { KashSkeletonRow() }
+            Column {
+                // A newer tester build: shown on Home even when notifications are off.
+                AnimatedVisibility(update.cardVersion != null, enter = fadeIn() + expandVertically()) {
+                    val latest = update.cardVersion ?: return@AnimatedVisibility
+                    UpdateCard(
+                        latest,
+                        onUpdate = { openDownloadPage(context, latest.url) },
+                        onLater = { UpdateChecker.dismiss(context, latest.versionCode) },
+                        modifier = Modifier.padding(bottom = 14.dp),
+                    )
                 }
-                1 -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
-                    KashEmptyState(
-                        KashIcon.History,
-                        "No transactions yet",
-                        "Paid in cash? Add it by hand. Everything from your bank SMS fills in on its own.",
-                    ) {
-                        KashButton("Add a transaction", onAdd, Modifier.width(220.dp), KashButtonVariant.Secondary, icon = KashIcon.Plus)
+                Crossfade(phase, label = "home") { p -> Column { when (p) {
+                    0 -> Column {
+                        KashSkeleton(width = 120.dp, height = 16.dp)
+                        repeat(5) { KashSkeletonRow() }
                     }
-                }
-                else -> {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
-                        Text(
-                            "See all", style = KashType.Label, color = KashColors.InkMuted,
-                            modifier = Modifier.kashClickable(onClick = onSeeAll).padding(vertical = 6.dp, horizontal = 2.dp),
-                        )
+                    1 -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+                        KashEmptyState(
+                            KashIcon.History,
+                            "No transactions yet",
+                            "Paid in cash? Add it by hand. Everything from your bank SMS fills in on its own.",
+                        ) {
+                            KashButton("Add a transaction", onAdd, Modifier.width(220.dp), KashButtonVariant.Secondary, icon = KashIcon.Plus)
+                        }
                     }
-                    LazyColumn(Modifier.fillMaxSize(), contentPadding = pad) {
-                        groups.forEach { (day, rows) ->
-                            item(key = "h$day") { KashDayHeader(KashDates.dayHeader(day, cal), Modifier.animateItemPlacement()) }
-                            items(rows, key = { it.id }) { tx ->
-                                FreshRow(fresh = known != null && tx.id !in known!!, modifier = Modifier.animateItemPlacement()) {
-                                    KashTxRow(tx, onClick = { onTxClick(tx.id) })
+                    else -> {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
+                            Text(
+                                "See all", style = KashType.Label, color = KashColors.InkMuted,
+                                modifier = Modifier.kashClickable(onClick = onSeeAll).padding(vertical = 6.dp, horizontal = 2.dp),
+                            )
+                        }
+                        LazyColumn(Modifier.fillMaxSize(), contentPadding = pad) {
+                            groups.forEach { (day, rows) ->
+                                item(key = "h$day") { KashDayHeader(KashDates.dayHeader(day, cal), Modifier.animateItemPlacement()) }
+                                items(rows, key = { it.id }) { tx ->
+                                    FreshRow(fresh = known != null && tx.id !in known!!, modifier = Modifier.animateItemPlacement()) {
+                                        KashTxRow(tx, onClick = { onTxClick(tx.id) })
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            } } }
+                } } }
+            }
         }
         PullToRefreshContainer(
             state = pull,

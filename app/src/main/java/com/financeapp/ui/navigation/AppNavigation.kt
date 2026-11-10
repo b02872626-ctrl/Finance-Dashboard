@@ -66,6 +66,7 @@ import com.financeapp.ui.screens.ExportSheet
 import com.financeapp.ui.screens.HistoryScreen
 import com.financeapp.ui.screens.HomeScreen
 import com.financeapp.ui.screens.NotificationsPage
+import com.financeapp.ui.screens.UpdatesPage
 import com.financeapp.ui.screens.OnboardingFlow
 import com.financeapp.ui.screens.PinLockScreen
 import com.financeapp.ui.screens.PinSetupScreen
@@ -465,6 +466,7 @@ private fun MainNavigation(
                     onEditAccount = { navController.navigate("profile_edit") },
                     onPrivacy = { navController.navigate("profile_security") },
                     onNotifications = { navController.navigate("profile_notifications") },
+                    onUpdates = { navController.navigate("profile_updates") },
                     onChangePin = { navController.navigate("profile_pin") },
                     onBanks = { navController.navigate("profile_banks") },
                     onExport = { exportOpen = true },
@@ -478,6 +480,7 @@ private fun MainNavigation(
             composable("profile_edit") { EditAccountPage(vm = setVm, onBack = ::back) }
             composable("profile_security") { PrivacyPage(onBack = ::back) }
             composable("profile_notifications") { NotificationsPage(vm = setVm, onBack = ::back) }
+            composable("profile_updates") { UpdatesPage(onBack = ::back) }
             composable("profile_banks") {
                 val sources by sourcesVm.sources.collectAsState()
                 val hiddenKeys by remember { settingsRepo.hiddenAccountsFlow() }
