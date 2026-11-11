@@ -86,10 +86,10 @@ private fun pagesOf(w: Wrapped, cal: String): List<WrappedPage> = buildList {
         w.feeBank?.let { (bank, f) -> "${kashBank(bank).shortName} took the most: ${KashMoney.amount(f)} ETB." } ?: "Small charges add up.",
     ))
     w.busiestWeekdayMs?.let { ms ->
-        val day = KashDates.weekday(ms, cal)
+        val days = KashDates.weekdays(ms, cal)
         add(WrappedPage(
-            "Your habits", "${day}s",
-            "${w.busiestWeekdayPct}% of your spending landed on ${day}s" + (w.partOfDay?.let { ", mostly in the ${it.label}." } ?: "."),
+            "Your habits", days,
+            "${w.busiestWeekdayPct}% of your spending landed on $days" + (w.partOfDay?.let { ", mostly in the ${it.label}." } ?: "."),
         ))
     }
     add(WrappedPage("For next month", tipTitle(w.tip, cal), tipBody(w.tip, cal)))
@@ -100,7 +100,7 @@ private fun tipTitle(t: Tip, cal: String): String = when (t) {
     is Tip.SpentMore -> "Ease off a little"
     is Tip.Overspent -> "Set a weekly limit"
     is Tip.KeptWell -> "Save it first"
-    is Tip.BusyDay -> "Plan your ${KashDates.weekday(t.weekdayMs, cal)}s"
+    is Tip.BusyDay -> "Plan your ${KashDates.weekdays(t.weekdayMs, cal)}"
     Tip.KeepGoing -> "Keep it up"
 }
 
@@ -109,7 +109,7 @@ private fun tipBody(t: Tip, cal: String): String = when (t) {
     is Tip.SpentMore -> "You spent ${t.pct}% more than the month before. Check Analytics mid-month to stay on track."
     is Tip.Overspent -> "${KashMoney.whole(t.over)} ETB more went out than came in. A small weekly limit makes the next month easier."
     is Tip.KeptWell -> "You kept ${t.pct}% of your money. Move some to savings as soon as it comes in, before it gets spent."
-    is Tip.BusyDay -> "Your ${KashDates.weekday(t.weekdayMs, cal)}s cost the most. A little plan for that day goes a long way."
+    is Tip.BusyDay -> "Your ${KashDates.weekdays(t.weekdayMs, cal)} cost the most. A little plan for that day goes a long way."
     Tip.KeepGoing -> "A steady month. Kash keeps counting so you don't have to."
 }
 
@@ -208,22 +208,35 @@ private fun shareWrapped(context: Context, w: Wrapped, cal: String) {
             textSize = size; this.color = color
             typeface = Typeface.create(Typeface.SANS_SERIF, if (bold) Typeface.BOLD else Typeface.NORMAL)
         }
+        // Shrinks the text size until [text] fits [maxWidth].
+        fun fit(p: Paint, text: String, maxWidth: Float): Paint {
+            while (p.textSize > 20f && p.measureText(text) > maxWidth) p.textSize -= 2f
+            return p
+        }
         val sand = 0xFFE9DFC6.toInt(); val white = 0xFFFFFFFF.toInt(); val muted = 0xFFC6CDD8.toInt()
         val month = KashDates.monthYear(w.monthStartMs + 86_400_000L, cal)
-        var y = 170f
-        c.drawText("KASH WRAPPED", 90f, y, paint(40f, sand, bold = true)); y += 90f
-        c.drawText("My $month", 90f, y, paint(76f, white, bold = true)); y += 150f
-        fun stat(label: String, value: String) {
-            c.drawText(label, 90f, y, paint(38f, muted)); y += 80f
-            c.drawText(value, 90f, y, paint(70f, white, bold = true)); y += 120f
+        c.drawText("KASH WRAPPED", WrappedShare.MARGIN, 170f, paint(40f, sand, bold = true))
+        c.drawText("My $month", WrappedShare.MARGIN, 260f, fit(paint(76f, white, bold = true), "My $month", width - 2 * WrappedShare.MARGIN))
+
+        // Up to six stats in two columns; never into the footer.
+        val stats = buildList {
+            add("Spent" + (w.vsLastMonthPct?.let { if (it > 0) " · ↑$it% vs last month" else if (it < 0) " · ↓${-it}% vs last month" else "" } ?: "")
+                to "${NotifyText.k(w.spent)} ETB")
+            w.keptPct?.let { pct ->
+                add(if (pct >= 0) "Kept of money in" to "$pct%" else "Overspent" to "${NotifyText.k(-w.kept)} ETB")
+            }
+            add("Payments" to "${w.payments}")
+            w.busiestWeekdayMs?.let { add("Most expensive day" to KashDates.weekdays(it, cal)) }
+            if (w.fees > 0) add("Bank fees" to "${NotifyText.k(w.fees)} ETB")
+        }.take(WrappedShare.MAX_STATS)
+        val cells = WrappedShare.cells(stats.size, stats.firstOrNull()?.first?.contains("·") == true)
+        stats.forEachIndexed { i, (label, value) ->
+            val cell = cells[i]
+            c.drawText(label, cell.x, cell.y, fit(paint(34f, muted), label, cell.width))
+            c.drawText(value, cell.x, cell.y + 76f, fit(paint(64f, white, bold = true), value, cell.width))
         }
-        stat("Spent", "${NotifyText.k(w.spent)} ETB" + (w.vsLastMonthPct?.let { if (it > 0) "  ↑$it%" else if (it < 0) "  ↓${-it}%" else "" } ?: ""))
-        w.keptPct?.let { pct -> stat(if (pct >= 0) "Kept" else "Overspent", if (pct >= 0) "$pct% of what came in" else "${NotifyText.k(-w.kept)} ETB") }
-        stat("Payments", "${w.payments}")
-        w.busiestWeekdayMs?.let { stat("Most expensive day", "${KashDates.weekday(it, cal)}s") }
-        if (w.fees > 0) stat("Bank fees", "${NotifyText.k(w.fees)} ETB")
-        c.drawText("Track yours free with Kash", 90f, height - 150f, paint(40f, white, bold = true))
-        c.drawText("kash-140.pages.dev/download", 90f, height - 90f, paint(38f, sand))
+        c.drawText("Track yours free with Kash", WrappedShare.MARGIN, height - 150f, paint(40f, white, bold = true))
+        c.drawText("kash-140.pages.dev/download", WrappedShare.MARGIN, height - 90f, paint(38f, sand))
 
         val dir = File(context.cacheDir, "share").apply { mkdirs() }
         val file = File(dir, "kash-wrapped.png")
@@ -255,5 +268,39 @@ fun WrappedCard(monthName: String, onOpen: () -> Unit, onLater: () -> Unit, modi
             KashButton("See it", onOpen, Modifier.weight(1f), KashButtonVariant.Accent, compact = true)
             KashButton("Later", onLater, Modifier.weight(1f), KashButtonVariant.QuietOnSlate, compact = true)
         }
+    }
+}
+
+
+/**
+ * Where each stat sits on the 1080×1350 share picture: two columns under
+ * the title, rows of 190px, all above the footer (which starts at
+ * [FOOTER_TOP]). A first stat with a long label ("Spent · ↓47% vs last
+ * month") gets the full width.
+ */
+internal object WrappedShare {
+    const val MARGIN = 90f
+    const val MAX_STATS = 6
+    const val TOP = 400f
+    const val ROW = 190f
+    const val FOOTER_TOP = 1150f
+    private const val GAP = 60f
+    private const val WIDTH = 1080f
+
+    data class Cell(val x: Float, val y: Float, val width: Float)
+
+    fun cells(count: Int, firstWide: Boolean = false): List<Cell> {
+        val colW = (WIDTH - 2 * MARGIN - GAP) / 2
+        val out = mutableListOf<Cell>()
+        var row = 0
+        var i = 0
+        if (firstWide && count > 0) { out += Cell(MARGIN, TOP, WIDTH - 2 * MARGIN); row = 1; i = 1 }
+        while (i < count) {
+            val col = (i - (if (firstWide) 1 else 0)) % 2
+            out += Cell(MARGIN + col * (colW + GAP), TOP + row * ROW, colW)
+            if (col == 1) row++
+            i++
+        }
+        return out
     }
 }

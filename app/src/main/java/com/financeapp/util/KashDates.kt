@@ -39,6 +39,13 @@ object KashDates {
         else SimpleDateFormat("d MMM", Locale.US).format(Date(ms))
 
     /** "Sunday" / "Ehud". */
+    /**
+     * The weekday as a plural: "Saturdays", or "Kidame days" in the
+     * Ethiopian calendar (an English "s" on "Kidame" read "Kidames").
+     */
+    fun weekdays(ms: Long, cal: String): String =
+        if (ethiopian(cal)) "${weekday(ms, cal)} days" else "${weekday(ms, cal)}s"
+
     fun weekday(ms: Long, cal: String): String {
         val c = Calendar.getInstance().apply { timeInMillis = ms }
         return if (ethiopian(cal)) EC_WEEKDAYS.getValue(c.get(Calendar.DAY_OF_WEEK))
