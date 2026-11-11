@@ -1,8 +1,13 @@
 {
-  "versionCode": 48,
-  "versionName": "1.0.28",
+  "versionCode": 49,
+  "versionName": "1.0.29",
   "url": "https://kash-140.pages.dev/download",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.29.apk",
+  "sha256": "8de2cb6d022394aca841b42cca75a57d84a3c441a5cc3ec1696af3e693408291",
   "notes": [
-    "Berhan accounts show your real balance (one account was counted twice)"
+    "Analytics shows today, this week and a spending graph you can set to any dates",
+    "Notifications are quieter and friendlier, with no more scanning or backup pings",
+    "Updates install right inside Kash from the next version on",
+    "Swiping review cards follows your finger again"
   ]
 }
