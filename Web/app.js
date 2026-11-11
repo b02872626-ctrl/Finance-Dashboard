@@ -2766,7 +2766,6 @@ function rerender() {
   renderRecurring(inRange);
   renderWeekdayStrip(inRange);
   renderTxTable();
-  renderDailyReviewCard(txs);
   rerenderBudgets();
   if (state.view === "categories") renderCategoriesView();
 }
@@ -2872,7 +2871,7 @@ function renderSpendLineSvg(o) {
   const avgY = y(o.avgPerDay).toFixed(1);
   const slot = W / Math.max(1, n);
   const hits = o.days.map((v, i) => v == null ? "" : `<rect x="${(x(i) - slot / 2).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${H}" fill="transparent"
-      data-tip="${escapeHtml(dayLabel(o.from + i * DAY))}|${escapeHtml(formatETB(v))}" data-tip-color="var(--k-slate)"></rect>`).join("");
+      data-tip="${escapeHtml(dayLabel(o.from + i * DAY))}|${escapeHtml(formatETB(v))}" data-tip-color="var(--k-sand)"></rect>`).join("");
   const last = pts.at(-1);
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
       aria-label="Spending per day, ${escapeHtml(rangeText(o))}: ${escapeHtml(formatETB(o.total))} in all, ${escapeHtml(formatETB(o.avgPerDay))} a day on average">
@@ -2880,7 +2879,7 @@ function renderSpendLineSvg(o) {
     <line x1="0" y1="${avgY}" x2="${W}" y2="${avgY}" class="ins-avg" vector-effect="non-scaling-stroke"/>
     ${area ? `<path d="${area}" class="ins-area"/>` : ""}
     ${line ? `<path d="${line}" class="ins-path" vector-effect="non-scaling-stroke"/>` : ""}
-    ${last ? `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="ins-dot"/>` : ""}
+    ${last ? `<line x1="${last[0].toFixed(1)}" y1="${last[1].toFixed(1)}" x2="${last[0].toFixed(1)}" y2="${last[1].toFixed(1)}" class="ins-dot" vector-effect="non-scaling-stroke"/>` : ""}
     ${hits}
   </svg>`;
 }
@@ -2905,7 +2904,7 @@ function renderInOut(allTxs) {
     };
     const tip = `${name(m.start)}|in ${shortK(m.moneyIn)} · out ${shortK(m.out)} · kept ${signedK(m.kept)}${m.keptPct != null ? ` (${m.keptPct}%)` : ""}`;
     return `${bar(m.moneyIn, -barW - 1, "io-in")}${bar(m.out, 1, "io-out")}
-      <rect x="${(i * groupW).toFixed(1)}" y="0" width="${groupW.toFixed(1)}" height="${H - padB}" fill="transparent" data-tip="${escapeHtml(tip)}" data-tip-color="var(--k-slate)"/>
+      <rect x="${(i * groupW).toFixed(1)}" y="0" width="${groupW.toFixed(1)}" height="${H - padB}" fill="transparent" data-tip="${escapeHtml(tip)}" data-tip-color="var(--k-sand)"/>
       <text x="${cx.toFixed(1)}" y="${H - 6}" class="chart-axis-label" text-anchor="middle">${escapeHtml(name(m.start))}</text>`;
   }).join("");
   const kept = months.map((m, i) => `${i ? "L" : "M"}${(i * groupW + groupW / 2).toFixed(1)} ${y(m.kept).toFixed(1)}`).join(" ");
@@ -3017,98 +3016,6 @@ document.querySelectorAll("[data-months]").forEach((btn) => btn.addEventListener
   state.ioMonths = Number(btn.dataset.months);
   renderInOut(state.allTxs);
 }));
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Daily Review entry card (read-only). Mirrors the variants from the Android
-// DailyReviewCard composable: empty / fresh / partial / done.
-//
-// Computed off today's transactions, not the period filter — the queue is
-// always "today's reviews", regardless of the dashboard's selected window.
-// ─────────────────────────────────────────────────────────────────────────────
-function renderDailyReviewCard(allTxs) {
-  const card        = document.getElementById("daily-review-card");
-  const eyebrowEl   = document.getElementById("dr-eyebrow");
-  const titleEl     = document.getElementById("dr-title");
-  const bodyEl      = document.getElementById("dr-body");
-  const progressEl  = document.getElementById("dr-progress");
-  const trackEl     = progressEl ? progressEl.parentElement : null;
-  const metaLeftEl  = document.getElementById("dr-meta-left");
-  const metaRightEl = document.getElementById("dr-meta-right");
-  const chipTextEl  = document.getElementById("dr-chip-text");
-  if (!card || !titleEl) return;
-
-  // Today's bounds in local time.
-  const now   = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const end   = start + 86_400_000 - 1;
-
-  const today = (allTxs || []).filter((t) => {
-    const ts = Date.parse(t.occurred_at);
-    return Number.isFinite(ts) && ts >= start && ts <= end;
-  });
-
-  card.classList.remove("dr-empty", "dr-partial", "dr-done");
-  card.classList.remove("hidden");
-
-  if (today.length === 0) {
-    card.classList.add("dr-empty");
-    eyebrowEl.textContent  = "Daily Review";
-    titleEl.textContent    = "Nothing to review today";
-    bodyEl.textContent     = "We'll surface the queue here once today's transactions come in.";
-    if (progressEl) progressEl.style.width = "0%";
-    if (trackEl)    trackEl.setAttribute("aria-valuenow", "0");
-    metaLeftEl.textContent  = "0 transactions today";
-    metaRightEl.textContent = "Open mobile app to review";
-    if (chipTextEl) chipTextEl.textContent = "↻";
-    return;
-  }
-
-  let pending = 0, confirmed = 0, changed = 0, skipped = 0;
-  for (const t of today) {
-    const status = (t.review_status || "PENDING").toUpperCase();
-    if      (status === "PENDING")   pending++;
-    else if (status === "CONFIRMED") confirmed++;
-    else if (status === "CHANGED")   changed++;
-    else if (status === "SKIPPED")   skipped++;
-  }
-  const total = today.length;
-  const done  = confirmed + changed + skipped;
-  const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
-
-  if (pending === 0) {
-    // Done
-    card.classList.add("dr-done");
-    eyebrowEl.textContent = "Daily Review";
-    titleEl.textContent   = "Today is clean";
-    const detail = [];
-    if (confirmed > 0) detail.push(`${confirmed} confirmed`);
-    if (changed   > 0) detail.push(`${changed} changed`);
-    if (skipped   > 0) detail.push(`${skipped} skipped`);
-    bodyEl.textContent = `All ${total} transactions reviewed${detail.length ? ". " + detail.join(", ") : ""}.`;
-    if (chipTextEl) chipTextEl.textContent = "✓";
-  } else if (done === 0) {
-    // Fresh
-    card.classList.add("dr-partial");
-    eyebrowEl.textContent = "Daily Review";
-    titleEl.textContent   = "Review today's transactions";
-    bodyEl.textContent    = `${total} transaction${total === 1 ? "" : "s"} need confirmation. Open the mobile app to swipe through them.`;
-    if (chipTextEl) chipTextEl.textContent = "→";
-  } else {
-    // Partial
-    card.classList.add("dr-partial");
-    eyebrowEl.textContent = "Daily Review";
-    titleEl.textContent   = "Keep going on today's review";
-    bodyEl.textContent    = `${pending} of ${total} still need confirmation. Continue in the mobile app.`;
-    if (chipTextEl) chipTextEl.textContent = "→";
-  }
-
-  if (progressEl) progressEl.style.width = `${pct}%`;
-  if (trackEl)    trackEl.setAttribute("aria-valuenow", String(pct));
-  metaLeftEl.textContent  = `${done} of ${total} reviewed`;
-  metaRightEl.textContent = pending === 0
-    ? `Last reviewed today`
-    : `Open on mobile to review`;
-}
 
 function renderAccounts(allTxs) {
   const accounts = groupAccounts(allTxs).map(({ name, suffix, list }) => {

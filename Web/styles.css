@@ -1708,92 +1708,6 @@ code {
 .toast.success { border-color: var(--green-income); color: var(--green-income); }
 .toast.error { border-color: var(--coral); color: var(--coral); }
 
-/* =============================================================================
-   Daily Review summary card — read-only on web (full swipe queue is mobile only).
-   Variants driven by JS classes on #daily-review-card:
-     .dr-empty    → "Nothing to review", muted
-     .dr-partial  → default look, mint progress fill
-     .dr-done     → mint-tinted card with checkmark chip
-   ========================================================================== */
-.daily-review-card {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 20px;
-  align-items: center;
-  padding: 22px 24px;
-  margin-bottom: 16px;
-  border-radius: 18px;
-}
-.daily-review-card.hidden { display: none; }
-.daily-review-card .dr-text { min-width: 0; }
-.daily-review-card .dr-eyebrow {
-  display: inline-block;
-  font-size: 12px;
-  color: var(--body-muted);
-  letter-spacing: 0.3px;
-  margin-bottom: 6px;
-}
-.daily-review-card .dr-title {
-  margin: 0 0 6px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--headline);
-  line-height: 1.25;
-}
-.daily-review-card .dr-body {
-  margin: 0 0 14px 0;
-  font-size: 13px;
-  line-height: 1.45;
-}
-.daily-review-card .dr-progress-track {
-  width: 100%;
-  height: 5px;
-  background: rgba(34, 42, 54, 0.06);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-.daily-review-card .dr-progress-fill {
-  height: 100%;
-  width: 0;
-  background: var(--green-income);
-  border-radius: 12px;
-  transition: width .35s ease;
-}
-.daily-review-card .dr-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-}
-.daily-review-card .dr-chip {
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(61, 72, 89, 0.12);
-  color: var(--headline);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-/* Variants — toggled via JS */
-.daily-review-card.dr-done {
-  background: linear-gradient(180deg, rgba(62, 122, 74, 0.10) 0%, var(--card-bg) 70%);
-  border-color: rgba(62, 122, 74, 0.32);
-}
-.daily-review-card.dr-done .dr-eyebrow { color: var(--green-income); }
-.daily-review-card.dr-done .dr-chip {
-  background: var(--green-income);
-  color: var(--page-bg);
-}
-.daily-review-card.dr-empty .dr-chip {
-  background: rgba(95, 104, 119, 0.10);
-  color: var(--body-muted);
-}
-.daily-review-card.dr-empty .dr-progress-track { visibility: hidden; }
 
 /* =============================================================================
    Budgets view — envelope-style funded budgets.
@@ -2187,12 +2101,13 @@ code {
   position: fixed;
   pointer-events: none;
   background: rgba(43, 51, 64, 0.96);
-  color: var(--headline);
+  /* Light text on the dark slate box (it was dark ink on slate). */
+  color: var(--k-on-slate);
   font-size: 12px;
   line-height: 1.4;
   padding: 7px 11px;
   border-radius: 8px;
-  border: 1px solid var(--tile-border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: none;
   white-space: nowrap;
   z-index: 1001;
@@ -2206,7 +2121,7 @@ code {
   vertical-align: -1px;
 }
 .chart-tooltip .tip-meta {
-  color: var(--body-muted);
+  color: var(--k-on-slate-muted);
   font-size: 11px;
   margin-left: 6px;
 }
@@ -2474,7 +2389,7 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 .ins-avg { stroke: var(--k-ink-faint); stroke-width: 1; stroke-dasharray: 6 5; }
 .ins-area { fill: var(--k-slate); fill-opacity: 0.10; }
 .ins-path { fill: none; stroke: var(--k-slate); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.ins-dot { fill: var(--k-ink); }
+.ins-dot { stroke: var(--k-ink); stroke-width: 9; stroke-linecap: round; }
 
 .io-in { fill: var(--green-income); }
 .io-out { fill: var(--coral); }
