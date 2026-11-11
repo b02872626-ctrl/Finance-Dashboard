@@ -69,6 +69,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Notifications: income and low-balance alerts no longer wait
+  for the evening digest when 3 alerts have already shown that day (the
+  cap now applies to fee alerts only). The digest card no longer shows its
+  first item twice (NAH-33).
 - 2026-11-11 Home: accounts whose SMS greet someone else are marked
   "<Name>'s?" and Home offers to hide them; accounts with no SMS for 90
   days leave the total and show "Last updated <month>". Rules unit-tested

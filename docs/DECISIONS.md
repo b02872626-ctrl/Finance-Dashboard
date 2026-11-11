@@ -6,6 +6,16 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Income and low balance skip the daily alert cap
+
+Owner's call after a screenshot where "16.4k just came in" and "CBE is
+getting low" only arrived in the 6:06 p.m. digest. Instant alerts were held
+for the digest once 3 had shown that day. Money in and low balance are only
+useful right away, so they now never wait for that cap and don't count
+toward it (`NotificationRules.UNCAPPED`). Fee alerts still share the cap of
+3 a day. Quiet hours still hold everything except the PIN lockout. The
+digest card also stopped repeating its headline as its first line.
+
 ## 2026-11-12 — No real people's details in the public repo
 
 The repo is public. Parser comments and tests had real testers' names, two

@@ -89,7 +89,10 @@ object KashNotifier {
             trigger = c.trigger,
             foreground = AppForeground.isForeground,
             quiet = NotificationRules.minuteOfDay(nowMs) in prefs.quietHours,
-            tier1ShownToday = dao.countShownSince(Tier.IMMEDIATE, KashDates.startOfDay(nowMs), Trigger.SECURITY_LOCKOUT),
+            tier1ShownToday = dao.countShownSince(
+                Tier.IMMEDIATE, KashDates.startOfDay(nowMs),
+                NotificationRules.UNCAPPED + Trigger.SECURITY_LOCKOUT,
+            ),
             tier3ShownThisWeek = dao.countShownSince(Tier.SCHEDULED, nowMs - WEEK),
         )
         when (delivery) {
@@ -135,7 +138,8 @@ object KashNotifier {
             inApp.tryEmit(InAppNotice(title, text, route))
             dao.markShown(id, nowMs, "IN_APP")
         } else {
-            val lines = if (items.size == 1) emptyList() else items.map { it.title }
+            // The title is already the first item; the lines are the rest.
+            val lines = items.drop(1).map { it.title }
             post(context, DIGEST_ID, CH_DIGEST, title, text, route, lines)
             dao.markShown(id, nowMs, "SYSTEM")
         }

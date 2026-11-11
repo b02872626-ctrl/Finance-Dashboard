@@ -56,9 +56,16 @@ class NotificationRulesTest {
     }
 
     @Test fun tier1WaitsOutQuietHoursAndCap() {
-        assertEquals(Delivery.QUEUE, NotificationRules.deliver(Tier.IMMEDIATE, Trigger.INCOME, false, quiet = true, 0, 0))
-        assertEquals(Delivery.QUEUE, NotificationRules.deliver(Tier.IMMEDIATE, Trigger.INCOME, false, false, tier1ShownToday = 3, 0))
-        assertEquals(Delivery.SYSTEM, NotificationRules.deliver(Tier.IMMEDIATE, Trigger.INCOME, false, false, 2, 0))
+        assertEquals(Delivery.QUEUE, NotificationRules.deliver(Tier.IMMEDIATE, Trigger.FEE_SPIKE, false, quiet = true, 0, 0))
+        assertEquals(Delivery.QUEUE, NotificationRules.deliver(Tier.IMMEDIATE, Trigger.FEE_SPIKE, false, false, tier1ShownToday = 3, 0))
+        assertEquals(Delivery.SYSTEM, NotificationRules.deliver(Tier.IMMEDIATE, Trigger.FEE_SPIKE, false, false, 2, 0))
+    }
+
+    @Test fun incomeAndLowBalanceSkipTheCapButNotQuietHours() {
+        for (t in listOf(Trigger.INCOME, Trigger.LOW_BALANCE)) {
+            assertEquals(Delivery.SYSTEM, NotificationRules.deliver(Tier.IMMEDIATE, t, false, false, tier1ShownToday = 9, 0))
+            assertEquals(Delivery.QUEUE, NotificationRules.deliver(Tier.IMMEDIATE, t, false, quiet = true, 0, 0))
+        }
     }
 
     @Test fun tier1ShowsInAppWhenOpen() {

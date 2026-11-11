@@ -17,8 +17,8 @@ interface SentNotificationDao {
     suspend fun markShown(id: Long, sentAt: Long, shownAs: String)
 
     /** Shown (not queued) notifications of [tier] since [fromMs], for the frequency caps. */
-    @Query("SELECT COUNT(*) FROM sent_notifications WHERE tier = :tier AND sentAt >= :fromMs AND shownAs != 'DIGEST' AND triggerType != :exceptTrigger")
-    suspend fun countShownSince(tier: Int, fromMs: Long, exceptTrigger: String = ""): Int
+    @Query("SELECT COUNT(*) FROM sent_notifications WHERE tier = :tier AND sentAt >= :fromMs AND shownAs != 'DIGEST' AND triggerType NOT IN (:exceptTriggers)")
+    suspend fun countShownSince(tier: Int, fromMs: Long, exceptTriggers: List<String> = listOf("")): Int
 
     /** Everything waiting for the next digest, oldest first. */
     @Query("SELECT * FROM sent_notifications WHERE sentAt IS NULL ORDER BY createdAt ASC")
