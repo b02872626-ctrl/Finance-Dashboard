@@ -6,6 +6,16 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — People can say which sender is their salary
+
+Owner's request. The web Payday card has "Pick your salary": a list of
+everyone who paid the user in the last 6 months (real payers first), and
+"This is my salary". The pick is saved as a monthly recurring income in
+`i_income_entries` with the note "Salary" (one at a time; no schema
+change, same RLS), so it shows in the Income tab and follows the account.
+Payday uses it before its own guess, even when the rules would skip that
+sender; "Use automatic" clears the note.
+
 ## 2026-11-11 — Only real payers count as income for payday and "income landed"
 
 The owner's Payday card picked "Telebirr wallet top-up" as their income
