@@ -69,6 +69,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 Wrapped share picture: stats sit in two columns and shrink to
+  fit, so five stats no longer run into the "Track yours free" footer
+  (owner's Telegram screenshot); Ethiopian weekdays read "Kidame days", not
+  "Kidames". Layout unit-tested (`WrappedShareTest`). Not yet on a phone.
+
 - 2026-11-11 NAH-30 web dashboard insights: overview like the phone's
   Analytics (balance, today, this week, this month; spending line with
   ranges; where you pay most; spent from), money in vs out with a kept
