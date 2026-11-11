@@ -1,11 +1,8 @@
 {
-  "versionCode": 47,
-  "versionName": "1.0.27",
+  "versionCode": 48,
+  "versionName": "1.0.28",
   "url": "https://kash-140.pages.dev/download",
   "notes": [
-    "Bank of Abyssinia deposits show who sent the money and your balance",
-    "Berhan transfers to Telebirr are counted as money out",
-    "Berhan deposits say where the money came from",
-    "Telebirr ticket payments are no longer missed"
+    "Berhan accounts show your real balance (one account was counted twice)"
   ]
 }
