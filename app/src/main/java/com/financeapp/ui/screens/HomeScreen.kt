@@ -176,6 +176,24 @@ fun HomeScreen(
                         modifier = Modifier.padding(bottom = 14.dp),
                     )
                 }
+                // Accounts whose SMS greet someone else: offer to hide them once.
+                val minePrefs = remember { context.getSharedPreferences("kash_accounts_mine", android.content.Context.MODE_PRIVATE) }
+                var kept by remember { mutableStateOf(minePrefs.getStringSet("kept", emptySet()).orEmpty()) }
+                val others = state.accountBalances.filter { it.otherHolder != null && "${it.bankName}#${it.accountNumber}" !in kept }
+                AnimatedVisibility(others.isNotEmpty(), enter = fadeIn() + expandVertically()) {
+                    NotYoursCard(
+                        others,
+                        onHide = { others.forEach { a ->
+                            val suffix = a.accountSuffix ?: com.financeapp.data.accounts.AccountGrouping.accountSuffix(a.accountNumber)
+                            if (suffix != null) vm.setAccountHidden(a.bankName, suffix, true)
+                        } },
+                        onKeep = {
+                            kept = kept + others.map { "${it.bankName}#${it.accountNumber}" }
+                            minePrefs.edit().putStringSet("kept", kept).apply()
+                        },
+                        modifier = Modifier.padding(bottom = 14.dp),
+                    )
+                }
                 // Kash Wrapped: last month's story, for the first week of a new month.
                 val wrappedPrefs = remember { context.getSharedPreferences("kash_wrapped", android.content.Context.MODE_PRIVATE) }
                 var wrappedHidden by remember(wrappedMonth) {
@@ -249,7 +267,10 @@ private fun FreshRow(fresh: Boolean, modifier: Modifier = Modifier, content: @Co
 
 @Composable
 private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolean, onToggle: () -> Unit) {
-    val total = state.accountBalances.sumOf { it.balance }
+    // Accounts with no SMS for 3 months keep an old balance: left out.
+    val total = state.accountBalances.filter { it.inTotal }.sumOf { it.balance }
+    val quiet = state.accountBalances.filter { it.stale }
+    val cal = LocalCalendarSystem.current
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Total balance", style = KashType.Body, color = KashColors.OnSlateMuted)
@@ -267,7 +288,17 @@ private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolea
             if (loading) {
                 KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
             } else {
-                KashFigure(total, Modifier.padding(top = 4.dp), hidden = hasAny && !visible, countUp = true)
+                Column {
+                    KashFigure(total, Modifier.padding(top = 4.dp), hidden = hasAny && !visible, countUp = true)
+                    if (quiet.isNotEmpty()) {
+                        val since = quiet.mapNotNull { it.lastActivityMs }.maxOrNull()
+                        Text(
+                            (if (quiet.size == 1) "Leaves out 1 account" else "Leaves out ${quiet.size} accounts") +
+                                (since?.let { " with no SMS since ${com.financeapp.util.KashDates.monthYear(it, cal)}" } ?: " that went quiet"),
+                            style = KashType.Caption, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -316,7 +347,16 @@ private fun AccountChip(a: AccountSummary, hidden: Boolean, onClick: () -> Unit)
             KashBankBadge(a.bankName, size = 22.dp)
             Text(name, style = KashType.Label, color = KashColors.OnSlateMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        KashFigure(a.balance, style = KashType.FigureS, showDecimals = false, hidden = hidden)
+        KashFigure(a.balance, style = KashType.FigureS, showDecimals = false, hidden = hidden,
+            color = if (a.stale) KashColors.OnSlateMuted else KashColors.OnSlate)
+        val cal = LocalCalendarSystem.current
+        when {
+            a.otherHolder != null -> Text("${a.otherHolder}'s?", style = KashType.Micro, color = KashColors.Sand, maxLines = 1)
+            a.stale && a.lastActivityMs != null -> Text(
+                "Last updated ${com.financeapp.util.KashDates.monthYear(a.lastActivityMs, cal)}",
+                style = KashType.Micro, color = KashColors.OnSlateMuted, maxLines = 1,
+            )
+        }
     }
 }
 
@@ -382,4 +422,35 @@ private fun WeekBlock(state: DashboardState) {
         today = todayIndex,
         total = (if (total > 0) KashMoney.MINUS else "") + KashMoney.whole(total),
     )
+}
+
+
+/**
+ * "2 accounts get SMS for Hana and Tsion": their SMS greet someone else, so
+ * they're probably not the user's. Hide (Settings can show them again) or keep.
+ */
+@Composable
+private fun NotYoursCard(accounts: List<AccountSummary>, onHide: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
+    val names = accounts.mapNotNull { it.otherHolder }.distinct()
+    val who = when (names.size) { 1 -> names[0]; 2 -> "${names[0]} and ${names[1]}"; else -> names.dropLast(1).joinToString(", ") + " and " + names.last() }
+    Column(
+        modifier.fillMaxWidth().clip(KashShapes.Card).background(KashColors.SurfaceRaised)
+            .border(1.dp, KashColors.Line, KashShapes.Card).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                if (accounts.size == 1) "1 account gets SMS for $who" else "${accounts.size} accounts get SMS for $who",
+                style = KashType.BodyStrong, color = KashColors.Ink,
+            )
+            Text(
+                "They don't look like yours. Hide them from Kash and your total? You can show them again in Settings.",
+                style = KashType.Caption, color = KashColors.InkMuted,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            KashButton("Hide them", onHide, Modifier.weight(1f), KashButtonVariant.Primary, compact = true)
+            KashButton("They're mine", onKeep, Modifier.weight(1f), KashButtonVariant.Quiet, compact = true)
+        }
+    }
 }

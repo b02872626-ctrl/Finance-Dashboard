@@ -17,6 +17,20 @@ database formula. Old commits still hold the originals (main's history is
 never rewritten). From now on: made-up names, numbers and balances
 everywhere in the repo (RULES.md, Code rules).
 
+## 2026-11-11 — Other people's accounts and quiet accounts on Home
+
+A tester's phone also gets bank SMS for accounts that belong to other
+people (their number was registered for them), and Home counted those
+accounts and their old balances in the total. Every bank SMS greets the
+account holder, so Home now reads the "Dear …" name per account
+(AccountOwnership): when it isn't the user (their Settings/sign-in first
+name, else the name most of their SMS greet; short forms match, "Dear
+Customer" is ignored) the card says "<Name>'s?" and Home offers once to
+hide those accounts ("Hide them" uses the existing hide; "They're mine"
+keeps them). Accounts with no SMS for 90 days leave the total, show "Last
+updated <month>", sort last, and a line under the total says what was left
+out.
+
 ## 2026-11-11 — Several incomes can count for Payday
 
 Owner's follow-up. "Pick your income" toggles each sender on or off (a

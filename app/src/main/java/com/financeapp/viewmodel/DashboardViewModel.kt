@@ -31,8 +31,17 @@ data class AccountSummary(
     /** Card title, e.g. "CBE 1" when the user has two CBE accounts. */
     val label: String = bankName,
     /** Last 4 digits when this card is one of several accounts at the bank. */
-    val accountSuffix: String? = null
-)
+    val accountSuffix: String? = null,
+    /** The SMS greet someone else ("Hana"): probably not the user's account. */
+    val otherHolder: String? = null,
+    /** No SMS for 3 months: the balance is old and stays out of the total. */
+    val stale: Boolean = false,
+    /** The newest SMS for this account. */
+    val lastActivityMs: Long? = null,
+) {
+    /** Counts in "Total balance": not gone quiet. */
+    val inTotal: Boolean get() = !stale
+}
 
 data class WeekActivityPoint(
     val label: String,
@@ -76,6 +85,9 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
     private val _chartRange = MutableStateFlow(ChartTimeRange.MONTHS)
+    /** The user's name (Settings / sign-in), to tell their accounts from others'. */
+    private val _userName = MutableStateFlow("")
+    fun setUserName(name: String) { _userName.value = name }
 
     init { load() }
 
@@ -105,11 +117,12 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
                 repo.getRecentTransactions(40),
                 repo.getAllTransactions(),
                 _chartRange,
-                reviewFlow
-            ) { recent, all, range, reviewWithOlder ->
+                reviewFlow,
+                _userName,
+            ) { recent, all, range, reviewWithOlder, userName ->
                 val (review, olderPending) = reviewWithOlder
                 val aggregatedData = aggregateData(all, range)
-                val accountBalances = buildAccountBalances(all)
+                val accountBalances = buildAccountBalances(all, userName)
                 val monthIncome  = all.filter {
                     (it.isIncome()) && it.dateTime >= monthStart
                 }.sumOf { it.amount }
@@ -160,7 +173,9 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
      *  bank where the user holds several accounts gets one card each. Includes
      *  accounts with zero / unknown balance so the user sees every source
      *  they've imported. */
-    private fun buildAccountBalances(all: List<TransactionEntity>): List<AccountSummary> {
+    private fun buildAccountBalances(all: List<TransactionEntity>, userName: String = ""): List<AccountSummary> {
+        val owners = com.financeapp.data.accounts.AccountOwnership.ownerNames(all, userName)
+        val now = System.currentTimeMillis()
         return AccountGrouping.group(all)
             .map { group ->
                 val txns = group.transactions
@@ -179,9 +194,14 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
                     }.sumOf { it.amount },
                     label = group.label,
                     accountSuffix = group.accountSuffix,
+                    otherHolder = com.financeapp.data.accounts.AccountOwnership.otherHolder(txns, owners)
+                        ?.let(com.financeapp.data.accounts.AccountOwnership::displayName),
+                    stale = com.financeapp.data.accounts.AccountOwnership.isStale(txns, now),
+                    lastActivityMs = txns.maxOfOrNull { it.dateTime },
                 )
             }
-            .sortedByDescending { it.balance }
+            // Active accounts first, then quiet ones.
+            .sortedWith(compareBy<AccountSummary> { it.stale }.thenByDescending { it.balance })
     }
 
     private fun aggregateData(all: List<TransactionEntity>, range: ChartTimeRange): List<MonthlyAggregate> {

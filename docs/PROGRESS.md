@@ -69,6 +69,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 Home: accounts whose SMS greet someone else are marked
+  "<Name>'s?" and Home offers to hide them; accounts with no SMS for 90
+  days leave the total and show "Last updated <month>". Rules unit-tested
+  with made-up names (`AccountOwnershipTest`). Not yet on a phone.
+
 - 2026-11-11 Web dashboard loads every transaction: it stopped at the
   newest 2,000, so heavy users saw empty months before ~August in "Money
   in vs out" and a short "All time" (owner's screenshot). Now pages of
