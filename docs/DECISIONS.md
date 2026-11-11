@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — No AI in the app; Gemini only on the web dashboard (FOW summit)
+
+Kash is applying for a free booth at the Future of Work Ethiopia Summit
+(28 Nov 2026, apply by 18 Nov), aimed at "AI startups". The owner decided
+not to add AI to the Android app. The AI story is that Kash is built end
+to end with AI agents, plus an optional "Ask Kash" on the web dashboard
+using Gemini (NAH-40). Gemini sees only per-user summaries (totals by
+category, merchant and month), never raw SMS, account numbers or phones.
+It is off until the user turns it on, the key stays in Supabase secrets,
+and it is called through an Edge Function as that user. This needs a
+privacy policy and SECURITY.md update when it lands. Goal for the summit:
+100 downloads and 100 active users (NAH-32).
+
 ## 2026-11-10 — Accounts live on Home; the Accounts tab is gone
 
 Owner picked "strip under the total" from three layouts (strip, a list in

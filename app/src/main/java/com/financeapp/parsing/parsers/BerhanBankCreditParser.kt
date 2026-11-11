@@ -27,6 +27,13 @@ import com.financeapp.parsing.TransactionType
  *     doesn't double-count in expense totals against the corresponding
  *     CBE debit row.
  *
+ *  C. Other credits name the source after the balance (Nov 2026 export):
+ *     "Rtrgs From [ Awinetaa ], Ref [" → "from Awash" (RTGS from another bank)
+ *     "transfer by OMEGA SAVING &CREDIT COOP …" → that name
+ *     "By Cheque No 7992892" → "Cheque deposit"
+ *     "9122 - Deposit Account Active Credit" → "Interest" (small, month-end)
+ *     "For Content Creator Payment" → "Content Creator Payment"
+ *
  * Differences from Berhan's debit format:
  *  - Customer name uses comma not semicolon: `Dear Natnael,`
  *  - Amount HAS space after ETB: `ETB 16,000`
@@ -44,6 +51,9 @@ class BerhanBankCreditParser : BankParser {
     private val balanceRe  = Regex("""Balance\s+is\s+ETB\s*([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE)
     // IPS incoming: "Ips_incoming Txn From {cbetetaa__1000482226926}"
     private val ipsFromRe  = Regex("""Ips_incoming\s+Txn\s+From\s+\{([^}]+)\}""", RegexOption.IGNORE_CASE)
+    // Free text between the balance and the sign-off: "Balance is ETB 1,129.62. <note> . Berhan Stress Free Banking"
+    private val noteRe     = Regex("""Balance\s+is\s+ETB\s*[\d,]+(?:\.\d+)?\.\s*(.*?)\s*\.?\s*Berhan\s+Stress""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+    private val rtgsFromRe = Regex("""Rtrgs\s+From\s+\[\s*(\w+)\s*\]""", RegexOption.IGNORE_CASE)
 
     // SWIFT BIC prefix → human-readable bank name. Only Ethiopian banks
     // the user is realistically going to receive IPS from.
@@ -85,7 +95,7 @@ class BerhanBankCreditParser : BankParser {
                 else TransactionType.CREDIT.name
             val counterparty = if (ipsPayload != null) {
                 buildIpsCounterparty(ipsPayload)
-            } else null  // Simple credit has no extractable counterparty; engine fallback fills "from Berhan Bank ..."
+            } else noteCounterparty(body)  // null → engine fallback fills "from Berhan Bank ..."
 
             TransactionEntity(
                 sender        = sms.sender,
@@ -102,6 +112,24 @@ class BerhanBankCreditParser : BankParser {
                 rawBody       = body
             )
         } catch (e: Exception) { null }
+    }
+
+    /** Source named in the note after the balance (variant C), or null. */
+    private fun noteCounterparty(body: String): String? {
+        rtgsFromRe.find(body)?.let { m ->
+            val code = m.groupValues[1].lowercase()
+            val bank = bicToBank[code] ?: bicToBank.entries.firstOrNull { code.startsWith(it.key.take(4)) }?.value
+            return "from ${bank ?: m.groupValues[1].trim()}"
+        }
+        val note = noteRe.find(body)?.groupValues?.get(1)?.trim()?.trimEnd('.', ' ').orEmpty()
+        return when {
+            note.isEmpty() -> null
+            note.startsWith("transfer by ", ignoreCase = true) -> note.substring(12).trim()
+            note.startsWith("By Cheque", ignoreCase = true) -> "Cheque deposit"
+            note.contains("Deposit Account Active Credit", ignoreCase = true) -> "Interest"
+            note.startsWith("For ", ignoreCase = true) -> note.substring(4).trim()
+            else -> null  // "To <account holder>" just restates the owner (variant A)
+        }
     }
 
     /**

@@ -5,6 +5,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
+  downloads and 100 active users. Release and install on a real phone by
+  26 Nov. Sub-issues, one branch each: parsers NAH-29, notifications
+  NAH-33, analytics NAH-27, Kash Wrapped NAH-34, in-app update + popup
+  NAH-35, category swipe NAH-36, icon clean-up NAH-37, download page
+  NAH-38, web insights NAH-30, web redesign + speed NAH-39, Gemini "Ask
+  Kash" on the web NAH-40.
+
 - NAH-29 part 2: the export has no money SMS at all from Hibret, Debub
   Global or NIB (only notices), and none from Zemen, Coop, Wegagen, Bunna,
   Oromia, Amhara, Enat, Global, Abay. New parsers need real samples from
@@ -28,6 +36,11 @@ items to Done with the date, add what is next or blocked.
   with `./gradlew testDebugUnitTest -PscreenshotTests`.
 
 ## Owner tasks
+
+- Send the FOW Summit booth application by 18 Nov (NAH-32). Check
+  whether a registered company is required.
+- Get a Gemini API key (Google AI Studio) for NAH-40; it goes into
+  Supabase secrets, never into chat or the repo.
 
 - Export a fresh `i_raw_data` CSV (the one in Downloads ends 28 Oct) so
   parser work sees November SMS.
@@ -55,6 +68,20 @@ items to Done with the date, add what is next or blocked.
   account rule, see the submission checklist §5).
 
 ## Done
+
+- 2026-11-11 NAH-29 part 2 (first pass): replayed the 28 Oct export again;
+  no SMS from tracked senders is left unread. Fixed 154 BoA deposits in the
+  2023–24 "has been credited … for a transfer made by …" wording, which had
+  no account, balance or sender (now e.g. "Telebirr", "Other bank
+  (EthSwitch)", or the depositor's name). Fixed Telebirr ticket payments
+  dropped as one-time codes because of "Don't share the link".
+  Berhan (owner's 173-SMS Berhan export): Berhan → Telebirr transfers now
+  read as money out (new `BerhanBankTransferParser`), and Berhan credits
+  name the source (another bank's RTGS, "transfer by …", cheque, interest,
+  payment purpose) instead of "from Berhan Bank <own account>". Replay:
+  156 parsed, 17 notices, 0 missed. `RULES_VERSION` 8. Not yet on a phone.
+  The rest of NAH-29 still needs November SMS and samples from the banks
+  we don't read yet.
 
 - 2026-11-10 1.0.26: Your accounts are on Home now: swipe the row under your total and tap one for its history; Three tabs instead of four: Home, History, Analytics; A low-balance alert opens that account's history. Not yet installed on a real phone.
 - 2026-11-10 NAH-28: Home and the Accounts tab are one page. Under the

@@ -13,6 +13,7 @@ import com.financeapp.parsing.parsers.BoaPosHoldParser
 import com.financeapp.parsing.parsers.CbeFastLoanParser
 import com.financeapp.parsing.parsers.BerhanBankCreditParser
 import com.financeapp.parsing.parsers.BerhanBankDebitParser
+import com.financeapp.parsing.parsers.BerhanBankTransferParser
 import com.financeapp.parsing.parsers.AwashDebitParser
 import com.financeapp.parsing.parsers.BoaCreditParser
 import com.financeapp.parsing.parsers.BoaDebitParser
@@ -148,6 +149,7 @@ object SmsParserEngine {
         DashenDebitParser(),
         BerhanBankCreditParser(),
         BerhanBankDebitParser(),
+        BerhanBankTransferParser(),
         // CBEBirr parsers — match on sender == "CBEBirr" so they're safe
         // to keep next to the CBE parsers (which match on "CBE"). Order
         // them by specificity: withdrawal + transfer before credit.
@@ -287,6 +289,8 @@ object SmsParserEngine {
     private val noticeFooters: List<Regex> = listOf(
         Regex("""Link\s+your\s+Fayda:\s*\S+""", RegexOption.IGNORE_CASE),
         Regex("""Alert:\s*Awash\s+Bank\s+will\s+never\s+ask\b.*""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)),
+        // Telebirr ticket payments: "You can get your ticket in this link … Don't share the link to others."
+        Regex("""Don'?t\s+share\s+the\s+link\s+to\s+others\.?""", RegexOption.IGNORE_CASE),
     )
 
     private fun withoutFooters(body: String): String =
@@ -314,7 +318,7 @@ object SmsParserEngine {
      * every stored SMS's parse status once per version, so the admin bug
      * queue reflects what the current rules make of old messages.
      */
-    const val RULES_VERSION = 6
+    const val RULES_VERSION = 8
 
     /**
      * Parse the SMS and return a TransactionEntity.

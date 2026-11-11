@@ -184,4 +184,98 @@ class DroppedMoneyParserTest {
         assertEquals(1506.30, tx.totalCharged!!, 0.001)
         assertEquals(903.56, tx.balance!!, 0.001)
     }
+
+    // ── BoA 2023–24 "has been credited … for a transfer made by …" (154 in the Oct export) ──
+
+    private fun boaMadeBy(by: String, desc: String) =
+        "Dear Abebe, your account 9*****24 has been credited with ETB 350.00 on 27/04/2024 by BDR0AAAA0F " +
+            "for a transfer made by $by through Branch Transfer with transfer description $desc. " +
+            "The available balance in the account is ETB 510.49. Use our SWIFT, ABYSETAA. " +
+            "For any assistance, call Toll-Free (24/7) on 8397. Bank of Abyssinia."
+
+    @Test fun `BoA made-by credit reads account, balance and sender`() {
+        val tx = parse("BOA", boaMadeBy("ABEBE KEBEDE ALEMU", "Transfer-TRANSFER"))
+        assertNotNull(tx)
+        assertEquals(TransactionType.CREDIT.name, tx!!.type)
+        assertEquals(350.0, tx.amount, 0.001)
+        assertEquals(510.49, tx.balance!!, 0.001)
+        assertEquals("9*****24", tx.accountNumber)
+        assertEquals("ABEBE KEBEDE ALEMU", tx.counterparty)
+    }
+
+    @Test fun `BoA made-by credit from Telebirr names Telebirr`() {
+        val tx = parse("BOA", boaMadeBy("A/R TELE BIRR", "Telebirr to BoA Account-20240427165357"))
+        assertEquals("Telebirr", tx!!.counterparty)
+    }
+
+    @Test fun `BoA made-by credit from another bank names EthSwitch`() {
+        val tx = parse("BOA", boaMadeBy("EthSwich PAY amp; SET FOR BANK TO BANK", "Transfer-ETSWITCH Transfer"))
+        assertEquals("Other bank (EthSwitch)", tx!!.counterparty)
+    }
+
+    @Test fun `BoA cash deposit names the depositor`() {
+        val tx = parse("BOA", boaMadeBy("", "Cash Deposit-ABEBE KEBEDE ALEMU"))
+        assertEquals("ABEBE KEBEDE ALEMU", tx!!.counterparty)
+        assertEquals(350.0, tx.amount, 0.001)
+    }
+
+    // ── Telebirr: "Don't share the link" made a ticket payment look like an OTP ──
+
+    @Test fun `Telebirr ticket payment is money out`() {
+        val tx = parse(
+            "127",
+            "Dear Customer You have paid ETB 200.00 to CENTURY GENERAL TRADING PLC (500000) for Ticket Purchase   " +
+                "on 05/01/2024 16:27:18 via Agent 200000. Your Ticket No. is BA00AAAAZD.You can get your ticket in this link " +
+                "https://payment.ethiotelecom.et/qr-code/500000/BA00AAAAZD . Don't share the link to others. " +
+                "Thank you for using telebirr Ethio telecom",
+        )
+        assertNotNull(tx)
+        assertEquals(200.0, tx!!.amount, 0.001)
+    }
+
+    @Test fun `telebirr verification code is still ignored`() {
+        assertNull(parse("127", "Dear Customer, 725000 is your telebirr verification code, please don't share it with another person. Thank you for using telebirr.  Ethio telecom."))
+    }
+
+    // ── Berhan Bank (Nov 2026 Berhan export, 173 SMS) ──
+
+    private fun berhanCredit(note: String) =
+        "Dear Abebe, A/C No. 103000XXXXX00 has been credited ETB 16,000 on 26-Jun-2026. " +
+            "Reference is 17000000000000000001. Balance is ETB 31,882.18. $note . Berhan Stress Free Banking"
+
+    @Test fun `Berhan RTGS credit names the sending bank`() {
+        val tx = parse("Berhan Bank", berhanCredit("Rtrgs From [ Awinetaa ], Ref ["))
+        assertEquals(TransactionType.CREDIT.name, tx!!.type)
+        assertEquals(16000.0, tx.amount, 0.001)
+        assertEquals(31882.18, tx.balance!!, 0.001)
+        assertEquals("from Awash", tx.counterparty)
+    }
+
+    @Test fun `Berhan credit reads transfer-by, cheque, interest and purpose`() {
+        assertEquals("OMEGA SAVING &CREDIT COOP SOC.WITH LIM.LIAB",
+            parse("Berhan Bank", berhanCredit("transfer by OMEGA SAVING &CREDIT COOP SOC.WITH LIM.LIAB"))!!.counterparty)
+        assertEquals("Cheque deposit", parse("Berhan Bank", berhanCredit("By Cheque No 7000000"))!!.counterparty)
+        assertEquals("Interest", parse("Berhan Bank", berhanCredit("9122 - Deposit Account Active Credit"))!!.counterparty)
+        assertEquals("Content Creator Payment", parse("Berhan Bank", berhanCredit("For Content Creator Payment"))!!.counterparty)
+    }
+
+    @Test fun `Berhan credit to the holder keeps the old fallback`() {
+        val tx = parse("Berhan Bank", berhanCredit("To Abebe Kebede"))
+        assertEquals(TransactionType.CREDIT.name, tx!!.type)
+        assertEquals("from Berhan Bank 103000XXXXX00", tx.counterparty)
+    }
+
+    @Test fun `Berhan transfer to Telebirr is money out`() {
+        val tx = parse(
+            "Berhan Bank",
+            "Dear Abebe, You have transferred ETB 800 from your account 101XXXXXXX000 to TeleBirr number 251900000000. " +
+                "Reference No. is: VMAAAAAAAZC. 08-Aug-2026 19:18:03 Through Android. Thank you for banking with us.",
+        )
+        assertNotNull(tx)
+        assertEquals(TransactionType.TRANSFER_OUT.name, tx!!.type)
+        assertEquals(800.0, tx.amount, 0.001)
+        assertEquals("Telebirr 251900000000", tx.counterparty)
+        assertEquals("101XXXXXXX000", tx.accountNumber)
+        assertEquals("VMAAAAAAAZC", tx.refNumber)
+    }
 }
