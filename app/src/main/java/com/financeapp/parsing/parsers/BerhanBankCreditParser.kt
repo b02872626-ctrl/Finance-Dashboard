@@ -11,14 +11,14 @@ import com.financeapp.parsing.TransactionType
  * the real-world corpus:
  *
  *  A. Simple in-network credit (self-reference, no origin info):
- *     "Dear Natnael, A/C No. 103002XXXXX67 has been credited ETB 16,000
+ *     "Dear Dawit, A/C No. 105001XXXXX67 has been credited ETB 16,000
  *      on 23-Mar-2026. Reference is 17742610528660003539. Balance is
- *      ETB 16,029.7. To Natnael Getinet . Berhan Stress Free Banking"
- *     (The "To Natnael Getinet" just re-states the account holder — not
+ *      ETB 16,029.7. To Dawit Haile . Berhan Stress Free Banking"
+ *     (The "To Dawit Haile" just re-states the account holder — not
  *      a counterparty.)
  *
  *  B. Cross-bank IPS incoming (the user moved money in from another bank):
- *     "Dear Natnael, ... has been credited ETB 5,000 on 01-May-2026.
+ *     "Dear Dawit, ... has been credited ETB 5,000 on 01-May-2026.
  *      Reference is 17776... Balance is ETB 5,034.95. Ips_incoming Txn
  *      From {cbetetaa__1000482226926} . Berhan Stress Free Banking"
  *     The `{<SWIFT_BIC>__<acct>}` payload identifies the originating
@@ -35,7 +35,7 @@ import com.financeapp.parsing.TransactionType
  *     "For Content Creator Payment" → "Content Creator Payment"
  *
  * Differences from Berhan's debit format:
- *  - Customer name uses comma not semicolon: `Dear Natnael,`
+ *  - Customer name uses comma not semicolon: `Dear Dawit,`
  *  - Amount HAS space after ETB: `ETB 16,000`
  *  - Date format `dd-Mon-yyyy` (month abbreviation, not numeric)
  *  - Reference label is `Reference is` (full phrase)

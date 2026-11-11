@@ -9,7 +9,7 @@ import com.financeapp.parsing.TransactionType
 /**
  * Short CBE messages:
  *  - App transfer with nothing after the name (no separate debit SMS in the
- *    data): "Dear Gebreamlak, You have transfered ETB 100.00 to Fiseha"
+ *    data): "Dear Kebede, You have transfered ETB 100.00 to Fiseha"
  *  - CBE Fast Loan repayments: "ETB 420.00 is paid on 07 Sep, 2026 for Loan Id
  *    26249. CBE Fast Loan." / "ETB 478.63 is debited via auto-collection on …"
  */

@@ -25,7 +25,7 @@ object NotifyText {
     private fun oneDecimal(x: Double): String =
         if (x == Math.floor(x)) x.toLong().toString() else String.format(Locale.US, "%.1f", x)
 
-    /** "Natnael Getinet" → "Natnael"; blank → null (the copy then starts with "hey"). */
+    /** "Dawit Haile" → "Dawit"; blank → null (the copy then starts with "hey"). */
     fun firstName(fullName: String?): String? =
         fullName?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.takeIf { it.isNotBlank() }
 }

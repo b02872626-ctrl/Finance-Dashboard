@@ -9,7 +9,7 @@ import com.financeapp.parsing.TransactionType
 /**
  * Older CBE Birr wordings (2024–2026):
  *  - "you have sent 200.00Br. to NARDOS WENDIMU on 26/06/25 14:26,Txn ID CFQ9PVCXT9."
- *  - "you received 600.00Br. from 251947343024 - nahusenay gebreamlak teka on …"
+ *  - "you received 600.00Br. from 251900000001 - abebe kebede alemu on …"
  *  - "you have received 2.00Br. salary payment from 036000 - Dil Gebeya Branch on …"
  *  - "you paid 692.04Br. to 232320 - Chapafinancialtechnology s.c on …"
  *  - "reversal of transaction CL84105E978 has been successfully completed on … and

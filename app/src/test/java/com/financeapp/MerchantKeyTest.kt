@@ -69,8 +69,8 @@ class MerchantKeyTest {
     }
 
     @Test fun `bracketed phone tail is stripped`() {
-        val k = MerchantKey.normalize("NAHUSENAY GEBREAMLAK (2519****1234)")
-        assertEquals("NAHUSENAY GEBREAMLAK", k)
+        val k = MerchantKey.normalize("ABEBE KEBEDE (2519****1234)")
+        assertEquals("ABEBE KEBEDE", k)
     }
 
     @Test fun `POS unbranded merchants keep their masked id`() {

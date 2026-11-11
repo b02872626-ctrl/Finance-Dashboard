@@ -9,8 +9,8 @@ import com.financeapp.parsing.TransactionType
 /**
  * Awash Bank wordings the older parsers miss:
  *  - "You have transferred to COMMERCIAL BANK OF ETHIOPIA Amount 400 ETB To
- *     1000469454607 (NAHUSENAY G/AMLAK TEKA). VAT: 0.36 Your Balance is ETB 120.85."
- *  - "You have transferred to other bank ETB 300 To 74701531 (GEBREAMLAK TEKA MEZGEBE)
+ *     1000000000001 (ABEBE KEBEDE ALEMU). VAT: 0.36 Your Balance is ETB 120.85."
+ *  - "You have transferred to other bank ETB 300 To 74701531 (KEBEDE ALEMU MEZGEBE)
  *     In Bank of Abyssinia with charge of 1.80 VAT: 0.27 EDRRF 0.09 ETB."
  *  - "Your Account 01320******500 has been credited with 9,500.00 ETB on … by
  *     [NAME via] IPS from Commercial Bank of Ethiopia"

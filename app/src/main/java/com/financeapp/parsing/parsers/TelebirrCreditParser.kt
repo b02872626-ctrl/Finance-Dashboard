@@ -8,9 +8,9 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Telebirr incoming (received) funds.
- * Example: "Dear yohannes, You have received  ETB 1,000.00 by transaction number DD19GI0GK9
+ * Example: "Dear yonas, You have received  ETB 1,000.00 by transaction number DD19GI0GK9
  *           on 2026-04-01 15:33:19 from Bank of Abyssinia to your telebirr Account
- *           251954998471 - yohannes tadesse gbereyohannes. Your current balance is ETB 1,094.48."
+ *           251900000003 - yonas mekonnen ayele. Your current balance is ETB 1,094.48."
  */
 class TelebirrCreditParser : BankParser {
 

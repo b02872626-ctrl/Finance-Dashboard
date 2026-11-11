@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — No real people's details in the public repo
+
+The repo is public. Parser comments and tests had real testers' names, two
+full phone numbers, the owner's full account number, and a tester's
+balances copied from SMS. They were replaced with made-up ones (each real
+person mapped to one made-up name so the tests still check the same
+things); the sync-key test's reference value was recomputed with the
+database formula. Old commits still hold the originals (main's history is
+never rewritten). From now on: made-up names, numbers and balances
+everywhere in the repo (RULES.md, Code rules).
+
 ## 2026-11-11 — Several incomes can count for Payday
 
 Owner's follow-up. "Pick your income" toggles each sender on or off (a
@@ -126,7 +137,7 @@ no Play build yet) and must be removed for the Play upload
 ## 2026-11-11 — Notifications talk like a friend texting
 
 Owner approved a casual voice for every notification (NAH-33): lowercase,
-loose grammar, "u"/"ur", emoji, e.g. "hey Natty, CBE is getting low 👀" /
+loose grammar, "u"/"ur", emoji, e.g. "hey Dawi, CBE is getting low 👀" /
 "only 180 Br left, thats like 2 days of ur usual spending". Amounts under
 1,000 stay as they are (250, 12.50) and 1,000 and up become "k" (1.2k,
 32k), via `NotifyText.k`. "Br" only appears in low balance and fee

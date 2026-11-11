@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Telebirr airtime top-up payments.
- * Example: "Dear yohannes 
+ * Example: "Dear yonas 
  *           You have recharged ETB 5.00 airtime for 954998471 on 13/03/2026 10:17:14.
  *           Your transaction number is DCD5PW1A9X. Your current  balance is  ETB 4,933.15."
  */

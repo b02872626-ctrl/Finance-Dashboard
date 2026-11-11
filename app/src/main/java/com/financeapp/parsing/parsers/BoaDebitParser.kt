@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Bank of Abyssinia (BOA) Debit SMS.
- * Example: "Dear Yohannes, your account 1*26 was debited with ETB 1,005.41.
+ * Example: "Dear Yonas, your account 1*26 was debited with ETB 1,005.41.
  *           Available Balance: ETB 5,191.03.
  *           Receipt: https://cs.bankofabyssinia.com/slip/?trx=FT26089P6G1X03526..."
  */

@@ -10,14 +10,14 @@ import com.financeapp.parsing.TransactionType
  * Parses CBE outgoing transfer SMS. CBE ships TWO formats:
  *
  *  OLD format (single-r "transfered", legacy):
- *    "Dear Yohannes, You have transfered ETB 600.00 to Fetlework Ansa on
+ *    "Dear Yonas, You have transfered ETB 600.00 to Fetlework Ansa on
  *     03/04/2026 at 22:46:55 from your account 1*****8166. Your account has
  *     been debited with a S.charge of ETB 0.50 and VAT(15%) of ETB0.08 and
  *     Disaster Fund (5%) of ETB0.03, with a total of ETB 600.61. Your
  *     Current Balance is ETB 78,471.86."
  *
  *  NEW format (double-r "successfully transferred", introduced ~mid-2026):
- *    "Dear  Nahusenay G/amlak Teka You have successfully transferred ETB
+ *    "Dear  Abebe Kebede Alemu You have successfully transferred ETB
  *     250.61 from account 1********4607 to account 1********9258 (Firehiwot
  *     Asmelash Belay). Service charge of ETB 0.50 and VAT(15%) of ETB0.08
  *     and Disaster Recovery(5%) of 0.03 with total of ETB250.61 .Your

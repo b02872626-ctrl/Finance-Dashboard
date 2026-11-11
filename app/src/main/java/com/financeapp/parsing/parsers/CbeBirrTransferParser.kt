@@ -10,8 +10,8 @@ import com.financeapp.parsing.TransactionType
  * Parses CBEBirr P2P transfer-out SMS.
  *
  * Example:
- *   "Dear nahusenay, you have successfully transferred 5,100.00Br. to
- *    1000469454607-NAHUSENAY G/AMLAK TEKA on 21-05-2026 09:04:50.Txn ID
+ *   "Dear abebe, you have successfully transferred 5,100.00Br. to
+ *    1000000000001-ABEBE KEBEDE ALEMU on 21-05-2026 09:04:50.Txn ID
  *    DEL41DNZRPK,FT26141QJJK9.Your CBEBirr account balance is 107.56Br."
  *
  * Recipient text is "ACCOUNTNUM-NAME"; we capture just the NAME as the

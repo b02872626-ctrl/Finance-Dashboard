@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Telebirr wallet-side credit SMS (companion to Mela loan disbursement, or external top-up).
- * Example: "Dear Nahusenay
+ * Example: "Dear Abebe
  *           Your telebirr account has been credited with ETB 500.00.
  *           Your current telebirr E-Money Account balance is ETB 500.44."
  *

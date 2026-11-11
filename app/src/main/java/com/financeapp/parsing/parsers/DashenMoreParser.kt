@@ -17,7 +17,7 @@ import com.financeapp.parsing.TransactionType
  *  - "FANUEL ANTENEH has debited ETB 24,000.00 as check payment from your
  *     account '0145******011' on 13/02/2024."                         → DEBIT
  *  - "ETB 5,000.00 has been debited from your account 5014********011 and
- *     credited to the Telebirr account +251921118602 … A service fee of
+ *     credited to the Telebirr account +251900000004 … A service fee of
  *     ETB 5 and VAT of ETB 0.25 and DRRF fee of ETB 0.75 …"     → TRANSFER_OUT
  */
 class DashenMoreParser : BankParser {
