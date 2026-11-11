@@ -69,6 +69,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 NAH-36 review swipe: the card read the finger in its own
+  moving, tilted coordinates, so it lagged, jittered and flicks barely
+  counted; the drag is now read before the card moves. Swipes on the card
+  no longer trigger Android's back gesture, fast moves can't overwrite
+  each other, and with reduced motion the card can't get stuck after a
+  swipe that keeps it on screen. Release rule unit-tested
+  (`ReviewSwipeTest`). Not yet on a phone.
+
 - 2026-11-11 NAH-35 in-app update: Update downloads the APK inside Kash
   (with progress), checks its SHA-256 against version.json, and opens
   Android's installer; the first time, Android asks to allow installs

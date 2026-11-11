@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Path
@@ -170,7 +171,14 @@ fun ReviewScreen(
     fun fly(direction: Int, then: () -> Unit) {
         if (flying) return
         flying = true
-        if (reduced) { then(); return }
+        if (reduced) {
+            // No flight, but never leave the card stuck: if it's still the
+            // same card afterwards (the "label all" question), it's usable again.
+            scope.launch { swipe.snapTo(0f) }
+            then()
+            flying = false
+            return
+        }
         scope.launch {
             swipe.animateTo(direction * cardWidth * 1.3f, tween(220))
             then()
@@ -225,15 +233,15 @@ fun ReviewScreen(
                         onWidth = { cardWidth = it },
                         onLongPress = { haptic(Haptic.LONG); vm.openDetailSheet() },
                         onCrossed = { haptic(Haptic.TAP) },
-                        onRelease = { dx ->
-                            val line = cardWidth * 0.35f
-                            when {
-                                dx > line && selected != null -> confirm(selected!!)
-                                dx < -line -> skip()
-                                else -> {
+                        onRelease = { dx, velocity ->
+                            when (swipeOutcome(dx, velocity, cardWidth, hasCategory = selected != null)) {
+                                SwipeOutcome.Confirm -> confirm(selected!!)
+                                SwipeOutcome.Skip -> skip()
+                                SwipeOutcome.Pick -> {
                                     scope.launch { swipe.animateTo(0f, spring(dampingRatio = 0.6f)) }
-                                    if (dx > line) vm.openPickerSheet()
+                                    vm.openPickerSheet()
                                 }
+                                SwipeOutcome.Back -> scope.launch { swipe.animateTo(0f, spring(dampingRatio = 0.6f)) }
                             }
                         },
                     )
@@ -331,10 +339,38 @@ private fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
         .any { it in cpLow }
 }
 
+/** What letting go of the review card does. */
+internal enum class SwipeOutcome { Confirm, Skip, Pick, Back }
+
+/** Past this share of the card's width, letting go acts. */
+internal const val SWIPE_LINE = 0.35f
+/** A flick this fast (px/s) acts even before the line. */
+internal const val FLICK_VELOCITY = 1800f
+
+/**
+ * Right confirms the picked category (or opens the picker when there is
+ * none), left skips, anything short of the line springs back. A quick flick
+ * counts as if the card had travelled a fifth of a second further.
+ */
+internal fun swipeOutcome(dx: Float, velocity: Float, width: Float, hasCategory: Boolean): SwipeOutcome {
+    val reach = dx + if (kotlin.math.abs(velocity) > FLICK_VELOCITY) velocity * 0.2f else 0f
+    val line = width * SWIPE_LINE
+    return when {
+        reach > line -> if (hasCategory) SwipeOutcome.Confirm else SwipeOutcome.Pick
+        reach < -line -> SwipeOutcome.Skip
+        else -> SwipeOutcome.Back
+    }
+}
+
 /**
  * The review card on a leash: drag it sideways and it tilts with you, a
  * label says what letting go will do, past 35% of its width it goes. A new
  * card rises into place from slightly smaller.
+ *
+ * The drag is read before the card's own move and tilt (pointerInput sits
+ * outside graphicsLayer): reading it inside measured the finger against a
+ * card that was already following it, so the card lagged, jittered and
+ * flicks barely registered (NAH-36).
  */
 @Composable
 private fun SwipeableReviewCard(
@@ -345,13 +381,13 @@ private fun SwipeableReviewCard(
     onWidth: (Float) -> Unit,
     onLongPress: () -> Unit,
     onCrossed: () -> Unit,
-    onRelease: (Float) -> Unit,
+    onRelease: (dx: Float, velocity: Float) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var width by remember { mutableFloatStateOf(1f) }
     val rise = remember(tx.id) { Animatable(if (reduced) 1f else 0f) }
     LaunchedEffect(tx.id) { if (!reduced) rise.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)) }
-    val progress = (offset.value / (width * 0.35f)).coerceIn(-1f, 1f)
+    val progress = (offset.value / (width * SWIPE_LINE)).coerceIn(-1f, 1f)
     // A tick when the drag crosses the line, either way.
     val armed = kotlin.math.abs(progress) >= 1f
     LaunchedEffect(armed) { if (armed) onCrossed() }
@@ -360,6 +396,23 @@ private fun SwipeableReviewCard(
         Modifier
             .fillMaxWidth()
             .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f); onWidth(width) }
+            // Swipes on the card are for the card, not Android's back gesture.
+            .systemGestureExclusion()
+            .pointerInput(tx.id) {
+                val tracker = VelocityTracker()
+                var x = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { tracker.resetTracking(); x = offset.value },
+                    onDragEnd = { onRelease(x, tracker.calculateVelocity().x) },
+                    onDragCancel = { scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.6f)) } },
+                ) { change, dx ->
+                    change.consume()
+                    tracker.addPosition(change.uptimeMillis, change.position)
+                    // One running total, so fast moves can't overwrite each other.
+                    x += dx
+                    scope.launch { offset.snapTo(x) }
+                }
+            }
             .graphicsLayer {
                 val s = 0.95f + 0.05f * rise.value
                 scaleX = s; scaleY = s
@@ -367,23 +420,6 @@ private fun SwipeableReviewCard(
                 translationX = offset.value
                 rotationZ = offset.value / width * 8f
                 alpha = (0.6f + 0.4f * rise.value) * (1f - (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) * 0.6f)
-            }
-            .pointerInput(tx.id) {
-                val tracker = VelocityTracker()
-                detectHorizontalDragGestures(
-                    onDragStart = { tracker.resetTracking() },
-                    onDragEnd = {
-                        val v = tracker.calculateVelocity().x
-                        // A quick flick counts even before the line.
-                        val dx = offset.value + if (kotlin.math.abs(v) > 1800f) v * 0.2f else 0f
-                        onRelease(dx)
-                    },
-                    onDragCancel = { scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.6f)) } },
-                ) { change, dx ->
-                    change.consume()
-                    tracker.addPosition(change.uptimeMillis, change.position)
-                    scope.launch { offset.snapTo(offset.value + dx) }
-                }
             },
     ) {
         ReviewCard(tx, onLongPress)
