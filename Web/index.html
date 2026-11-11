@@ -152,59 +152,114 @@
             </div>
           </section>
 
-          <!-- 6 stat cards -->
-          <section class="grid grid-3 stat-grid">
+          <!-- Overview (NAH-30): the phone's Analytics on the web. -->
+          <section class="grid grid-4 stat-grid">
             <div class="card stat-card">
-              <p class="label"><span class="k-ico tone-ink" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M16 12.5h2M3 10h18"/></svg></span>Total Balance</p>
+              <p class="label"><span class="k-ico tone-ink" aria-hidden="true"></span>Total balance</p>
               <p class="big-number teal" id="stat-balance">—</p>
               <p class="muted small" id="stat-balance-sub">across all accounts</p>
             </div>
             <div class="card stat-card">
-              <p class="label"><span class="k-ico tone-coral" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></svg></span>Spend <span id="stat-period-label-1" class="muted small">this month</span></p>
-              <p class="big-number coral" id="stat-month-spend">—</p>
-              <p class="muted small" id="stat-month-spend-sub">—</p>
+              <p class="label"><span class="k-ico tone-coral" aria-hidden="true"></span>Spent today</p>
+              <p class="big-number" id="ov-today">—</p>
+              <p class="muted small" id="ov-today-sub">—</p>
             </div>
             <div class="card stat-card">
-              <p class="label"><span class="k-ico tone-green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20V5M6 11l6-6 6 6"/></svg></span>Income <span id="stat-period-label-2" class="muted small">this month</span></p>
-              <p class="big-number income" id="stat-month-income">—</p>
-              <p class="muted small" id="stat-month-income-sub">—</p>
+              <p class="label"><span class="k-ico tone-orange" aria-hidden="true"></span>This week</p>
+              <p class="big-number" id="ov-week">—</p>
+              <p class="muted small" id="ov-week-sub">—</p>
             </div>
             <div class="card stat-card">
-              <p class="label"><span class="k-ico tone-blue" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-7"/><path d="M15 8h5v5"/></svg></span>Net Cashflow</p>
-              <p class="big-number" id="stat-net">—</p>
-              <p class="muted small" id="stat-net-sub">income − spend</p>
-            </div>
-            <div class="card stat-card">
-              <p class="label"><span class="k-ico tone-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span>Avg Daily Spend</p>
-              <p class="big-number teal" id="stat-avg-daily">—</p>
-              <p class="muted small" id="stat-avg-daily-sub">—</p>
-            </div>
-            <div class="card stat-card">
-              <p class="label"><span class="k-ico tone-purple" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg></span>Largest Expense</p>
-              <p class="big-number coral" id="stat-largest">—</p>
-              <p class="muted small" id="stat-largest-sub">—</p>
+              <p class="label"><span class="k-ico tone-blue" aria-hidden="true"></span>This month</p>
+              <p class="big-number" id="ov-month">—</p>
+              <p class="muted small" id="ov-month-sub">—</p>
             </div>
           </section>
 
-          <!-- Charts row -->
-          <section class="grid grid-2">
-            <div class="card chart-card">
-              <header class="section-header">
-                <h3>Daily Spending</h3>
-                <span class="muted small" id="daily-chart-window">last 30 days</span>
-              </header>
-              <div id="daily-chart" class="chart"></div>
-            </div>
-            <div class="card chart-card">
-              <header class="section-header">
-                <h3>Income vs Expense</h3>
-                <span class="muted small">last 12 months</span>
-              </header>
-              <div id="monthly-chart" class="chart"></div>
-              <div class="chart-legend">
-                <span class="dot income-dot"></span><span class="muted small">Income</span>
-                <span class="dot coral-dot"></span><span class="muted small">Expense</span>
+          <!-- Spending over time: one daily line for a chosen range. -->
+          <section class="card" id="over-time">
+            <header class="section-header ins-header">
+              <h3>Spending over time</h3>
+              <div class="ins-chips" role="tablist" aria-label="Range">
+                <button type="button" class="ins-chip" data-range="week" role="tab">This week</button>
+                <button type="button" class="ins-chip active" data-range="month" role="tab">This month</button>
+                <button type="button" class="ins-chip" data-range="30d" role="tab">30 days</button>
+                <button type="button" class="ins-chip" data-range="custom" role="tab" id="ot-custom-chip">Pick dates</button>
               </div>
+            </header>
+            <form id="ot-custom-form" class="ins-custom hidden">
+              <label>From <input type="date" id="ot-from" required /></label>
+              <label>To <input type="date" id="ot-to" required /></label>
+              <button type="submit" class="btn-primary ins-apply">Show</button>
+            </form>
+            <div class="ins-summary">
+              <div>
+                <p class="big-number" id="ot-total">—</p>
+                <p class="muted small" id="ot-change">—</p>
+              </div>
+              <p class="muted small" id="ot-avg">—</p>
+            </div>
+            <p class="ins-readout" id="ot-readout" aria-live="polite">&nbsp;</p>
+            <div id="ot-chart" class="chart ins-line"></div>
+            <div class="ins-axis muted small"><span id="ot-axis-from"></span><span id="ot-axis-to"></span></div>
+          </section>
+
+          <section class="grid grid-2">
+            <div class="card">
+              <header class="section-header">
+                <h3>Where you pay most</h3>
+                <span class="muted small ot-range-label">this month</span>
+              </header>
+              <div id="ot-payees" class="ins-list"><p class="muted">—</p></div>
+            </div>
+            <div class="card">
+              <header class="section-header">
+                <h3>Spent from</h3>
+                <span class="muted small ot-range-label">this month</span>
+              </header>
+              <div id="ot-accounts" class="ins-list"><p class="muted">—</p></div>
+            </div>
+          </section>
+
+          <!-- Money in vs out by month, with what was kept. -->
+          <section class="card">
+            <header class="section-header ins-header">
+              <h3>Money in vs out</h3>
+              <div class="ins-chips" role="tablist" aria-label="Months">
+                <button type="button" class="ins-chip active" data-months="6" role="tab">6 months</button>
+                <button type="button" class="ins-chip" data-months="12" role="tab">12 months</button>
+              </div>
+            </header>
+            <p class="muted small" id="io-summary">—</p>
+            <div id="io-chart" class="chart"></div>
+            <div class="chart-legend">
+              <span class="dot income-dot"></span><span class="muted small">In</span>
+              <span class="dot coral-dot"></span><span class="muted small">Out</span>
+              <span class="dot kept-dot"></span><span class="muted small">Kept (in − out)</span>
+            </div>
+          </section>
+
+          <section class="grid grid-2">
+            <!-- Payday: when income lands and how fast it goes. -->
+            <div class="card">
+              <header class="section-header">
+                <h3>Payday</h3>
+                <span class="muted small" id="pd-source">—</span>
+              </header>
+              <div id="pd-body"><p class="muted">—</p></div>
+              <div id="pd-chart" class="chart ins-burn"></div>
+              <div class="chart-legend" id="pd-legend">
+                <span class="dot kept-dot"></span><span class="muted small">This pay cycle</span>
+                <span class="dot usual-dot"></span><span class="muted small">Your usual pace</span>
+              </div>
+            </div>
+            <!-- Low-balance days per account. -->
+            <div class="card">
+              <header class="section-header">
+                <h3>Low-balance days</h3>
+                <span class="muted small" id="lb-month">this month</span>
+              </header>
+              <div id="lb-body" class="lb-body"><p class="muted">—</p></div>
             </div>
           </section>
 
@@ -230,7 +285,7 @@
 
           <!-- Categories + top counterparties side by side -->
           <section class="grid grid-2">
-            <div class="card">
+            <div class="card" id="category-card">
               <header class="section-header">
                 <h3>Spend by Category</h3>
                 <span class="muted small">categorised expenses</span>

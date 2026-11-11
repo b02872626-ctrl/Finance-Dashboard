@@ -69,6 +69,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 NAH-30 web dashboard insights: overview like the phone's
+  Analytics (balance, today, this week, this month; spending line with
+  ranges; where you pay most; spent from), money in vs out with a kept
+  line, payday pattern with burn-down, low-balance days per account, and
+  a fixed "In context" block. Numbers in `Web/insights.js`, 16 Node tests
+  in CI. Checked in the browser with sample data (desktop, phone width,
+  Ethiopian calendar); not yet with a real account.
+
 - 2026-11-11 1.0.30: Kash Wrapped: last month's money story, ready to share; The Settings button is a gear now. Not yet installed on a real phone.
 - 2026-11-11 NAH-37 clean-up: the Settings icon is a gear (it was a ring
   with rays that read as a sun). Removed dead code left from the pre-Kash
