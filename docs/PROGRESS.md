@@ -69,6 +69,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 1.0.28: Berhan accounts show your real balance (one account was counted twice). Not yet installed on a real phone.
 - 2026-11-11 Berhan balance fix: Berhan writes one account as
   "*********9067" on debits and "103002XXXXX67" on credits. Kash read the
   credit's last four as "0267" and showed two accounts, adding a stale
