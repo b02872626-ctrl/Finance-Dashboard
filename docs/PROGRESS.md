@@ -69,6 +69,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 NAH-34 Kash Wrapped: last month's money story in pages
+  (spent vs the month before, kept, biggest payment, your regular, bank
+  fees, busiest weekday and time of day, a tip), from SMS data only.
+  Home card in the first week of a month and a row on Analytics. Share
+  makes a picture without account numbers, balances or names, with the
+  download link (`?ref=wrapped`). Numbers unit-tested (`WrappedTest`).
+  Not yet seen on a phone.
+
 - 2026-11-11 1.0.29: Analytics shows today, this week and a spending graph you can set to any dates; Notifications are quieter and friendlier, with no more scanning or backup pings; Updates install right inside Kash from the next version on; Swiping review cards follows your finger again. Not yet installed on a real phone.
 - 2026-11-11 NAH-27 Analytics: today's spend up top with This week and
   This month tiles (vs the same point before), then a daily spending line

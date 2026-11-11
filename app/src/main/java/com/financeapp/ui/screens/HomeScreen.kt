@@ -100,6 +100,9 @@ fun HomeScreen(
     onReviewToday: () -> Unit,
     onReviewOlder: () -> Unit,
     onOpenAccount: (bankName: String, accountSuffix: String?) -> Unit,
+    /** Last month, in the first week of a new one (Kash Wrapped, NAH-34). */
+    wrappedMonth: Long? = null,
+    onOpenWrapped: (Long) -> Unit = {},
 ) {
     KashSystemBars(darkIcons = false)
     val state by vm.state.collectAsState()
@@ -170,6 +173,20 @@ fun HomeScreen(
                     UpdateCard(
                         latest,
                         onLater = { UpdateChecker.dismiss(context, latest.versionCode) },
+                        modifier = Modifier.padding(bottom = 14.dp),
+                    )
+                }
+                // Kash Wrapped: last month's story, for the first week of a new month.
+                val wrappedPrefs = remember { context.getSharedPreferences("kash_wrapped", android.content.Context.MODE_PRIVATE) }
+                var wrappedHidden by remember(wrappedMonth) {
+                    mutableStateOf(wrappedMonth != null && wrappedPrefs.getLong("dismissed", 0L) == wrappedMonth)
+                }
+                AnimatedVisibility(wrappedMonth != null && !wrappedHidden, enter = fadeIn() + expandVertically()) {
+                    val month = wrappedMonth ?: return@AnimatedVisibility
+                    WrappedCard(
+                        monthName = com.financeapp.util.KashDates.monthName(month + 86_400_000L, cal),
+                        onOpen = { onOpenWrapped(month) },
+                        onLater = { wrappedPrefs.edit().putLong("dismissed", month).apply(); wrappedHidden = true },
                         modifier = Modifier.padding(bottom = 14.dp),
                     )
                 }

@@ -108,11 +108,13 @@ fun AnalyticsTabScreen(
     onCategory: (String) -> Unit,
     @Suppress("UNUSED_PARAMETER") onReview: () -> Unit,
     onAccount: (String) -> Unit,
+    onWrapped: (Long) -> Unit = {},
 ) {
     KashSystemBars(darkIcons = false)
     val cal = LocalCalendarSystem.current
     LaunchedEffect(cal) { vm.setCalendar(cal) }
     val o by vm.overview.collectAsState()
+    val lastWrapped by vm.lastMonthWrapped.collectAsState()
     val r by vm.report.collectAsState()
     var pickDates by remember { mutableStateOf(false) }
 
@@ -153,6 +155,16 @@ fun AnalyticsTabScreen(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad),
                 verticalArrangement = Arrangement.spacedBy(26.dp),
             ) {
+                lastWrapped?.let { month ->
+                    KashListGroup {
+                        KashListRow(
+                            "Your ${KashDates.monthName(month + 86_400_000L, cal)}, wrapped",
+                            hint = "Last month's money story, ready to share",
+                            showDivider = false,
+                            onClick = { onWrapped(month) },
+                        )
+                    }
+                }
                 OverTime(o, cal, onPick = { vm.setPreset(it) }, onPickDates = { pickDates = true })
                 if (o.topPayees.isNotEmpty()) WhereYouPayMost(o.topPayees)
                 if (o.perAccount.isNotEmpty()) SpentFrom(o.perAccount, onAccount)
