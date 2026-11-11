@@ -8,6 +8,13 @@
 // Row-Level Security in secure_schema.sql restricts each user to their rows.
 // =============================================================================
 
+import {
+  EXPENSE_TYPES, OWN_ACCOUNTS, isOwnAccountTransfer, isSpending, isIncome,
+  ETHIOPIAN_MONTHS, gregorianToEthiopian, ethiopianToGregorian, prevEthiopianMonth,
+  accountSuffix, shortBankLabel, groupAccounts,
+  inContext, spendOverview, monthlyInOut, paydayPattern, lowBalanceDays, monthBounds, DAY,
+} from "./insights.js";
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ----------------------------------------------------------------------------
@@ -19,7 +26,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Bump this each release. Matches the Android versionName convention so the
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
-const APP_VERSION = "web-beta17";
+const APP_VERSION = "web-beta18";
 
 // Password reset links come back here with "#...type=recovery" (or
 // "#error_code=otp_expired" once stale). Read the hash before createClient,
@@ -63,18 +70,6 @@ const googleSigninBtn= $("google-signin-btn");
 // Stat cards
 const statBalance       = $("stat-balance");
 const statBalanceSub    = $("stat-balance-sub");
-const statMonthSpend    = $("stat-month-spend");
-const statMonthSpendSub = $("stat-month-spend-sub");
-const statMonthIncome   = $("stat-month-income");
-const statMonthIncomeSub= $("stat-month-income-sub");
-const statNet           = $("stat-net");
-const statNetSub        = $("stat-net-sub");
-const statAvgDaily      = $("stat-avg-daily");
-const statAvgDailySub   = $("stat-avg-daily-sub");
-const statLargest       = $("stat-largest");
-const statLargestSub    = $("stat-largest-sub");
-const statPeriodLabel1  = $("stat-period-label-1");
-const statPeriodLabel2  = $("stat-period-label-2");
 
 // Lists / charts
 const periodBar      = $("period-bar");
@@ -99,9 +94,6 @@ const chartTooltip     = $("chart-tooltip");
 const categoryList   = $("category-list");
 const counterpartyList = $("counterparty-list");
 const recurringList  = $("recurring-list");
-const dailyChart     = $("daily-chart");
-const dailyChartWin  = $("daily-chart-window");
-const monthlyChart   = $("monthly-chart");
 const weekdayStrip   = $("weekday-strip");
 const projectRef     = $("project-ref");
 const batchBar       = $("batch-bar");
@@ -291,18 +283,6 @@ projectRef.textContent = new URL(SUPABASE_URL).hostname.split(".")[0];
 // ----------------------------------------------------------------------------
 // State
 // ----------------------------------------------------------------------------
-const EXPENSE_TYPES = new Set(["DEBIT", "TRANSFER_OUT", "PAYMENT"]);
-
-// Mirrors app/src/main/java/com/financeapp/data/model/Spending.kt — keep in
-// sync. Money moving between the user's own accounts (parser type
-// INTERNAL_TRANSFER, or filed under "Own accounts") is neither spending nor
-// income, otherwise every CBE → Telebirr top-up would be counted twice.
-const OWN_ACCOUNTS = "Own accounts";
-const isOwnAccountTransfer = (tx) =>
-  tx.type === "INTERNAL_TRANSFER" || (tx.category || "").trim() === OWN_ACCOUNTS;
-const isSpending = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnAccountTransfer(tx);
-const isIncome = (tx) => tx.type === "CREDIT" && !isOwnAccountTransfer(tx);
-
 const state = {
   allTxs: [],     // raw transactions for the signed-in user (most recent first)
   period: "month",
@@ -347,6 +327,10 @@ const state = {
   budgetCategories: [],              // i_budget_categories rows (budget_id, category)
   editingBudgetId: null,             // when set, the budget form is editing existing
   budgetPickedCategories: new Set(), // category names selected in the form
+  // Overview (NAH-30): the chart's range, picked dates, and months shown.
+  ovRange: "month",                  // "week" | "month" | "30d" | "custom"
+  ovCustom: null,                    // [from, toExclusive] for "custom"
+  ioMonths: 6,                       // 6 | 12
 };
 
 // Defaults match TransactionCategoryCatalog.kt on Android.
@@ -2772,23 +2756,267 @@ function rerender() {
     return Number.isFinite(ts) && ts >= range.start && ts <= range.end;
   });
 
-  const label = PERIOD_LABELS[state.period] || "";
-  statPeriodLabel1.textContent = label;
-  statPeriodLabel2.textContent = label;
-
-  renderHeaderStats(txs, inRange, range);
+  renderBalance(txs);
+  renderOverview(txs);
+  renderInOut(txs);
+  renderLowBalance(txs, renderPayday(txs));
   renderAccounts(txs);
   renderCategoryList(inRange);
   renderCounterparties(inRange);
   renderRecurring(inRange);
-  renderDailyChart(txs);
-  renderMonthlyChart(txs);
   renderWeekdayStrip(inRange);
   renderTxTable();
   renderDailyReviewCard(txs);
   rerenderBudgets();
   if (state.view === "categories") renderCategoriesView();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Overview (NAH-30): the phone's Analytics on the web, plus money in vs out,
+// payday and low-balance days. The numbers come from insights.js (tested);
+// these functions only draw them.
+// ─────────────────────────────────────────────────────────────────────────────
+const calKey = () => (state.calendar === "ethiopian" ? "ethiopian" : "gregorian");
+
+// 250 → "250", 12.5 → "12.50", 1,250 → "1.3k", 32,000 → "32k" (as on the phone's notifications).
+function shortK(n) {
+  const v = Math.abs(n || 0);
+  if (v < 1000) return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  const one = (x) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+  const k = Math.round(v / 100) / 10;
+  if (k < 1000) return `${one(k)}k`;
+  return `${one(Math.round(v / 100000) / 10)}m`;
+}
+const signedK = (n) => `${n < 0 ? "−" : ""}${shortK(n)}`;
+
+// "12 Nov" / "3 Hidar".
+function dayLabel(ms) {
+  const d = new Date(ms);
+  if (state.calendar === "ethiopian") return formatEthiopianDate(d, { includeYear: false });
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
+function changeText(pct, vs) {
+  if (pct == null) return `nothing to compare with ${vs}`;
+  if (pct === 0) return `about the same as ${vs}`;
+  return `${pct > 0 ? "↑" : "↓"} ${Math.abs(pct)}% vs ${vs}`;
+}
+
+function rangeText(o) {
+  if (o.preset === "week") return "this week";
+  if (o.preset === "30d") return "last 30 days";
+  if (o.preset === "custom") return `${dayLabel(o.from)} – ${dayLabel(o.to - 1)}`;
+  return "this month";
+}
+
+function renderBalance(allTxs) {
+  let total = 0;
+  const accounts = groupAccounts(allTxs);
+  for (const { list } of accounts) {
+    const latest = list.find((t) => typeof t.balance === "number" && t.balance >= 0);
+    if (latest) total += latest.balance;
+  }
+  statBalance.textContent = formatETB(total);
+  statBalanceSub.textContent = `${accounts.length} account${accounts.length === 1 ? "" : "s"}`;
+}
+
+function renderOverview(allTxs) {
+  const o = spendOverview(allTxs, { cal: calKey(), now: Date.now(), preset: state.ovRange, custom: state.ovCustom });
+  $("ov-today").textContent = formatETB(o.todaySpent);
+  $("ov-today-sub").textContent = o.todayCount === 0 ? "nothing yet today" : `${o.todayCount} payment${o.todayCount === 1 ? "" : "s"}`;
+  $("ov-week").textContent = formatETB(o.weekSpent);
+  $("ov-week-sub").textContent = changeText(o.weekChangePct, "same point last week");
+  $("ov-month").textContent = formatETB(o.monthSpent);
+  $("ov-month-sub").textContent = changeText(o.monthChangePct, "same point last month");
+
+  const vs = { week: "last week", month: "last month", "30d": "the 30 days before", custom: "the days before" }[o.preset];
+  $("ot-total").textContent = formatETB(o.total);
+  $("ot-change").textContent = o.changePct == null ? "Nothing to compare with yet" : changeText(o.changePct, vs);
+  $("ot-avg").textContent = `${formatETB(o.avgPerDay)} a day on average`;
+  document.querySelectorAll("#over-time .ins-chip").forEach((b) => b.classList.toggle("active", b.dataset.range === o.preset));
+  $("ot-custom-chip").textContent = o.preset === "custom" ? rangeText(o) : "Pick dates";
+  document.querySelectorAll(".ot-range-label").forEach((el) => { el.textContent = rangeText(o); });
+  $("ot-axis-from").textContent = dayLabel(o.from);
+  $("ot-axis-to").textContent = dayLabel(o.to - 1);
+  const lastIdx = o.days.map((d, i) => (d == null ? -1 : i)).filter((i) => i >= 0).at(-1);
+  $("ot-readout").textContent = lastIdx == null ? " " : `${dayLabel(o.from + lastIdx * DAY)}: ${formatETB(o.days[lastIdx])}`;
+  $("ot-chart").innerHTML = renderSpendLineSvg(o);
+
+  $("ot-payees").innerHTML = o.topPayees.length === 0
+    ? `<p class="muted">No payments ${escapeHtml(rangeText(o))}.</p>`
+    : o.topPayees.map((p) => `
+        <div class="ins-row">
+          <div><p class="ins-name">${escapeHtml(p.name)}</p><p class="muted small">${p.count} payment${p.count === 1 ? "" : "s"}</p></div>
+          <span class="ins-amount">${formatETB(p.total)}</span>
+        </div>`).join("");
+  const maxAcc = Math.max(1, ...o.perAccount.map((a) => a.total));
+  $("ot-accounts").innerHTML = o.perAccount.length === 0
+    ? `<p class="muted">No spending ${escapeHtml(rangeText(o))}.</p>`
+    : o.perAccount.map((a) => `
+        <div class="ins-row ins-row-bar">
+          <div class="ins-row-top"><p class="ins-name">${escapeHtml(shortBankLabel(a.name))}</p><span class="ins-amount">${formatETB(a.total)}</span></div>
+          <div class="ins-bar"><span style="width:${((a.total / maxAcc) * 100).toFixed(1)}%"></span></div>
+        </div>`).join("");
+}
+
+// Daily line with a soft fill, the average dashed; hover a day for its total.
+function renderSpendLineSvg(o) {
+  const W = 600, H = 200, padT = 10, padB = 6;
+  const n = o.days.length;
+  const max = Math.max(1, ...o.days.filter((d) => d != null));
+  const x = (i) => (n > 1 ? (i / (n - 1)) * W : W / 2);
+  const y = (v) => padT + (1 - v / max) * (H - padT - padB);
+  const pts = o.days.map((v, i) => (v == null ? null : [x(i), y(v)])).filter(Boolean);
+  const line = pts.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(1)} ${py.toFixed(1)}`).join(" ");
+  const area = pts.length ? `${line} L${pts.at(-1)[0].toFixed(1)} ${H - padB} L${pts[0][0].toFixed(1)} ${H - padB} Z` : "";
+  const avgY = y(o.avgPerDay).toFixed(1);
+  const slot = W / Math.max(1, n);
+  const hits = o.days.map((v, i) => v == null ? "" : `<rect x="${(x(i) - slot / 2).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${H}" fill="transparent"
+      data-tip="${escapeHtml(dayLabel(o.from + i * DAY))}|${escapeHtml(formatETB(v))}" data-tip-color="var(--k-slate)"></rect>`).join("");
+  const last = pts.at(-1);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+      aria-label="Spending per day, ${escapeHtml(rangeText(o))}: ${escapeHtml(formatETB(o.total))} in all, ${escapeHtml(formatETB(o.avgPerDay))} a day on average">
+    <line x1="0" y1="${H - padB}" x2="${W}" y2="${H - padB}" class="ins-baseline" vector-effect="non-scaling-stroke"/>
+    <line x1="0" y1="${avgY}" x2="${W}" y2="${avgY}" class="ins-avg" vector-effect="non-scaling-stroke"/>
+    ${area ? `<path d="${area}" class="ins-area"/>` : ""}
+    ${line ? `<path d="${line}" class="ins-path" vector-effect="non-scaling-stroke"/>` : ""}
+    ${last ? `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="ins-dot"/>` : ""}
+    ${hits}
+  </svg>`;
+}
+
+// In and out bars per month, with a kept line that dips below zero when overspent.
+function renderInOut(allTxs) {
+  const months = monthlyInOut(allTxs, { cal: calKey(), now: Date.now(), count: state.ioMonths });
+  document.querySelectorAll("[data-months]").forEach((b) => b.classList.toggle("active", Number(b.dataset.months) === state.ioMonths));
+  const W = 600, H = 220, padT = 12, padB = 26;
+  const top = Math.max(1, ...months.flatMap((m) => [m.moneyIn, m.out, m.kept]));
+  const bottom = Math.min(0, ...months.map((m) => m.kept));
+  const y = (v) => padT + ((top - v) / (top - bottom)) * (H - padT - padB);
+  const zero = y(0);
+  const groupW = W / months.length;
+  const barW = Math.min(22, groupW * 0.3);
+  const name = (ms) => monthLabel(ms).split(" ")[0].slice(0, 3);
+  const bars = months.map((m, i) => {
+    const cx = i * groupW + groupW / 2;
+    const bar = (v, dx, cls) => {
+      const h = Math.max(0, zero - y(v));
+      return `<rect x="${(cx + dx).toFixed(1)}" y="${(zero - h).toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" class="${cls}"/>`;
+    };
+    const tip = `${name(m.start)}|in ${shortK(m.moneyIn)} · out ${shortK(m.out)} · kept ${signedK(m.kept)}${m.keptPct != null ? ` (${m.keptPct}%)` : ""}`;
+    return `${bar(m.moneyIn, -barW - 1, "io-in")}${bar(m.out, 1, "io-out")}
+      <rect x="${(i * groupW).toFixed(1)}" y="0" width="${groupW.toFixed(1)}" height="${H - padB}" fill="transparent" data-tip="${escapeHtml(tip)}" data-tip-color="var(--k-slate)"/>
+      <text x="${cx.toFixed(1)}" y="${H - 6}" class="chart-axis-label" text-anchor="middle">${escapeHtml(name(m.start))}</text>`;
+  }).join("");
+  const kept = months.map((m, i) => `${i ? "L" : "M"}${(i * groupW + groupW / 2).toFixed(1)} ${y(m.kept).toFixed(1)}`).join(" ");
+  const dots = months.map((m, i) => `<circle cx="${(i * groupW + groupW / 2).toFixed(1)}" cy="${y(m.kept).toFixed(1)}" r="3.5" class="${m.kept < 0 ? "io-kept-dot neg" : "io-kept-dot"}"/>`).join("");
+  $("io-chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Money in and out by month, with what was kept">
+    <line x1="0" y1="${zero.toFixed(1)}" x2="${W}" y2="${zero.toFixed(1)}" class="ins-baseline"/>
+    ${bars}<path d="${kept}" class="io-kept"/>${dots}</svg>`;
+  const last = months.at(-2);
+  $("io-summary").textContent = !last || (last.moneyIn === 0 && last.out === 0)
+    ? "Your months show up here as Kash reads your bank SMS."
+    : last.kept >= 0
+      ? `In ${monthLabel(last.start)} you kept ${formatETB(last.kept)}${last.keptPct != null ? ` (${last.keptPct}% of what came in)` : ""}.`
+      : `In ${monthLabel(last.start)}, ${formatETB(-last.kept)} more went out than came in.`;
+}
+
+// When income lands and how fast it goes, with a burn-down for this pay cycle.
+function renderPayday(allTxs) {
+  const p = paydayPattern(allTxs, { cal: calKey(), now: Date.now() });
+  const chart = $("pd-chart");
+  const legend = $("pd-legend");
+  if (!p.found) {
+    $("pd-source").textContent = "";
+    $("pd-body").innerHTML = `<p class="ins-lead">We haven't spotted a regular income yet.</p>
+      <p class="muted small">Once the same sender pays you a similar amount in two of the last three months, Kash shows when it lands and how fast it goes.</p>`;
+    chart.innerHTML = ""; legend.classList.add("hidden");
+    return p;
+  }
+  legend.classList.remove("hidden");
+  $("pd-source").textContent = `${p.source} · about ${formatETB(p.amount)}`;
+  const dayWord = state.calendar === "ethiopian" ? `day ${p.usualDay} of the month` : `the ${ordinal(p.usualDay)}`;
+  const leftNow = p.current.at(-1);
+  const usualNow = p.usual[p.current.length - 1];
+  const pace = leftNow == null || usualNow == null ? ""
+    : leftNow < usualNow - 0.05 ? "You're spending faster than usual this cycle."
+    : leftNow > usualNow + 0.05 ? "You're spending slower than usual this cycle."
+    : "You're on your usual pace this cycle.";
+  $("pd-body").innerHTML = `
+    <p class="ins-lead">Your income usually lands around ${escapeHtml(dayWord)}.</p>
+    <ul class="ins-facts muted small">
+      ${p.daysTo70 != null ? `<li>By day ${p.daysTo70} after payday you've usually spent 70% of it.</li>`
+        : p.spentShare != null ? `<li>You usually spend ${p.spentShare}% of it before the next payday.</li>` : ""}
+      <li>Since ${escapeHtml(dayLabel(p.lastPayday))}: ${Math.max(0, Math.round((leftNow ?? 1) * 100))}% of it left. ${escapeHtml(pace)}</li>
+      <li>Next one expected around ${escapeHtml(dayLabel(p.nextPayday))}.</li>
+    </ul>`;
+  const W = 600, H = 160, pad = 8;
+  const n = p.cycleLen;
+  const x = (i) => (n > 1 ? (i / (n - 1)) * W : 0);
+  const y = (f) => pad + (1 - Math.max(0, Math.min(1, f))) * (H - 2 * pad);
+  const path = (vals) => vals.map((f, i) => (f == null ? "" : `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(f).toFixed(1)}`)).join(" ").trim();
+  chart.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Share of your pay left, by day since payday: this cycle against your usual pace">
+    <line x1="0" y1="${H - pad}" x2="${W}" y2="${H - pad}" class="ins-baseline" vector-effect="non-scaling-stroke"/>
+    ${p.usual[0] != null ? `<path d="${path(p.usual)}" class="pd-usual" vector-effect="non-scaling-stroke"/>` : ""}
+    <path d="${path(p.current)}" class="pd-current" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+  return p;
+}
+
+// Per account, the days its balance sat under its floor this month.
+function renderLowBalance(allTxs, payday) {
+  const cal = calKey();
+  const now = Date.now();
+  const [monthStart] = monthBounds(now, cal);
+  const month = monthLabel(monthStart);
+  $("lb-month").textContent = month;
+  const accounts = lowBalanceDays(allTxs, { cal, now, usualPayday: payday?.found ? payday.usualDay : null });
+  const body = $("lb-body");
+  if (accounts.length === 0) {
+    body.innerHTML = `<p class="muted">No balance updates in ${escapeHtml(month)} yet.</p>`;
+    return;
+  }
+  body.innerHTML = accounts.map((a) => {
+    const head = a.lowCount === 0
+      ? `No low days in ${escapeHtml(month)}`
+      : `${a.lowCount} low day${a.lowCount === 1 ? "" : "s"} in ${escapeHtml(month)}${a.beforePayday ? ", mostly the week before payday" : ""}`;
+    const cells = a.days.map((d, i) => {
+      const cls = d.balance == null ? "lb-day none" : d.low ? "lb-day low" : "lb-day ok";
+      const tip = `${dayLabel(monthStart + i * DAY)}|${d.balance == null ? "no balance yet" : formatETB(d.balance)}`;
+      return `<span class="${cls}" data-tip="${escapeHtml(tip)}" data-tip-color="${d.low ? "var(--coral)" : "var(--green-income)"}"></span>`;
+    }).join("");
+    return `<div class="lb-account">
+      <div class="ins-row-top"><p class="ins-name">${escapeHtml(a.name)}</p><span class="muted small">under ${escapeHtml(formatETB(a.floor))}</span></div>
+      <p class="muted small">${head}</p>
+      <div class="lb-strip" role="img" aria-label="${escapeHtml(`${a.name}: ${head}`)}">${cells}</div>
+    </div>`;
+  }).join("");
+}
+
+// Range chips, picked dates and the 6/12-month switch.
+document.querySelectorAll("#over-time .ins-chip").forEach((btn) => btn.addEventListener("click", () => {
+  const form = $("ot-custom-form");
+  if (btn.dataset.range === "custom") { form.classList.toggle("hidden"); return; }
+  form.classList.add("hidden");
+  state.ovRange = btn.dataset.range;
+  renderOverview(state.allTxs);
+}));
+$("ot-custom-form")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const from = $("ot-from").value, to = $("ot-to").value;
+  if (!from || !to) return;
+  const a = new Date(`${from}T00:00:00`).getTime();
+  const b = new Date(`${to}T00:00:00`).getTime();
+  const [lo, hi] = a <= b ? [a, b] : [b, a];
+  state.ovCustom = [lo, hi + DAY];
+  state.ovRange = "custom";
+  $("ot-custom-form").classList.add("hidden");
+  renderOverview(state.allTxs);
+});
+document.querySelectorAll("[data-months]").forEach((btn) => btn.addEventListener("click", () => {
+  state.ioMonths = Number(btn.dataset.months);
+  renderInOut(state.allTxs);
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Daily Review entry card (read-only). Mirrors the variants from the Android
@@ -2882,118 +3110,6 @@ function renderDailyReviewCard(allTxs) {
     : `Open on mobile to review`;
 }
 
-function renderHeaderStats(allTxs, inRange, range) {
-  // Latest balance per account → total balance (independent of period filter).
-  let totalBalance = 0;
-  let accountCount = 0;
-  for (const { list } of groupAccounts(allTxs)) {
-    const latestWithBalance = list.find((t) => typeof t.balance === "number" && t.balance >= 0);
-    if (latestWithBalance) { totalBalance += latestWithBalance.balance; accountCount++; }
-    else accountCount++;
-  }
-
-  let spend = 0, spendCount = 0;
-  let income = 0, incomeCount = 0;
-  let largestExpense = null;
-  // Per-day expense totals, keyed by yyyy-mm-dd. We want the avg-daily-spend
-  // metric to be "average of the days you actually spent money", not just
-  // "total spend ÷ raw days elapsed" — that way a quiet weekend doesn't drag
-  // your daily average to nothing.
-  const dailyTotals = new Map();
-
-  for (const tx of inRange) {
-    if (isSpending(tx)) {
-      spend += tx.amount;
-      spendCount++;
-      if (!largestExpense || tx.amount > largestExpense.amount) largestExpense = tx;
-      const d = new Date(tx.occurred_at);
-      if (!Number.isNaN(d.getTime())) {
-        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-        dailyTotals.set(key, (dailyTotals.get(key) || 0) + tx.amount);
-      }
-    } else if (isIncome(tx)) {
-      income += tx.amount;
-      incomeCount++;
-    }
-  }
-
-  const net = income - spend;
-  // Sum of daily totals ÷ count of distinct days with spend.
-  // (Sum is mathematically the same as `spend`, but doing it via dailyTotals
-  // makes the intent explicit and matches the sub-line copy below.)
-  const sumOfDailyTotals = [...dailyTotals.values()].reduce((s, v) => s + v, 0);
-  const daysWithSpend = dailyTotals.size;
-  const avgDaily = daysWithSpend > 0 ? sumOfDailyTotals / daysWithSpend : 0;
-  const savingsRate = income > 0 ? ((income - spend) / income) * 100 : null;
-
-  statBalance.textContent       = formatETB(totalBalance);
-  statBalanceSub.textContent    = `${accountCount} account${accountCount === 1 ? "" : "s"}`;
-
-  statMonthSpend.textContent    = formatETB(spend);
-  statMonthSpendSub.textContent = `${spendCount} transaction${spendCount === 1 ? "" : "s"}`;
-
-  statMonthIncome.textContent   = formatETB(income);
-  statMonthIncomeSub.textContent = `${incomeCount} credit${incomeCount === 1 ? "" : "s"}`;
-
-  statNet.textContent = (net >= 0 ? "+ " : "- ") + formatNumberAbs(net);
-  statNet.classList.remove("teal", "coral", "income");
-  statNet.classList.add(net >= 0 ? "income" : "coral");
-  statNetSub.textContent = savingsRate == null
-    ? "no income recorded"
-    : `${savingsRate >= 0 ? "saving" : "overspending"} ${formatPercent(savingsRate)}`;
-
-  statAvgDaily.textContent = formatETB(avgDaily);
-  statAvgDailySub.textContent = daysWithSpend === 0
-    ? "no spending days"
-    : `over ${daysWithSpend} day${daysWithSpend === 1 ? "" : "s"} with spend`;
-
-  if (largestExpense) {
-    statLargest.textContent = formatETB(largestExpense.amount);
-    statLargestSub.textContent = (largestExpense.counterparty || largestExpense.bank_name || "—").slice(0, 36);
-  } else {
-    statLargest.textContent = "—";
-    statLargestSub.textContent = "no expenses yet";
-  }
-}
-
-// Last 4 digits of a masked account number ("1********6155" → "6155").
-// Mask length varies between SMS formats, so only the suffix identifies
-// the same account across them.
-function accountSuffix(accountNumber) {
-  const digits = (accountNumber || "").replace(/\D/g, "");
-  return digits.length >= 4 ? digits.slice(-4) : null;
-}
-
-function shortBankLabel(name) {
-  if (/commercial bank/i.test(name)) return "CBE";
-  if (/telebirr/i.test(name)) return "Telebirr";
-  if (/abyssinia/i.test(name)) return "BOA";
-  if (/awash/i.test(name)) return "Awash";
-  if (/dashen/i.test(name)) return "Dashen";
-  return name;
-}
-
-// One entry per account the user holds. Mirrors AccountGrouping.kt on
-// Android: a bank with one known account stays a single entry; a bank with
-// several account numbers is split into "CBE 1", "CBE 2", … numbered by
-// first-seen date. Rows with no account number at a split bank are left out.
-// Expects allTxs newest-first, like every list in this file.
-function groupAccounts(allTxs) {
-  const out = [];
-  for (const [bank, list] of groupBy(allTxs, (t) => t.bank_name || "Unknown")) {
-    const bySuffix = groupBy(list.filter((t) => accountSuffix(t.account_number)), (t) => accountSuffix(t.account_number));
-    if (bySuffix.size <= 1) {
-      out.push({ name: bank, suffix: null, list });
-      continue;
-    }
-    const firstSeen = (rows) => Math.min(...rows.map((t) => new Date(t.occurred_at).getTime()));
-    [...bySuffix.entries()]
-      .sort((a, b) => firstSeen(a[1]) - firstSeen(b[1]))
-      .forEach(([suffix, rows], i) => out.push({ name: `${shortBankLabel(bank)} ${i + 1}`, suffix, list: rows }));
-  }
-  return out;
-}
-
 function renderAccounts(allTxs) {
   const accounts = groupAccounts(allTxs).map(({ name, suffix, list }) => {
     const latestWithBalance = list.find((t) => typeof t.balance === "number" && t.balance >= 0);
@@ -3032,6 +3148,8 @@ function renderCategoryList(inRange) {
     byCategory.set(cat, (byCategory.get(cat) || 0) + tx.amount);
   }
   const rows = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
+  // Most people never label anything: no labels, no card (NAH-30).
+  document.getElementById("category-card")?.classList.toggle("hidden", rows.length === 0);
   categoryList.innerHTML = rows.length === 0
     ? `<p class="muted">No categorised expenses for this period.</p>`
     : rows.map(([name, total]) => `
@@ -3256,120 +3374,6 @@ function showToast(message, kind = "success") {
 // ----------------------------------------------------------------------------
 // Charts — inline SVG bar charts (no external libraries)
 // ----------------------------------------------------------------------------
-function renderDailyChart(allTxs) {
-  // Last 30 days of expenses, one bar per day.
-  const days = 30;
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const start = today.getTime() - (days - 1) * 864e5;
-  const buckets = Array.from({ length: days }, (_, i) => ({
-    day: new Date(start + i * 864e5),
-    total: 0,
-  }));
-
-  for (const tx of allTxs) {
-    if (!isSpending(tx)) continue;
-    const ts = Date.parse(tx.occurred_at);
-    if (!Number.isFinite(ts) || ts < start) continue;
-    const idx = Math.floor((ts - start) / 864e5);
-    if (idx >= 0 && idx < days) buckets[idx].total += tx.amount;
-  }
-
-  const max = Math.max(1, ...buckets.map((b) => b.total));
-  dailyChartWin.textContent = `last ${days} days · max ${formatNumber(max)} ETB`;
-  dailyChart.innerHTML = renderBarChartSvg(
-    buckets.map((b) => ({ value: b.total, label: b.day.getDate().toString() })),
-    { color: "var(--coral)" }
-  );
-}
-
-function renderMonthlyChart(allTxs) {
-  // Last 12 months, side-by-side income + expense bars.
-  // Calendar-aware: when state.calendar === "ethiopian", buckets are EC
-  // months (13-month year, Pagume → Meskerem wrap); otherwise Gregorian.
-  const months = 12;
-  const now = new Date();
-  const buckets = buildMonthBuckets(now, months).map((b) => ({ ...b, income: 0, expense: 0 }));
-  for (const tx of allTxs) {
-    const ts = Date.parse(tx.occurred_at);
-    if (!Number.isFinite(ts)) continue;
-    const idx = bucketIndexForDate(new Date(ts), buckets);
-    if (idx < 0 || idx >= months) continue;
-    if (isSpending(tx)) buckets[idx].expense += tx.amount;
-    else if (isIncome(tx)) buckets[idx].income += tx.amount;
-  }
-
-  const max = Math.max(1, ...buckets.flatMap((b) => [b.income, b.expense]));
-  monthlyChart.innerHTML = renderGroupedBarChartSvg(
-    buckets.map((b) => ({
-      label: formatChartMonth(b.d),
-      values: [b.income, b.expense],
-    })),
-    { colors: ["var(--green-income)", "var(--coral)"], max }
-  );
-}
-
-function renderBarChartSvg(points, { color }) {
-  if (points.length === 0) return `<p class="muted">No data.</p>`;
-  const W = 600, H = 220, pad = { l: 8, r: 8, t: 12, b: 26 };
-  const innerW = W - pad.l - pad.r;
-  const innerH = H - pad.t - pad.b;
-  const max = Math.max(1, ...points.map((p) => p.value));
-  const gap = 2;
-  const barW = (innerW - gap * (points.length - 1)) / points.length;
-
-  const bars = points.map((p, i) => {
-    const h = (p.value / max) * innerH;
-    const x = pad.l + i * (barW + gap);
-    const y = pad.t + innerH - h;
-    return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${Math.max(0, h).toFixed(2)}" rx="3" fill="${color}">
-      <title>${escapeHtml(p.label)}: ${formatETB(p.value)}</title>
-    </rect>`;
-  }).join("");
-
-  // Sparse x-axis labels (~6 evenly spaced).
-  const labelStride = Math.max(1, Math.floor(points.length / 6));
-  const labels = points.map((p, i) => {
-    if (i % labelStride !== 0) return "";
-    const x = pad.l + i * (barW + gap) + barW / 2;
-    return `<text x="${x.toFixed(2)}" y="${(H - 6).toFixed(2)}" class="chart-axis-label" text-anchor="middle">${escapeHtml(p.label)}</text>`;
-  }).join("");
-
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${labels}</svg>`;
-}
-
-function renderGroupedBarChartSvg(groups, { colors, max }) {
-  if (groups.length === 0) return `<p class="muted">No data.</p>`;
-  const W = 600, H = 220, pad = { l: 8, r: 8, t: 12, b: 26 };
-  const innerW = W - pad.l - pad.r;
-  const innerH = H - pad.t - pad.b;
-  const groupCount = groups.length;
-  const valuesPerGroup = groups[0].values.length;
-  const groupGap = 6;
-  const groupW = (innerW - groupGap * (groupCount - 1)) / groupCount;
-  const barW = Math.max(2, (groupW - 2 * (valuesPerGroup - 1)) / valuesPerGroup);
-
-  const bars = groups.flatMap((g, gi) => g.values.map((v, vi) => {
-    const h = (v / max) * innerH;
-    const groupX = pad.l + gi * (groupW + groupGap);
-    const x = groupX + vi * (barW + 2);
-    const y = pad.t + innerH - h;
-    const seriesLabel = vi === 0 ? "Income" : "Expense";
-    const tip = `${escapeHtml(seriesLabel)}|${escapeHtml(formatETB(v))}|${escapeHtml(g.label)}`;
-    return `<rect class="chart-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${Math.max(0, h).toFixed(2)}" rx="2" fill="${colors[vi]}"
-      data-tip="${tip}" data-tip-color="${colors[vi]}">
-      <title>${escapeHtml(g.label)} · ${seriesLabel}: ${formatETB(v)}</title>
-    </rect>`;
-  })).join("");
-
-  const labels = groups.map((g, gi) => {
-    const x = pad.l + gi * (groupW + groupGap) + groupW / 2;
-    return `<text x="${x.toFixed(2)}" y="${(H - 6).toFixed(2)}" class="chart-axis-label" text-anchor="middle">${escapeHtml(g.label)}</text>`;
-  }).join("");
-
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${labels}</svg>`;
-}
-
 function renderWeekdayStrip(inRange) {
   // Average spend per weekday (Sun..Sat).
   const sums = [0, 0, 0, 0, 0, 0, 0];
@@ -3577,48 +3581,29 @@ function openTxDetail(txId) {
     </div>
   `;
 
-  // ── Insights (what % of this month's category / total spend) ──────────
-  // Calendar-aware: when state.calendar === "ethiopian", "this month" means
-  // the Ethiopian month the transaction fell in, not the Gregorian month.
+  // ── In context: where this one stands in its own month (NAH-30) ───────
+  // Money out against the month's spending, money in against what came in,
+  // in the user's calendar. Ties share a rank. Own-account moves get none.
   let insightsHtml = "";
-  if (outgoing && Number.isFinite(occurredMs)) {
-    const useEC = state.calendar === "ethiopian";
-    const txMonthKey = useEC
-      ? (() => { const e = gregorianToEthiopian(occurredDate); return `${e.year}-${e.month}`; })()
-      : `${occurredDate.getFullYear()}-${occurredDate.getMonth()}`;
-    const sameMonth = (d) => {
-      if (useEC) { const e = gregorianToEthiopian(d); return `${e.year}-${e.month}` === txMonthKey; }
-      return `${d.getFullYear()}-${d.getMonth()}` === txMonthKey;
-    };
-    let monthCatSpend = 0;
-    let monthTotalSpend = 0;
-    let monthRank = 0;
-    const monthExpenses = [];
-    for (const t of state.allTxs) {
-      if (!isSpending(t)) continue;
-      const ts = Date.parse(t.occurred_at);
-      if (!Number.isFinite(ts)) continue;
-      const d = new Date(ts);
-      if (!sameMonth(d)) continue;
-      monthTotalSpend += Number(t.amount || 0);
-      if (tx.category && t.category === tx.category) monthCatSpend += Number(t.amount || 0);
-      monthExpenses.push(Number(t.amount || 0));
-    }
-    monthExpenses.sort((a, b) => b - a);
-    monthRank = monthExpenses.indexOf(Number(tx.amount)) + 1;
-    const pctMonth = monthTotalSpend > 0 ? (Number(tx.amount) / monthTotalSpend) * 100 : 0;
-    const pctCat   = monthCatSpend > 0 ? (Number(tx.amount) / monthCatSpend) * 100 : 0;
-    const ord = ordinal(monthRank);
-    const monthLabel = useEC
-      ? ETHIOPIAN_MONTHS[gregorianToEthiopian(occurredDate).month - 1]
-      : occurredDate.toLocaleDateString(undefined, { month: "long" });
+  const ctx = inContext(tx, state.allTxs, state.calendar);
+  if (ctx && ctx.count > 0) {
+    const monthName = monthLabel(ctx.monthStart);
+    const what = ctx.kind === "out" ? "payment" : "money in";
+    const rankLine = ctx.count === 1
+      ? `The only ${what} in ${monthName}`
+      : ctx.rank === 1
+        ? `The biggest ${what} in ${monthName}, of ${ctx.count}`
+        : `${ordinal(ctx.rank)} biggest ${what} in ${monthName}, of ${ctx.count}`;
+    const shareLine = ctx.kind === "out"
+      ? `${ctx.pct.toFixed(1)}% of ${monthName}'s spending`
+      : `${ctx.pct.toFixed(1)}% of what came in during ${monthName}`;
     insightsHtml = `
       <div class="tx-detail-section">
-        <h4 class="tx-detail-section-title">In context · ${escapeHtml(monthLabel)}</h4>
+        <h4 class="tx-detail-section-title">In context · ${escapeHtml(monthName)}</h4>
         <ul class="tx-insight-list muted small">
-          <li>${ord} largest expense this month</li>
-          <li>${pctMonth.toFixed(1)}% of monthly spend</li>
-          ${tx.category && pctCat > 0 ? `<li>${pctCat.toFixed(1)}% of <strong>${escapeHtml(tx.category)}</strong> spend this month</li>` : ""}
+          <li>${escapeHtml(rankLine)}</li>
+          <li>${escapeHtml(shareLine)}</li>
+          ${ctx.catPct != null ? `<li>${ctx.catPct.toFixed(1)}% of <strong>${escapeHtml(ctx.category)}</strong> spending in ${escapeHtml(monthName)}</li>` : ""}
         </ul>
       </div>
     `;
@@ -3684,6 +3669,18 @@ function formatRelativeTime(ms) {
 }
 
 // "1st", "2nd", "3rd", "4th", … ordinal suffix for monthly-rank insight.
+// "October" / "Tikimt", with the year when it isn't this year.
+function monthLabel(ms) {
+  const d = new Date(ms + 864e5 / 2);
+  const now = new Date();
+  if (state.calendar === "ethiopian") {
+    const e = gregorianToEthiopian(d);
+    const thisYear = gregorianToEthiopian(now).year;
+    return `${ETHIOPIAN_MONTHS[e.month - 1]}${e.year === thisYear ? "" : ` ${e.year}`}`;
+  }
+  return d.toLocaleDateString(undefined, d.getFullYear() === now.getFullYear() ? { month: "long" } : { month: "long", year: "numeric" });
+}
+
 function ordinal(n) {
   if (n <= 0) return String(n);
   const lastTwo = n % 100;
@@ -4593,68 +4590,6 @@ function formatDate(iso) {
 // Conversion goes Gregorian → Julian Day Number → Ethiopian. The JDN of
 // 1 Meskerem 1 EC (Amete Alem epoch) is 1723856.
 // ----------------------------------------------------------------------------
-const ETHIOPIAN_MONTHS = [
-  "Meskerem", "Tikimt", "Hidar", "Tahsas", "Tir", "Yekatit",
-  "Megabit", "Miazia", "Ginbot", "Sene", "Hamle", "Nehase", "Pagume",
-];
-
-function gregorianToEthiopian(date) {
-  const y = date.getFullYear();
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  // Gregorian → JDN
-  const a  = Math.floor((14 - m) / 12);
-  const yy = y + 4800 - a;
-  const mm = m + 12 * a - 3;
-  const jdn = d
-    + Math.floor((153 * mm + 2) / 5)
-    + 365 * yy
-    + Math.floor(yy / 4)
-    - Math.floor(yy / 100)
-    + Math.floor(yy / 400)
-    - 32045;
-  // JDN → Ethiopian (Amete Alem epoch 1723856)
-  const r = (jdn - 1723856) % 1461;
-  const n = (r % 365) + 365 * Math.floor(r / 1460);
-  const ethYear  = 4 * Math.floor((jdn - 1723856) / 1461)
-                 + Math.floor(r / 365)
-                 - Math.floor(r / 1460);
-  const ethMonth = Math.floor(n / 30) + 1;
-  const ethDay   = (n % 30) + 1;
-  return { year: ethYear, month: ethMonth, day: ethDay };
-}
-
-// Inverse: Ethiopian (year, month 1-13, day 1-30) → Gregorian Date at 00:00.
-// Used to translate EC period boundaries back into a millisecond range so
-// the existing tx-filter code (which compares occurred_at to start/end) can
-// keep using simple numeric comparisons.
-function ethiopianToGregorian(ethYear, ethMonth, ethDay) {
-  // Ethiopian → JDN. Verified: (1, 1, 1) EC → 1724221 = 29 Aug 8 AD Julian.
-  // (2000, 1, 1) EC → 2454356 = 12 Sept 2007 Gregorian.
-  const jdn = 1723856 + 365 * ethYear + Math.floor(ethYear / 4)
-            + 30 * (ethMonth - 1) + (ethDay - 1);
-  // JDN → Gregorian (Richards's algorithm).
-  const a = jdn + 32044;
-  const b = Math.floor((4 * a + 3) / 146097);
-  const c = a - Math.floor((146097 * b) / 4);
-  const d = Math.floor((4 * c + 3) / 1461);
-  const e = c - Math.floor((1461 * d) / 4);
-  const mm = Math.floor((5 * e + 2) / 153);
-  const gDay   = e - Math.floor((153 * mm + 2) / 5) + 1;
-  const gMonth = mm + 3 - 12 * Math.floor(mm / 10);
-  const gYear  = 100 * b + d - 4800 + Math.floor(mm / 10);
-  return new Date(gYear, gMonth - 1, gDay);
-}
-
-// Returns the previous Ethiopian (year, month) pair, wrapping correctly
-// across Pagume (month 13) → Meskerem (month 1).
-function prevEthiopianMonth(ethYear, ethMonth) {
-  let m = ethMonth - 1;
-  let y = ethYear;
-  if (m < 1) { m = 13; y -= 1; }
-  return { year: y, month: m };
-}
-
 // Calendar-aware month buckets used by the 12-month charts. Returns the most
 // recent `count` months in chronological order. Each bucket carries `d` (the
 // Gregorian Date of the 1st of that month) plus identity fields the index

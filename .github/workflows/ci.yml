@@ -29,6 +29,10 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace
       - name: Debug build
         run: ./gradlew assembleDebug
+      # The web dashboard's insight numbers (Web/insights.js). The time zone
+      # pins day boundaries to Addis Ababa, like the users'.
+      - name: Web insight tests
+        run: TZ=Africa/Addis_Ababa node --test tests/web/insights.test.mjs
       # Fails when a new supabase/*.sql file is missing from the staging list.
       - name: Staging setup script is complete
         run: sh supabase/staging/build_setup.sh

@@ -6,6 +6,26 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Web dashboard leads with the phone's Analytics, plus cash-flow insights
+
+Owner-approved plan (NAH-30). The dashboard's six period stat cards and
+the old 30-day bars and 12-month income/expense bars are replaced by: total
+balance, today, this week and this month (each vs the same point before);
+a daily spending line with This week / This month / 30 days / Pick dates;
+Where you pay most and Spent from for that range; money in vs out by month
+(6 or 12) with a kept line; a payday card (regular income = same sender,
+±20% amount, 2 of the last 3 months, as `looksLikeSalary`; when it lands,
+when 70% is gone, a burn-down against the usual pace, each cycle measured
+against its own paycheck); and low-balance days per account this month
+(floor = 2× the account's average daily spend, last SMS balance carried
+forward). "Spend by Category" shows only when something is labelled. The
+transaction "In context" block ranks ties together, names the month, works
+for money in, and follows the Ethiopian calendar.
+All the numbers live in `Web/insights.js` (pure, no DOM), tested by
+`tests/web/insights.test.mjs` under Node in CI; app.js imports the
+spending rules, Ethiopian calendar and account grouping from it, so the
+web gets the phone's Berhan two-masks fix too.
+
 ## 2026-11-11 — Kash Wrapped is built from SMS data, not categories
 
 NAH-34. A month's story in pages (spent and vs the month before, kept,
