@@ -48,7 +48,7 @@ class BankAnalyticsViewModel(
         ) { all, rawMonthly ->
             val allBankTxns = all.filter { it.bankName.equals(bankFilter, ignoreCase = true) || it.sender.equals(bankFilter, ignoreCase = true) }
             val account = accountSuffix?.let { suffix ->
-                AccountGrouping.group(allBankTxns).firstOrNull { it.accountSuffix == suffix }
+                AccountGrouping.group(allBankTxns).firstOrNull { g -> g.accountSuffix?.let { AccountGrouping.sameSuffix(it, suffix) } == true }
             }
             val bankTxns = account?.transactions ?: allBankTxns
             

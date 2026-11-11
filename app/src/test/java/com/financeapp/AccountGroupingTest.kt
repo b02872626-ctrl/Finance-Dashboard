@@ -109,4 +109,49 @@ class AccountGroupingTest {
         assertEquals(listOf("CBE 1" to "6155", "CBE 2" to "8506"),
             AccountGrouping.group(visible).map { it.label to it.accountSuffix })
     }
+
+    // ── Berhan writes one account two ways (Natty, Nov 2026): "*********9067"
+    //    on debits and "103002XXXXX67" on credits. It showed as two accounts
+    //    and a stale 16,083 balance was added to the real 34.83.
+
+    private val berhan = "Berhan Bank"
+
+    @Test
+    fun `suffix uses only the digits after the mask`() {
+        assertEquals("67", AccountGrouping.accountSuffix("103002XXXXX67"))
+        assertEquals("9067", AccountGrouping.accountSuffix("*********9067"))
+        assertEquals("6926", AccountGrouping.accountSuffix("1000482226926"))
+    }
+
+    @Test
+    fun `Berhan debit and credit masks are one account with the newest balance`() {
+        val rows = listOf(
+            tx(berhan, "103002XXXXX67", 1_000L, balance = 16_083.24),
+            tx(berhan, "*********9067", 2_000L, balance = 34.83),
+        )
+        val groups = AccountGrouping.group(rows)
+        assertEquals(1, groups.size)
+        assertEquals(2, groups[0].transactions.size)
+        val latest = groups[0].transactions.filter { it.balance != null }.maxBy { it.dateTime }
+        assertEquals(34.83, latest.balance!!, 0.001)
+    }
+
+    @Test
+    fun `short tail stays apart when two accounts end the same way`() {
+        val rows = listOf(
+            tx(berhan, "*********9067", 1_000L),
+            tx(berhan, "*********1167", 2_000L),
+            tx(berhan, "103002XXXXX67", 3_000L),
+        )
+        assertEquals(3, AccountGrouping.group(rows).size)
+    }
+
+    @Test
+    fun `hiding the full account also hides its short-tail rows`() {
+        val full = AccountGrouping.accountKey(berhan, "9067")
+        val short = AccountGrouping.accountKeyOf(berhan, "Berhan Bank", "103002XXXXX67")!!
+        assertEquals(true, AccountGrouping.sameAccountKey(full, short))
+        assertEquals(false, AccountGrouping.sameAccountKey(full, AccountGrouping.accountKey(berhan, "1167")))
+        assertEquals(false, AccountGrouping.sameAccountKey(full, AccountGrouping.accountKey("Commercial Bank of Ethiopia", "9067")))
+    }
 }
