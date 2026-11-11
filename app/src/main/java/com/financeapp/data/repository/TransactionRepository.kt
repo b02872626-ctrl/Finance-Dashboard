@@ -333,7 +333,7 @@ class TransactionRepository(
         val key = AccountGrouping.accountKey(bankName, suffix)
         settings.setAccountHidden(key, hidden)
         val ids = txnDao.getAccountRows()
-            .filter { AccountGrouping.accountKeyOf(it.bankName, it.sender, it.accountNumber) == key }
+            .filter { row -> AccountGrouping.accountKeyOf(row.bankName, row.sender, row.accountNumber)?.let { AccountGrouping.sameAccountKey(it, key) } == true }
             .map { it.id }
         db.withTransaction {
             // Stay under SQLite's bound-variable limit.
@@ -501,7 +501,7 @@ class TransactionRepository(
                           && prediction.category != null
         val hiddenKey = AccountGrouping.accountKeyOf(parsed.bankName, parsed.sender, parsed.accountNumber)
         val entity = parsed.copy(
-            hidden             = hiddenKey != null && settings?.getHiddenAccounts()?.contains(hiddenKey) == true,
+            hidden             = hiddenKey != null && settings?.getHiddenAccounts()?.any { AccountGrouping.sameAccountKey(it, hiddenKey) } == true,
             predictedCategory  = prediction.category,
             categoryConfidence = prediction.confidence.takeIf { it > 0.0 },
             category           = if (autoConfirm) prediction.category else null,

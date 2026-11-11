@@ -69,6 +69,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 Berhan balance fix: Berhan writes one account as
+  "*********9067" on debits and "103002XXXXX67" on credits. Kash read the
+  credit's last four as "0267" and showed two accounts, adding a stale
+  balance (tester Natty: 16,083 shown, 34.83 real). The account suffix now
+  uses only the digits after the mask; a short tail ("67") joins the one
+  account ending with it. Hiding an account and the account page follow
+  the same rule. Not yet on a phone.
+
 - 2026-11-11 1.0.27: Bank of Abyssinia deposits show who sent the money and your balance; Berhan transfers to Telebirr are counted as money out; Berhan deposits say where the money came from; Telebirr ticket payments are no longer missed. Not yet installed on a real phone.
 - 2026-11-11 NAH-29 part 2 (first pass): replayed the 28 Oct export again;
   no SMS from tracked senders is left unread. Fixed 154 BoA deposits in the
