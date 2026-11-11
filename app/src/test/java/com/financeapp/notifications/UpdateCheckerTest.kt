@@ -91,4 +91,56 @@ class UpdateCheckerTest {
         assertEquals("Google Play", com.financeapp.ui.screens.updatesRowValue(UpdateChecker.State(fromPlay = true)))
         assertEquals("1.0.19", com.financeapp.ui.screens.updatesRowValue(UpdateChecker.State(installedName = "1.0.19")))
     }
+
+    // ── NAH-35: in-app download and install ──
+
+    private val sha = "a".repeat(64)
+
+    private fun json(apk: String?, sha256: String?) = """{"versionCode": 49, "versionName": "1.0.29",
+        "url": "https://kash-140.pages.dev/download"""" +
+        (apk?.let { """, "apk": "$it"""" } ?: "") + (sha256?.let { """, "sha256": "$it"""" } ?: "") + "}"
+
+    @Test
+    fun readsTheApkLinkAndChecksum() {
+        val l = UpdateChecker.parse(json("https://kash-140.pages.dev/apk/Kash-1.0.29.apk", sha))!!
+        assertEquals("https://kash-140.pages.dev/apk/Kash-1.0.29.apk", l.apkUrl)
+        assertEquals(sha, l.sha256)
+        assertTrue(l.installsInApp)
+    }
+
+    @Test
+    fun onlyKashsOwnApkWithAValidChecksumInstallsInApp() {
+        // Another host, a path trick, or a bad checksum: fall back to the download page.
+        assertFalse(UpdateChecker.parse(json("https://evil.example/apk/Kash.apk", sha))!!.installsInApp)
+        assertFalse(UpdateChecker.parse(json("https://kash-140.pages.dev/apk/../x.apk", sha))!!.installsInApp)
+        assertFalse(UpdateChecker.parse(json("https://kash-140.pages.dev/apk/Kash-1.0.29.apk", "1234"))!!.installsInApp)
+        // Older version.json without the fields still parses.
+        val old = UpdateChecker.parse(json(null, null))!!
+        assertFalse(old.installsInApp)
+        assertEquals(49, old.versionCode)
+    }
+
+    @Test
+    fun laterHidesThePopupForThreeDaysForThatVersionOnly() {
+        val v29 = Latest(49, "1.0.29", UpdateChecker.DOWNLOAD_URL)
+        val now = 1_000_000_000L
+        val snoozed = UpdateChecker.State(installedCode = 48, latest = v29, popupSnoozedCode = 49,
+            popupSnoozedUntil = now + UpdateChecker.POPUP_SNOOZE_MS)
+        assertNull(snoozed.popupVersion(now))
+        assertEquals(v29, snoozed.popupVersion(now + UpdateChecker.POPUP_SNOOZE_MS))
+        // A newer build than the one snoozed shows right away.
+        val v30 = Latest(50, "1.0.30", UpdateChecker.DOWNLOAD_URL)
+        assertEquals(v30, snoozed.copy(latest = v30).popupVersion(now))
+        // Never for Play installs or when up to date.
+        assertNull(UpdateChecker.State(installedCode = 48, latest = v29, fromPlay = true).popupVersion(now))
+        assertNull(UpdateChecker.State(installedCode = 49, latest = v29).popupVersion(now))
+    }
+
+    @Test
+    fun checksumOfADownload() {
+        assertEquals(
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+            UpdateInstaller.sha256Of("hello".byteInputStream()),
+        )
+    }
 }

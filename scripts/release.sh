@@ -159,6 +159,13 @@ prepare() {
   size_mb=$(awk -v b="$(wc -c < "$apk_new")" 'BEGIN { printf "%.1f", b / 1048576 }')
   perl -pi -e "s/Kash-\Q$old_name\E\.apk/Kash-$new_name.apk/g; s/Version \Q$old_name\E/Version $new_name/g; s{<span>[0-9.]+ MB</span>}{<span>$size_mb MB</span>}g" Web/download.html
   grep -q "$old_name" Web/download.html && die "Web/download.html still mentions $old_name"
+  # In-app updates (NAH-35) download this exact file and refuse it unless
+  # its SHA-256 matches the one published here.
+  local apk_sha
+  apk_sha=$(shasum -a 256 "$apk_new" | cut -d' ' -f1)
+  APK_LINE="  \"apk\": \"$SITE/apk/Kash-$new_name.apk\"," SHA_LINE="  \"sha256\": \"$apk_sha\"," \
+    perl -0pi -e 's/(  "url": [^\n]*\n)/$1$ENV{APK_LINE}\n$ENV{SHA_LINE}\n/' Web/version.json
+  grep -q "\"sha256\": \"$apk_sha\"" Web/version.json || die "couldn't write the APK checksum into Web/version.json"
 
   step "Logging it in docs/PROGRESS.md"
   local today joined
@@ -233,6 +240,11 @@ verify() {
   # (Cloudflare's cache can answer HEAD with a wrong Content-Length).
   local want got
   want=$(git show "origin/main:Web/apk/Kash-$name.apk" | shasum -a 256 | cut -d' ' -f1)
+  # The checksum the app checks before installing must be this APK's.
+  local published
+  published=$(echo "$json" | sed -nE 's/.*"sha256": "([0-9a-f]+)".*/\1/p')
+  [ -z "$published" ] || [ "$published" = "$want" ] ||
+    die "version.json's sha256 doesn't match Kash-$name.apk; in-app updates would refuse it"
   tries=0
   while :; do
     got=$(curl -fsS "$SITE/apk/Kash-$name.apk" 2>/dev/null | shasum -a 256 | cut -d' ' -f1)

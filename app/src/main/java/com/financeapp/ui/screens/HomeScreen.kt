@@ -108,6 +108,15 @@ fun HomeScreen(
     // Privacy first: hidden on every fresh launch, kept within a session.
     var balanceVisible by rememberSaveable { mutableStateOf(false) }
     val update by UpdateChecker.state.collectAsState()
+    // Pop-up once per time Kash opens, while a newer tester build is waiting.
+    var popupSeen by rememberSaveable { mutableStateOf(false) }
+    val popup = if (popupSeen) null else update.popupVersion(System.currentTimeMillis())
+    if (popup != null) {
+        UpdatePopup(popup, onLater = {
+            UpdateChecker.snoozePopup(context, popup.versionCode)
+            popupSeen = true
+        })
+    }
 
     // Pull down to rescan the inbox (also the retry path for scan failures).
     val pull = rememberPullToRefreshState()
@@ -160,7 +169,6 @@ fun HomeScreen(
                     val latest = update.cardVersion ?: return@AnimatedVisibility
                     UpdateCard(
                         latest,
-                        onUpdate = { openDownloadPage(context, latest.url) },
                         onLater = { UpdateChecker.dismiss(context, latest.versionCode) },
                         modifier = Modifier.padding(bottom = 14.dp),
                     )

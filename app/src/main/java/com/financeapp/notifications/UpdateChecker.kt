@@ -57,6 +57,12 @@ object UpdateChecker {
     private const val KEY_CHECKED_AT = "checked_at"
     private const val KEY_FAILED = "last_check_failed"
     private const val KEY_DISMISSED_CODE = "dismissed_version_code"
+    private const val KEY_POPUP_CODE = "popup_snoozed_code"
+    private const val KEY_POPUP_UNTIL = "popup_snoozed_until"
+    /** "Later" on the pop-up hides it this long for that version. */
+    const val POPUP_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000L
+    /** Only APKs from Kash's own site are downloaded and installed. */
+    const val APK_PREFIX = "https://kash-140.pages.dev/apk/"
 
     data class Latest(
         val versionCode: Int,
@@ -64,7 +70,13 @@ object UpdateChecker {
         val url: String,
         /** Release notes for testers (`notes` in version.json), newest build only. */
         val notes: List<String> = emptyList(),
-    )
+        /** Direct APK link and its SHA-256 (from 1.0.29); null = open the download page instead. */
+        val apkUrl: String? = null,
+        val sha256: String? = null,
+    ) {
+        /** Can be downloaded and installed inside Kash (both the link and the checksum are there). */
+        val installsInApp: Boolean get() = apkUrl != null && sha256 != null
+    }
 
     /** What the app knows about updates; drives the Home card and Settings → Updates. */
     data class State(
@@ -81,10 +93,17 @@ object UpdateChecker {
         val dismissedCode: Int = 0,
         /** A "Check now" is running. */
         val checking: Boolean = false,
+        /** "Later" on the pop-up: the version it was for, and until when. */
+        val popupSnoozedCode: Int = 0,
+        val popupSnoozedUntil: Long = 0L,
     ) {
         val updateAvailable: Boolean get() = !fromPlay && latest != null && latest.versionCode > installedCode
         /** The newer build for the Home card, or null when there's nothing to show. */
         val cardVersion: Latest? get() = latest?.takeIf { updateAvailable && it.versionCode > dismissedCode }
+        /** The newer build for the pop-up on opening Kash, unless "Later" was tapped in the last 3 days. */
+        fun popupVersion(nowMs: Long): Latest? = latest?.takeIf {
+            updateAvailable && !(it.versionCode == popupSnoozedCode && nowMs < popupSnoozedUntil)
+        }
     }
 
     private val _state = MutableStateFlow(State())
@@ -99,13 +118,17 @@ object UpdateChecker {
         val notes = o.optJSONArray("notes")?.let { a ->
             (0 until a.length()).mapNotNull { a.optString(it).trim().takeIf(String::isNotEmpty) }
         }.orEmpty()
+        val apk = o.optString("apk", "").trim().takeIf { it.startsWith(APK_PREFIX) && it.endsWith(".apk") && ".." !in it }
+        val sha = o.optString("sha256", "").trim().lowercase().takeIf { it.matches(Regex("[0-9a-f]{64}")) }
         if (code <= 0 || name.isEmpty() || !url.startsWith("https://")) null
-        else Latest(code, name, url, notes)
+        else Latest(code, name, url, notes, apkUrl = apk, sha256 = sha)
     }.getOrNull()
 
     private fun Latest.toJson(): String = JSONObject()
         .put("versionCode", versionCode).put("versionName", versionName).put("url", url)
-        .put("notes", JSONArray(notes)).toString()
+        .put("notes", JSONArray(notes))
+        .apply { if (apkUrl != null) put("apk", apkUrl); if (sha256 != null) put("sha256", sha256) }
+        .toString()
 
     /** Notify only for a newer build we haven't told the user about yet. */
     internal fun shouldNotify(
@@ -145,7 +168,16 @@ object UpdateChecker {
             lastCheckFailed = p.getBoolean(KEY_FAILED, false),
             fromPlay = installerOf(context) == PLAY_INSTALLER,
             dismissedCode = p.getInt(KEY_DISMISSED_CODE, 0),
+            popupSnoozedCode = p.getInt(KEY_POPUP_CODE, 0),
+            popupSnoozedUntil = p.getLong(KEY_POPUP_UNTIL, 0L),
         )
+    }
+
+    /** "Later" on the pop-up: don't show it again for this version for 3 days. */
+    fun snoozePopup(context: Context, versionCode: Int, nowMs: Long = System.currentTimeMillis()) {
+        val until = nowMs + POPUP_SNOOZE_MS
+        prefs(context).edit().putInt(KEY_POPUP_CODE, versionCode).putLong(KEY_POPUP_UNTIL, until).apply()
+        _state.value = _state.value.copy(popupSnoozedCode = versionCode, popupSnoozedUntil = until)
     }
 
     /** Background check (start of the app and twice a day): saves, then notifies once per version. */

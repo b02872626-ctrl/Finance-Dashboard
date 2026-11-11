@@ -144,6 +144,8 @@ class MainActivity : ComponentActivity() {
         }
         backgroundedAt = 0L
         refreshPermissionState()
+        // Back from Android's "Allow from this source": finish the update install.
+        com.financeapp.notifications.UpdateInstaller.onResume(this)
         if (hasSmsAccess) {
             SmsIngestWorker.scanNow(this)
         }

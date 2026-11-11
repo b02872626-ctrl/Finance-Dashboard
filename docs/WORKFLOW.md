@@ -90,7 +90,8 @@ release the same day. No release in a week with nothing new.
    Each quoted line is one release note, written for testers (what they'll
    notice, not how it was built). The script bumps the version, runs the
    tests, builds the signed APK and checks it's signed with the Kash key,
-   swaps it into `Web/apk`, updates `version.json` (with the notes), the
+   swaps it into `Web/apk`, updates `version.json` (with the notes, the
+   APK link and its SHA-256, which in-app updates check), the
    download page, `RULES.md` and `docs/PROGRESS.md`, then pushes
    `claude/release-<version>` and opens the PR. If anything fails it undoes
    everything and nothing is committed. Practice run: `DRY_RUN=1` in front.
