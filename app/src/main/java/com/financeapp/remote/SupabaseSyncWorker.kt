@@ -34,16 +34,6 @@ class SupabaseSyncWorker(
 
             is SupabaseSyncResult.Success -> {
                 settingsRepo.recordSyncSuccess()
-                if (settingsRepo.shouldNotifyWhenPendingSyncCompletes()) {
-                    if (settingsRepo.notificationsEnabledSync()) {
-                        SyncNotificationHelper.notifySynced(
-                            context = applicationContext,
-                            transactionCount = result.syncedTransactions,
-                            rawMessageCount = result.syncedRawMessages
-                        )
-                    }
-                    settingsRepo.clearPendingSyncNotification()
-                }
 
                 val repo = TransactionRepository(AppDatabase.getInstance(applicationContext))
                 if (repo.countPendingCloudSyncItems() > 0) {

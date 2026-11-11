@@ -34,7 +34,7 @@
     <string name="notif_lockout_title">Someone tried to unlock Kash</string>
     <string name="notif_lockout_text">%1$d wrong PINs in a row, so Kash is locked for a moment. If it wasn\'t you, change your PIN in Settings.</string>
 
-    <string name="notif_review_question">Was %1$s ETB to %2$s %3$s?</string>
+    <string name="notif_review_question">%1$s ETB to %2$s: was it %3$s?</string>
     <plurals name="notif_review_title">
         <item quantity="one">1 transaction to review today</item>
         <item quantity="other">%d transactions to review today</item>

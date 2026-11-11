@@ -272,16 +272,6 @@ class SettingsRepository(context: Context) {
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    fun markPendingSyncNotification() {
-        prefs.edit().putBoolean(KEY_PENDING_SYNC_NOTIFICATION, true).apply()
-    }
-
-    fun clearPendingSyncNotification() {
-        prefs.edit().putBoolean(KEY_PENDING_SYNC_NOTIFICATION, false).apply()
-    }
-
-    fun shouldNotifyWhenPendingSyncCompletes(): Boolean =
-        prefs.getBoolean(KEY_PENDING_SYNC_NOTIFICATION, false)
 
     private inline fun <reified T> prefFlow(key: String, defaultValue: T): Flow<T> = callbackFlow {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, k ->
@@ -320,7 +310,6 @@ class SettingsRepository(context: Context) {
         const val KEY_SUPABASE_USER_ID = "supabase_user_id"
         const val KEY_SUPABASE_EMAIL = "supabase_email"
         const val KEY_SUPABASE_EXPIRES_AT_MS = "supabase_expires_at_ms"
-        const val KEY_PENDING_SYNC_NOTIFICATION = "pending_sync_notification"
         const val KEY_DISABLED_SENDERS = "disabled_senders"
         const val KEY_CUSTOM_CATEGORIES = "custom_categories"
         const val KEY_HIDDEN_ACCOUNTS = "hidden_accounts"

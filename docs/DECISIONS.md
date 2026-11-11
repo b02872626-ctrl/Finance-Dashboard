@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — No scanning, syncing or backup notifications; no spend alerts
+
+Owner's call (NAH-33). Users never see a notification about Kash's own
+plumbing: "Reading your bank SMS…", "Found N new transactions", "Waiting
+for internet to back up" and "Backed up" are gone, and their channels are
+deleted on update. The in-app scan (opening Kash, pull to refresh, SMS
+access granted) now runs in `SmsIngestWorker` instead of a foreground
+service, which Android only allows with a visible notification;
+`SmsIngestService` and the FOREGROUND_SERVICE / dataSync permissions are
+removed (one less thing to declare on Play). Ordinary spends still get no
+notification: the bank already sent an SMS, and spends to categorize wait
+for the evening digest. What remains: low balance, income landed, fee
+spike, fees today, PIN lockout, review ready, unread bank, weekly, month
+end, backlog, re-engage, SMS access lost, app update.
+
 ## 2026-11-11 — No AI in the app; Gemini only on the web dashboard (FOW summit)
 
 Kash is applying for a free booth at the Future of Work Ethiopia Summit

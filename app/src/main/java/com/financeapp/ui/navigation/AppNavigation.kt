@@ -44,7 +44,6 @@ import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
-import com.financeapp.remote.SyncNotificationHelper
 import com.financeapp.notifications.InAppNotice
 import com.financeapp.notifications.KashNotifier
 import com.financeapp.security.PinManager
@@ -99,7 +98,7 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object Accounts : Screen("accounts")
     object Transactions : Screen("transactions")
-    object Categorize : Screen(SyncNotificationHelper.CATEGORY_ROUTE)
+    object Categorize : Screen(com.financeapp.notifications.TransactionTriggers.ROUTE_REVIEW)
     object DailyReview : Screen("daily_review")
     object Analytics : Screen("analytics")
     object Profile : Screen("profile")

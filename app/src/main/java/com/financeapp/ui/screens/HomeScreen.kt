@@ -53,7 +53,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.financeapp.notifications.UpdateChecker
-import com.financeapp.sms.SmsIngestService
+import com.financeapp.sms.SmsIngestWorker
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashIcon
 import com.financeapp.ui.kash.KashIconView
@@ -113,7 +113,7 @@ fun HomeScreen(
     val pull = rememberPullToRefreshState()
     if (pull.isRefreshing) {
         LaunchedEffect(true) {
-            SmsIngestService.start(context)
+            SmsIngestWorker.scanNow(context)
             kotlinx.coroutines.delay(1500)
             pull.endRefresh()
         }

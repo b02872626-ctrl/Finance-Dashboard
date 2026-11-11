@@ -77,7 +77,6 @@ class SettingsViewModel(
 
     fun signOut() {
         repo.clearPin()
-        repo.clearPendingSyncNotification()
         repo.clearSupabaseSession()
     }
 }

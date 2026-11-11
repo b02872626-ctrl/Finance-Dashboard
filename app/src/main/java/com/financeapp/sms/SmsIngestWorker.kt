@@ -12,10 +12,7 @@ import com.financeapp.data.repository.ErrorLogRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.notifications.TransactionTriggers
-import com.financeapp.remote.NetworkMonitor
-import com.financeapp.remote.SupabaseConfigProvider
 import com.financeapp.remote.SupabaseSyncScheduler
-import com.financeapp.remote.SyncNotificationHelper
 import com.financeapp.remote.Telemetry
 
 /**
@@ -24,8 +21,8 @@ import com.financeapp.remote.Telemetry
  * from a background BroadcastReceiver is disallowed on Android 12+, but
  * WorkManager handles background scheduling correctly.
  *
- * Mirrors what [SmsIngestService.onStartCommand] does (minus the
- * foreground notification, since the worker has its own task lifecycle).
+ * Also the in-app scan ([scanNow]): opening Kash, pull to refresh, SMS
+ * access just granted. No notification either way.
  */
 class SmsIngestWorker(
     appContext: Context,
@@ -55,23 +52,8 @@ class SmsIngestWorker(
                 SupabaseSyncScheduler.enqueue(ctx)
             }
 
-            val settingsRepo = SettingsRepository(ctx)
-            val notificationsEnabled = settingsRepo.notificationsEnabledSync()
+            // No notification here: scans and backups stay out of sight.
             // Transactions to review wait for the evening digest (notifications/).
-            if (notificationsEnabled && inserted > 0) {
-                if (pendingTransactions + pendingRawMessages > 0 &&
-                    !NetworkMonitor.isOnline(ctx) &&
-                    SupabaseConfigProvider.fromBuildConfig() != null &&
-                    settingsRepo.getSupabaseSession() != null
-                ) {
-                    settingsRepo.markPendingSyncNotification()
-                    SyncNotificationHelper.notifyOfflineQueued(
-                        context = ctx,
-                        transactionCount = pendingTransactions,
-                        rawMessageCount = pendingRawMessages
-                    )
-                }
-            }
             Result.success()
         } catch (e: Exception) {
             Telemetry.track(applicationContext, Telemetry.SCAN_FAILED, mapOf(
@@ -91,6 +73,18 @@ class SmsIngestWorker(
          * back-to-back SMS (e.g. a transfer + its receipt) coalesce into a
          * single scan instead of N redundant ones.
          */
+        /**
+         * Scan from inside the app (opening it, pull to refresh, SMS access
+         * just granted). Runs quietly in the background — no "Reading your
+         * SMS" notification — and lets a scan already running finish.
+         */
+        fun scanNow(context: Context) {
+            WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+                UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<SmsIngestWorker>().build(),
+            )
+        }
+
         fun enqueue(context: Context, rescan: Boolean = false) {
             val request = OneTimeWorkRequestBuilder<SmsIngestWorker>()
                 .setInputData(workDataOf(KEY_RESCAN to rescan))

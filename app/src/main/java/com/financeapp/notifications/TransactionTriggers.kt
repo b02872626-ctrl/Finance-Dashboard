@@ -39,7 +39,7 @@ object TransactionTriggers {
         val floor = NotificationRules.balanceFloor(prefs.balanceFloor, last30.filter { it.isSpending() }.sumOf { it.amount })
         if (floor > 0) {
             fresh.filter { it.balance != null }
-                .groupBy { it.bankName to (it.accountNumber ?: "") }
+                .groupBy { it.bankName to (com.financeapp.data.accounts.AccountGrouping.accountSuffix(it.accountNumber) ?: "") }
                 .forEach { (account, rows) ->
                     val latest = rows.maxBy { it.dateTime }
                     val balance = latest.balance ?: return@forEach
@@ -121,7 +121,7 @@ object TransactionTriggers {
         else name.trim().take(24)
     }
 
-    const val ROUTE_REVIEW = com.financeapp.remote.SyncNotificationHelper.CATEGORY_ROUTE
+    const val ROUTE_REVIEW = "categorize_today"
     const val ROUTE_ANALYTICS = "analytics"
     /** That account's history (Home has no Accounts tab since NAH-28). */
     fun accountRoute(bankName: String, accountNumber: String?): String =

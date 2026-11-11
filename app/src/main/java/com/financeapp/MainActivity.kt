@@ -19,7 +19,6 @@ import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.remote.AppSessionTracker
 import com.financeapp.remote.SupabaseSyncScheduler
-import com.financeapp.sms.SmsIngestService
 import com.financeapp.sms.SmsIngestWorker
 import com.financeapp.ui.navigation.AppNavigation
 import com.financeapp.ui.kash.KashTheme
@@ -51,7 +50,7 @@ class MainActivity : ComponentActivity() {
                 com.financeapp.remote.Telemetry.track(this, com.financeapp.remote.Telemetry.SMS_PERMISSION_GRANTED)
                 hasSmsAccess = true
                 smsDenied = false
-                SmsIngestService.start(this)
+                SmsIngestWorker.scanNow(this)
             } else if (granted.containsKey(Manifest.permission.READ_SMS)) {
                 smsDenied = true
             }
@@ -93,7 +92,7 @@ class MainActivity : ComponentActivity() {
             SupabaseSyncScheduler.bootstrap(this@MainActivity)
         }
         if (hasSmsAccess) {
-            SmsIngestService.start(this)
+            SmsIngestWorker.scanNow(this)
         }
 
         // Auto-rescan the inbox when the user has just upgraded to a newer
@@ -146,7 +145,7 @@ class MainActivity : ComponentActivity() {
         backgroundedAt = 0L
         refreshPermissionState()
         if (hasSmsAccess) {
-            SmsIngestService.start(this)
+            SmsIngestWorker.scanNow(this)
         }
     }
 
@@ -155,7 +154,7 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isEmpty()) {
-            SmsIngestService.start(this)
+            SmsIngestWorker.scanNow(this)
         } else {
             permissionLauncher.launch(missing.toTypedArray())
         }
