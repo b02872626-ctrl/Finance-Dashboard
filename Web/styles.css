@@ -2187,12 +2187,13 @@ code {
   position: fixed;
   pointer-events: none;
   background: rgba(43, 51, 64, 0.96);
-  color: var(--headline);
+  /* Light text on the dark slate box (it was dark ink on slate). */
+  color: var(--k-on-slate);
   font-size: 12px;
   line-height: 1.4;
   padding: 7px 11px;
   border-radius: 8px;
-  border: 1px solid var(--tile-border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: none;
   white-space: nowrap;
   z-index: 1001;
@@ -2206,7 +2207,7 @@ code {
   vertical-align: -1px;
 }
 .chart-tooltip .tip-meta {
-  color: var(--body-muted);
+  color: var(--k-on-slate-muted);
   font-size: 11px;
   margin-left: 6px;
 }
@@ -2474,7 +2475,7 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 .ins-avg { stroke: var(--k-ink-faint); stroke-width: 1; stroke-dasharray: 6 5; }
 .ins-area { fill: var(--k-slate); fill-opacity: 0.10; }
 .ins-path { fill: none; stroke: var(--k-slate); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.ins-dot { fill: var(--k-ink); }
+.ins-dot { stroke: var(--k-ink); stroke-width: 9; stroke-linecap: round; }
 
 .io-in { fill: var(--green-income); }
 .io-out { fill: var(--coral); }

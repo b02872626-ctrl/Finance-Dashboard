@@ -2872,7 +2872,7 @@ function renderSpendLineSvg(o) {
   const avgY = y(o.avgPerDay).toFixed(1);
   const slot = W / Math.max(1, n);
   const hits = o.days.map((v, i) => v == null ? "" : `<rect x="${(x(i) - slot / 2).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${H}" fill="transparent"
-      data-tip="${escapeHtml(dayLabel(o.from + i * DAY))}|${escapeHtml(formatETB(v))}" data-tip-color="var(--k-slate)"></rect>`).join("");
+      data-tip="${escapeHtml(dayLabel(o.from + i * DAY))}|${escapeHtml(formatETB(v))}" data-tip-color="var(--k-sand)"></rect>`).join("");
   const last = pts.at(-1);
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
       aria-label="Spending per day, ${escapeHtml(rangeText(o))}: ${escapeHtml(formatETB(o.total))} in all, ${escapeHtml(formatETB(o.avgPerDay))} a day on average">
@@ -2880,7 +2880,7 @@ function renderSpendLineSvg(o) {
     <line x1="0" y1="${avgY}" x2="${W}" y2="${avgY}" class="ins-avg" vector-effect="non-scaling-stroke"/>
     ${area ? `<path d="${area}" class="ins-area"/>` : ""}
     ${line ? `<path d="${line}" class="ins-path" vector-effect="non-scaling-stroke"/>` : ""}
-    ${last ? `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="ins-dot"/>` : ""}
+    ${last ? `<line x1="${last[0].toFixed(1)}" y1="${last[1].toFixed(1)}" x2="${last[0].toFixed(1)}" y2="${last[1].toFixed(1)}" class="ins-dot" vector-effect="non-scaling-stroke"/>` : ""}
     ${hits}
   </svg>`;
 }
@@ -2905,7 +2905,7 @@ function renderInOut(allTxs) {
     };
     const tip = `${name(m.start)}|in ${shortK(m.moneyIn)} · out ${shortK(m.out)} · kept ${signedK(m.kept)}${m.keptPct != null ? ` (${m.keptPct}%)` : ""}`;
     return `${bar(m.moneyIn, -barW - 1, "io-in")}${bar(m.out, 1, "io-out")}
-      <rect x="${(i * groupW).toFixed(1)}" y="0" width="${groupW.toFixed(1)}" height="${H - padB}" fill="transparent" data-tip="${escapeHtml(tip)}" data-tip-color="var(--k-slate)"/>
+      <rect x="${(i * groupW).toFixed(1)}" y="0" width="${groupW.toFixed(1)}" height="${H - padB}" fill="transparent" data-tip="${escapeHtml(tip)}" data-tip-color="var(--k-sand)"/>
       <text x="${cx.toFixed(1)}" y="${H - 6}" class="chart-axis-label" text-anchor="middle">${escapeHtml(name(m.start))}</text>`;
   }).join("");
   const kept = months.map((m, i) => `${i ? "L" : "M"}${(i * groupW + groupW / 2).toFixed(1)} ${y(m.kept).toFixed(1)}`).join(" ");
