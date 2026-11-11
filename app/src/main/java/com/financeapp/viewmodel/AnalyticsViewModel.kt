@@ -122,6 +122,22 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthReport())
 
+    // ── Analytics tab (NAH-27): today, this week, and one chosen range.
+    private val _preset = MutableStateFlow(SpendPreset.THIS_MONTH)
+    private val _custom = MutableStateFlow<Pair<Long, Long>?>(null)
+
+    fun setPreset(preset: SpendPreset) { _preset.value = preset }
+    /** Pick dates: [from, toExclusive). */
+    fun setCustomRange(from: Long, toExclusive: Long) {
+        _custom.value = from to toExclusive
+        _preset.value = SpendPreset.CUSTOM
+    }
+
+    val overview: StateFlow<SpendOverview> = combine(allTransactions, _calendar, _preset, _custom) { all, cal, preset, custom ->
+        buildSpendOverview(all, cal, System.currentTimeMillis(), preset, custom)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SpendOverview())
+
     /** Months that have transactions, newest first (the month picker). */
     val availableMonths: StateFlow<List<Long>> = combine(allTransactions, _calendar) { all, cal ->
         all.map { com.financeapp.util.KashDates.monthBounds(it.dateTime, cal).first }

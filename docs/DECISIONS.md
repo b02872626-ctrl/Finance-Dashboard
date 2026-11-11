@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Analytics leads with today, this week and a spending line
+
+Owner's call (NAH-27): most people never categorise, so the Analytics tab
+no longer leads with categories. The hero is today's spend (and payment
+count) with "This week" and "This month" tiles, each against the same
+point last week or month. Below is a daily spending line for a chosen
+range (This week, This month, 30 days, or picked dates) with the total,
+the change against the period before, the daily average (dashed) and a
+touch-to-read day. Where you pay most and Spent from follow the range;
+six months of money in and out stays; "Where it goes" moves to the end
+and shows only when something is labelled. The month picker and the big
+"Nothing has a category yet" block are gone.
+
 ## 2026-11-11 — Tester builds update themselves, with a pop-up
 
 NAH-35. Update (Home card, Settings → Updates, and a new pop-up when Kash
