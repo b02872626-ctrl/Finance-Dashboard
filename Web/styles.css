@@ -2422,3 +2422,30 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 .lb-day.ok { background: rgba(62, 122, 74, 0.28); }
 .lb-day.low { background: var(--coral); }
 .lb-day.none { background: var(--k-well); }
+
+/* One date filter for the dashboard, pinned while scrolling. */
+.k-head-sentinel { height: 1px; margin-bottom: -1px; }
+.k-panel-head {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--k-raised);
+  border-radius: 18px 18px 0 0;
+  transition: padding .15s ease;
+}
+.k-panel-head.stuck {
+  padding-top: 10px; padding-bottom: 10px;
+  border-radius: 0;
+  box-shadow: 0 1px 0 var(--k-line), 0 6px 16px -12px rgba(20, 24, 31, .25);
+}
+.k-panel-head.stuck h1 { font-size: 17px; }
+.k-panel-head.stuck p.muted { display: none; }
+.period-custom {
+  flex-basis: 100%;
+  display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; justify-content: flex-end;
+}
+.period-custom label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--k-ink-muted); }
+.period-custom input { padding: 8px 10px; }
+@media (max-width: 640px) { .period-custom { justify-content: flex-start; } }
+/* On a phone the pinned header is just the filter. */
+@media (max-width: 640px) {
+  .k-panel-head.stuck > div:first-child { display: none; }
+}

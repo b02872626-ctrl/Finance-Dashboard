@@ -12,7 +12,7 @@ import {
   EXPENSE_TYPES, OWN_ACCOUNTS, isOwnAccountTransfer, isSpending, isIncome,
   ETHIOPIAN_MONTHS, gregorianToEthiopian, ethiopianToGregorian, prevEthiopianMonth,
   accountSuffix, shortBankLabel, groupAccounts,
-  inContext, spendOverview, monthlyInOut, paydayPattern, lowBalanceDays, monthBounds, DAY,
+  inContext, spendOverview, monthlyInOut, paydayPattern, lowBalanceDays, monthBounds, weekStart, DAY,
 } from "./insights.js";
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -328,8 +328,7 @@ const state = {
   editingBudgetId: null,             // when set, the budget form is editing existing
   budgetPickedCategories: new Set(), // category names selected in the form
   // Overview (NAH-30): the chart's range, picked dates, and months shown.
-  ovRange: "month",                  // "week" | "month" | "30d" | "custom"
-  ovCustom: null,                    // [from, toExclusive] for "custom"
+  ovCustom: null,                    // [from, toExclusive] when period is "custom"
   ioMonths: 6,                       // 6 | 12
 };
 
@@ -345,12 +344,14 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const PERIOD_LABELS = {
+  week: "this week",
   month: "this month",
   "last-month": "last month",
   "30d": "last 30 days",
   "90d": "last 90 days",
   year: "this year",
   all: "all time",
+  custom: "picked dates",
 };
 
 // ----------------------------------------------------------------------------
@@ -663,13 +664,54 @@ function prettyAuthError(raw) {
 // ----------------------------------------------------------------------------
 // Period selector
 // ----------------------------------------------------------------------------
+function setPeriod(period) {
+  state.period = period;
+  periodBar.querySelectorAll(".period-pill").forEach((b) => b.classList.toggle("active", b.dataset.period === period));
+  const pill = document.getElementById("period-custom-pill");
+  if (pill) pill.textContent = period === "custom" && state.ovCustom
+    ? `${dayLabel(state.ovCustom[0])} – ${dayLabel(state.ovCustom[1] - 1)}` : "Pick dates";
+  // On narrow screens the bar scrolls sideways: keep the chosen one in view.
+  periodBar.querySelector(".period-pill.active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  rerender();
+}
+
 periodBar.addEventListener("click", (e) => {
   const btn = e.target.closest(".period-pill");
   if (!btn) return;
-  periodBar.querySelectorAll(".period-pill").forEach((b) => b.classList.toggle("active", b === btn));
-  state.period = btn.dataset.period;
-  rerender();
+  const form = document.getElementById("period-custom-form");
+  if (btn.dataset.period === "custom") { form?.classList.toggle("hidden"); return; }
+  form?.classList.add("hidden");
+  setPeriod(btn.dataset.period);
 });
+
+document.getElementById("period-custom-form")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const from = $("period-from").value, to = $("period-to").value;
+  if (!from || !to) return;
+  const a = new Date(`${from}T00:00:00`).getTime();
+  const b = new Date(`${to}T00:00:00`).getTime();
+  const [lo, hi] = a <= b ? [a, b] : [b, a];
+  state.ovCustom = [lo, hi + 864e5];
+  $("period-custom-form").classList.add("hidden");
+  setPeriod("custom");
+});
+document.getElementById("period-custom-cancel")?.addEventListener("click", () => {
+  $("period-custom-form").classList.add("hidden");
+});
+
+// The header (greeting + period filter) stays pinned while the page
+// scrolls; once pinned it drops to one compact row.
+(() => {
+  const head = document.querySelector(".k-panel-head");
+  if (!head) return;
+  const sentinel = document.createElement("div");
+  sentinel.className = "k-head-sentinel";
+  head.before(sentinel);
+  const update = () => head.classList.toggle("stuck", sentinel.getBoundingClientRect().top < 0);
+  window.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  update();
+})();
 
 // ----------------------------------------------------------------------------
 // View tabs (Dashboard ↔ Category Analysis)
@@ -2694,6 +2736,10 @@ function setupGreeting(user) {
 // Period helpers
 // ----------------------------------------------------------------------------
 function periodRange(period, now = new Date()) {
+  // This week (from Monday) and picked dates (NAH-30 follow-up: one filter
+  // for the whole dashboard).
+  if (period === "week") return { start: weekStart(now.getTime()), end: now.getTime() };
+  if (period === "custom" && state.ovCustom) return { start: state.ovCustom[0], end: state.ovCustom[1] - 1 };
   // 30d / 90d / all are calendar-agnostic — rolling windows.
   if (period === "30d") return { start: now.getTime() - 30 * 864e5, end: now.getTime() };
   if (period === "90d") return { start: now.getTime() - 90 * 864e5, end: now.getTime() };
@@ -2802,10 +2848,8 @@ function changeText(pct, vs) {
 }
 
 function rangeText(o) {
-  if (o.preset === "week") return "this week";
-  if (o.preset === "30d") return "last 30 days";
-  if (o.preset === "custom") return `${dayLabel(o.from)} – ${dayLabel(o.to - 1)}`;
-  return "this month";
+  if (state.period === "custom" || state.period === "all") return `${dayLabel(o.from)} – ${dayLabel(o.to - 1)}`;
+  return PERIOD_LABELS[state.period] || "this month";
 }
 
 function renderBalance(allTxs) {
@@ -2819,8 +2863,29 @@ function renderBalance(allTxs) {
   statBalanceSub.textContent = `${accounts.length} account${accounts.length === 1 ? "" : "s"}`;
 }
 
+// The top filter as a range for the spending line: week, month and 30 days
+// keep their own comparisons; every other period is a span of days.
+function overviewRange(allTxs) {
+  const p = state.period;
+  if (p === "week" || p === "month" || p === "30d") return { preset: p, custom: null };
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const endOfToday = today.getTime() + DAY;
+  let start;
+  if (p === "all") {
+    const times = allTxs.map((t) => Date.parse(t.occurred_at)).filter(Number.isFinite);
+    start = times.length ? Math.min(...times) : today.getTime();
+  } else {
+    start = periodRange(p).start;
+  }
+  const s = new Date(start); s.setHours(0, 0, 0, 0);
+  const r = periodRange(p);
+  const e = new Date(Math.min(r.end, endOfToday - 1)); e.setHours(0, 0, 0, 0);
+  return { preset: "custom", custom: [s.getTime(), e.getTime() + DAY] };
+}
+
 function renderOverview(allTxs) {
-  const o = spendOverview(allTxs, { cal: calKey(), now: Date.now(), preset: state.ovRange, custom: state.ovCustom });
+  const { preset, custom } = overviewRange(allTxs);
+  const o = spendOverview(allTxs, { cal: calKey(), now: Date.now(), preset, custom });
   $("ov-today").textContent = formatETB(o.todaySpent);
   $("ov-today-sub").textContent = o.todayCount === 0 ? "nothing yet today" : `${o.todayCount} payment${o.todayCount === 1 ? "" : "s"}`;
   $("ov-week").textContent = formatETB(o.weekSpent);
@@ -2828,12 +2893,13 @@ function renderOverview(allTxs) {
   $("ov-month").textContent = formatETB(o.monthSpent);
   $("ov-month-sub").textContent = changeText(o.monthChangePct, "same point last month");
 
-  const vs = { week: "last week", month: "last month", "30d": "the 30 days before", custom: "the days before" }[o.preset];
+  const days = Math.round((o.to - o.from) / DAY);
+  const vs = { week: "last week", month: "last month", "30d": "the 30 days before" }[o.preset]
+    || { "last-month": "the month before", "90d": "the 90 days before", year: "the same stretch before" }[state.period]
+    || `the ${days} days before`;
   $("ot-total").textContent = formatETB(o.total);
   $("ot-change").textContent = o.changePct == null ? "Nothing to compare with yet" : changeText(o.changePct, vs);
   $("ot-avg").textContent = `${formatETB(o.avgPerDay)} a day on average`;
-  document.querySelectorAll("#over-time .ins-chip").forEach((b) => b.classList.toggle("active", b.dataset.range === o.preset));
-  $("ot-custom-chip").textContent = o.preset === "custom" ? rangeText(o) : "Pick dates";
   document.querySelectorAll(".ot-range-label").forEach((el) => { el.textContent = rangeText(o); });
   $("ot-axis-from").textContent = dayLabel(o.from);
   $("ot-axis-to").textContent = dayLabel(o.to - 1);
@@ -2966,10 +3032,12 @@ function renderPayday(allTxs) {
 function renderLowBalance(allTxs, payday) {
   const cal = calKey();
   const now = Date.now();
-  const [monthStart] = monthBounds(now, cal);
+  // Follows the top filter when it's last month; otherwise this month.
+  const at = state.period === "last-month" ? periodRange("last-month").start : now;
+  const [monthStart] = monthBounds(at, cal);
   const month = monthLabel(monthStart);
   $("lb-month").textContent = month;
-  const accounts = lowBalanceDays(allTxs, { cal, now, usualPayday: payday?.found ? payday.usualDay : null });
+  const accounts = lowBalanceDays(allTxs, { cal, now, month: at, usualPayday: payday?.found ? payday.usualDay : null });
   const body = $("lb-body");
   if (accounts.length === 0) {
     body.innerHTML = `<p class="muted">No balance updates in ${escapeHtml(month)} yet.</p>`;
@@ -2992,26 +3060,7 @@ function renderLowBalance(allTxs, payday) {
   }).join("");
 }
 
-// Range chips, picked dates and the 6/12-month switch.
-document.querySelectorAll("#over-time .ins-chip").forEach((btn) => btn.addEventListener("click", () => {
-  const form = $("ot-custom-form");
-  if (btn.dataset.range === "custom") { form.classList.toggle("hidden"); return; }
-  form.classList.add("hidden");
-  state.ovRange = btn.dataset.range;
-  renderOverview(state.allTxs);
-}));
-$("ot-custom-form")?.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const from = $("ot-from").value, to = $("ot-to").value;
-  if (!from || !to) return;
-  const a = new Date(`${from}T00:00:00`).getTime();
-  const b = new Date(`${to}T00:00:00`).getTime();
-  const [lo, hi] = a <= b ? [a, b] : [b, a];
-  state.ovCustom = [lo, hi + DAY];
-  state.ovRange = "custom";
-  $("ot-custom-form").classList.add("hidden");
-  renderOverview(state.allTxs);
-});
+// The 6/12-month switch on Money in vs out.
 document.querySelectorAll("[data-months]").forEach((btn) => btn.addEventListener("click", () => {
   state.ioMonths = Number(btn.dataset.months);
   renderInOut(state.allTxs);
@@ -4260,6 +4309,12 @@ function priorPeriodRange(period, now = new Date()) {
       const s = new Date(now.getFullYear(), now.getMonth() - 2, 1);
       const e = new Date(now.getFullYear(), now.getMonth() - 1, 1) - 1;
       return { start: s.getTime(), end: e };
+    }
+    case "week":       return { start: weekStart(now.getTime()) - 7 * 864e5, end: weekStart(now.getTime()) - 1 };
+    case "custom": {
+      if (!state.ovCustom) return null;
+      const [a, b] = state.ovCustom;
+      return { start: a - (b - a), end: a - 1 };
     }
     case "30d":        return { start: Date.now() - 60 * 864e5, end: Date.now() - 30 * 864e5 };
     case "90d":        return { start: Date.now() - 180 * 864e5, end: Date.now() - 90 * 864e5 };

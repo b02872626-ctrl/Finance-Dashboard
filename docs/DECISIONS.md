@@ -6,6 +6,18 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — One date filter for the whole web dashboard, pinned on scroll
+
+Owner's call. The period bar at the top (now This week, This month, Last
+month, 30 days, 90 days, This year, All time, Pick dates) drives the
+spending line, its total and comparison, Where you pay most, Spent from
+and every section below; the line's own range chips are gone, so the two
+can't disagree. The today / this week / this month tiles stay fixed, and
+Money in vs out keeps its 6/12-month switch. Low-balance days shows last
+month when the filter is Last month. The header with the filter sticks to
+the top while scrolling and shrinks to one row (just the filter on a
+phone).
+
 ## 2026-11-11 — Web dashboard leads with the phone's Analytics, plus cash-flow insights
 
 Owner-approved plan (NAH-30). The dashboard's six period stat cards and
