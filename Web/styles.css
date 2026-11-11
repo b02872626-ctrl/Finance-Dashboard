@@ -2449,3 +2449,142 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 @media (max-width: 640px) {
   .k-panel-head.stuck > div:first-child { display: none; }
 }
+
+/* Counterparty rows open their transactions (no tick boxes). */
+.cp-link { cursor: pointer; }
+.cp-link .row-check { display: none; }
+.cp-link:hover .name { text-decoration: underline; text-underline-offset: 3px; }
+.cp-link .name { text-align: left; flex: 1; min-width: 0; }
+.pd-paycheck { stroke: var(--green-income); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.chart-legend .paycheck-dot { background: var(--green-income); }
+
+/* Day-of-week: Monday-first bars, the costliest day in coral. */
+.weekday-strip { display: block; }
+.wd-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; height: 170px; align-items: end; }
+.wd-col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.wd-val { font-size: 12px; font-weight: 600; color: var(--k-ink-muted); }
+.wd-col.top .wd-val { color: var(--coral); }
+.wd-bar { flex: 1; width: 100%; max-width: 44px; display: flex; align-items: flex-end; background: var(--k-well); border-radius: 8px; overflow: hidden; }
+.wd-bar span { display: block; width: 100%; background: var(--k-slate); opacity: .55; border-radius: 8px 8px 0 0; }
+.wd-col.top .wd-bar span { background: var(--coral); opacity: 1; }
+.wd-day { font-size: 12px; color: var(--k-ink-muted); }
+.wd-col.top .wd-day { color: var(--k-ink); font-weight: 600; }
+
+/* Categories: calm white cards (owner: "better design"). */
+.cat-card.k2 {
+  background: var(--k-raised); border: 1px solid var(--k-line); border-top: 1px solid var(--k-line);
+  border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: pointer;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.cat-card.k2:hover { border-color: var(--c); transform: translateY(-1px); }
+.cat-card.k2.active { border-color: var(--c); background: var(--k-raised); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 30%, transparent); }
+.cat-card.k2 .cat-head { display: flex; align-items: center; gap: 12px; margin: 0; }
+.cat-card.k2 .cat-emoji {
+  width: 40px; height: 40px; flex: none; display: grid; place-items: center; font-size: 20px;
+  border-radius: 12px; background: color-mix(in srgb, var(--c) 16%, var(--k-raised));
+}
+.cat-card.k2 .cat-title { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cat-card.k2 .cat-name { font-weight: 600; color: var(--k-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-card.k2 .cat-count { font-size: 12px; color: var(--k-ink-muted); }
+.cat-card.k2 .cat-pct {
+  font-size: 12px; font-weight: 600; color: var(--k-ink-muted);
+  background: var(--k-well); border-radius: 999px; padding: 3px 8px;
+}
+.cat-card.k2 .cat-total { margin: 4px 0 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--k-ink); }
+.cat-card.k2 .cat-bar { height: 6px; border-radius: 3px; background: var(--k-well); overflow: hidden; }
+.cat-card.k2 .cat-bar > span { display: block; height: 100%; border-radius: 3px; background: var(--c); }
+.cat-card.k2 .cat-trend { font-size: 12px; }
+
+
+/* =========================================================================
+   Dark mode. Follows the system unless the sun/moon switch picked one
+   (html[data-theme]). Everything reads the tokens, so swapping them is
+   most of it; the rest covers the few colours written out by hand.
+   ========================================================================= */
+.k-topbar .theme-toggle {
+  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--k-line);
+  background: var(--k-raised); color: var(--k-ink); display: grid; place-items: center; cursor: pointer;
+}
+.theme-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.theme-toggle .moon { display: none; }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --k-slate: #5D6D87;
+  --k-slate-ink: #10141A;
+  --k-on-slate: #FFFFFF;
+  --k-on-slate-muted: #C6CDD8;
+  --k-ghost-fill: rgba(232, 235, 240, 0.06);
+  --k-ghost-line: rgba(232, 235, 240, 0.18);
+  --k-surface: #0F1216;
+  --k-raised: #171B21;
+  --k-well: #232831;
+  --k-line: #2A3039;
+  --k-line-strong: #353C47;
+  --k-line-soft: #232831;
+  --k-ink: #E8EBF0;
+  --k-ink-muted: #A3ABB8;
+  --k-ink-faint: #7F8896;
+  --coral: #E07A62;
+  --green-income: #6CBF7E;
+}
+:root[data-theme="dark"] .btn-google, :root[data-theme="dark"] .k-sidebar .view-tab-badge, :root[data-theme="dark"] .k-topbar .calendar-toggle, :root[data-theme="dark"] .k-topbar .hamburger-btn, :root[data-theme="dark"] .k-topbar .theme-toggle { background: var(--k-raised); color: var(--k-ink); }
+:root[data-theme="dark"] .k-sidebar .view-tab.active, :root[data-theme="dark"] .k-panel-head .period-pill.active { background: var(--k-well); }
+:root[data-theme="dark"] .k-topbar .calendar-toggle-btn.active { background: var(--k-ink); color: var(--k-surface); }
+:root[data-theme="dark"] .hamburger-btn span { background: var(--k-ink); }
+:root[data-theme="dark"] .cat-card.k2 .cat-emoji { background: color-mix(in srgb, var(--c) 22%, var(--k-raised)); }
+:root[data-theme="dark"] .lb-day.ok { background: rgba(108, 191, 126, 0.30); }
+:root[data-theme="dark"] .theme-toggle .sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .moon { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --k-slate: #5D6D87;
+  --k-slate-ink: #10141A;
+  --k-on-slate: #FFFFFF;
+  --k-on-slate-muted: #C6CDD8;
+  --k-ghost-fill: rgba(232, 235, 240, 0.06);
+  --k-ghost-line: rgba(232, 235, 240, 0.18);
+  --k-surface: #0F1216;
+  --k-raised: #171B21;
+  --k-well: #232831;
+  --k-line: #2A3039;
+  --k-line-strong: #353C47;
+  --k-line-soft: #232831;
+  --k-ink: #E8EBF0;
+  --k-ink-muted: #A3ABB8;
+  --k-ink-faint: #7F8896;
+  --coral: #E07A62;
+  --green-income: #6CBF7E;
+  }
+  :root:not([data-theme="light"]) .btn-google, :root:not([data-theme="light"]) .k-sidebar .view-tab-badge, :root:not([data-theme="light"]) .k-topbar .calendar-toggle, :root:not([data-theme="light"]) .k-topbar .hamburger-btn, :root:not([data-theme="light"]) .k-topbar .theme-toggle { background: var(--k-raised); color: var(--k-ink); }
+  :root:not([data-theme="light"]) .k-sidebar .view-tab.active, :root:not([data-theme="light"]) .k-panel-head .period-pill.active { background: var(--k-well); }
+  :root:not([data-theme="light"]) .k-topbar .calendar-toggle-btn.active { background: var(--k-ink); color: var(--k-surface); }
+  :root:not([data-theme="light"]) .hamburger-btn span { background: var(--k-ink); }
+  :root:not([data-theme="light"]) .cat-card.k2 .cat-emoji { background: color-mix(in srgb, var(--c) 22%, var(--k-raised)); }
+  :root:not([data-theme="light"]) .lb-day.ok { background: rgba(108, 191, 126, 0.30); }
+  :root:not([data-theme="light"]) .theme-toggle .sun { display: none; }
+  :root:not([data-theme="light"]) .theme-toggle .moon { display: block; }
+}
+
+/* The four top tiles keep their figures on one line. */
+.stat-grid .big-number { white-space: nowrap; font-size: clamp(18px, 1.75vw, 32px); }
+@media (max-width: 880px) { .stat-grid .big-number { font-size: clamp(20px, 4.2vw, 30px); } }
+
+
+/* Hide amounts: every figure blurred, layout unchanged. */
+.theme-toggle .eye-off { display: none; }
+.hide-amounts .theme-toggle .eye { display: none; }
+.hide-amounts .theme-toggle .eye-off { display: block; }
+.hide-amounts #amounts-toggle { background: var(--k-ink); color: var(--k-surface); border-color: var(--k-ink); }
+.hide-amounts :is(.big-number, .ins-amount, .ins-readout, #ot-avg, #io-summary, #pd-source, #pd-body li,
+  .lb-floor, .amount, .amount-in, .amount-out, td.right, .ledger-balance, .ledger-amounts, .pay-amount,
+  .cat-total, .wd-val, #weekday-head, .tx-detail-amount-big, .tx-detail-value, .tx-related-amt, .balance,
+  .chart-tooltip, .stat-card .muted.small, .category-row .amount) {
+  filter: blur(7px); user-select: none;
+}
+.hide-amounts .chart-tooltip { filter: blur(5px); }
+
+/* Tile figures sized to their card, so they never clip. */
+.k-panel .stat-grid .stat-card { container-type: inline-size; }
+.k-panel .stat-grid .stat-card .big-number { white-space: nowrap; font-size: clamp(16px, 12.5cqi, 32px); }

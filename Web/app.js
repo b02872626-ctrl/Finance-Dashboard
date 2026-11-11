@@ -699,6 +699,37 @@ document.getElementById("period-custom-cancel")?.addEventListener("click", () =>
   $("period-custom-form").classList.add("hidden");
 });
 
+// Hide amounts: blurs every figure (like the app's hidden balance), for
+// showing the dashboard to someone. Remembered on this browser.
+(() => {
+  const btn = document.getElementById("amounts-toggle");
+  if (!btn) return;
+  const root = document.documentElement;
+  const sync = () => {
+    const on = root.classList.contains("hide-amounts");
+    btn.setAttribute("aria-pressed", String(on));
+    btn.setAttribute("aria-label", on ? "Show amounts" : "Hide amounts");
+    btn.title = on ? "Show amounts" : "Hide amounts";
+  };
+  btn.addEventListener("click", () => {
+    root.classList.toggle("hide-amounts");
+    try { localStorage.setItem("kash.hideAmounts", root.classList.contains("hide-amounts") ? "1" : "0"); } catch (_) {}
+    sync();
+  });
+  sync();
+})();
+
+// Dark mode: the sun/moon switch flips what's showing and remembers it;
+// until then the system setting decides (CSS prefers-color-scheme).
+document.getElementById("theme-toggle")?.addEventListener("click", () => {
+  const root = document.documentElement;
+  const current = root.getAttribute("data-theme")
+    || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = current === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  try { localStorage.setItem("kash.theme", next); } catch (_) {}
+});
+
 // The header (greeting + period filter) stays pinned while the page
 // scrolls; once pinned it drops to one compact row.
 (() => {
@@ -3015,16 +3046,30 @@ function renderPayday(allTxs) {
       <li>Since ${escapeHtml(dayLabel(p.lastPayday))}: ${Math.max(0, Math.round((leftNow ?? 1) * 100))}% of it left. ${escapeHtml(pace)}</li>
       <li>Next one expected around ${escapeHtml(dayLabel(p.nextPayday))}.</li>
     </ul>`;
-  const W = 600, H = 160, pad = 8;
+  // Money spent since payday (ETB), against the usual pace and the paycheck.
+  const W = 600, H = 160, pad = 10;
   const n = p.cycleLen;
+  const c = p.chart;
+  const top = Math.max(c.paycheck, ...c.spent, ...p.usualSpent.filter((v) => v != null)) * 1.08 || 1;
   const x = (i) => (n > 1 ? (i / (n - 1)) * W : 0);
-  const y = (f) => pad + (1 - Math.max(0, Math.min(1, f))) * (H - 2 * pad);
-  const path = (vals) => vals.map((f, i) => (f == null ? "" : `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(f).toFixed(1)}`)).join(" ").trim();
-  chart.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Share of your pay left, by day since payday: this cycle against your usual pace">
+  const y = (v) => pad + (1 - Math.max(0, v) / top) * (H - 2 * pad);
+  const path = (vals) => vals.map((v, i) => (v == null ? "" : `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`)).join(" ").trim();
+  const payY = y(c.paycheck).toFixed(1);
+  const end = c.spent.length - 1;
+  const hits = c.spent.map((v, i) => `<rect x="${(x(i) - W / n / 2).toFixed(1)}" y="0" width="${(W / n).toFixed(1)}" height="${H}" fill="transparent"
+      data-tip="Day ${i + 1}|${escapeHtml(formatETB(v))} spent${p.usualSpent[i] != null ? ` · usual ${escapeHtml(formatETB(p.usualSpent[i]))}` : ""}" data-tip-color="var(--k-sand)"></rect>`).join("");
+  chart.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Money spent since payday: ${c.which === "last" ? "last" : "this"} pay cycle against your usual pace and the paycheck">
     <line x1="0" y1="${H - pad}" x2="${W}" y2="${H - pad}" class="ins-baseline" vector-effect="non-scaling-stroke"/>
-    ${p.usual[0] != null ? `<path d="${path(p.usual)}" class="pd-usual" vector-effect="non-scaling-stroke"/>` : ""}
-    <path d="${path(p.current)}" class="pd-current" vector-effect="non-scaling-stroke"/>
+    <line x1="0" y1="${payY}" x2="${W}" y2="${payY}" class="pd-paycheck" vector-effect="non-scaling-stroke"/>
+    ${p.usualSpent[0] != null ? `<path d="${path(p.usualSpent)}" class="pd-usual" vector-effect="non-scaling-stroke"/>` : ""}
+    <path d="${path(c.spent)}" class="pd-current" vector-effect="non-scaling-stroke"/>
+    ${end >= 0 ? `<line x1="${x(end).toFixed(1)}" y1="${y(c.spent[end]).toFixed(1)}" x2="${x(end).toFixed(1)}" y2="${y(c.spent[end]).toFixed(1)}" class="ins-dot" vector-effect="non-scaling-stroke"/>` : ""}
+    ${hits}
   </svg>`;
+  legend.innerHTML = `
+    <span class="dot kept-dot"></span><span class="muted small">${c.which === "last" ? "Last pay cycle" : "This pay cycle"}</span>
+    <span class="dot usual-dot"></span><span class="muted small">Your usual pace</span>
+    <span class="dot paycheck-dot"></span><span class="muted small">Paycheck (${escapeHtml(shortK(c.paycheck))})</span>`;
   return p;
 }
 
@@ -3053,7 +3098,7 @@ function renderLowBalance(allTxs, payday) {
       return `<span class="${cls}" data-tip="${escapeHtml(tip)}" data-tip-color="${d.low ? "var(--coral)" : "var(--green-income)"}"></span>`;
     }).join("");
     return `<div class="lb-account">
-      <div class="ins-row-top"><p class="ins-name">${escapeHtml(a.name)}</p><span class="muted small">under ${escapeHtml(formatETB(a.floor))}</span></div>
+      <div class="ins-row-top"><p class="ins-name">${escapeHtml(a.name)}</p><span class="muted small lb-floor">under ${escapeHtml(formatETB(a.floor))}</span></div>
       <p class="muted small">${head}</p>
       <div class="lb-strip" role="img" aria-label="${escapeHtml(`${a.name}: ${head}`)}">${cells}</div>
     </div>`;
@@ -3136,7 +3181,7 @@ function renderCounterparties(inRange) {
         name, total, count, type: "counterparty",
         meta: `${count}×`,
       })).join("");
-  attachSelectionHandlers(counterpartyList);
+  attachCounterpartyLinks(counterpartyList);
 }
 
 function renderRecurring(inRange) {
@@ -3162,19 +3207,17 @@ function renderRecurring(inRange) {
         name, total, count, type: "recurring",
         meta: `${count} payments · last ${formatRelativeDate(last)}`,
       })).join("");
-  attachSelectionHandlers(recurringList);
+  attachCounterpartyLinks(recurringList);
 }
 
 // ----------------------------------------------------------------------------
 // Selectable row (used by Top Counterparties and Recurring Spend)
 // ----------------------------------------------------------------------------
 function renderSelectableRow({ name, total, meta, type }) {
-  const isSelected = state.selectedCps.has(name);
   const currentCategory = currentCategoryFor(name);
   const rowClass = type === "recurring" ? "recurring-row" : "counterparty-row";
   return `
-    <div class="${rowClass}${isSelected ? " selected" : ""}" data-cp="${escapeHtml(name)}">
-      <span class="row-check" aria-hidden="true"></span>
+    <div class="${rowClass} cp-link" data-cp="${escapeHtml(name)}" role="button" tabindex="0" title="See transactions with ${escapeHtml(name)}">
       <span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
       ${currentCategory ? `<span class="category-currently">${escapeHtml(currentCategory)}</span>` : ""}
       <span class="meta">${escapeHtml(meta)}</span>
@@ -3195,6 +3238,20 @@ function currentCategoryFor(counterparty) {
   let best = null, bestCount = 0;
   for (const [c, n] of counts) if (n > bestCount) { best = c; bestCount = n; }
   return best;
+}
+
+// Tap a counterparty row: its transactions (no more tick boxes, owner's call).
+function attachCounterpartyLinks(container) {
+  container.querySelectorAll("[data-cp]").forEach((row) => {
+    const open = () => {
+      const cp = row.dataset.cp || "";
+      state.search = cp.toLowerCase();
+      txSearch.value = cp;
+      switchView("transactions");
+    };
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+  });
 }
 
 function attachSelectionHandlers(container) {
@@ -3331,33 +3388,44 @@ function showToast(message, kind = "success") {
 // Charts — inline SVG bar charts (no external libraries)
 // ----------------------------------------------------------------------------
 function renderWeekdayStrip(inRange) {
-  // Average spend per weekday (Sun..Sat).
+  // Average spend on each weekday of the period, counting quiet days too
+  // (one Tuesday purchase no longer makes "Tuesday" look expensive).
+  const range = periodRange(state.period);
+  const first = inRange.reduce((m, t) => Math.min(m, Date.parse(t.occurred_at) || m), Infinity);
+  const start = new Date(Math.max(range.start, Number.isFinite(first) ? first : range.start)); start.setHours(0, 0, 0, 0);
+  const end = Math.min(range.end, Date.now());
   const sums = [0, 0, 0, 0, 0, 0, 0];
-  const counts = [0, 0, 0, 0, 0, 0, 0];
-  const seenDays = [new Set(), new Set(), new Set(), new Set(), new Set(), new Set(), new Set()];
+  const days = [0, 0, 0, 0, 0, 0, 0];
+  for (let d = new Date(start); d.getTime() <= end; d.setDate(d.getDate() + 1)) days[d.getDay()] += 1;
   for (const tx of inRange) {
     if (!isSpending(tx)) continue;
     const ts = Date.parse(tx.occurred_at);
-    if (!Number.isFinite(ts)) continue;
-    const d = new Date(ts);
-    const dow = d.getDay();
-    sums[dow] += tx.amount;
-    counts[dow] += 1;
-    seenDays[dow].add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    if (Number.isFinite(ts)) sums[new Date(ts).getDay()] += tx.amount;
   }
-  const avgs = sums.map((s, i) => seenDays[i].size > 0 ? s / seenDays[i].size : 0);
-  const max = Math.max(1, ...avgs);
-  const labels = ["S", "M", "T", "W", "T", "F", "S"];
-  weekdayStrip.innerHTML = labels.map((day, i) => {
-    const pct = Math.round((avgs[i] / max) * 100);
-    return `
-      <div class="weekday-cell">
-        <div class="day">${day}</div>
-        <div class="amount">${avgs[i] > 0 ? formatNumber(avgs[i]) : "—"}</div>
-        <div class="meter"><span style="width: ${pct}%"></span></div>
-      </div>
-    `;
-  }).join("");
+  // Monday first.
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const avg = order.map((i) => (days[i] > 0 ? sums[i] / days[i] : 0));
+  const max = Math.max(...avg);
+  const head = document.getElementById("weekday-head");
+  if (max <= 0) {
+    if (head) head.textContent = "No spending in this period yet.";
+    weekdayStrip.innerHTML = "";
+    return;
+  }
+  const top = avg.indexOf(max);
+  const spent = avg.filter((v) => v > 0);
+  const low = avg.indexOf(Math.min(...spent));
+  if (head) {
+    head.textContent = `${names[order[top]]}s cost you most: ${formatETB(max)} on an average ${names[order[top]]}` +
+      (low !== top ? `. Quietest: ${names[order[low]]}s, ${formatETB(avg[low])}.` : ".");
+  }
+  weekdayStrip.innerHTML = `<div class="wd-bars">${order.map((i, k) => `
+    <div class="wd-col${k === top ? " top" : ""}" data-tip="${escapeHtml(names[i])}|${escapeHtml(formatETB(avg[k]))} on average|${days[i]} day${days[i] === 1 ? "" : "s"}" data-tip-color="${k === top ? "var(--coral)" : "var(--k-sand)"}">
+      <span class="wd-val">${avg[k] > 0 ? escapeHtml(shortK(avg[k])) : "–"}</span>
+      <span class="wd-bar"><span style="height:${Math.max(2, (avg[k] / max) * 100).toFixed(1)}%"></span></span>
+      <span class="wd-day">${names[i].slice(0, 3)}</span>
+    </div>`).join("")}</div>`;
 }
 
 // ----------------------------------------------------------------------------
@@ -4248,23 +4316,24 @@ function renderCategoriesView() {
     const prior = priorByCategory.get(name)?.total ?? 0;
     const trend = prior > 0 ? ((data.total - prior) / prior) * 100 : null;
     const trendClass = trend == null ? "flat" : trend > 5 ? "up" : trend < -5 ? "down" : "flat";
+    const priorName = { week: "last week", month: "last month", "last-month": "the month before", "30d": "the 30 days before", "90d": "the 90 days before", year: "last year" }[state.period] || "before";
     const trendLabel = trend == null
-      ? "no prior data"
-      : `${trend >= 0 ? "↑" : "↓"} ${formatPercent(trend)} vs prior`;
+      ? "new this period"
+      : `${trend >= 0 ? "↑" : "↓"} ${formatPercent(trend)} vs ${priorName}`;
     const isActive = state.activeCatDetail === name ? " active" : "";
     return `
-      <div class="cat-card${isActive}" data-cat="${escapeHtml(name)}" style="border-top: 3px solid ${color}">
+      <div class="cat-card k2${isActive}" data-cat="${escapeHtml(name)}" style="--c: ${color}" role="button" tabindex="0">
         <div class="cat-head">
-          <div class="cat-emoji">${emojiFor(name)}</div>
-          <span class="cat-name">${escapeHtml(name)}</span>
+          <div class="cat-emoji" aria-hidden="true">${emojiFor(name)}</div>
+          <div class="cat-title">
+            <span class="cat-name">${escapeHtml(name)}</span>
+            <span class="cat-count">${data.count} payment${data.count === 1 ? "" : "s"}</span>
+          </div>
           <span class="cat-pct">${pct.toFixed(0)}%</span>
         </div>
         <p class="cat-total">${formatETB(data.total)}</p>
-        <div class="cat-bar"><span style="width: ${pct.toFixed(0)}%; background: ${color}"></span></div>
-        <div class="cat-meta">
-          <span>${data.count} tx</span>
-          <span class="cat-trend ${trendClass}">${trendLabel}</span>
-        </div>
+        <div class="cat-bar"><span style="width: ${Math.max(2, pct).toFixed(0)}%"></span></div>
+        <span class="cat-trend ${trendClass}">${trendLabel}</span>
       </div>
     `;
   }).join("");
