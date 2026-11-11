@@ -69,6 +69,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 1.0.29: Analytics shows today, this week and a spending graph you can set to any dates; Notifications are quieter and friendlier, with no more scanning or backup pings; Updates install right inside Kash from the next version on; Swiping review cards follows your finger again. Not yet installed on a real phone.
 - 2026-11-11 NAH-27 Analytics: today's spend up top with This week and
   This month tiles (vs the same point before), then a daily spending line
   with range chips (This week, This month, 30 days, Pick dates), total,
