@@ -120,6 +120,9 @@ class AuthFormState(
                 expiresAtMs = System.currentTimeMillis() + session.expiresInSeconds * 1000L,
             )
         )
+        // The name in Settings (used for notifications and own-account
+        // matching) comes from the sign-in account unless the user set one.
+        session.fullName?.let { if (settingsRepo.getUserName().isBlank()) settingsRepo.setUserName(it) }
         return transactionRepo.countPendingCloudSyncItems() > 0
     }
 

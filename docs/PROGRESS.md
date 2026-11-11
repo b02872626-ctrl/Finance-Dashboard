@@ -78,8 +78,9 @@ items to Done with the date, add what is next or blocked.
   and only alerts when the balance drops below the floor, saying how many
   days it lasts; "Kash can't read <bank> yet" at most once a week; the
   backlog nudge skips days that already have a review. All notification
-  copy rewritten (shorter, ETB on every amount). Unit tests pass; not yet
-  on a phone (none connected).
+  copy is in the owner-approved casual voice ("ayy Natty 16k just came in
+  🎉"), with amounts as k and the first name from the sign-in account.
+  Unit tests pass; not yet on a phone (none connected).
 
 - 2026-11-11 1.0.28: Berhan accounts show your real balance (one account was counted twice). Not yet installed on a real phone.
 - 2026-11-11 Berhan balance fix: Berhan writes one account as

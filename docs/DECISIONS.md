@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Notifications talk like a friend texting
+
+Owner approved a casual voice for every notification (NAH-33): lowercase,
+loose grammar, "u"/"ur", emoji, e.g. "hey Natty, CBE is getting low 👀" /
+"only 180 Br left, thats like 2 days of ur usual spending". Amounts under
+1,000 stay as they are (250, 12.50) and 1,000 and up become "k" (1.2k,
+32k), via `NotifyText.k`. "Br" only appears in low balance and fee
+messages. The first name comes from Settings, which is now filled from the
+sign-in account (Google's name) when empty, on sign-in or the next token
+refresh; with no name the copy starts with "hey". The owner accepts the
+Play review risk of the informal tone. App-update copy is unchanged
+(NAH-35).
+
 ## 2026-11-11 — No scanning, syncing or backup notifications; no spend alerts
 
 Owner's call (NAH-33). Users never see a notification about Kash's own

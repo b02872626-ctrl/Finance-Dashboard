@@ -34,6 +34,8 @@ object TransactionTriggers {
         val prefs = NotificationPrefs(context)
         val res = context.resources
         val today = KashNotifier.dayKey(nowMs)
+        val name = firstName(context)
+        val k = NotifyText::k
 
         // ── Low balance: per account, only when it drops below its floor.
         val last30 = dao.snapshotBetween(nowMs - 30 * DAY, nowMs + DAY)
@@ -53,12 +55,12 @@ object TransactionTriggers {
                 KashNotifier.submit(context, NotifyCandidate(
                     trigger = Trigger.LOW_BALANCE, tier = Tier.IMMEDIATE, group = NotifyGroup.ALERTS,
                     dedupKey = "${Trigger.LOW_BALANCE}:${account.first}:${account.second}:$today",
-                    title = context.getString(R.string.notif_low_balance_title, kashBank(latest.bankName).shortName),
+                    title = context.getString(R.string.notif_low_balance_title, hey(name), kashBank(latest.bankName).shortName),
                     text = when {
                         prefs.balanceFloor != null -> context.getString(
-                            R.string.notif_low_balance_text_set, KashMoney.whole(balance), KashMoney.whole(floor))
-                        days == null || days < 1 -> context.getString(R.string.notif_low_balance_text_today, KashMoney.whole(balance))
-                        else -> res.getQuantityString(R.plurals.notif_low_balance_text_days, days, KashMoney.whole(balance), days)
+                            R.string.notif_low_balance_text_set, k(balance), k(floor))
+                        days == null || days < 1 -> context.getString(R.string.notif_low_balance_text_today, k(balance))
+                        else -> res.getQuantityString(R.plurals.notif_low_balance_text_days, days, k(balance), days)
                     },
                     route = accountRoute(latest.bankName, latest.accountNumber),
                 ), nowMs)
@@ -76,9 +78,10 @@ object TransactionTriggers {
                 KashNotifier.submit(context, NotifyCandidate(
                     trigger = Trigger.INCOME, tier = Tier.IMMEDIATE, group = NotifyGroup.ALERTS,
                     dedupKey = "${Trigger.INCOME}:${tx.id}",
-                    title = if (from != null) context.getString(R.string.notif_income_title_from, KashMoney.whole(tx.amount), from)
-                    else context.getString(R.string.notif_income_title, KashMoney.whole(tx.amount)),
-                    text = context.getString(R.string.notif_income_text, KashMoney.whole(monthIn)),
+                    title = if (name != null) context.getString(R.string.notif_income_title, name, k(tx.amount))
+                    else context.getString(R.string.notif_income_title_noname, k(tx.amount)),
+                    text = if (from != null) context.getString(R.string.notif_income_text_from, from, k(monthIn))
+                    else context.getString(R.string.notif_income_text, k(monthIn)),
                     route = ROUTE_ANALYTICS,
                 ), nowMs)
             }
@@ -91,11 +94,8 @@ object TransactionTriggers {
             KashNotifier.submit(context, NotifyCandidate(
                 trigger = Trigger.FEE_SPIKE, tier = Tier.IMMEDIATE, group = NotifyGroup.ALERTS,
                 dedupKey = "${Trigger.FEE_SPIKE}:${tx.id}",
-                title = context.getString(R.string.notif_fee_spike_title, KashMoney.amount(fees)),
-                text = context.getString(
-                    R.string.notif_fee_spike_text,
-                    kashBank(tx.bankName).shortName, (fees / tx.amount * 100).toInt(), KashMoney.whole(tx.amount),
-                ),
+                title = context.getString(R.string.notif_fee_spike_title, kashBank(tx.bankName).shortName, k(fees)),
+                text = context.getString(R.string.notif_fee_spike_text, (fees / tx.amount * 100).toInt(), k(tx.amount)),
                 route = null,
             ), nowMs)
         }
@@ -106,7 +106,7 @@ object TransactionTriggers {
             KashNotifier.submit(context, NotifyCandidate(
                 trigger = Trigger.FEE_DAY, tier = Tier.IMMEDIATE, group = NotifyGroup.ALERTS,
                 dedupKey = "${Trigger.FEE_DAY}:$today",
-                title = context.getString(R.string.notif_fee_day_title, KashMoney.amount(dayFees)),
+                title = context.getString(R.string.notif_fee_day_title, k(dayFees)),
                 text = res.getQuantityString(R.plurals.notif_fee_day_text, withFees.size, withFees.size),
             ), nowMs)
         }
@@ -122,6 +122,12 @@ object TransactionTriggers {
             route = null,
         ))
     }
+
+    /** The user's first name (Settings, or the sign-in account), or null. */
+    fun firstName(context: Context): String? = NotifyText.firstName(SettingsRepository(context).getUserName())
+
+    /** "hey Natty," / "hey," */
+    fun hey(name: String?): String = if (name != null) "hey $name," else "hey,"
 
     private fun sameAccount(tx: TransactionEntity, account: Pair<String, String>): Boolean {
         if (tx.bankName != account.first) return false
