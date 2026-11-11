@@ -708,6 +708,7 @@ const NOTICE_PATTERNS = [
 const NOTICE_FOOTERS = [
   /Link\s+your\s+Fayda:\s*\S+/gi,
   /Alert:\s*Awash\s+Bank\s+will\s+never\s+ask\b[\s\S]*/gi,
+  /Don'?t\s+share\s+the\s+link\s+to\s+others\.?/gi,
 ];
 const AMOUNT_RE = /(?:ETB|Birr|Br\.?)\s*[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?\s*(?:ETB|Birr|Br\b|ብር)/i;
 const MONEY_VERB_RE = /\b(credited|debited|deposited|withdrawn|withdrew|transferred|transfered|received|paid|sent|purchased?|payment|refunded|reversed)\b|ገቢ|ወጪ|ተላልፏል|ተቀብለዋል|ተከፍሏል/i;
