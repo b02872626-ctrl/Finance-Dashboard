@@ -2,6 +2,7 @@ package com.financeapp.notifications
 
 import android.content.Context
 import com.financeapp.R
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.db.AppDatabase
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.model.isIncome
@@ -34,25 +35,34 @@ object TransactionTriggers {
         val res = context.resources
         val today = KashNotifier.dayKey(nowMs)
 
-        // ── Balance below floor: once per account per day, on the newest row.
+        // ── Low balance: per account, only when it drops below its floor.
         val last30 = dao.snapshotBetween(nowMs - 30 * DAY, nowMs + DAY)
-        val floor = NotificationRules.balanceFloor(prefs.balanceFloor, last30.filter { it.isSpending() }.sumOf { it.amount })
-        if (floor > 0) {
-            fresh.filter { it.balance != null }
-                .groupBy { it.bankName to (com.financeapp.data.accounts.AccountGrouping.accountSuffix(it.accountNumber) ?: "") }
-                .forEach { (account, rows) ->
-                    val latest = rows.maxBy { it.dateTime }
-                    val balance = latest.balance ?: return@forEach
-                    if (balance >= floor) return@forEach
-                    KashNotifier.submit(context, NotifyCandidate(
-                        trigger = Trigger.LOW_BALANCE, tier = Tier.IMMEDIATE, group = NotifyGroup.ALERTS,
-                        dedupKey = "${Trigger.LOW_BALANCE}:${account.first}:${account.second}:$today",
-                        title = context.getString(R.string.notif_low_balance_title, kashBank(latest.bankName).shortName),
-                        text = context.getString(R.string.notif_low_balance_text, KashMoney.whole(balance), KashMoney.whole(floor)),
-                        route = accountRoute(latest.bankName, latest.accountNumber),
-                    ), nowMs)
-                }
-        }
+        fresh.filter { it.balance != null }
+            .groupBy { it.bankName to (AccountGrouping.accountSuffix(it.accountNumber) ?: "") }
+            .forEach { (account, rows) ->
+                val latest = rows.maxBy { it.dateTime }
+                val balance = latest.balance ?: return@forEach
+                val accountRows = last30.filter { sameAccount(it, account) }
+                val spend30 = accountRows.filter { it.isSpending() }.sumOf { it.amount }
+                val floor = NotificationRules.balanceFloor(prefs.balanceFloor, spend30)
+                val previous = accountRows
+                    .filter { it.balance != null && it.dateTime < latest.dateTime && it.id != latest.id }
+                    .maxByOrNull { it.dateTime }?.balance
+                if (!NotificationRules.isLowBalanceDrop(balance, previous, floor)) return@forEach
+                val days = NotificationRules.daysLeft(balance, spend30)
+                KashNotifier.submit(context, NotifyCandidate(
+                    trigger = Trigger.LOW_BALANCE, tier = Tier.IMMEDIATE, group = NotifyGroup.ALERTS,
+                    dedupKey = "${Trigger.LOW_BALANCE}:${account.first}:${account.second}:$today",
+                    title = context.getString(R.string.notif_low_balance_title, kashBank(latest.bankName).shortName),
+                    text = when {
+                        prefs.balanceFloor != null -> context.getString(
+                            R.string.notif_low_balance_text_set, KashMoney.whole(balance), KashMoney.whole(floor))
+                        days == null || days < 1 -> context.getString(R.string.notif_low_balance_text_today, KashMoney.whole(balance))
+                        else -> res.getQuantityString(R.plurals.notif_low_balance_text_days, days, KashMoney.whole(balance), days)
+                    },
+                    route = accountRoute(latest.bankName, latest.accountNumber),
+                ), nowMs)
+            }
 
         // ── Income landed.
         val credits = fresh.filter { it.isIncome() }
@@ -66,9 +76,9 @@ object TransactionTriggers {
                 KashNotifier.submit(context, NotifyCandidate(
                     trigger = Trigger.INCOME, tier = Tier.IMMEDIATE, group = NotifyGroup.ALERTS,
                     dedupKey = "${Trigger.INCOME}:${tx.id}",
-                    title = context.getString(R.string.notif_income_title, KashMoney.whole(tx.amount)),
-                    text = if (from != null) context.getString(R.string.notif_income_text_from, from, KashMoney.whole(monthIn))
-                    else context.getString(R.string.notif_income_text, KashMoney.whole(monthIn)),
+                    title = if (from != null) context.getString(R.string.notif_income_title_from, KashMoney.whole(tx.amount), from)
+                    else context.getString(R.string.notif_income_title, KashMoney.whole(tx.amount)),
+                    text = context.getString(R.string.notif_income_text, KashMoney.whole(monthIn)),
                     route = ROUTE_ANALYTICS,
                 ), nowMs)
             }
@@ -84,7 +94,7 @@ object TransactionTriggers {
                 title = context.getString(R.string.notif_fee_spike_title, KashMoney.amount(fees)),
                 text = context.getString(
                     R.string.notif_fee_spike_text,
-                    (fees / tx.amount * 100).toInt(), KashMoney.whole(tx.amount), kashBank(tx.bankName).shortName,
+                    kashBank(tx.bankName).shortName, (fees / tx.amount * 100).toInt(), KashMoney.whole(tx.amount),
                 ),
                 route = null,
             ), nowMs)
@@ -111,6 +121,12 @@ object TransactionTriggers {
             text = context.getString(R.string.notif_lockout_text, PinManager.MAX_ATTEMPTS),
             route = null,
         ))
+    }
+
+    private fun sameAccount(tx: TransactionEntity, account: Pair<String, String>): Boolean {
+        if (tx.bankName != account.first) return false
+        val suffix = AccountGrouping.accountSuffix(tx.accountNumber) ?: return account.second.isEmpty()
+        return account.second.isNotEmpty() && AccountGrouping.sameSuffix(suffix, account.second)
     }
 
     /** "Abebe Girma Tadesse" → "Abebe G."; long merchant names are cut. */

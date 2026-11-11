@@ -98,6 +98,23 @@ class NotificationRulesTest {
         assertEquals(50.0, NotificationRules.balanceFloor(50.0, 3000.0), 0.001)
     }
 
+    @Test fun lowBalanceAlertsOnlyOnTheDrop() {
+        // First time below the floor, or no earlier balance known: alert.
+        assertTrue(NotificationRules.isLowBalanceDrop(150.0, 900.0, 200.0))
+        assertTrue(NotificationRules.isLowBalanceDrop(150.0, null, 200.0))
+        // Already below yesterday: no new alert while it stays low.
+        assertFalse(NotificationRules.isLowBalanceDrop(120.0, 150.0, 200.0))
+        // Above the floor, or an account with no spending (floor 0): never.
+        assertFalse(NotificationRules.isLowBalanceDrop(250.0, 900.0, 200.0))
+        assertFalse(NotificationRules.isLowBalanceDrop(5.0, 900.0, 0.0))
+    }
+
+    @Test fun daysLeftAtUsualSpend() {
+        assertEquals(3, NotificationRules.daysLeft(300.0, 3000.0))   // 100 ETB a day
+        assertEquals(0, NotificationRules.daysLeft(50.0, 3000.0))
+        assertEquals(null, NotificationRules.daysLeft(300.0, 0.0))
+    }
+
     @Test fun feesFromPartsOrTotal() {
         assertEquals(11.5, NotificationRules.feesOf(tx(serviceCharge = 10.0, vat = 1.5)), 0.001)
         assertEquals(12.0, NotificationRules.feesOf(tx(amount = 100.0, totalCharged = 112.0)), 0.001)

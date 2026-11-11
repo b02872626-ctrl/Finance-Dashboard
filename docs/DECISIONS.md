@@ -21,6 +21,11 @@ for the evening digest. What remains: low balance, income landed, fee
 spike, fees today, PIN lockout, review ready, unread bank, weekly, month
 end, backlog, re-engage, SMS access lost, app update.
 
+Low balance changed with it: each account's automatic floor is 2× that
+account's own average daily spend (was everyone's spending, so a small,
+rarely used wallet was always "low"), and it alerts once when the balance
+drops below the floor, not every day it stays there.
+
 ## 2026-11-11 — No AI in the app; Gemini only on the web dashboard (FOW summit)
 
 Kash is applying for a free booth at the Future of Work Ethiopia Summit

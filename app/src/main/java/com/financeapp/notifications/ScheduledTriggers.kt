@@ -54,11 +54,13 @@ object ScheduledTriggers {
         }
 
         // ── Tier 2: messages from banks Kash can't read yet.
+        // At most once a week per bank: the key is the week.
+        val week = KashNotifier.dayKey(KashDates.weekStart(nowMs))
         for (c in db.rawSmsDao().capturedOnlySince(dayStart)) {
             val bank = kashBank(c.sender).shortName
             KashNotifier.submit(context, NotifyCandidate(
                 trigger = Trigger.CAPTURE_ONLY, tier = Tier.DIGEST, group = NotifyGroup.HEALTH,
-                dedupKey = "${Trigger.CAPTURE_ONLY}:${c.sender}:$today",
+                dedupKey = "${Trigger.CAPTURE_ONLY}:${c.sender}:$week",
                 title = context.resources.getQuantityString(R.plurals.notif_capture_title, c.count, c.count, bank),
                 text = context.getString(R.string.notif_capture_text, bank),
             ), nowMs)
@@ -68,7 +70,8 @@ object ScheduledTriggers {
             if (isSunday(nowMs)) weekly(context, nowMs, today)
             if (isLastDayOfMonth(nowMs, cal)) monthEnd(context, nowMs, cal)
         }
-        backlog(context, prefs, nowMs)
+        // Today's review already points at Review; the backlog nudge waits.
+        if (pendingToday.isEmpty()) backlog(context, prefs, nowMs)
         reengage(context, prefs, nowMs)
 
         KashNotifier.sendDigest(context, nowMs)
@@ -83,7 +86,7 @@ object ScheduledTriggers {
         if (week.isEmpty()) return
         val prev = dao.snapshotBetween(start - 7 * DAY, start).filter { it.isSpending() }
         val spent = week.sumOf { it.amount }
-        val top = byCategory(context, week).take(3).joinToString(", ") { (cat, sum) -> "$cat ${KashMoney.whole(sum)}" }
+        val top = byCategory(context, week).take(2).joinToString(", ") { (cat, sum) -> "$cat (${KashMoney.whole(sum)} ETB)" }
         val prevSpent = prev.sumOf { it.amount }
         val change = if (prevSpent <= 0) context.getString(R.string.notif_weekly_first) else {
             val pct = ((spent - prevSpent) / prevSpent * 100).roundToInt()
@@ -114,11 +117,11 @@ object ScheduledTriggers {
             income <= 0 -> context.getString(R.string.notif_month_text_no_income, KashMoney.whole(spent), bigCat, KashMoney.whole(bigSum))
             spent > income -> context.getString(
                 R.string.notif_month_text_overspent,
-                KashMoney.whole(income), KashMoney.whole(spent), KashMoney.whole(spent - income), bigCat, KashMoney.whole(bigSum),
+                KashMoney.whole(spent - income), bigCat, KashMoney.whole(bigSum),
             )
             else -> context.getString(
                 R.string.notif_month_text,
-                KashMoney.whole(income), KashMoney.whole(spent), ((income - spent) / income * 100).roundToInt(), bigCat, KashMoney.whole(bigSum),
+                KashMoney.whole(income - spent), ((income - spent) / income * 100).roundToInt(), bigCat, KashMoney.whole(bigSum),
             )
         }
         KashNotifier.submit(context, NotifyCandidate(
