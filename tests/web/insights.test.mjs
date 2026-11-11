@@ -185,6 +185,20 @@ test("payday pattern: day 70% is gone and the burn-down", () => {
   assert.equal(p.usual.length, 31);
   assert.ok(p.current.length > 0 && p.current.length <= 31);
   assert.ok(p.current.at(-1) < 1);                                        // some of it spent
+  // The chart is in ETB spent: usual pace from past cycles, and this cycle.
+  assert.equal(p.chart.which, "this");
+  assert.equal(p.usualSpent[9], 15000);                                   // both cycles: 15k by day 10
+  assert.equal(p.chart.spent.at(-1), 5000);
+});
+
+test("payday chart falls back to the last cycle while this one is new", () => {
+  const spends = [tx(at(2026, 10, 30), 4000), tx(at(2026, 11, 5), 2000)];
+  // 28 Nov payday, viewed on the 29th: this cycle has 2 days.
+  const rows = [...salary, credit(at(2026, 11, 28), 20200), ...spends];
+  const p = paydayPattern(rows, { cal: "gregorian", now: at(2026, 11, 29) });
+  assert.equal(p.chart.which, "last");
+  assert.equal(p.chart.start, at(2026, 10, 28));
+  assert.equal(p.chart.spent[2], 4000);                                   // 30 Oct is day 3
 });
 
 test("no regular income found", () => {

@@ -6,6 +6,20 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Web dashboard: dark mode, hide amounts, and a polish round
+
+Owner's requests. Dark mode follows the system and a sun/moon switch
+overrides it (remembered per browser, applied before paint); it swaps the
+Kash tokens and the handful of colours written out by hand. An eye button
+blurs every amount for showing the dashboard to someone (remembered too).
+Payday's chart is ETB spent since payday against the usual pace and the
+paycheck (a "share left" line went flat at 0 when spending passed the
+paycheck), and shows the last cycle until this one has 3 days. Day-of-week
+is Monday-first bars with a one-line takeaway, averaged over every day of
+that weekday in the period (quiet days too). Category cards are calm white
+cards. Counterparty rows lose their tick boxes and open that counterparty's
+transactions instead (batch-categorising from the dashboard is gone).
+
 ## 2026-11-11 — One date filter for the whole web dashboard, pinned on scroll
 
 Owner's call. The period bar at the top (now This week, This month, Last

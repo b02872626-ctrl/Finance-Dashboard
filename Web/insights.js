@@ -396,10 +396,13 @@ export function paydayPattern(txs, { cal, now }) {
   const pays = checks.map((p) => p.at);
   const lengths = [];
   const cycles = [];
+  const cyclesEtb = [];
   for (let i = 0; i + 1 < checks.length; i++) {
     const len = Math.max(1, dayIndex(startOfDay(pays[i]), pays[i + 1]));
     lengths.push(len);
-    cycles.push(cumulativeSpend(spending, pays[i], len).map((c) => c / checks[i].amount));
+    const etb = cumulativeSpend(spending, pays[i], len);
+    cyclesEtb.push(etb);
+    cycles.push(etb.map((c) => c / checks[i].amount));
   }
   const cycleLen = Math.round(median(lengths) || 30);
 
@@ -416,7 +419,18 @@ export function paydayPattern(txs, { cal, now }) {
   });
   const last = pays.at(-1);
   const elapsed = Math.min(cycleLen, dayIndex(startOfDay(last), now) + 1);
-  const current = cumulativeSpend(spending, last, elapsed).map((c) => 1 - c / checks.at(-1).amount);
+  const currentEtb = cumulativeSpend(spending, last, elapsed);
+  const current = currentEtb.map((c) => 1 - c / checks.at(-1).amount);
+
+  // The chart, in ETB spent since payday (a share left goes flat at 0 when
+  // spending passes the paycheck). Until this cycle has 3 days, show the
+  // last complete one instead.
+  const usualSpent = Array.from({ length: cycleLen }, (_, d) =>
+    cyclesEtb.length ? median(cyclesEtb.map((c) => c[Math.min(d, c.length - 1)])) : null);
+  const useLast = elapsed < 3 && cyclesEtb.length > 0;
+  const chart = useLast
+    ? { which: "last", start: pays.at(-2), paycheck: checks.at(-2).amount, spent: cyclesEtb.at(-1).slice(0, cycleLen) }
+    : { which: "this", start: last, paycheck: checks.at(-1).amount, spent: currentEtb };
 
   return {
     found: true,
@@ -430,6 +444,8 @@ export function paydayPattern(txs, { cal, now }) {
     spentShare,
     usual,
     current,
+    usualSpent,
+    chart,
   };
 }
 
