@@ -117,13 +117,22 @@
                 <p class="muted">Your money, read from your bank SMS.</p>
               </div>
               <div id="period-bar" class="period-bar" role="tablist" aria-label="Period">
+          <button class="period-pill" data-period="week" role="tab">This week</button>
           <button class="period-pill active" data-period="month" role="tab">This month</button>
           <button class="period-pill" data-period="last-month" role="tab">Last month</button>
           <button class="period-pill" data-period="30d" role="tab">30 days</button>
           <button class="period-pill" data-period="90d" role="tab">90 days</button>
           <button class="period-pill" data-period="year" role="tab">This year</button>
           <button class="period-pill" data-period="all" role="tab">All time</button>
+          <button class="period-pill" data-period="custom" role="tab" id="period-custom-pill">Pick dates</button>
         </div>
+              <!-- Pick dates for the whole dashboard (opens under the bar). -->
+              <form id="period-custom-form" class="period-custom hidden">
+                <label>From <input type="date" id="period-from" required /></label>
+                <label>To <input type="date" id="period-to" required /></label>
+                <button type="submit" class="btn-primary ins-apply">Show</button>
+                <button type="button" class="btn-ghost" id="period-custom-cancel">Cancel</button>
+              </form>
             </header>
 
 
@@ -155,20 +164,10 @@
 
           <!-- Spending over time: one daily line for a chosen range. -->
           <section class="card" id="over-time">
-            <header class="section-header ins-header">
+            <header class="section-header">
               <h3>Spending over time</h3>
-              <div class="ins-chips" role="tablist" aria-label="Range">
-                <button type="button" class="ins-chip" data-range="week" role="tab">This week</button>
-                <button type="button" class="ins-chip active" data-range="month" role="tab">This month</button>
-                <button type="button" class="ins-chip" data-range="30d" role="tab">30 days</button>
-                <button type="button" class="ins-chip" data-range="custom" role="tab" id="ot-custom-chip">Pick dates</button>
-              </div>
+              <span class="muted small ot-range-label">this month</span>
             </header>
-            <form id="ot-custom-form" class="ins-custom hidden">
-              <label>From <input type="date" id="ot-from" required /></label>
-              <label>To <input type="date" id="ot-to" required /></label>
-              <button type="submit" class="btn-primary ins-apply">Show</button>
-            </form>
             <div class="ins-summary">
               <div>
                 <p class="big-number" id="ot-total">—</p>
