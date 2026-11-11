@@ -69,6 +69,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 1.0.27: Bank of Abyssinia deposits show who sent the money and your balance; Berhan transfers to Telebirr are counted as money out; Berhan deposits say where the money came from; Telebirr ticket payments are no longer missed. Not yet installed on a real phone.
 - 2026-11-11 NAH-29 part 2 (first pass): replayed the 28 Oct export again;
   no SMS from tracked senders is left unread. Fixed 154 BoA deposits in the
   2023–24 "has been credited … for a transfer made by …" wording, which had
