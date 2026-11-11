@@ -3029,9 +3029,9 @@ function renderInOut(allTxs) {
 
 // When income lands and how fast it goes, with a burn-down for this pay cycle.
 function renderPayday(allTxs) {
-  const salary = salaryEntry();
-  const p = paydayPattern(allTxs, { cal: calKey(), now: Date.now(), salarySource: salary ? (salary.counterparty_match || salary.source) : null });
-  renderPaydayActions(p, salary);
+  const picked = salaryEntries();
+  const p = paydayPattern(allTxs, { cal: calKey(), now: Date.now(), salarySources: picked.map(entryKey) });
+  renderPaydayActions(p, picked);
   const chart = $("pd-chart");
   const legend = $("pd-legend");
   if (!p.found) {
@@ -3097,63 +3097,71 @@ function renderPayday(allTxs) {
 // monthly recurring income (Income tab) with the note "Salary", so it
 // follows the account to any device; Payday uses it before its own guess.
 const SALARY_NOTE = "Salary";
-function salaryEntry() {
-  return (state.income || []).find((e) => e.status === "ACTIVE" && e.type === "RECURRING" && (e.note || "").trim() === SALARY_NOTE) || null;
+// Every sender the user marked as income (one or several).
+function salaryEntries() {
+  return (state.income || []).filter((e) => e.status === "ACTIVE" && e.type === "RECURRING" && (e.note || "").trim() === SALARY_NOTE);
 }
+const entryKey = (e) => normaliseSource(e.counterparty_match || e.source);
 
-function renderPaydayActions(p, salary) {
+function renderPaydayActions(p, picked) {
   const box = $("pd-actions");
   if (!box) return;
-  box.innerHTML = salary
-    ? `<span class="muted small">Your pick: ${escapeHtml(salary.source)}</span>
+  box.innerHTML = picked.length
+    ? `<span class="muted small">Your income: ${escapeHtml(picked.map((e) => e.source).join(" + "))}</span>
        <button type="button" class="link-btn" data-pd="pick">Change</button>
        <button type="button" class="link-btn" data-pd="auto">Use automatic</button>`
-    : `<button type="button" class="link-btn" data-pd="pick">${p.found ? "Not your salary? Pick it" : "Pick your salary"}</button>`;
+    : `<button type="button" class="link-btn" data-pd="pick">${p.found ? "Not your income? Pick it" : "Pick your income"}</button>`;
 }
 
 function renderSalaryPicker() {
   const picker = $("pd-picker");
   const senders = incomeSenders(state.allTxs, { now: Date.now() });
-  const current = salaryEntry();
+  const chosen = new Set(salaryEntries().map(entryKey));
   picker.innerHTML = senders.length === 0
     ? `<p class="muted small">No money came in during the last 6 months.</p>`
-    : `<p class="muted small">Who pays your salary? Payday follows them.</p>` + senders.map((x) => `
-      <div class="pd-sender">
+    : `<p class="muted small">Who pays you regularly? Add each one (a salary, rent, a second job). The biggest sets your payday.</p>` + senders.map((x) => {
+      const on = chosen.has(x.key);
+      return `
+      <div class="pd-sender${on ? " on" : ""}">
         <div><p class="ins-name">${escapeHtml(x.name)}</p>
           <p class="muted small">${x.count} time${x.count === 1 ? "" : "s"} · usually ${escapeHtml(formatETB(x.usual))}</p></div>
-        <button type="button" class="btn-ghost pd-choose" data-key="${escapeHtml(x.key)}"
-          ${current && normaliseSource(current.counterparty_match || current.source) === x.key ? "disabled" : ""}>
-          ${current && normaliseSource(current.counterparty_match || current.source) === x.key ? "Your salary" : "This is my salary"}</button>
-      </div>`).join("");
+        <button type="button" class="btn-ghost pd-choose" data-key="${escapeHtml(x.key)}" aria-pressed="${on}">
+          ${on ? "✓ Income · Remove" : "Add as income"}</button>
+      </div>`;
+    }).join("");
   picker.classList.remove("hidden");
 }
 
-async function pickSalary(key) {
+// Add a sender as income, or remove it (several can be on at once).
+async function toggleSalary(key) {
   const sender = incomeSenders(state.allTxs, { now: Date.now() }).find((x) => x.key === key);
   if (!sender || !state.userId) return;
-  // Only one salary: clear the label from any other entry.
-  for (const e of (state.income || []).filter((e) => (e.note || "").trim() === SALARY_NOTE)) {
-    await supabase.from("i_income_entries").update({ note: null }).eq("id", e.id);
+  const on = salaryEntries().find((e) => entryKey(e) === key);
+  let error;
+  if (on) {
+    ({ error } = await supabase.from("i_income_entries").update({ note: null }).eq("id", on.id));
+  } else {
+    const existing = (state.income || []).find((e) => e.status === "ACTIVE" && e.type === "RECURRING" && entryKey(e) === key);
+    const next = new Date(sender.last + 30 * DAY).toISOString().slice(0, 10);
+    ({ error } = existing
+      ? await supabase.from("i_income_entries").update({ note: SALARY_NOTE }).eq("id", existing.id)
+      : await supabase.from("i_income_entries").insert({
+          user_id: state.userId, type: "RECURRING", source: sender.name, amount: sender.usual,
+          occurs_on: next, cadence: "MONTHLY", counterparty_match: key, note: SALARY_NOTE,
+        }));
   }
-  const existing = (state.income || []).find((e) => e.status === "ACTIVE" && e.type === "RECURRING" && normaliseSource(e.counterparty_match || e.source) === key);
-  const next = new Date(sender.last + 30 * DAY).toISOString().slice(0, 10);
-  const { error } = existing
-    ? await supabase.from("i_income_entries").update({ note: SALARY_NOTE }).eq("id", existing.id)
-    : await supabase.from("i_income_entries").insert({
-        user_id: state.userId, type: "RECURRING", source: sender.name, amount: sender.usual,
-        occurs_on: next, cadence: "MONTHLY", counterparty_match: key, note: SALARY_NOTE,
-      });
   if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
-  $("pd-picker").classList.add("hidden");
-  showToast(`Payday now follows ${sender.name}`, "success");
+  showToast(on ? `${sender.name} removed from your income` : `${sender.name} added to your income`, "success");
   await fetchIncome();
+  renderSalaryPicker();
 }
 
 async function useAutomaticSalary() {
-  const salary = salaryEntry();
-  if (!salary) return;
-  const { error } = await supabase.from("i_income_entries").update({ note: null }).eq("id", salary.id);
-  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  for (const e of salaryEntries()) {
+    const { error } = await supabase.from("i_income_entries").update({ note: null }).eq("id", e.id);
+    if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  }
+  $("pd-picker").classList.add("hidden");
   showToast("Payday is back to its own guess", "success");
   await fetchIncome();
 }
@@ -3167,7 +3175,7 @@ document.getElementById("pd-actions")?.addEventListener("click", (e) => {
 });
 document.getElementById("pd-picker")?.addEventListener("click", (e) => {
   const b = e.target.closest(".pd-choose");
-  if (b && !b.disabled) pickSalary(b.dataset.key);
+  if (b) toggleSalary(b.dataset.key);
 });
 
 // Per account, the days its balance sat under its floor this month.

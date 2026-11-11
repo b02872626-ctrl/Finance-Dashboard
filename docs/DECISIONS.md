@@ -6,6 +6,14 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Several incomes can count for Payday
+
+Owner's follow-up. "Pick your income" toggles each sender on or off (a
+salary, rent, a second job), each saved as a monthly recurring income with
+the note "Salary". Payday follows the biggest one's rhythm, and each
+paycheck is everything the picked senders paid from that payday to the
+next.
+
 ## 2026-11-11 — People can say which sender is their salary
 
 Owner's request. The web Payday card has "Pick your salary": a list of

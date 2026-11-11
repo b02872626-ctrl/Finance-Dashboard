@@ -376,21 +376,40 @@ export function incomeSenders(txs, { now, months = 6 }) {
  * usual amount, in 2 or more of the last 3 months (this one included).
  * Mirrors NotificationRules.looksLikeSalary. The biggest such income wins.
  */
-export function regularIncome(txs, { cal, now, salarySource = null }) {
-  if (salarySource) {
-    // The user said who pays them: use every credit from that sender.
-    const key = normaliseSource(salarySource);
-    const rows = txs.filter((t) => isIncome(t) && normaliseSource(t.counterparty) === key && Number.isFinite(timeOf(t)));
+export function regularIncome(txs, { cal, now, salarySource = null, salarySources = null }) {
+  // The user said who pays them (one or several senders): the biggest sets
+  // the payday rhythm; each paycheck is everything the picked senders paid
+  // from that payday to the next.
+  const picked = [...new Set([...(salarySources || []), ...(salarySource ? [salarySource] : [])]
+    .map(normaliseSource).filter(Boolean))];
+  if (picked.length) {
+    const rows = txs.filter((t) => isIncome(t) && picked.includes(normaliseSource(t.counterparty)) && Number.isFinite(timeOf(t)))
+      .sort((a, b) => timeOf(a) - timeOf(b));
     if (rows.length) {
-      const usual = median(rows.map(amountOf));
-      const paychecks = rows.filter((t) => Math.abs(amountOf(t) - usual) <= usual * 0.5)
-        .map((t) => ({ at: timeOf(t), amount: amountOf(t) })).sort((a, b) => a.at - b.at);
+      const bySender = new Map();
+      for (const t of rows) {
+        const k = normaliseSource(t.counterparty);
+        if (!bySender.has(k)) bySender.set(k, []);
+        bySender.get(k).push(t);
+      }
+      const [mainKey, mainRows] = [...bySender.entries()].sort((a, b) => median(b[1].map(amountOf)) - median(a[1].map(amountOf)))[0];
+      const mainUsual = median(mainRows.map(amountOf));
+      const pays = mainRows.filter((t) => Math.abs(amountOf(t) - mainUsual) <= mainUsual * 0.5).map(timeOf);
+      const paychecks = pays.map((at, i) => {
+        const until = i + 1 < pays.length ? pays[i + 1] : Infinity;
+        return { at, amount: sum(rows.filter((t) => timeOf(t) >= startOfDay(at) && timeOf(t) < until)) };
+      });
+      const names = [...bySender.values()]
+        .sort((a, b) => median(b.map(amountOf)) - median(a.map(amountOf)))
+        .map((list) => list.at(-1).counterparty.trim());
+      const full = paychecks.slice(0, -1).map((p) => p.amount);
       return {
-        source: rows.sort((a, b) => timeOf(b) - timeOf(a))[0].counterparty.trim(),
-        amount: usual,
+        source: names.join(" + "),
+        sources: names,
+        amount: median(full.length ? full : paychecks.map((p) => p.amount)),
         paychecks,
-        paydays: paychecks.map((p) => p.at),
-        usualDay: Math.round(median(paychecks.map((p) => dayOfMonth(p.at, cal)))),
+        paydays: pays,
+        usualDay: Math.round(median(pays.map((at) => dayOfMonth(at, cal)))),
         picked: true,
       };
     }
@@ -469,8 +488,8 @@ function cumulativeSpend(spending, from, days) {
  * payday to the next; "spent" is all spending in the cycle against that
  * paycheck. Returns { found: false } with no regular income.
  */
-export function paydayPattern(txs, { cal, now, salarySource = null }) {
-  const reg = regularIncome(txs, { cal, now, salarySource });
+export function paydayPattern(txs, { cal, now, salarySource = null, salarySources = null }) {
+  const reg = regularIncome(txs, { cal, now, salarySource, salarySources });
   if (!reg) return { found: false };
   const spending = txs.filter(isSpending);
   // Each cycle is measured against its own paycheck.
