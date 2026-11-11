@@ -69,6 +69,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 Web dashboard loads every transaction: it stopped at the
+  newest 2,000, so heavy users saw empty months before ~August in "Money
+  in vs out" and a short "All time" (owner's screenshot). Now pages of
+  1,000 (first with the count, the rest in parallel), up to 50,000.
+
 - 2026-11-11 Wrapped share picture: stats sit in two columns and shrink to
   fit, so five stats no longer run into the "Track yours free" footer
   (owner's Telegram screenshot); Ethiopian weekdays read "Kidame days", not
