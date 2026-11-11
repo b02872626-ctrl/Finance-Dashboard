@@ -329,11 +329,72 @@ export function monthlyInOut(txs, { cal, now, count = 6 }) {
 
 // ── Payday ──────────────────────────────────────────────────────────────────
 /**
+ * Credits that aren't someone paying the user: wallet top-ups (Telebirr's
+ * "your account has been credited" names no sender), loans, deposits,
+ * interest, refunds and bank names. Mirrors NotificationRules.isPayerName.
+ */
+const NOT_A_PAYER = /top-?up|wallet|\bmela\b|loan|credit|deposit|cash|interest|refund|revers|own account|^from |bank|^telebirr|^cbe\b|^boa\b|^awash|^dashen/i;
+export const isPayerName = (name) => !!name && !!name.trim() && !NOT_A_PAYER.test(name.trim());
+
+/** One key per sender: lower case, phone tails and account suffixes cut. */
+export function normaliseSource(name) {
+  if (!name) return "";
+  return String(name)
+    .toLowerCase()
+    .replace(/\(2519[\d*]+\)/g, "")
+    .replace(/account\s+number\s+\d+/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Everyone who paid the user in the last [months] months, for "pick your
+ * salary": one row per sender with how often, the usual amount and the
+ * total. Real payers first, then the rest (the user may know better).
+ */
+export function incomeSenders(txs, { now, months = 6 }) {
+  const since = now - months * 31 * DAY;
+  const by = new Map();
+  for (const t of txs) {
+    if (!isIncome(t) || !(timeOf(t) >= since && timeOf(t) <= now)) continue;
+    const name = (t.counterparty || "").trim();
+    const key = normaliseSource(name);
+    if (!key) continue;
+    if (!by.has(key)) by.set(key, { key, name, count: 0, total: 0, amounts: [], last: 0 });
+    const e = by.get(key);
+    e.count += 1; e.total += amountOf(t); e.amounts.push(amountOf(t));
+    if (timeOf(t) > e.last) { e.last = timeOf(t); e.name = name; }
+  }
+  return [...by.values()]
+    .map(({ amounts, ...e }) => ({ ...e, usual: median(amounts), payer: isPayerName(e.name) }))
+    .sort((a, b) => (b.payer - a.payer) || (b.total - a.total))
+    .slice(0, 10);
+}
+
+/**
  * The user's regular income: credits from one sender, within ±20% of their
  * usual amount, in 2 or more of the last 3 months (this one included).
  * Mirrors NotificationRules.looksLikeSalary. The biggest such income wins.
  */
-export function regularIncome(txs, { cal, now }) {
+export function regularIncome(txs, { cal, now, salarySource = null }) {
+  if (salarySource) {
+    // The user said who pays them: use every credit from that sender.
+    const key = normaliseSource(salarySource);
+    const rows = txs.filter((t) => isIncome(t) && normaliseSource(t.counterparty) === key && Number.isFinite(timeOf(t)));
+    if (rows.length) {
+      const usual = median(rows.map(amountOf));
+      const paychecks = rows.filter((t) => Math.abs(amountOf(t) - usual) <= usual * 0.5)
+        .map((t) => ({ at: timeOf(t), amount: amountOf(t) })).sort((a, b) => a.at - b.at);
+      return {
+        source: rows.sort((a, b) => timeOf(b) - timeOf(a))[0].counterparty.trim(),
+        amount: usual,
+        paychecks,
+        paydays: paychecks.map((p) => p.at),
+        usualDay: Math.round(median(paychecks.map((p) => dayOfMonth(p.at, cal)))),
+        picked: true,
+      };
+    }
+  }
   const [thisMonth] = monthBounds(now, cal);
   const m1 = monthBounds(thisMonth - 1, cal)[0];
   const m2 = monthBounds(m1 - 1, cal)[0];
@@ -344,7 +405,7 @@ export function regularIncome(txs, { cal, now }) {
   for (const t of txs) {
     if (!isIncome(t)) continue;
     const who = (t.counterparty || "").trim();
-    if (!who || !Number.isFinite(timeOf(t))) continue;
+    if (!isPayerName(who) || !Number.isFinite(timeOf(t))) continue;
     const key = who.toLowerCase();
     if (!bySender.has(key)) bySender.set(key, { source: who, rows: [] });
     bySender.get(key).rows.push(t);
@@ -362,6 +423,14 @@ export function regularIncome(txs, { cal, now }) {
     if (!best || score > best.score) best = { source, amount: usual, paychecks, score };
   }
   if (!best) return null;
+  // A "payday" has to matter: at least a quarter of a usual month's spending
+  // (a small regular transfer isn't what the month runs on).
+  const monthSpend = [m2, m1].map((start) => {
+    const [, end] = monthBounds(start, cal);
+    return sum(txs.filter((t) => isSpending(t) && timeOf(t) >= start && timeOf(t) < end));
+  });
+  const usualMonth = median(monthSpend.filter((x) => x > 0)) || 0;
+  if (usualMonth > 0 && best.amount < usualMonth * 0.25) return null;
   return {
     source: best.source,
     amount: best.amount,
@@ -369,6 +438,19 @@ export function regularIncome(txs, { cal, now }) {
     paydays: best.paychecks.map((p) => p.at),
     usualDay: Math.round(median(best.paychecks.map((p) => dayOfMonth(p.at, cal)))),
   };
+}
+
+/** The next date on [day] of the month after [after] (and after [now]). */
+function nextUsualDay(after, day, cal, now) {
+  let [start] = monthBounds(after, cal);
+  for (let i = 0; i < 3; i++) {
+    const [, end] = monthBounds(start, cal);
+    const len = Math.round((end - start) / DAY);
+    const candidate = start + (Math.min(day, len) - 1) * DAY;
+    if (candidate > after + 10 * DAY && candidate > startOfDay(now)) return candidate;
+    start = end;
+  }
+  return startOfDay(after) + 30 * DAY;
 }
 
 /** Spending per day after a payday, as a running total, for [days] days. */
@@ -387,8 +469,8 @@ function cumulativeSpend(spending, from, days) {
  * payday to the next; "spent" is all spending in the cycle against that
  * paycheck. Returns { found: false } with no regular income.
  */
-export function paydayPattern(txs, { cal, now }) {
-  const reg = regularIncome(txs, { cal, now });
+export function paydayPattern(txs, { cal, now, salarySource = null }) {
+  const reg = regularIncome(txs, { cal, now, salarySource });
   if (!reg) return { found: false };
   const spending = txs.filter(isSpending);
   // Each cycle is measured against its own paycheck.
@@ -434,11 +516,12 @@ export function paydayPattern(txs, { cal, now }) {
 
   return {
     found: true,
+    picked: !!reg.picked,
     source: reg.source,
     amount: reg.amount,
     usualDay: reg.usualDay,
     lastPayday: last,
-    nextPayday: startOfDay(last) + cycleLen * DAY,
+    nextPayday: nextUsualDay(last, reg.usualDay, cal, now),
     cycleLen,
     daysTo70,
     spentShare,

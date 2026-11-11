@@ -154,7 +154,20 @@ object NotificationRules {
      * A learned salary: the same sender paid a similar amount (±20%) in at
      * least two earlier calendar months.
      */
+    /**
+     * Credits that aren't someone paying the user: wallet top-ups (Telebirr's
+     * "your account has been credited" names no sender), loans, deposits,
+     * interest, refunds, and bank names. Never a "salary" (owner, Nov 2026).
+     */
+    private val NOT_A_PAYER = Regex(
+        """top-?up|wallet|\bmela\b|loan|credit|deposit|cash|interest|refund|revers|own account|^from |bank|^telebirr|^cbe\b|^boa\b|^awash|^dashen""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    fun isPayerName(name: String?): Boolean = !name.isNullOrBlank() && !NOT_A_PAYER.containsMatchIn(name.trim())
+
     fun looksLikeSalary(tx: TransactionEntity, earlierCredits: List<TransactionEntity>): Boolean {
+        if (!isPayerName(tx.counterparty)) return false
         val who = tx.counterpartyId ?: tx.counterparty ?: return false
         val months = earlierCredits.asSequence()
             .filter { it.id != tx.id && it.dateTime < tx.dateTime && it.isIncome() }

@@ -2588,3 +2588,15 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 /* Tile figures sized to their card, so they never clip. */
 .k-panel .stat-grid .stat-card { container-type: inline-size; }
 .k-panel .stat-grid .stat-card .big-number { white-space: nowrap; font-size: clamp(16px, 12.5cqi, 32px); }
+
+/* Payday: pick your salary. */
+.pd-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--k-slate); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+:root[data-theme="dark"] .link-btn { color: var(--k-ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .link-btn { color: var(--k-ink); } }
+.pd-picker { margin-top: 10px; padding: 12px; border: 1px solid var(--k-line); border-radius: 14px; background: var(--k-surface); display: grid; gap: 4px; }
+.pd-sender { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--k-line); }
+.pd-sender:last-child { border-bottom: 0; }
+.pd-sender .muted.small { margin: 2px 0 0; }
+.pd-choose { white-space: nowrap; font-size: 13px; padding: 7px 12px; }
+.pd-choose[disabled] { opacity: .6; cursor: default; }

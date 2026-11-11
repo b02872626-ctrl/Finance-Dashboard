@@ -13,6 +13,7 @@ import {
   ETHIOPIAN_MONTHS, gregorianToEthiopian, ethiopianToGregorian, prevEthiopianMonth,
   accountSuffix, shortBankLabel, groupAccounts,
   inContext, spendOverview, monthlyInOut, paydayPattern, lowBalanceDays, monthBounds, weekStart, DAY,
+  normaliseSource, incomeSenders,
 } from "./insights.js";
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -1409,6 +1410,8 @@ async function fetchIncome() {
   state.incomeDismissed = new Set((dismissedRes?.data || []).map((d) => d.counterparty_match));
   renderIncomeBadge();
   if (state.view === "income") renderIncomeView();
+  // Payday reads the salary pick from these entries.
+  if (state.allTxs?.length) renderLowBalance(state.allTxs, renderPayday(state.allTxs));
 }
 
 function renderIncomeBadge() {
@@ -1577,16 +1580,6 @@ function detectRecurringIncome() {
     });
   }
   return suggestions.sort((a, b) => b.median - a.median);
-}
-
-function normaliseSource(name) {
-  if (!name) return "";
-  return String(name)
-    .toLowerCase()
-    .replace(/\(2519[\d*]+\)/g, "")             // strip phone tails like (2519****1234)
-    .replace(/account\s+number\s+\d+/gi, "")     // strip bank-account suffix
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function renderSuggestionCard(s) {
@@ -3036,31 +3029,41 @@ function renderInOut(allTxs) {
 
 // When income lands and how fast it goes, with a burn-down for this pay cycle.
 function renderPayday(allTxs) {
-  const p = paydayPattern(allTxs, { cal: calKey(), now: Date.now() });
+  const salary = salaryEntry();
+  const p = paydayPattern(allTxs, { cal: calKey(), now: Date.now(), salarySource: salary ? (salary.counterparty_match || salary.source) : null });
+  renderPaydayActions(p, salary);
   const chart = $("pd-chart");
   const legend = $("pd-legend");
   if (!p.found) {
     $("pd-source").textContent = "";
     $("pd-body").innerHTML = `<p class="ins-lead">We haven't spotted a regular income yet.</p>
-      <p class="muted small">Once the same sender pays you a similar amount in two of the last three months, Kash shows when it lands and how fast it goes.</p>`;
+      <p class="muted small">Once the same person or company pays you a similar amount in two of the last three months, Kash shows when it lands and how fast it goes. Top-ups, loans and moves between your own accounts don't count.</p>`;
     chart.innerHTML = ""; legend.classList.add("hidden");
     return p;
   }
   legend.classList.remove("hidden");
   $("pd-source").textContent = `${p.source} · about ${formatETB(p.amount)}`;
   const dayWord = state.calendar === "ethiopian" ? `day ${p.usualDay} of the month` : `the ${ordinal(p.usualDay)}`;
-  const leftNow = p.current.at(-1);
-  const usualNow = p.usual[p.current.length - 1];
-  const pace = leftNow == null || usualNow == null ? ""
-    : leftNow < usualNow - 0.05 ? "You're spending faster than usual this cycle."
-    : leftNow > usualNow + 0.05 ? "You're spending slower than usual this cycle."
-    : "You're on your usual pace this cycle.";
+  // Spent so far this cycle against the usual by the same day (ETB, so it
+  // stays honest when spending passes the paycheck).
+  const day = p.chart.which === "this" ? p.chart.spent.length : null;
+  const spentNow = day ? p.chart.spent[day - 1] : null;
+  const usualNow = day ? p.usualSpent[day - 1] : null;
+  const pace = spentNow == null || usualNow == null || usualNow <= 0 ? ""
+    : spentNow > usualNow * 1.1 ? "That's faster than usual."
+    : spentNow < usualNow * 0.9 ? "That's slower than usual."
+    : "That's your usual pace.";
+  const sinceLine = spentNow == null
+    ? `This pay cycle has just started; the chart shows the last one.`
+    : spentNow >= p.amount
+      ? `Since ${dayLabel(p.lastPayday)} you've spent ${formatETB(spentNow)}, more than this paycheck. ${pace}`
+      : `Since ${dayLabel(p.lastPayday)} you've spent ${formatETB(spentNow)}, ${Math.round((spentNow / p.amount) * 100)}% of it. ${pace}`;
   $("pd-body").innerHTML = `
     <p class="ins-lead">Your income usually lands around ${escapeHtml(dayWord)}.</p>
     <ul class="ins-facts muted small">
       ${p.daysTo70 != null ? `<li>By day ${p.daysTo70} after payday you've usually spent 70% of it.</li>`
         : p.spentShare != null ? `<li>You usually spend ${p.spentShare}% of it before the next payday.</li>` : ""}
-      <li>Since ${escapeHtml(dayLabel(p.lastPayday))}: ${Math.max(0, Math.round((leftNow ?? 1) * 100))}% of it left. ${escapeHtml(pace)}</li>
+      <li>${escapeHtml(sinceLine)}</li>
       <li>Next one expected around ${escapeHtml(dayLabel(p.nextPayday))}.</li>
     </ul>`;
   // Money spent since payday (ETB), against the usual pace and the paycheck.
@@ -3089,6 +3092,83 @@ function renderPayday(allTxs) {
     <span class="dot paycheck-dot"></span><span class="muted small">Paycheck (${escapeHtml(shortK(c.paycheck))})</span>`;
   return p;
 }
+
+// "This sender is my salary" (owner, Nov 2026). The pick is saved as a
+// monthly recurring income (Income tab) with the note "Salary", so it
+// follows the account to any device; Payday uses it before its own guess.
+const SALARY_NOTE = "Salary";
+function salaryEntry() {
+  return (state.income || []).find((e) => e.status === "ACTIVE" && e.type === "RECURRING" && (e.note || "").trim() === SALARY_NOTE) || null;
+}
+
+function renderPaydayActions(p, salary) {
+  const box = $("pd-actions");
+  if (!box) return;
+  box.innerHTML = salary
+    ? `<span class="muted small">Your pick: ${escapeHtml(salary.source)}</span>
+       <button type="button" class="link-btn" data-pd="pick">Change</button>
+       <button type="button" class="link-btn" data-pd="auto">Use automatic</button>`
+    : `<button type="button" class="link-btn" data-pd="pick">${p.found ? "Not your salary? Pick it" : "Pick your salary"}</button>`;
+}
+
+function renderSalaryPicker() {
+  const picker = $("pd-picker");
+  const senders = incomeSenders(state.allTxs, { now: Date.now() });
+  const current = salaryEntry();
+  picker.innerHTML = senders.length === 0
+    ? `<p class="muted small">No money came in during the last 6 months.</p>`
+    : `<p class="muted small">Who pays your salary? Payday follows them.</p>` + senders.map((x) => `
+      <div class="pd-sender">
+        <div><p class="ins-name">${escapeHtml(x.name)}</p>
+          <p class="muted small">${x.count} time${x.count === 1 ? "" : "s"} · usually ${escapeHtml(formatETB(x.usual))}</p></div>
+        <button type="button" class="btn-ghost pd-choose" data-key="${escapeHtml(x.key)}"
+          ${current && normaliseSource(current.counterparty_match || current.source) === x.key ? "disabled" : ""}>
+          ${current && normaliseSource(current.counterparty_match || current.source) === x.key ? "Your salary" : "This is my salary"}</button>
+      </div>`).join("");
+  picker.classList.remove("hidden");
+}
+
+async function pickSalary(key) {
+  const sender = incomeSenders(state.allTxs, { now: Date.now() }).find((x) => x.key === key);
+  if (!sender || !state.userId) return;
+  // Only one salary: clear the label from any other entry.
+  for (const e of (state.income || []).filter((e) => (e.note || "").trim() === SALARY_NOTE)) {
+    await supabase.from("i_income_entries").update({ note: null }).eq("id", e.id);
+  }
+  const existing = (state.income || []).find((e) => e.status === "ACTIVE" && e.type === "RECURRING" && normaliseSource(e.counterparty_match || e.source) === key);
+  const next = new Date(sender.last + 30 * DAY).toISOString().slice(0, 10);
+  const { error } = existing
+    ? await supabase.from("i_income_entries").update({ note: SALARY_NOTE }).eq("id", existing.id)
+    : await supabase.from("i_income_entries").insert({
+        user_id: state.userId, type: "RECURRING", source: sender.name, amount: sender.usual,
+        occurs_on: next, cadence: "MONTHLY", counterparty_match: key, note: SALARY_NOTE,
+      });
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  $("pd-picker").classList.add("hidden");
+  showToast(`Payday now follows ${sender.name}`, "success");
+  await fetchIncome();
+}
+
+async function useAutomaticSalary() {
+  const salary = salaryEntry();
+  if (!salary) return;
+  const { error } = await supabase.from("i_income_entries").update({ note: null }).eq("id", salary.id);
+  if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
+  showToast("Payday is back to its own guess", "success");
+  await fetchIncome();
+}
+
+document.getElementById("pd-actions")?.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pd]");
+  if (!b) return;
+  if (b.dataset.pd === "auto") { useAutomaticSalary(); return; }
+  const picker = $("pd-picker");
+  if (picker.classList.contains("hidden")) renderSalaryPicker(); else picker.classList.add("hidden");
+});
+document.getElementById("pd-picker")?.addEventListener("click", (e) => {
+  const b = e.target.closest(".pd-choose");
+  if (b && !b.disabled) pickSalary(b.dataset.key);
+});
 
 // Per account, the days its balance sat under its floor this month.
 function renderLowBalance(allTxs, payday) {

@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import {
   accountSuffix, changePct, dayOfMonth, ethiopianToGregorian, gregorianToEthiopian,
   groupAccounts, inContext, isIncome, isSpending, lowBalanceDays, monthBounds,
-  monthlyInOut, paydayPattern, regularIncome, spendOverview, weekStart,
+  monthlyInOut, paydayPattern, regularIncome, spendOverview, weekStart, isPayerName,
+  incomeSenders, normaliseSource,
 } from "../../Web/insights.js";
 
 const at = (y, m, d, h = 12) => new Date(y, m - 1, d, h, 0).getTime();
@@ -222,4 +223,56 @@ test("low days carry the last balance forward and use the account's own floor", 
   assert.equal(acc2.lowCount, 5);
   assert.equal(acc2.beforePayday, true);                                  // 3rd–7th: the week before the 9th
   assert.equal(acc2.days.length, 12);                                     // up to today
+});
+
+test("wallet top-ups, loans and bank names are never a payday", () => {
+  const topUps = [11, 10, 9].map((m) => credit(at(2026, m === 11 ? 11 : m, 11), 6150, "Telebirr wallet top-up"));
+  assert.equal(regularIncome(topUps, G), null);
+  assert.deepEqual(paydayPattern(topUps, G), { found: false });
+  assert.equal(isPayerName("Telebirr Mela loan"), false);
+  assert.equal(isPayerName("from Berhan Bank 103002XXXXX67"), false);
+  assert.equal(isPayerName("ACME PLC"), true);
+});
+
+test("a small regular payment isn't what the month runs on", () => {
+  // 1,850 a month from one person, against ~20,000 of spending a month.
+  const rows = [
+    credit(at(2026, 9, 21), 1850, "Sara A."), credit(at(2026, 10, 21), 1850, "Sara A."),
+    tx(at(2026, 9, 5), 20000), tx(at(2026, 10, 5), 20000),
+  ];
+  assert.equal(regularIncome(rows, G), null);
+});
+
+test("next payday follows the usual day of the month", () => {
+  const p = paydayPattern(salary, G);                     // paid on the 28th
+  assert.equal(new Date(p.nextPayday).getDate(), 28);
+  assert.equal(new Date(p.nextPayday).getMonth(), 10);    // 28 Nov
+});
+
+test("a picked salary sender wins, even one the rules would skip", () => {
+  const rows = [
+    credit(at(2026, 9, 21), 1850, "Sara A."), credit(at(2026, 10, 21), 1850, "Sara A."),
+    tx(at(2026, 9, 5), 20000), tx(at(2026, 10, 5), 20000),
+  ];
+  assert.equal(regularIncome(rows, G), null);                            // too small on its own
+  const p = paydayPattern(rows, { ...G, salarySource: "sara a." });
+  assert.equal(p.found, true);
+  assert.equal(p.picked, true);
+  assert.equal(p.source, "Sara A.");
+  assert.equal(p.usualDay, 21);
+});
+
+test("income senders: one row each, real payers first", () => {
+  const rows = [
+    credit(at(2026, 10, 28), 20000, "ACME PLC"), credit(at(2026, 9, 28), 21000, "ACME PLC"),
+    credit(at(2026, 10, 11), 30000, "Telebirr wallet top-up"),
+    credit(at(2026, 10, 5), 300, "Abebe (2519****1234)"), credit(at(2026, 9, 5), 300, "Abebe"),
+    credit(at(2025, 1, 5), 999, "Old Payer"),                            // older than 6 months
+  ];
+  const s = incomeSenders(rows, G);
+  assert.deepEqual(s.map((x) => x.key), ["acme plc", "abebe", "telebirr wallet top-up"]);
+  assert.equal(s[0].count, 2);
+  assert.equal(s[0].usual, 20500);
+  assert.equal(s[2].payer, false);
+  assert.equal(normaliseSource("Abebe (2519****1234)"), "abebe");
 });
