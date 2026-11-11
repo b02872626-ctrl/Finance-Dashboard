@@ -69,6 +69,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 1.0.31: Accounts that belong to someone else can be hidden in one tap, and old quiet accounts no longer count in your total; Sharing your Wrapped makes a clean picture; No more "money came in" alerts for your own top-ups or loans. Not yet installed on a real phone.
 - 2026-11-11 Home: accounts whose SMS greet someone else are marked
   "<Name>'s?" and Home offers to hide them; accounts with no SMS for 90
   days leave the total and show "Last updated <month>". Rules unit-tested
