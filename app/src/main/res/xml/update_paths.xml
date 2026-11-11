@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Where UpdateInstaller keeps the downloaded APK it hands to Android's installer. -->
+<!-- Files Kash hands to other apps: the update APK for Android's installer,
+     and the Kash Wrapped picture for sharing. -->
 <paths>
     <cache-path name="updates" path="updates/" />
+    <cache-path name="share" path="share/" />
 </paths>

@@ -65,6 +65,7 @@ import com.financeapp.ui.screens.HistoryScreen
 import com.financeapp.ui.screens.HomeScreen
 import com.financeapp.ui.screens.NotificationsPage
 import com.financeapp.ui.screens.UpdatesPage
+import com.financeapp.ui.screens.WrappedScreen
 import com.financeapp.ui.screens.OnboardingFlow
 import com.financeapp.ui.screens.PinLockScreen
 import com.financeapp.ui.screens.PinSetupScreen
@@ -339,7 +340,15 @@ private fun MainNavigation(
                     onReviewToday = { navController.navigate(Screen.DailyReview.route) { launchSingleTop = true } },
                     onReviewOlder = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
                     onOpenAccount = ::openAccount,
+                    wrappedMonth = anlVm.wrappedCard.collectAsState().value,
+                    onOpenWrapped = { navController.navigate("wrapped/$it") },
                 )
+            }
+            composable(
+                route = "wrapped/{month}",
+                arguments = listOf(androidx.navigation.navArgument("month") { type = androidx.navigation.NavType.LongType }),
+            ) { entry ->
+                WrappedScreen(anlVm, entry.arguments?.getLong("month") ?: System.currentTimeMillis(), onClose = ::back)
             }
             composable(Screen.AddTransaction.route) {
                 val addVm: AddTransactionViewModel = viewModel(factory = AddTransactionViewModelFactory(repo))
@@ -403,6 +412,7 @@ private fun MainNavigation(
                     onCategory = { navController.navigate("category_detail/${Uri.encode(it)}") },
                     onReview = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
                     onAccount = ::openAccount,
+                    onWrapped = { navController.navigate("wrapped/$it") },
                 )
             }
             composable(

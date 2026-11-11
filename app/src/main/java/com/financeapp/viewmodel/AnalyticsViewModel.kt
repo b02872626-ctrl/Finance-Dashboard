@@ -138,6 +138,27 @@ class AnalyticsViewModel(private val repo: TransactionRepository) : ViewModel() 
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SpendOverview())
 
+    // ── Kash Wrapped (NAH-34).
+    /** One month's story; null when it has too little to wrap. */
+    fun wrapped(anyMsInMonth: Long): Flow<Wrapped?> = combine(allTransactions, _calendar) { all, cal ->
+        buildWrapped(all, cal, anyMsInMonth)
+    }.flowOn(Dispatchers.Default)
+
+    /** Last month, while the Home card should offer it (first week of a month). */
+    val wrappedCard: StateFlow<Long?> = combine(allTransactions, _calendar) { all, cal ->
+        wrappedCardMonth(all, cal, System.currentTimeMillis())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Last month, when it can be wrapped (the Analytics row). */
+    val lastMonthWrapped: StateFlow<Long?> = combine(allTransactions, _calendar) { all, cal ->
+        val last = com.financeapp.util.KashDates.monthBounds(
+            com.financeapp.util.KashDates.monthBounds(System.currentTimeMillis(), cal).first - 1, cal,
+        ).first
+        last.takeIf { buildWrapped(all, cal, it) != null }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     /** Months that have transactions, newest first (the month picker). */
     val availableMonths: StateFlow<List<Long>> = combine(allTransactions, _calendar) { all, cal ->
         all.map { com.financeapp.util.KashDates.monthBounds(it.dateTime, cal).first }

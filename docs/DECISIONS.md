@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Kash Wrapped is built from SMS data, not categories
+
+NAH-34. A month's story in pages (spent and vs the month before, kept,
+biggest payment, who you paid most often, bank fees, most expensive
+weekday and time of day, one tip). It uses only what every SMS has, since
+most people never categorise. Offered on Home in the first week of a
+month for last month ("Later" hides it for that month) and from a row on
+Analytics; needs at least 3 payments. "Share my month" makes a picture
+with totals, habits and the download link, never account numbers,
+balances or the names of people paid; the shared text carries
+`?ref=wrapped` so PostHog counts installs from shares. Monthly only;
+a yearly one can come later.
+
 ## 2026-11-11 — Analytics leads with today, this week and a spending line
 
 Owner's call (NAH-27): most people never categorise, so the Analytics tab
