@@ -597,12 +597,7 @@ refreshBtn.addEventListener("click", async () => {
       return;
     }
     const before = state.allTxs.length;
-    const { data, error } = await supabase
-      .from("i_transactions")
-      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, account_number, ref_num, predicted_category, category_confidence, review_status, merchant_key")
-      .eq("user_id", session.user.id)
-      .order("occurred_at", { ascending: false })
-      .limit(2000);
+    const { data, error } = await fetchAllTransactions(session.user.id);
     if (error) {
       console.warn("Refresh failed:", error);
       showToast(`Refresh failed: ${error.message}`, "error");
@@ -814,6 +809,32 @@ function showLogin() {
   loginView.classList.remove("hidden");
 }
 
+// Every transaction the user has, newest first. Supabase returns at most
+// 1,000 rows a request and this used to stop at 2,000, so heavy users lost
+// everything older than a few months (empty months in "Money in vs out",
+// wrong "All time"). First page with the total count, then the rest in
+// parallel. Same { data, error } shape as a single query.
+const TX_COLUMNS = "id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, account_number, ref_num, predicted_category, category_confidence, review_status, merchant_key";
+const TX_PAGE = 1000;
+const TX_MAX = 50000;
+async function fetchAllTransactions(userId) {
+  const page = (from) => supabase.from("i_transactions")
+    .select(TX_COLUMNS, from === 0 ? { count: "exact" } : undefined)
+    .eq("user_id", userId)
+    .order("occurred_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(from, from + TX_PAGE - 1);
+  const first = await page(0);
+  if (first.error) return { data: null, error: first.error };
+  const total = Math.min(first.count ?? first.data.length, TX_MAX);
+  const starts = [];
+  for (let from = TX_PAGE; from < total; from += TX_PAGE) starts.push(from);
+  const rest = await Promise.all(starts.map(page));
+  const failed = rest.find((r) => r.error);
+  if (failed) return { data: null, error: failed.error };
+  return { data: [first.data, ...rest.map((r) => r.data)].flat(), error: null };
+}
+
 async function showDashboard(session) {
   loginView.classList.add("hidden");
   authShell.classList.remove("hidden");
@@ -822,11 +843,7 @@ async function showDashboard(session) {
   const userId = session.user.id;
   const [profileResult, txResult] = await Promise.all([
     supabase.from("i_users").select("name, email").eq("id", userId).maybeSingle(),
-    supabase.from("i_transactions")
-      .select("id, occurred_at, bank_name, sender, type, category, amount, balance, counterparty, account_number, ref_num, predicted_category, category_confidence, review_status, merchant_key")
-      .eq("user_id", userId)
-      .order("occurred_at", { ascending: false })
-      .limit(2000),
+    fetchAllTransactions(userId),
   ]);
 
   if (profileResult.data?.name) userNameEl.textContent = profileResult.data.name;
