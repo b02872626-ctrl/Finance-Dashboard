@@ -1,13 +1,11 @@
 {
-  "versionCode": 49,
-  "versionName": "1.0.29",
+  "versionCode": 50,
+  "versionName": "1.0.30",
   "url": "https://kash-140.pages.dev/download",
-  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.29.apk",
-  "sha256": "8de2cb6d022394aca841b42cca75a57d84a3c441a5cc3ec1696af3e693408291",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.30.apk",
+  "sha256": "143fdd77e4c4c0d648eb6ecc01d07e31c7ac7461b2f0b956410ce0d4167c5536",
   "notes": [
-    "Analytics shows today, this week and a spending graph you can set to any dates",
-    "Notifications are quieter and friendlier, with no more scanning or backup pings",
-    "Updates install right inside Kash from the next version on",
-    "Swiping review cards follows your finger again"
+    "Kash Wrapped: last month's money story, ready to share",
+    "The Settings button is a gear now"
   ]
 }
