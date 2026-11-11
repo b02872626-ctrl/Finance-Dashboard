@@ -242,6 +242,8 @@ class SupabaseSyncer(private val context: Context) {
                 expiresAtMs = System.currentTimeMillis() + refreshed.expiresInSeconds * 1000L
             )
             settingsRepo.setSupabaseSession(newSession)
+            // Existing users get their name from the account on the next refresh.
+            refreshed.fullName?.let { if (settingsRepo.getUserName().isBlank()) settingsRepo.setUserName(it) }
             newSession
         } catch (e: Exception) {
             if (isDeadRefreshToken(e)) {

@@ -69,6 +69,19 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 NAH-33 notifications: no scan, sync or backup notifications
+  any more (owner's call). The in-app scan runs in the background worker,
+  the foreground service and its permissions are gone, and the old
+  channels are deleted on update. Low-balance alerts match accounts like
+  Home does. The review question reads "250 ETB to Abebe G.: was it
+  Transport?". Triggers: low balance is per account (its own spending)
+  and only alerts when the balance drops below the floor, saying how many
+  days it lasts; "Kash can't read <bank> yet" at most once a week; the
+  backlog nudge skips days that already have a review. All notification
+  copy is in the owner-approved casual voice ("ayy Natty 16k just came in
+  🎉"), with amounts as k and the first name from the sign-in account.
+  Unit tests pass; not yet on a phone (none connected).
+
 - 2026-11-11 1.0.28: Berhan accounts show your real balance (one account was counted twice). Not yet installed on a real phone.
 - 2026-11-11 Berhan balance fix: Berhan writes one account as
   "*********9067" on debits and "103002XXXXX67" on credits. Kash read the
@@ -76,7 +89,7 @@ items to Done with the date, add what is next or blocked.
   balance (tester Natty: 16,083 shown, 34.83 real). The account suffix now
   uses only the digits after the mask; a short tail ("67") joins the one
   account ending with it. Hiding an account and the account page follow
-  the same rule. Not yet on a phone.
+  the same rule. Checked on tester Natty's phone (1.0.28).
 
 - 2026-11-11 1.0.27: Bank of Abyssinia deposits show who sent the money and your balance; Berhan transfers to Telebirr are counted as money out; Berhan deposits say where the money came from; Telebirr ticket payments are no longer missed. Not yet installed on a real phone.
 - 2026-11-11 NAH-29 part 2 (first pass): replayed the 28 Oct export again;

@@ -11,7 +11,9 @@ data class SupabaseAuthSession(
     val refreshToken: String,
     val expiresInSeconds: Long,
     val userId: String,
-    val email: String?
+    val email: String?,
+    /** Name from the sign-in provider (Google's full_name / name), if any. */
+    val fullName: String? = null
 )
 
 sealed class SupabaseSignUpResult {
@@ -80,6 +82,9 @@ class SupabaseAuthClient(private val config: SupabaseConfig) {
         val userId = user.optString("id").takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("Supabase auth response missing user.id")
         val email = user.optString("email").takeIf { it.isNotBlank() }
+        val meta = user.optJSONObject("user_metadata")
+        val fullName = listOf("full_name", "name", "given_name")
+            .firstNotNullOfOrNull { k -> meta?.optString(k)?.trim()?.takeIf { it.isNotBlank() } }
 
         val access = json.optString("access_token")
         val refresh = json.optString("refresh_token")
@@ -94,7 +99,8 @@ class SupabaseAuthClient(private val config: SupabaseConfig) {
             refreshToken = refresh,
             expiresInSeconds = expiresIn,
             userId = userId,
-            email = email
+            email = email,
+            fullName = fullName
         )
     }
 

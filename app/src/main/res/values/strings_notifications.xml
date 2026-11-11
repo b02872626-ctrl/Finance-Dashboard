@@ -16,73 +16,85 @@
     <string name="notif_channel_security">Security</string>
     <string name="notif_channel_security_desc">Wrong PIN attempts</string>
 
-    <string name="notif_low_balance_title">%1$s balance is low</string>
-    <string name="notif_low_balance_text">%1$s ETB left. Your alert is set below %2$s ETB.</string>
-
-    <string name="notif_income_title">%1$s ETB landed</string>
-    <string name="notif_income_text_from">From %1$s. That\'s %2$s ETB in this month so far.</string>
-    <string name="notif_income_text">That\'s %1$s ETB in this month so far.</string>
-
-    <string name="notif_fee_spike_title">%1$s ETB in fees</string>
-    <string name="notif_fee_spike_text">That\'s %1$d%% of a %2$s ETB transaction on %3$s.</string>
-    <string name="notif_fee_day_title">%1$s ETB in fees today</string>
-    <plurals name="notif_fee_day_text">
-        <item quantity="one">From 1 transaction. Bank charges add up quietly.</item>
-        <item quantity="other">Across %d transactions. Bank charges add up quietly.</item>
+    <string name="notif_low_balance_title">%1$s %2$s is getting low 👀</string>
+    <string name="notif_low_balance_text_set">only %1$s Br left, under the %2$s alert u set</string>
+    <string name="notif_low_balance_text_today">only %1$s Br left, that wont even last a day</string>
+    <plurals name="notif_low_balance_text_days">
+        <item quantity="one">only %1$s Br left, thats like %2$d day of ur usual spending</item>
+        <item quantity="other">only %1$s Br left, thats like %2$d days of ur usual spending</item>
     </plurals>
 
-    <string name="notif_lockout_title">Someone tried to unlock Kash</string>
-    <string name="notif_lockout_text">%1$d wrong PINs in a row, so Kash is locked for a moment. If it wasn\'t you, change your PIN in Settings.</string>
+    <string name="notif_income_title">ayy %1$s %2$s just came in 🎉</string>
+    <string name="notif_income_title_noname">hey, %1$s just came in 🎉</string>
+    <string name="notif_income_text">thats %1$s this month so far</string>
+    <string name="notif_income_text_from">from %1$s. thats %2$s this month so far</string>
 
-    <string name="notif_review_question">Was %1$s ETB to %2$s %3$s?</string>
+    <string name="notif_fee_spike_title">%1$s took %2$s Br in fees on that one 😬</string>
+    <string name="notif_fee_spike_text">thats %1$d%% of %2$s, kinda a lot</string>
+    <string name="notif_fee_day_title">u paid %1$s Br in bank fees today</string>
+    <plurals name="notif_fee_day_text">
+        <item quantity="one">1 transaction. small charges add up fast ngl</item>
+        <item quantity="other">%d transactions. small charges add up fast ngl</item>
+    </plurals>
+
+    <string name="notif_lockout_title">someone tried to open Kash</string>
+    <string name="notif_lockout_text">%1$d wrong PINs, so its locked for a bit. if that wasnt u, change ur PIN</string>
+
+    <string name="notif_review_question">%1$s did u send %2$s to %3$s?</string>
+    <string name="notif_review_question_text">was that %1$s?</string>
     <plurals name="notif_review_title">
-        <item quantity="one">1 transaction to review today</item>
-        <item quantity="other">%d transactions to review today</item>
+        <item quantity="one">1 thing from today needs a category</item>
+        <item quantity="other">%d things from today need a category</item>
     </plurals>
     <plurals name="notif_review_text">
-        <item quantity="one">1 to review today. It takes a few seconds.</item>
-        <item quantity="other">%d to review today. About 30 seconds.</item>
+        <item quantity="one">takes like 30 sec, lets go</item>
+        <item quantity="other">takes like 30 sec, lets go</item>
     </plurals>
 
     <plurals name="notif_capture_title">
-        <item quantity="one">We saved 1 message from %2$s</item>
-        <item quantity="other">We saved %1$d messages from %2$s</item>
+        <item quantity="one">cant read ur %2$s messages yet 😅</item>
+        <item quantity="other">cant read ur %2$s messages yet 😅</item>
     </plurals>
-    <string name="notif_capture_text">Kash can\'t read %1$s yet. The messages are kept and will show up once it can.</string>
+    <plurals name="notif_capture_text">
+        <item quantity="one">saved %1$d of them tho, theyll show up once we can</item>
+        <item quantity="other">saved %1$d of them tho, theyll show up once we can</item>
+    </plurals>
 
     <plurals name="notif_digest_summary">
         <item quantity="one">1 update from Kash today</item>
         <item quantity="other">%d updates from Kash today</item>
     </plurals>
 
-    <string name="notif_weekly_title">Your week: %1$s ETB spent</string>
-    <string name="notif_weekly_text">Top: %1$s. %2$s</string>
-    <string name="notif_weekly_more">%1$d%% more than last week.</string>
-    <string name="notif_weekly_less">%1$d%% less than last week.</string>
-    <string name="notif_weekly_same">About the same as last week.</string>
-    <string name="notif_weekly_first">Your first full week in Kash.</string>
+    <string name="notif_weekly_title">ur week: %1$s spent</string>
+    <string name="notif_weekly_text">mostly %1$s. %2$s</string>
+    <string name="notif_weekly_more">%1$d%% more than last week hmm</string>
+    <string name="notif_weekly_less">%1$d%% less than last week nice</string>
+    <string name="notif_weekly_same">bout the same as last week</string>
+    <string name="notif_weekly_first">ur first full week w Kash</string>
 
-    <string name="notif_month_title">%1$s in Kash</string>
-    <string name="notif_month_text">In %1$s ETB, out %2$s ETB, you kept %3$d%%. Biggest: %4$s, %5$s ETB.</string>
-    <string name="notif_month_text_overspent">In %1$s ETB, out %2$s ETB, %3$s ETB more out than in. Biggest: %4$s, %5$s ETB.</string>
-    <string name="notif_month_text_no_income">Out %1$s ETB. Biggest: %2$s, %3$s ETB.</string>
+    <string name="notif_month_title">%1$s done</string>
+    <string name="notif_month_title_saved">%1$s done ✅</string>
+    <string name="notif_month_text">u kept %1$s out of %2$s that came in. %3$s took the most, %4$s</string>
+    <string name="notif_month_text_overspent">spent %1$s more than came in 🫠 %2$s was the big one, %3$s</string>
+    <string name="notif_month_text_no_income">spent %1$s. %2$s took the most, %3$s</string>
 
     <plurals name="notif_backlog_title">
-        <item quantity="one">1 transaction is waiting for a category</item>
-        <item quantity="other">%d transactions are waiting for a category</item>
+        <item quantity="one">1 transaction still waiting on u</item>
+        <item quantity="other">%d transactions still waiting on u</item>
     </plurals>
-    <string name="notif_backlog_text">Your reports get sharper with each one. Start with the newest.</string>
+    <string name="notif_backlog_text">give me a minute n ur reports get way better</string>
 
-    <string name="notif_reengage_title">%1$s ETB spent since you last opened Kash</string>
-    <plurals name="notif_reengage_title_count">
-        <item quantity="one">1 new transaction since you last opened Kash</item>
-        <item quantity="other">%d new transactions since you last opened Kash</item>
+    <string name="notif_reengage_title">%1$s where u been 👋</string>
+    <string name="notif_reengage_title_noname">hey, where u been 👋</string>
+    <plurals name="notif_reengage_text_count">
+        <item quantity="one">1 new transaction since u last checked</item>
+        <item quantity="other">%d new transactions since u last checked</item>
     </plurals>
-    <string name="notif_reengage_text">Biggest: %1$s ETB to %2$s.</string>
-    <string name="notif_reengage_text_plain">They\'re sorted by day and ready to review.</string>
+    <string name="notif_reengage_text">%1$s spent since u last checked. biggest was %2$s to %3$s</string>
+    <string name="notif_reengage_text_plain">%1$s spent since u last checked</string>
 
-    <string name="notif_sms_lost_title">Kash stopped reading your bank SMS</string>
-    <string name="notif_sms_lost_text">SMS access is off, so new transactions aren\'t being added. Tap to turn it back on.</string>
+    <string name="notif_sms_lost_title">hey, i cant see ur bank texts anymore</string>
+    <string name="notif_sms_lost_text">SMS access got turned off. tap to fix it</string>
 
     <string name="notif_uncategorized">Uncategorized</string>
 

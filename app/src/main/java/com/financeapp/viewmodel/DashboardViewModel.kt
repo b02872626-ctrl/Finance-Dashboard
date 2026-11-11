@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import java.util.Calendar
 import android.content.Context
-import com.financeapp.sms.SmsIngestService
+import com.financeapp.sms.SmsIngestWorker
 import kotlin.math.sqrt
 
 data class AccountSummary(
@@ -152,7 +152,7 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
     fun clearAndReimport(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             repo.clearAllData()
-            SmsIngestService.start(context)
+            SmsIngestWorker.enqueue(context)  // fresh full import after a wipe
         }
     }
 

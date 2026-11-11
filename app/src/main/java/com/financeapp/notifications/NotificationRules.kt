@@ -108,9 +108,25 @@ object NotificationRules {
     /** A digest time inside quiet hours moves to the end of them. */
     fun digestMinute(chosen: Int, quiet: QuietHours): Int = if (chosen in quiet) quiet.end else chosen
 
-    /** Low-balance floor: the user's, or 2× average daily spend (0 = not enough history). */
+    /**
+     * Low-balance floor for one account: the user's, or 2× that account's
+     * average daily spend over 30 days (0 = no spending there, no alert).
+     */
     fun balanceFloor(userFloor: Double?, spendLast30Days: Double): Double =
         userFloor ?: (2 * spendLast30Days / 30.0)
+
+    /**
+     * Alert only when an account goes below its floor, not every day it
+     * stays there. No earlier balance known counts as a drop.
+     */
+    fun isLowBalanceDrop(balance: Double, previousBalance: Double?, floor: Double): Boolean =
+        floor > 0 && balance < floor && (previousBalance == null || previousBalance >= floor)
+
+    /** Whole days the balance lasts at the usual daily spend (null = no spending to judge by). */
+    fun daysLeft(balance: Double, spendLast30Days: Double): Int? {
+        val perDay = spendLast30Days / 30.0
+        return if (perDay <= 0) null else (balance / perDay).toInt()
+    }
 
     /** Charges on one transaction: service charge + VAT + disaster fund, else total − amount. */
     fun feesOf(tx: TransactionEntity): Double {

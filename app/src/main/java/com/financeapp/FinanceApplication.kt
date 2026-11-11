@@ -1,25 +1,22 @@
 package com.financeapp
 
 import android.app.Application
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import com.financeapp.remote.SyncNotificationHelper
 
 class FinanceApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         com.financeapp.remote.CrashReporting.init(this)
         com.financeapp.remote.ProductAnalytics.init(this)
+        // Kash never tells people it is scanning, syncing or backing up
+        // (owner, Nov 2026). Remove those old channels from phones that had them.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "sms_sync_channel",
-                "SMS Sync",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Scanning SMS for financial transactions" }
-            getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java)?.let { nm ->
+                nm.deleteNotificationChannel("sms_sync_channel")
+                nm.deleteNotificationChannel("cloud_sync_channel")
+            }
         }
-        SyncNotificationHelper.ensureChannel(this)
         com.financeapp.notifications.KashNotifier.ensureChannels(this)
         com.financeapp.notifications.NotificationScheduler.ensureScheduled(this)
         com.financeapp.notifications.UpdateChecker.ensureScheduled(this)

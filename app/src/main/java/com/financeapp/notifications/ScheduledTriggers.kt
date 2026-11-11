@@ -40,27 +40,32 @@ object ScheduledTriggers {
         if (pendingToday.isNotEmpty()) {
             val unsure = pendingToday.minBy { it.categoryConfidence ?: 0.0 }
             val res = context.resources
-            val title = if (unsure.predictedCategory != null && unsure.counterparty != null) context.getString(
+            val guess = unsure.predictedCategory != null && unsure.counterparty != null
+            val title = if (guess) context.getString(
                 R.string.notif_review_question,
-                KashMoney.whole(unsure.amount), TransactionTriggers.shortName(unsure.counterparty), unsure.predictedCategory,
+                TransactionTriggers.hey(TransactionTriggers.firstName(context)), NotifyText.k(unsure.amount),
+                TransactionTriggers.shortName(unsure.counterparty!!).lowercase(),
             ) else res.getQuantityString(R.plurals.notif_review_title, pendingToday.size, pendingToday.size)
             KashNotifier.submit(context, NotifyCandidate(
                 trigger = Trigger.REVIEW_READY, tier = Tier.DIGEST, group = NotifyGroup.REVIEW,
                 dedupKey = "${Trigger.REVIEW_READY}:$today",
                 title = title,
-                text = res.getQuantityString(R.plurals.notif_review_text, pendingToday.size, pendingToday.size),
+                text = if (guess) context.getString(R.string.notif_review_question_text, unsure.predictedCategory!!.lowercase())
+                else res.getQuantityString(R.plurals.notif_review_text, pendingToday.size),
                 route = TransactionTriggers.ROUTE_REVIEW,
             ), nowMs)
         }
 
         // ── Tier 2: messages from banks Kash can't read yet.
+        // At most once a week per bank: the key is the week.
+        val week = KashNotifier.dayKey(KashDates.weekStart(nowMs))
         for (c in db.rawSmsDao().capturedOnlySince(dayStart)) {
             val bank = kashBank(c.sender).shortName
             KashNotifier.submit(context, NotifyCandidate(
                 trigger = Trigger.CAPTURE_ONLY, tier = Tier.DIGEST, group = NotifyGroup.HEALTH,
-                dedupKey = "${Trigger.CAPTURE_ONLY}:${c.sender}:$today",
+                dedupKey = "${Trigger.CAPTURE_ONLY}:${c.sender}:$week",
                 title = context.resources.getQuantityString(R.plurals.notif_capture_title, c.count, c.count, bank),
-                text = context.getString(R.string.notif_capture_text, bank),
+                text = context.resources.getQuantityString(R.plurals.notif_capture_text, c.count, c.count),
             ), nowMs)
         }
 
@@ -68,7 +73,8 @@ object ScheduledTriggers {
             if (isSunday(nowMs)) weekly(context, nowMs, today)
             if (isLastDayOfMonth(nowMs, cal)) monthEnd(context, nowMs, cal)
         }
-        backlog(context, prefs, nowMs)
+        // Today's review already points at Review; the backlog nudge waits.
+        if (pendingToday.isEmpty()) backlog(context, prefs, nowMs)
         reengage(context, prefs, nowMs)
 
         KashNotifier.sendDigest(context, nowMs)
@@ -83,7 +89,7 @@ object ScheduledTriggers {
         if (week.isEmpty()) return
         val prev = dao.snapshotBetween(start - 7 * DAY, start).filter { it.isSpending() }
         val spent = week.sumOf { it.amount }
-        val top = byCategory(context, week).take(3).joinToString(", ") { (cat, sum) -> "$cat ${KashMoney.whole(sum)}" }
+        val top = byCategory(context, week).take(2).joinToString(" n ") { (cat, sum) -> "$cat (${NotifyText.k(sum)})" }
         val prevSpent = prev.sumOf { it.amount }
         val change = if (prevSpent <= 0) context.getString(R.string.notif_weekly_first) else {
             val pct = ((spent - prevSpent) / prevSpent * 100).roundToInt()
@@ -96,7 +102,7 @@ object ScheduledTriggers {
         KashNotifier.submit(context, NotifyCandidate(
             trigger = Trigger.WEEKLY, tier = Tier.SCHEDULED, group = NotifyGroup.SUMMARIES,
             dedupKey = "${Trigger.WEEKLY}:$today",
-            title = context.getString(R.string.notif_weekly_title, KashMoney.whole(spent)),
+            title = context.getString(R.string.notif_weekly_title, NotifyText.k(spent)),
             text = context.getString(R.string.notif_weekly_text, top, change),
             route = TransactionTriggers.ROUTE_ANALYTICS,
         ), nowMs)
@@ -111,20 +117,21 @@ object ScheduledTriggers {
         val (bigCat, bigSum) = byCategory(context, rows.filter { it.isSpending() }).firstOrNull()
             ?: (context.getString(R.string.notif_uncategorized) to 0.0)
         val text = when {
-            income <= 0 -> context.getString(R.string.notif_month_text_no_income, KashMoney.whole(spent), bigCat, KashMoney.whole(bigSum))
+            income <= 0 -> context.getString(R.string.notif_month_text_no_income, NotifyText.k(spent), bigCat, NotifyText.k(bigSum))
             spent > income -> context.getString(
-                R.string.notif_month_text_overspent,
-                KashMoney.whole(income), KashMoney.whole(spent), KashMoney.whole(spent - income), bigCat, KashMoney.whole(bigSum),
+                R.string.notif_month_text_overspent, NotifyText.k(spent - income), bigCat, NotifyText.k(bigSum),
             )
             else -> context.getString(
-                R.string.notif_month_text,
-                KashMoney.whole(income), KashMoney.whole(spent), ((income - spent) / income * 100).roundToInt(), bigCat, KashMoney.whole(bigSum),
+                R.string.notif_month_text, NotifyText.k(income - spent), NotifyText.k(income), bigCat, NotifyText.k(bigSum),
             )
         }
+        val saved = income > 0 && spent <= income
         KashNotifier.submit(context, NotifyCandidate(
             trigger = Trigger.MONTH_END, tier = Tier.SCHEDULED, group = NotifyGroup.SUMMARIES,
             dedupKey = "${Trigger.MONTH_END}:$cal:${KashNotifier.dayKey(start)}",
-            title = context.getString(R.string.notif_month_title, KashDates.monthYear(nowMs, cal)),
+            title = context.getString(
+                if (saved) R.string.notif_month_title_saved else R.string.notif_month_title, KashDates.monthYear(nowMs, cal),
+            ),
             text = text,
             route = TransactionTriggers.ROUTE_ANALYTICS,
         ), nowMs)
@@ -157,11 +164,16 @@ object ScheduledTriggers {
             trigger = Trigger.REENGAGE, tier = Tier.SCHEDULED, group = NotifyGroup.SUMMARIES,
             // Once per absence: keyed by the last open.
             dedupKey = "${Trigger.REENGAGE}:$lastOpen",
-            title = if (spend.isNotEmpty()) context.getString(R.string.notif_reengage_title, KashMoney.whole(spend.sumOf { it.amount }))
-            else res.getQuantityString(R.plurals.notif_reengage_title_count, since.size, since.size),
-            text = if (biggest?.counterparty != null) context.getString(
-                R.string.notif_reengage_text, KashMoney.whole(biggest.amount), TransactionTriggers.shortName(biggest.counterparty),
-            ) else context.getString(R.string.notif_reengage_text_plain),
+            title = TransactionTriggers.firstName(context)?.let { context.getString(R.string.notif_reengage_title, it) }
+                ?: context.getString(R.string.notif_reengage_title_noname),
+            text = when {
+                biggest?.counterparty != null -> context.getString(
+                    R.string.notif_reengage_text, NotifyText.k(spend.sumOf { it.amount }), NotifyText.k(biggest.amount),
+                    TransactionTriggers.shortName(biggest.counterparty).lowercase(),
+                )
+                spend.isNotEmpty() -> context.getString(R.string.notif_reengage_text_plain, NotifyText.k(spend.sumOf { it.amount }))
+                else -> res.getQuantityString(R.plurals.notif_reengage_text_count, since.size, since.size)
+            },
         ), nowMs)
     }
 
