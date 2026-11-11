@@ -10,14 +10,14 @@ import com.financeapp.parsing.TransactionType
  * Parses Berhan Bank outgoing (debit) SMS.
  *
  * Real-world sample (from corpus):
- *   "Dear NATNAEL GETINET DAGNE; A/C No. *********9067 has been debited
+ *   "Dear DAWIT HAILE BEKELE; A/C No. *********5167 has been debited
  *    ETB100.00 on 21-03-2026 Ref. APPMN01BXYT. Bal. ETB79.94.
  *    Receipt: https://transactioninfo.berhanonline.et/ereceipt/99921032026298550.pdf
  *    Berhan Stress Free Banking!"
  *
  * Notable Berhan idioms (vs CBE / BoA / Awash):
  *  - Customer name in CAPS, terminated by semicolon: `Dear NAME;`
- *  - Account masked with leading asterisks: `*********9067`
+ *  - Account masked with leading asterisks: `*********5167`
  *  - Amount has NO space after ETB: `ETB100.00`
  *  - Date format `dd-MM-yyyy` (hyphen-separated, no time component)
  *  - Reference label is `Ref.` (period after, not colon)
@@ -29,7 +29,7 @@ import com.financeapp.parsing.TransactionType
  * The body does NOT name the counterparty for debits (Berhan doesn't
  * distinguish ATM withdrawal vs P2P vs bill-pay in this format) — so
  * `counterparty` is left null and the engine's withMerchantKey() fallback
- * fills in "to Berhan Bank ********9067" for display.
+ * fills in "to Berhan Bank ********5167" for display.
  */
 class BerhanBankDebitParser : BankParser {
 

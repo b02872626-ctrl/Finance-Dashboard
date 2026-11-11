@@ -9,11 +9,11 @@ import com.financeapp.parsing.TransactionType
 /**
  * Parses CBE debit SMS (ATM, POS, system debit). THREE format families:
  *
- *  Legacy:  "Dear Yohannes Tadesse your Account 1****8166 has been debited
+ *  Legacy:  "Dear Yonas Mekonnen your Account 1****8166 has been debited
  *            with ETB 1005.75 including Service charge ETB0.00ETB0.00 and
  *            VAT(15%) . Your Current Balance is ETB 146479.08."
  *
- *  Modern:  "Dear Nahusenay your Account 1*********4607 has been debited
+ *  Modern:  "Dear Abebe your Account 1*********4607 has been debited
  *            with ETB100.00. Service charge of ETB 10.00 and VAT(15%) of
  *            ETB1.50 and Disaster Fund (5%) of ETB0.50 with a total of
  *            ETB 112.00. Your Current Balance is ETB 270.45."

@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Telebirr payment (goods/services purchase) SMS.
- * Example: "Dear yohannes You have paid ETB 307.50 for goods purchased from
+ * Example: "Dear yonas You have paid ETB 307.50 for goods purchased from
  *           500423 - CHAPA FINANCIAL TECHNOLOGY SHARE COMPANY on 01/04/2026 15:33:26.
  *           Your transaction number is  DD18GI0O82. Your current balance is ETB 786.98."
  */

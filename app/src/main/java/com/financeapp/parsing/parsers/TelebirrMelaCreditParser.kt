@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Telebirr Mela short-term loan disbursement SMS.
- * Example: "Dear Nahusenay,
+ * Example: "Dear Abebe,
  *           Your credit request with CKQ2FYZCJC contract number is successful.
  *           The credit amount is ETB 500.00 and facilitation fee ETB 32.50
  *           with due date 25/01/2026 and the daily fee will be from 0.50% to 0,80%

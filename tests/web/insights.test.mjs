@@ -47,16 +47,16 @@ test("weeks start on Monday", () => {
 
 // ── Accounts ────────────────────────────────────────────────────────────────
 test("Berhan's two masks are one account", () => {
-  assert.equal(accountSuffix("103002XXXXX67"), "67");
-  assert.equal(accountSuffix("*********9067"), "9067");
+  assert.equal(accountSuffix("105001XXXXX67"), "67");
+  assert.equal(accountSuffix("*********5167"), "5167");
   assert.equal(accountSuffix("1000482226926"), "6926");
   const rows = [
-    tx(at(2026, 11, 2), 10, { bank_name: "Berhan Bank", account_number: "*********9067", balance: 34.83 }),
-    tx(at(2026, 10, 29), 10, { bank_name: "Berhan Bank", account_number: "103002XXXXX67", balance: 16083.24 }),
+    tx(at(2026, 11, 2), 10, { bank_name: "Berhan Bank", account_number: "*********5167", balance: 42.50 }),
+    tx(at(2026, 10, 29), 10, { bank_name: "Berhan Bank", account_number: "105001XXXXX67", balance: 16500 }),
   ];
   const groups = groupAccounts(rows);
   assert.equal(groups.length, 1);
-  assert.equal(groups[0].list[0].balance, 34.83);                         // newest first kept
+  assert.equal(groups[0].list[0].balance, 42.50);                         // newest first kept
 });
 
 test("two real accounts at one bank stay apart", () => {
@@ -230,7 +230,7 @@ test("wallet top-ups, loans and bank names are never a payday", () => {
   assert.equal(regularIncome(topUps, G), null);
   assert.deepEqual(paydayPattern(topUps, G), { found: false });
   assert.equal(isPayerName("Telebirr Mela loan"), false);
-  assert.equal(isPayerName("from Berhan Bank 103002XXXXX67"), false);
+  assert.equal(isPayerName("from Berhan Bank 105001XXXXX67"), false);
   assert.equal(isPayerName("ACME PLC"), true);
 });
 

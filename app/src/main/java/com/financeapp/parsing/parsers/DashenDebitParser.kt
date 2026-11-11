@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Dashen Bank Debit SMS.
- * Example: "Dear, YOHANNES Your Account '5090**011' has been debited with ETB 200.00
+ * Example: "Dear, YONAS Your Account '5090**011' has been debited with ETB 200.00
  *           on 04/04/2026 at 02:27:51 PM. your current balance is ETB 579.35.
  *           Dashen Bank - Always one step ahead!"
  */

@@ -114,8 +114,8 @@ export function changePct(now, before) {
 // ── Accounts ────────────────────────────────────────────────────────────────
 /**
  * Last digits of a masked account number. Only digits after the last mask
- * character count: Berhan writes one account as "*********9067" and
- * "103002XXXXX67", and joining digits across the X's made a second account.
+ * character count: Berhan writes one account as "*********5167" and
+ * "105001XXXXX67", and joining digits across the X's made a second account.
  * Mirrors AccountGrouping.accountSuffix on the phone.
  */
 export function accountSuffix(accountNumber) {
@@ -129,7 +129,7 @@ export function accountSuffix(accountNumber) {
   return digits.length >= 4 ? digits.slice(-4) : null;
 }
 
-/** Same account: equal, or a short masked tail ("67") ending the full one ("9067"). */
+/** Same account: equal, or a short masked tail ("67") ending the full one ("5167"). */
 export function sameSuffix(a, b) {
   return a === b || (a.length < 4 && b.endsWith(a)) || (b.length < 4 && a.endsWith(b));
 }

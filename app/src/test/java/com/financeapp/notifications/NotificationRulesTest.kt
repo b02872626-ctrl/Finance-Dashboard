@@ -147,7 +147,7 @@ class NotificationRulesTest {
     @Test fun walletTopUpsAreNeverSalary() {
         val topUp = { id: Long, m: Int -> tx(id = id, amount = 6_000.0, dateTime = at(2026, m, 11, 9), counterparty = "Telebirr wallet top-up") }
         assertFalse(NotificationRules.looksLikeSalary(topUp(10, 10), listOf(topUp(1, 8), topUp(2, 9))))
-        assertFalse(NotificationRules.isPayerName("from Berhan Bank 103002XXXXX67"))
+        assertFalse(NotificationRules.isPayerName("from Berhan Bank 105001XXXXX67"))
         assertFalse(NotificationRules.isPayerName("Telebirr Mela loan"))
         assertTrue(NotificationRules.isPayerName("ACME PLC"))
         assertTrue(NotificationRules.isPayerName("Abebe Kebede"))

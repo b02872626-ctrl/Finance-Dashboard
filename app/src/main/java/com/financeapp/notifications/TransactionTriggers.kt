@@ -126,7 +126,7 @@ object TransactionTriggers {
     /** The user's first name (Settings, or the sign-in account), or null. */
     fun firstName(context: Context): String? = NotifyText.firstName(SettingsRepository(context).getUserName())
 
-    /** "hey Natty," / "hey," */
+    /** "hey Dawi," / "hey," */
     fun hey(name: String?): String = if (name != null) "hey $name," else "hey,"
 
     private fun sameAccount(tx: TransactionEntity, account: Pair<String, String>): Boolean {

@@ -9,7 +9,7 @@ import com.financeapp.parsing.TransactionType
 /**
  * Parses Awash Bank Credit SMS.
  * Example: "Dear Customer, your Account 01320xxxxxx6000 has been Credited with ETB 500.00 on
- *           2026-04-04 14:24:56 by Yohannes Tadesse via IPS Commercial Bank of Ethiopia.
+ *           2026-04-04 14:24:56 by Yonas Mekonnen via IPS Commercial Bank of Ethiopia.
  *           Your balance now is ETB 583.59. For any complaint or enquiry, please call 8980. Awash Bank."
  */
 class AwashCreditParser : BankParser {

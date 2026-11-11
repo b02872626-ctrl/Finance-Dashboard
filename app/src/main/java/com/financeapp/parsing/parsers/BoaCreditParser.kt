@@ -8,12 +8,12 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Bank of Abyssinia (BOA) Credit SMS.
- * Example: "Dear YOHANNES, your account 1*26 was credited with ETB 4,000.00 by 
+ * Example: "Dear YONAS, your account 1*26 was credited with ETB 4,000.00 by 
  *           A/R - P2P incoming settlement accou. Available Balance:  ETB 6,388.83. 
  *           Receipt: https://cs.bankofabyssinia.com/slip/?trx=FT25337T5RC510104..."
  *
  * 2023–2024 wording, same parser:
- *  "Dear NAHUSENAY, your account 9*****24 has been credited with ETB 350.00 on
+ *  "Dear ABEBE, your account 9*****24 has been credited with ETB 350.00 on
  *   27/04/2024 by BDR9S9CK0F for a transfer made by A/R TELE BIRR through Branch
  *   Transfer with transfer description Telebirr to BoA Account-20240427165357.
  *   The available balance in the account is ETB 510.49. ..."
@@ -66,7 +66,7 @@ class BoaCreditParser : BankParser {
             name.startsWith("EthSwi", ignoreCase = true) -> "Other bank (EthSwitch)"
             name.isNotEmpty() -> name
             else -> {
-                // Cash deposit: "transfer description Cash Deposit-EYOB ASCHENKIE LEMA"
+                // Cash deposit: "transfer description Cash Deposit-BIRUK TESFAYE HAILE"
                 val desc = descRe.find(body)?.groupValues?.get(1)?.trim().orEmpty()
                 desc.substringAfter('-', "").trim().ifEmpty { "Cash deposit" }
             }

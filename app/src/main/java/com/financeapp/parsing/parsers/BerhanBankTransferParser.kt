@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Berhan Bank app transfers out to a Telebirr wallet (Aug 2026):
- *  "Dear Robel, You have transferred ETB 800 from your account 101XXXXXXX771
+ *  "Dear Samuel, You have transferred ETB 800 from your account 101XXXXXXX771
  *   to TeleBirr number 251900000000. Reference No. is: VMAMSKKMQZC.
  *   08-Aug-2026 19:18:03 Through Android. Thank you for banking with us."
  * No balance in this SMS. The wallet may be the user's own; that is left to

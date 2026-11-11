@@ -30,8 +30,8 @@ class RawSmsUploadTest {
         assertEquals(
             "PARSED",
             status(
-                "Dear Yohannes your Account 1*****8166 has been Credited with ETB 6,000.00 " +
-                    "from Robel Tadese, on 31/03/2026 at 18:44:07 with Ref No FT26090Y2Q8F " +
+                "Dear Yonas your Account 1*****8166 has been Credited with ETB 6,000.00 " +
+                    "from Samuel Tadese, on 31/03/2026 at 18:44:07 with Ref No FT26090Y2Q8F " +
                     "Your Current Balance is ETB 142,306.95. Thank you for Banking with CBE!"
             ),
         )

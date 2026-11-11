@@ -19,7 +19,7 @@ class CbeBirrParserTest {
 
     // ── Credit ────────────────────────────────────────────────────────────
     @Test fun `credit — basic wallet top-up`() {
-        val body = "Dear nahusenay, your CBE Birr account has been credited with 200.00Br. " +
+        val body = "Dear abebe, your CBE Birr account has been credited with 200.00Br. " +
                 "on 24/05/26 14:14,Txn ID DEO31DWV8EJ. Your balance is 204.60Br. Thank you!"
         val tx = SmsParserEngine.parse(sms(body))
         assertNotNull(tx)
@@ -31,7 +31,7 @@ class CbeBirrParserTest {
     }
 
     @Test fun `credit — large amount with comma`() {
-        val body = "Dear nahusenay, your CBE Birr account has been credited with 5,200.00Br. " +
+        val body = "Dear abebe, your CBE Birr account has been credited with 5,200.00Br. " +
                 "on 21/05/26 09:01,Txn ID DEL71DNZGZJ. Your balance is 5,207.56Br. Thank you!"
         val tx = SmsParserEngine.parse(sms(body))
         assertNotNull(tx)
@@ -41,7 +41,7 @@ class CbeBirrParserTest {
 
     // ── ATM Withdrawal (DEBIT with disaster fund + VAT) ───────────────────
     @Test fun `withdrawal — captures amount disaster fund and VAT`() {
-        val body = "Dear nahusenay, you have withdrawn 200.00Br. from CBE ATM on 24/05/26 14:21," +
+        val body = "Dear abebe, you have withdrawn 200.00Br. from CBE ATM on 24/05/26 14:21," +
                 "Txn ID DEO11DWVQAX. You have paid 0.15Br. for 5% Disaster Risk Response Fund " +
                 "& 15% Tax and Services Charge 0.70Br.. Your CBE Birr account balance is 3.75Br." +
                 "Thank You! For your feedback please click the link https://shorturl.at/gy3A0"
@@ -59,7 +59,7 @@ class CbeBirrParserTest {
     }
 
     @Test fun `withdrawal — larger amount with comma`() {
-        val body = "Dear nahusenay, you have withdrawn 3,000.00Br. from CBE ATM on 15/04/26 10:22," +
+        val body = "Dear abebe, you have withdrawn 3,000.00Br. from CBE ATM on 15/04/26 10:22," +
                 "Txn ID DDF91ALEUHV. You have paid 2.11Br. for 5% Disaster Risk Response Fund " +
                 "& 15% Tax and Services Charge 10.50Br.. Your CBE Birr account balance is 2,498.27Br."
         val tx = SmsParserEngine.parse(sms(body))
@@ -72,8 +72,8 @@ class CbeBirrParserTest {
 
     // ── P2P Transfer ──────────────────────────────────────────────────────
     @Test fun `transfer — captures recipient name and dual refs`() {
-        val body = "Dear nahusenay, you have successfully transferred 5,100.00Br. to " +
-                "1000469454607-NAHUSENAY G/AMLAK TEKA on 21-05-2026 09:04:50." +
+        val body = "Dear abebe, you have successfully transferred 5,100.00Br. to " +
+                "1000000000001-ABEBE KEBEDE ALEMU on 21-05-2026 09:04:50." +
                 "Txn ID DEL41DNZRPK,FT26141QJJK9.Your CBEBirr account balance is 107.56Br." +
                 "Thank You for Choosing CBE Birr ! For your feedback please click the link https://shorturl.at/gy3A0"
         val tx = SmsParserEngine.parse(sms(body))
@@ -82,12 +82,12 @@ class CbeBirrParserTest {
         assertEquals(TransactionType.TRANSFER_OUT.name, tx.type)
         assertEquals(5100.00, tx.amount, 0.001)
         assertEquals(107.56, tx.balance!!, 0.001)
-        assertEquals("NAHUSENAY G/AMLAK TEKA", tx.counterparty)
+        assertEquals("ABEBE KEBEDE ALEMU", tx.counterparty)
         assertEquals("DEL41DNZRPK", tx.refNumber)
     }
 
     @Test fun `transfer — smaller amount, different recipient`() {
-        val body = "Dear nahusenay, you have successfully transferred 200.00Br. to " +
+        val body = "Dear abebe, you have successfully transferred 200.00Br. to " +
                 "1000573888058-KALKIDAN TARIKU BERIGA on 11-05-2026 19:11:09." +
                 "Txn ID DEB81CVIRBS,FT26131H8N8F.Your CBEBirr account balance is 215.13Br."
         val tx = SmsParserEngine.parse(sms(body))
@@ -130,7 +130,7 @@ class CbeBirrParserTest {
     }
 
     @Test fun `non-CBEBirr sender does not match these parsers`() {
-        val body = "Dear nahusenay, your CBE Birr account has been credited with 200.00Br. " +
+        val body = "Dear abebe, your CBE Birr account has been credited with 200.00Br. " +
                 "on 24/05/26 14:14,Txn ID DEO31DWV8EJ. Your balance is 204.60Br."
         // Same body but sender = "CBE" — the CBEBirr parsers must reject it.
         // Verify by checking the bank name doesn't become "CBE Birr".

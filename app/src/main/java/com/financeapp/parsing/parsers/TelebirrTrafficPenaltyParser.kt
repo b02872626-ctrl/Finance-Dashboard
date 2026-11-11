@@ -8,7 +8,7 @@ import com.financeapp.parsing.TransactionType
 
 /**
  * Parses Telebirr traffic penalty payments.
- * Example: "Dear yohannes You have paid  for traffic penalty  ETB 500.00 to
+ * Example: "Dear yonas You have paid  for traffic penalty  ETB 500.00 to
  *           515016 - Addis Ababa Traffic Management Authority; with Payment reference
  *           number VT301912 on 18/03/2026 17:01:14. The service fee is  ETB 2.50 and
  *           15% VAT on the service fee is ETB 0.37. Your transaction number is DCI4WLTE3U

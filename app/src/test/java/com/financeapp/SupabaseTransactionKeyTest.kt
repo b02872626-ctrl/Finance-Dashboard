@@ -49,10 +49,10 @@ class SupabaseTransactionKeyTest {
     fun `matches the database formula`() {
         assertEquals(8067348164951004845L, SupabaseTransactionKey.of("CBE", "Dear user your account was credited", null))
         assertEquals(
-            3497805380770644474L,
+            3829916760952552583L,
             SupabaseTransactionKey.of(
                 "127",
-                "Dear Yeabsira You have repaid 0.34 ETB, for your Siinqee_30_Days contract. Your current unpaid credit amount is 1,230.95 ETB. Thank you for using telebirr Ethio telecom",
+                "Dear Selam You have repaid 0.34 ETB, for your Siinqee_30_Days contract. Your current unpaid credit amount is 1,230.95 ETB. Thank you for using telebirr Ethio telecom",
                 null,
             ),
         )

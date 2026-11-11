@@ -10,7 +10,7 @@ import com.financeapp.parsing.TransactionType
  * Parses CBEBirr ATM withdrawal SMS.
  *
  * Example:
- *   "Dear nahusenay, you have withdrawn 200.00Br. from CBE ATM on 24/05/26 14:21,
+ *   "Dear abebe, you have withdrawn 200.00Br. from CBE ATM on 24/05/26 14:21,
  *    Txn ID DEO11DWVQAX. You have paid 0.15Br. for 5% Disaster Risk Response Fund
  *    & 15% Tax and Services Charge 0.70Br.. Your CBE Birr account balance is 3.75Br."
  *

@@ -36,7 +36,7 @@ object AccountGrouping {
      * the only part that identifies the same account across formats.
      *
      * Only the digits after the last mask character count: Berhan writes the
-     * same account as "*********9067" (debits) and "103002XXXXX67" (credits),
+     * same account as "*********5167" (debits) and "105001XXXXX67" (credits),
      * and joining the digits on both sides of the X's gave "0267", a second,
      * made-up account. Such a short tail ("67") is matched to the full
      * suffix by [sameSuffix].
@@ -53,7 +53,7 @@ object AccountGrouping {
         }
     }
 
-    /** Same account: equal suffixes, or a short masked tail ("67") ending the full one ("9067"). */
+    /** Same account: equal suffixes, or a short masked tail ("67") ending the full one ("5167"). */
     fun sameSuffix(a: String, b: String): Boolean =
         a == b || (a.length < 4 && b.endsWith(a)) || (b.length < 4 && a.endsWith(b))
 
@@ -122,7 +122,7 @@ object AccountGrouping {
             }
         }
 
-    /** Folds a short tail ("67") into the one full suffix that ends with it ("9067"). */
+    /** Folds a short tail ("67") into the one full suffix that ends with it ("5167"). */
     private fun mergeShortTails(bySuffix: Map<String, List<TransactionEntity>>): Map<String, List<TransactionEntity>> {
         val full = bySuffix.keys.filter { it.length >= 4 }
         val out = bySuffix.filterKeys { it.length >= 4 }.mapValues { it.value.toMutableList() }.toMutableMap()

@@ -138,18 +138,18 @@ items to Done with the date, add what is next or blocked.
   and only alerts when the balance drops below the floor, saying how many
   days it lasts; "Kash can't read <bank> yet" at most once a week; the
   backlog nudge skips days that already have a review. All notification
-  copy is in the owner-approved casual voice ("ayy Natty 16k just came in
+  copy is in the owner-approved casual voice ("ayy Dawi 16k just came in
   🎉"), with amounts as k and the first name from the sign-in account.
   Unit tests pass; not yet on a phone (none connected).
 
 - 2026-11-11 1.0.28: Berhan accounts show your real balance (one account was counted twice). Not yet installed on a real phone.
 - 2026-11-11 Berhan balance fix: Berhan writes one account as
-  "*********9067" on debits and "103002XXXXX67" on credits. Kash read the
+  "*********5167" on debits and "105001XXXXX67" on credits. Kash read the
   credit's last four as "0267" and showed two accounts, adding a stale
-  balance (tester Natty: 16,083 shown, 34.83 real). The account suffix now
+  balance (a tester: about 16k shown, under 100 real). The account suffix now
   uses only the digits after the mask; a short tail ("67") joins the one
   account ending with it. Hiding an account and the account page follow
-  the same rule. Checked on tester Natty's phone (1.0.28).
+  the same rule. Checked on tester Dawi's phone (1.0.28).
 
 - 2026-11-11 1.0.27: Bank of Abyssinia deposits show who sent the money and your balance; Berhan transfers to Telebirr are counted as money out; Berhan deposits say where the money came from; Telebirr ticket payments are no longer missed. Not yet installed on a real phone.
 - 2026-11-11 NAH-29 part 2 (first pass): replayed the 28 Oct export again;

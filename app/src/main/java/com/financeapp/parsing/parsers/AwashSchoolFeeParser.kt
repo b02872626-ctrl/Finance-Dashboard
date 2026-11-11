@@ -9,7 +9,7 @@ import com.financeapp.parsing.TransactionType
 /**
  * Awash Bank (AwashPay) school fees:
  *  "School fees payment of 2,394.00 ETB to SUPER HOLY SAVIOR SCHOOL for
- *   3300114480 - Haben Gebreamlak X on 2025-06-09 22:00:56. Ref 250609220048066."
+ *   3300114480 - Hana Kebede X on 2025-06-09 22:00:56. Ref 250609220048066."
  *  Newer: "… of 4,200.00 ETB charge- 0.00 VAT 0 EDRRF 0 ETB to …"
  * The "Awash" eSchool sender repeats the same payments ("You have paid
  * 2,925 BIRR School Fee …") and is ignored in SmsParserEngine.

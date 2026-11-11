@@ -57,6 +57,10 @@ anything.
 
 - Every new parser or parser fix comes with a test using a real (masked)
   SMS. Keep CBE's misspelling: match `transfer(?:r)?ed`.
+- The repo is public. In tests, code comments, docs, commits and PRs, use
+  made-up names, made-up phone and account numbers, and made-up balances;
+  keep only the SMS wording. Never a tester's or anyone's real name, full
+  phone or account number, or real balance.
 - Every database change is a new SQL file in `supabase/`, named for what it
   does. Never change the schema only in the dashboard. Never ship a file that
   drops tables with user data without the owner saying so.

@@ -10,7 +10,7 @@ import com.financeapp.parsing.TransactionType
  * Parses CBEBirr wallet credit SMS.
  *
  * Example:
- *   "Dear nahusenay, your CBE Birr account has been credited with 200.00Br.
+ *   "Dear abebe, your CBE Birr account has been credited with 200.00Br.
  *    on 24/05/26 14:14,Txn ID DEO31DWV8EJ. Your balance is 204.60Br. Thank you!"
  */
 class CbeBirrCreditParser : BankParser {
