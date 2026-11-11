@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Kash booth flyer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@500;600&display=swap" />
+  <style>
+    /* Printable booth flyer (A5 portrait). The QR opens /download?ref=fow,
+       so booth installs are counted in PostHog. Print: Cmd/Ctrl+P, A5,
+       margins none, background graphics on. */
+    :root { --slate: #3D4859; --slate-ink: #2B3340; --sand: #E9DFC6; --ink: #222A36; --ink-muted: #5F6877; --paper: #F6F3EC; }
+    @page { size: A5 portrait; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: #d9d5cc; font-family: Figtree, system-ui, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .am { font-family: "Noto Sans Ethiopic", Figtree, sans-serif; }
+    .sheet { width: 148mm; min-height: 210mm; margin: 24px auto; background: var(--paper); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.18); }
+    .top { background: var(--slate); color: #fff; padding: 12mm 12mm 10mm; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 22px; letter-spacing: -.01em; }
+    .brand svg { width: 36px; height: 36px; border-radius: 9px; }
+    h1 { margin: 9mm 0 0; font-size: 34px; line-height: 1.08; letter-spacing: -.02em; font-weight: 700; }
+    .top .am { margin: 4mm 0 0; font-size: 17px; color: var(--sand); font-weight: 500; }
+    .mid { flex: 1; padding: 9mm 12mm 0; display: grid; grid-template-columns: 58mm 1fr; gap: 8mm; align-items: center; }
+    .qrbox { background: #fff; border-radius: 16px; padding: 4mm; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+    .qr { display: block; width: 100%; height: auto; }
+    .scan { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.15; }
+    .scan-am { margin: 2mm 0 0; font-size: 15px; color: var(--ink-muted); }
+    .free { margin: 4mm 0 0; font-size: 14px; color: var(--ink-muted); }
+    ol { margin: 9mm 12mm 0; padding: 0; list-style: none; display: grid; gap: 3mm; }
+    ol li { display: grid; grid-template-columns: 8mm 1fr; align-items: baseline; font-size: 14px; line-height: 1.35; }
+    ol b { display: inline-grid; place-items: center; width: 6mm; height: 6mm; border-radius: 50%; background: var(--slate); color: #fff; font-size: 11px; }
+    .banks { margin: 8mm 12mm 0; display: flex; flex-wrap: wrap; gap: 2mm; }
+    .banks span { font-size: 12px; padding: 1.5mm 3mm; border-radius: 999px; border: 1px solid #cfc8b8; }
+    .foot { margin-top: auto; padding: 7mm 12mm 9mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--ink-muted); }
+    .foot strong { color: var(--ink); font-size: 14px; }
+    .tip { max-width: 148mm; margin: 0 auto 24px; font: 13px/1.5 Figtree, system-ui, sans-serif; color: #444; text-align: center; }
+    @media print { body { background: none; } .sheet { margin: 0; box-shadow: none; } .tip { display: none; } }
+    @media (max-width: 600px) { .sheet { width: auto; min-height: 0; margin: 0; } .mid { grid-template-columns: 1fr; } .qrbox { max-width: 260px; } }
+  </style>
+</head>
+<body>
+  <article class="sheet">
+    <header class="top">
+      <div class="brand">
+        <svg viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" fill="#2B3340"/><rect x="34" y="30" width="10" height="48" rx="5" fill="#E9DFC6"/><rect x="50" y="44" width="10" height="34" rx="5" fill="#fff"/><rect x="66" y="36" width="10" height="42" rx="5" fill="#fff" fill-opacity=".45"/></svg>
+        kash
+      </div>
+      <h1>Your bank SMS,<br />already sorted.</h1>
+      <p class="am" lang="am">የባንክ መልዕክቶችዎ፣ በራሳቸው ተደራጅተው።</p>
+    </header>
+
+    <section class="mid">
+      <div class="qrbox"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37" class="qr" role="img" aria-label="QR code to kash-140.pages.dev/download"><path class="qrline" stroke="#1f2733" d="M2 2.5h7m2 0h3m3 0h1m1 0h1m1 0h6m1 0h7m-33 1h1m5 0h1m1 0h3m4 0h2m1 0h1m2 0h1m1 0h2m1 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m1 0h3m1 0h3m2 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m3 0h1m1 0h1m2 0h2m5 0h2m2 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m3 0h4m1 0h1m1 0h1m2 0h1m3 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m6 0h5m1 0h1m2 0h1m1 0h1m1 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-24 1h1m3 0h1m1 0h4m1 0h1m1 0h1m1 0h1m-24 1h3m1 0h2m6 0h1m3 0h1m1 0h1m1 0h3m6 0h2m-32 1h1m1 0h1m1 0h2m2 0h2m3 0h3m2 0h7m1 0h2m1 0h4m-32 1h1m1 0h1m2 0h1m1 0h1m6 0h3m4 0h2m1 0h1m1 0h3m1 0h2m-33 1h6m1 0h1m1 0h1m1 0h2m1 0h3m1 0h1m1 0h1m4 0h3m1 0h1m-30 1h3m1 0h5m1 0h1m5 0h1m1 0h1m3 0h2m1 0h1m1 0h3m1 0h1m-31 1h1m1 0h2m3 0h1m1 0h3m2 0h1m1 0h2m1 0h1m6 0h1m3 0h1m-30 1h5m1 0h1m1 0h1m1 0h2m1 0h2m2 0h2m5 0h2m2 0h1m-31 1h2m7 0h1m2 0h4m1 0h1m1 0h3m3 0h2m3 0h1m-29 1h2m1 0h2m3 0h1m1 0h1m1 0h2m4 0h2m1 0h1m1 0h2m1 0h3m-30 1h1m2 0h2m2 0h2m1 0h2m1 0h3m3 0h1m2 0h4m1 0h2m1 0h2m-32 1h6m5 0h1m2 0h1m1 0h2m1 0h1m1 0h1m2 0h4m1 0h2m-31 1h2m1 0h2m3 0h3m6 0h1m1 0h1m5 0h1m1 0h1m3 0h1m-33 1h7m1 0h6m3 0h1m1 0h4m4 0h1m1 0h2m-31 1h1m3 0h2m1 0h1m3 0h1m1 0h1m3 0h7m2 0h1m2 0h1m2 0h1m-30 1h1m2 0h2m2 0h1m2 0h2m3 0h1m4 0h2m2 0h2m1 0h3m-32 1h1m2 0h2m1 0h2m1 0h1m1 0h4m1 0h2m1 0h1m1 0h1m3 0h2m1 0h1m2 0h1m-33 1h1m2 0h1m1 0h4m3 0h1m1 0h2m3 0h1m4 0h5m3 0h1m-25 1h1m1 0h1m3 0h3m1 0h2m1 0h1m2 0h1m3 0h2m-30 1h7m3 0h1m1 0h1m1 0h3m1 0h2m3 0h2m1 0h1m1 0h1m-29 1h1m5 0h1m1 0h2m1 0h1m2 0h1m3 0h1m2 0h4m3 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m6 0h2m1 0h3m1 0h9m1 0h2m-32 1h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h2m2 0h1m2 0h4m3 0h1m1 0h1m1 0h2m-33 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h3m2 0h1m4 0h1m1 0h1m1 0h2m2 0h1m-31 1h1m5 0h1m1 0h4m1 0h1m1 0h1m1 0h1m1 0h1m3 0h3m1 0h2m3 0h1m-33 1h7m2 0h7m2 0h4m1 0h1m2 0h1m1 0h1m1 0h1"/></svg></div>
+      <div>
+        <p class="scan">Scan to get Kash</p>
+        <p class="scan-am am" lang="am">ለማውረድ ይቃኙ</p>
+        <p class="free">Free for Android. No bank login, nothing to type.</p>
+      </div>
+    </section>
+
+    <ol>
+      <li><b>1</b><span>Scan the code and tap <strong>Download for Android</strong>.</span></li>
+      <li><b>2</b><span>Open the file and allow the install.</span></li>
+      <li><b>3</b><span>Allow SMS access. Your history appears in seconds.</span></li>
+    </ol>
+
+    <div class="banks" aria-label="Supported banks">
+      <span>CBE</span><span>CBE Birr</span><span>Telebirr</span><span>Bank of Abyssinia</span><span>Awash</span><span>Dashen</span><span>Berhan</span><span>Nib</span>
+    </div>
+
+    <footer class="foot">
+      <strong>kash-140.pages.dev/download</strong>
+      <span>Kash never asks for your bank PIN.</span>
+    </footer>
+  </article>
+  <p class="tip">Print with Cmd/Ctrl + P → paper size A5, margins none, background graphics on.</p>
+</body>
+</html>

@@ -6,6 +6,9 @@
 // and no person profiles (visitors stay anonymous). Every URL is cut to its
 // path, because password-reset and sign-in links carry tokens in the query
 // or #hash. Nothing from the dashboard (amounts, names, accounts) is sent.
+// The one exception: a short campaign tag "?ref=fow" (letters, digits, - _,
+// up to 20) is kept as the "ref" property, so booth and Telegram links can
+// be counted. It is remembered for the visit, so the download click has it.
 //
 // POSTHOG_KEY is the project's public "phc_..." key (write-only, like the
 // Supabase anon key in app.js). Empty = analytics off and nothing loads.
@@ -31,6 +34,14 @@
     return event;
   }
 
+  var REF_KEY = "kash_ref";
+  var ref = null;
+  try {
+    var q = new URLSearchParams(location.search).get("ref");
+    if (q && /^[a-z0-9_-]{1,20}$/i.test(q)) sessionStorage.setItem(REF_KEY, q.toLowerCase());
+    ref = sessionStorage.getItem(REF_KEY);
+  } catch (e) { ref = null; }
+
   var s = document.createElement("script");
   s.src = LIB;
   s.integrity = LIB_SRI;
@@ -54,6 +65,7 @@
       advanced_disable_feature_flags: true,
       before_send: scrub
     });
+    if (ref) window.posthog.register({ ref: ref });
   };
   document.head.appendChild(s);
 
@@ -61,6 +73,6 @@
     var a = e.target.closest && e.target.closest('a[href$=".apk"]');
     if (!a || !window.posthog || !window.posthog.capture) return;
     var m = a.getAttribute("href").match(/Kash-([\w.-]+)\.apk$/);
-    window.posthog.capture("apk_download_clicked", { app_version: m ? m[1] : null });
+    window.posthog.capture("apk_download_clicked", { app_version: m ? m[1] : null, ref: ref });
   });
 })();
