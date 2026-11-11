@@ -69,6 +69,13 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 NAH-37 clean-up: the Settings icon is a gear (it was a ring
+  with rays that read as a sun). Removed dead code left from the pre-Kash
+  screens: the old Analytics, Insights and Period-insights flows and their
+  data classes, the unused CalendarFormatter (KashDates does this), and
+  NetworkMonitor (only the removed backup notifications used it). No
+  user-facing wording needed changes. Not yet on a phone.
+
 - 2026-11-11 NAH-34 Kash Wrapped: last month's money story in pages
   (spent vs the month before, kept, biggest payment, your regular, bank
   fees, busiest weekday and time of day, a tip), from SMS data only.
