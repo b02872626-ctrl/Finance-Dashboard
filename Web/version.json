@@ -1,11 +1,12 @@
 {
-  "versionCode": 50,
-  "versionName": "1.0.30",
+  "versionCode": 51,
+  "versionName": "1.0.31",
   "url": "https://kash-140.pages.dev/download",
-  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.30.apk",
-  "sha256": "143fdd77e4c4c0d648eb6ecc01d07e31c7ac7461b2f0b956410ce0d4167c5536",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.31.apk",
+  "sha256": "f4046eb210a6de7686656966ebeca856d29ce6994ccb17a2c03f2d9cb5348c5d",
   "notes": [
-    "Kash Wrapped: last month's money story, ready to share",
-    "The Settings button is a gear now"
+    "Accounts that belong to someone else can be hidden in one tap, and old quiet accounts no longer count in your total",
+    "Sharing your Wrapped makes a clean picture",
+    "No more \"money came in\" alerts for your own top-ups or loans"
   ]
 }
