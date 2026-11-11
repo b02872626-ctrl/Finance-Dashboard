@@ -1,10 +1,11 @@
 {
-  "versionCode": 46,
-  "versionName": "1.0.26",
+  "versionCode": 47,
+  "versionName": "1.0.27",
   "url": "https://kash-140.pages.dev/download",
   "notes": [
-    "Your accounts are on Home now: swipe the row under your total and tap one for its history",
-    "Three tabs instead of four: Home, History, Analytics",
-    "A low-balance alert opens that account's history"
+    "Bank of Abyssinia deposits show who sent the money and your balance",
+    "Berhan transfers to Telebirr are counted as money out",
+    "Berhan deposits say where the money came from",
+    "Telebirr ticket payments are no longer missed"
   ]
 }
