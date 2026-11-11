@@ -69,6 +69,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 NAH-27 Analytics: today's spend up top with This week and
+  This month tiles (vs the same point before), then a daily spending line
+  with range chips (This week, This month, 30 days, Pick dates), total,
+  change and daily average; payees and accounts follow the range;
+  categories last and only when labelled. Numbers unit-tested
+  (`SpendOverviewTest`). Not yet seen on a phone (no device; screenshot
+  tests don't run on SDK 36).
+
 - 2026-11-11 NAH-36 review swipe: the card read the finger in its own
   moving, tilted coordinates, so it lagged, jittered and flicks barely
   counted; the drag is now read before the card moves. Swipes on the card

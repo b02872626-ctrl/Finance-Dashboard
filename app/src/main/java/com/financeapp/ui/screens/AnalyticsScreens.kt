@@ -1,5 +1,20 @@
 package com.financeapp.ui.screens
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import com.financeapp.viewmodel.CategoryTotal
+import com.financeapp.viewmodel.PayeeTotal
+import com.financeapp.viewmodel.SpendOverview
+import com.financeapp.viewmodel.SpendPreset
 import com.financeapp.ui.kash.rememberGrow
 import com.financeapp.ui.kash.kashEnter
 import androidx.compose.animation.Crossfade
@@ -80,45 +95,56 @@ import com.financeapp.viewmodel.MonthReport
 import kotlin.math.roundToInt
 
 /**
- * Analytics tab (AppAnalytics, AppAnalyticsMore, AppAnalyticsLoading,
- * AppAnalyticsEmpty). The "See all" links are left out by request.
+ * Analytics tab, rebuilt for NAH-27 (owner, Nov 2026): most people never
+ * label their transactions, so it leads with today and this week, then a
+ * daily line for a chosen range (this week, this month, 30 days or picked
+ * dates). Payees and accounts follow the range; categories come last and
+ * only when there are some.
  */
 @Composable
 fun AnalyticsTabScreen(
     vm: AnalyticsViewModel,
     tabBar: @Composable () -> Unit,
     onCategory: (String) -> Unit,
-    onReview: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onReview: () -> Unit,
     onAccount: (String) -> Unit,
 ) {
     KashSystemBars(darkIcons = false)
     val cal = LocalCalendarSystem.current
     LaunchedEffect(cal) { vm.setCalendar(cal) }
+    val o by vm.overview.collectAsState()
     val r by vm.report.collectAsState()
-    val months by vm.availableMonths.collectAsState()
-    var monthPicker by remember { mutableStateOf(false) }
-    val monthName = KashDates.monthName(r.fromMs + 86_400_000L, cal)
+    var pickDates by remember { mutableStateOf(false) }
 
     KashScreen(
         tabBar = tabBar,
         heroGap = 18.dp,
         hero = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Analytics", style = KashType.TitleM, color = KashColors.OnSlate, modifier = Modifier.weight(1f))
-                if (!r.isLoading) KashChip(monthName, false, { monthPicker = true }, onSlate = true, trailing = KashIcon.ChevronDown)
-            }
+            Text("Analytics", style = KashType.TitleM, color = KashColors.OnSlate)
             Column {
-                Text(if (r.isLoading) "Spent this month" else "Spent in $monthName", style = KashType.Body, color = KashColors.OnSlateMuted)
-                if (r.isLoading) KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
-                else KashFigure(r.spent, Modifier.padding(top = 4.dp), countUp = true)
+                Text("Spent today", style = KashType.Body, color = KashColors.OnSlateMuted)
+                if (o.isLoading) KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
+                else {
+                    KashFigure(o.todaySpent, Modifier.padding(top = 4.dp), countUp = true)
+                    Text(
+                        when (o.todayCount) { 0 -> "Nothing yet today"; 1 -> "1 payment"; else -> "${o.todayCount} payments" },
+                        style = KashType.Caption, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("Money in", if (r.isLoading) null else KashMoney.whole(r.moneyIn), Modifier.weight(1f))
-                StatTile("Left over", if (r.isLoading) null else leftOver(r), Modifier.weight(1f))
+                StatTile(
+                    "This week", if (o.isLoading) null else KashMoney.whole(o.weekSpent), Modifier.weight(1f),
+                    change = o.weekChangePct, changeVs = "last week",
+                )
+                StatTile(
+                    "This month", if (o.isLoading) null else KashMoney.whole(o.monthSpent), Modifier.weight(1f),
+                    change = o.monthChangePct, changeVs = "last month",
+                )
             }
         },
     ) { pad ->
-        Crossfade(r.isLoading, label = "analytics") { loading ->
+        Crossfade(o.isLoading, label = "analytics") { loading ->
             if (loading) {
                 AnalyticsSkeleton()
                 return@Crossfade
@@ -127,62 +153,64 @@ fun AnalyticsTabScreen(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad),
                 verticalArrangement = Arrangement.spacedBy(26.dp),
             ) {
-                if (r.categories.isEmpty()) {
-                    WhereItGoesEmpty(r.uncategorizedAllTime, onReview)
-                    MoneyInOut(r, cal)
-                } else {
-                    MoneyInOut(r, cal)
-                    WhereItGoes(r, onCategory)
-                }
-                if (r.spent > 0) EveryDay(r, cal)
-                if (r.topPayees.isNotEmpty()) WhereYouPayMost(r)
-                if (r.perAccount.isNotEmpty()) SpentFrom(r, onAccount)
-                if (r.uncategorized > 0 && r.categories.isNotEmpty()) {
-                    KashListGroup {
-                        KashListRow(
-                            if (r.uncategorized == 1) "1 transaction needs a category" else "${r.uncategorized} transactions need a category",
-                            hint = "They're left out of “Where it goes” until then",
-                            showDivider = false,
-                            onClick = onReview,
-                        )
+                OverTime(o, cal, onPick = { vm.setPreset(it) }, onPickDates = { pickDates = true })
+                if (o.topPayees.isNotEmpty()) WhereYouPayMost(o.topPayees)
+                if (o.perAccount.isNotEmpty()) SpentFrom(o.perAccount, onAccount)
+                if (!r.isLoading && r.sixMonths.any { it.moneyIn > 0 || it.spent > 0 }) MoneyInOut(r, cal)
+                if (o.categories.isNotEmpty()) {
+                    WhereItGoes(o.categories, o.fromMs) { cat ->
+                        // The category page shows a month: the one the range ends in.
+                        vm.setReportMonth(o.toMs - 1)
+                        onCategory(cat)
                     }
                 }
             }
         }
     }
 
-    if (monthPicker) {
-        KashSheet("Show month", onDismiss = { monthPicker = false }) {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                months.forEach { m ->
-                    KashRadioRow(
-                        KashDates.monthYear(m + 86_400_000L, cal), m == r.fromMs,
-                        { vm.setReportMonth(m + 86_400_000L); monthPicker = false },
-                    )
-                }
-            }
-        }
+    if (pickDates) {
+        DateRangeDialog(
+            calendarSystem = cal,
+            initialFrom = o.fromMs.takeIf { o.preset == SpendPreset.CUSTOM },
+            initialTo = o.toMs.takeIf { o.preset == SpendPreset.CUSTOM },
+            onDismiss = { pickDates = false },
+            onApply = { from, to -> vm.setCustomRange(from, to); pickDates = false },
+        )
     }
 }
 
-private fun leftOver(r: MonthReport): String {
-    val v = r.moneyIn - r.spent
-    return (if (v < 0) KashMoney.MINUS else "") + KashMoney.whole(v)
+/** "↑ 12%" / "↓ 8%" / "Same" — and the words for screen readers. */
+private fun changeShort(pct: Int): String = when {
+    pct > 0 -> "↑ $pct%"
+    pct < 0 -> "↓ ${-pct}%"
+    else -> "Same"
+}
+
+private fun changeLong(pct: Int, vs: String): String = when {
+    pct > 0 -> "$pct% more than $vs"
+    pct < 0 -> "${-pct}% less than $vs"
+    else -> "About the same as $vs"
 }
 
 @Composable
-private fun StatTile(label: String, value: String?, modifier: Modifier = Modifier) {
+private fun StatTile(label: String, value: String?, modifier: Modifier = Modifier, change: Int? = null, changeVs: String = "") {
     Column(
         modifier
             .clip(KashShapes.Control)
             .background(KashColors.GhostFill)
             .border(1.dp, KashColors.GhostLine, KashShapes.Control)
-            .padding(12.dp),
+            .padding(12.dp)
+            .semantics(mergeDescendants = true) {
+                if (value != null) contentDescription = "$label: $value ETB" + (change?.let { ". ${changeLong(it, changeVs)}" } ?: "")
+            },
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(label, style = KashType.Micro, color = KashColors.OnSlateMuted, maxLines = 1)
         if (value == null) KashSkeleton(Modifier.padding(top = 4.dp), width = 56.dp, height = 14.dp, onSlate = true)
-        else Text(value, style = KashType.FigureS, color = KashColors.OnSlate, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        else Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(value, style = KashType.FigureS, color = KashColors.OnSlate, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            if (change != null) Text(changeShort(change), style = KashType.Micro.num(), color = KashColors.OnSlateMuted, maxLines = 1)
+        }
     }
 }
 
@@ -194,6 +222,132 @@ private fun Section(title: String, aside: String? = null, content: @Composable C
             if (aside != null) Text(aside, style = KashType.Caption.num(), color = KashColors.InkMuted)
         }
         content()
+    }
+}
+
+/** Range chips, the range's total and change, then the daily line. */
+@Composable
+private fun OverTime(o: SpendOverview, cal: String, onPick: (SpendPreset) -> Unit, onPickDates: () -> Unit) {
+    val vs = when (o.preset) {
+        SpendPreset.THIS_WEEK -> "last week"
+        SpendPreset.THIS_MONTH -> "last month"
+        SpendPreset.LAST_30 -> "the 30 days before"
+        SpendPreset.CUSTOM -> "the days before"
+    }
+    Section("Spending over time") {
+        Row(
+            Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            KashChip("This week", o.preset == SpendPreset.THIS_WEEK, { onPick(SpendPreset.THIS_WEEK) })
+            KashChip("This month", o.preset == SpendPreset.THIS_MONTH, { onPick(SpendPreset.THIS_MONTH) })
+            KashChip("30 days", o.preset == SpendPreset.LAST_30, { onPick(SpendPreset.LAST_30) })
+            KashChip(
+                if (o.preset == SpendPreset.CUSTOM) rangeLabel(o.fromMs, o.toMs - 1, cal) else "Pick dates",
+                o.preset == SpendPreset.CUSTOM, onPickDates, leading = KashIcon.Calendar,
+            )
+        }
+        Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                KashFigure(o.total, style = KashType.FigureM, color = KashColors.Ink, unitColor = KashColors.InkMuted, showDecimals = false, countUp = true)
+                Text(
+                    o.changePct?.let { changeLong(it, vs) } ?: "Nothing to compare with yet",
+                    style = KashType.Caption, color = KashColors.InkMuted, modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            Text("${KashMoney.whole(o.avgPerDay)} a day", style = KashType.Caption.num(), color = KashColors.InkMuted)
+        }
+        SpendLine(o, cal, Modifier.padding(top = 14.dp))
+    }
+}
+
+/**
+ * Daily spending as a line with a soft fill, the daily average dashed, and
+ * today's point marked. Touch or drag along it to read a day.
+ */
+@Composable
+private fun SpendLine(o: SpendOverview, cal: String, modifier: Modifier = Modifier) {
+    val days = o.days
+    if (days.isEmpty()) return
+    val max = (days.filterNotNull().maxOrNull() ?: 0.0).coerceAtLeast(1.0)
+    val lastIdx = days.indexOfLast { it != null }
+    var picked by remember(o.fromMs, o.toMs) { mutableStateOf<Int?>(null) }
+    val grow = rememberGrow(o.fromMs + o.toMs, durationMs = 600)
+    val lineColor = KashColors.Slate
+    val fill = KashColors.Slate.copy(alpha = 0.10f)
+    val avgColor = KashColors.InkFaint
+    val pointColor = KashColors.Ink
+    fun dayMs(i: Int) = o.fromMs + i * 86_400_000L + 43_200_000L
+
+    val shown = picked ?: lastIdx.takeIf { it >= 0 }
+    Column(modifier) {
+        Text(
+            shown?.let { "${KashDates.dayMonth(dayMs(it), cal)} · ${KashMoney.whole(days[it] ?: 0.0)} ETB" } ?: " ",
+            style = KashType.Label.num(), color = KashColors.Ink,
+        )
+        val highest = days.indices.filter { days[it] != null }.maxByOrNull { days[it]!! }
+        Canvas(
+            Modifier
+                .padding(top = 8.dp)
+                .fillMaxWidth()
+                .height(140.dp)
+                .pointerInput(o.fromMs, o.toMs) {
+                    fun pick(x: Float) {
+                        val i = ((x / size.width) * (days.size - 1)).roundToInt().coerceIn(0, days.size - 1)
+                        picked = if (days[i] == null) lastIdx.takeIf { it >= 0 } else i
+                    }
+                    detectTapGestures { pick(it.x) }
+                }
+                .pointerInput(o.fromMs, o.toMs, "drag") {
+                    detectHorizontalDragGestures { change, _ ->
+                        change.consume()
+                        val i = ((change.position.x / size.width) * (days.size - 1)).roundToInt().coerceIn(0, days.size - 1)
+                        picked = if (days[i] == null) lastIdx.takeIf { it >= 0 } else i
+                    }
+                }
+                .semantics {
+                    contentDescription = "Spending per day, ${rangeLabel(o.fromMs, o.toMs - 1, cal)}. " +
+                        "Total ${KashMoney.whole(o.total)} ETB, ${KashMoney.whole(o.avgPerDay)} a day on average." +
+                        (highest?.let { " Highest: ${KashDates.dayMonth(dayMs(it), cal)}, ${KashMoney.whole(days[it]!!)} ETB." } ?: "")
+                },
+        ) {
+            val w = size.width
+            val h = size.height
+            val step = if (days.size > 1) w / (days.size - 1) else w
+            fun x(i: Int) = if (days.size > 1) i * step else w / 2
+            fun y(v: Double) = h - (v / max).toFloat() * h * 0.9f * grow
+            val pts = days.indices.filter { days[it] != null }.map { Offset(x(it), y(days[it]!!)) }
+            // Average, dashed.
+            val avgY = y(o.avgPerDay)
+            drawLine(
+                avgColor, Offset(0f, avgY), Offset(w, avgY), strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx())),
+            )
+            // Baseline.
+            drawLine(avgColor, Offset(0f, h), Offset(w, h), strokeWidth = 1.dp.toPx())
+            if (pts.isNotEmpty()) {
+                val line = Path().apply {
+                    moveTo(pts.first().x, pts.first().y)
+                    pts.drop(1).forEach { lineTo(it.x, it.y) }
+                }
+                val area = Path().apply {
+                    addPath(line)
+                    lineTo(pts.last().x, h); lineTo(pts.first().x, h); close()
+                }
+                drawPath(area, fill)
+                drawPath(line, lineColor, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+            shown?.let { i ->
+                val v = days[i] ?: return@let
+                val c = Offset(x(i), y(v))
+                drawLine(avgColor, Offset(c.x, 0f), Offset(c.x, h), strokeWidth = 1.dp.toPx())
+                drawCircle(pointColor, radius = 4.5.dp.toPx(), center = c)
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp).clearAndSetSemantics { }) {
+            Text(KashDates.dayMonth(dayMs(0), cal), style = KashType.Micro.num(), color = KashColors.InkMuted, modifier = Modifier.weight(1f))
+            Text(KashDates.dayMonth(dayMs(days.lastIndex), cal), style = KashType.Micro.num(), color = KashColors.InkMuted)
+        }
     }
 }
 
@@ -277,16 +431,16 @@ private fun Progress(fraction: Float, label: String, delayMs: Int = 0) {
 }
 
 @Composable
-private fun WhereItGoes(r: MonthReport, onCategory: (String) -> Unit) {
-    val total = r.categories.sumOf { it.total }.coerceAtLeast(1.0)
-    val max = r.categories.first().total.coerceAtLeast(1.0)
-    Section("Where it goes") {
-        r.categories.forEachIndexed { i, c ->
+private fun WhereItGoes(categories: List<CategoryTotal>, key: Long, onCategory: (String) -> Unit) {
+    val total = categories.sumOf { it.total }.coerceAtLeast(1.0)
+    val max = categories.first().total.coerceAtLeast(1.0)
+    Section("Where it goes", "What you've labelled") {
+        categories.forEachIndexed { i, c ->
             val pct = (c.total / total * 100).roundToInt()
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .kashEnter(i, r.fromMs)
+                    .kashEnter(i, key)
                     .kashClickable(press = KashPress.Highlight) { onCategory(c.category) }
                     .padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -304,87 +458,9 @@ private fun WhereItGoes(r: MonthReport, onCategory: (String) -> Unit) {
 }
 
 @Composable
-private fun WhereItGoesEmpty(uncategorized: Int, onReview: () -> Unit) {
-    Section("Where it goes") {
-        Column(
-            Modifier
-                .padding(top = 12.dp)
-                .fillMaxWidth()
-                .clip(KashShapes.Card)
-                .background(KashColors.SurfaceRaised)
-                .border(1.dp, KashColors.Line, KashShapes.Card)
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Column(Modifier.clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(1f, 0.7f, 0.45f).forEach { w ->
-                    Box(Modifier.fillMaxWidth(w).height(6.dp).clip(RoundedCornerShape(3.dp)).background(KashColors.Well))
-                }
-            }
-            Column {
-                Text("Nothing has a category yet", style = KashType.BodyStrong, color = KashColors.Ink)
-                Text(
-                    "Review your transactions and this fills in: food, transport, bills and the rest.",
-                    style = KashType.Caption, color = KashColors.InkMuted, modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            if (uncategorized > 0) {
-                KashButton("Start reviewing", onReview, Modifier.fillMaxWidth(), badge = uncategorized.toString(), compact = true)
-            }
-        }
-    }
-}
-
-@Composable
-private fun EveryDay(r: MonthReport, cal: String) {
-    val max = r.days.maxOrNull()?.coerceAtLeast(1.0) ?: 1.0
-    val avg = r.spent / r.days.size.coerceAtLeast(1)
-    val highIdx = r.days.indices.maxByOrNull { r.days[it] } ?: 0
-    val highMs = r.fromMs + highIdx * 86_400_000L + 43_200_000L
-    Section("Every day", "${KashMoney.whole(avg)} a day on average") {
-        Column(
-            Modifier.padding(top = 10.dp).semantics {
-                contentDescription = "Spending per day. Highest: ${KashDates.dayMonth(highMs, cal)}, ${KashMoney.whole(r.days[highIdx])}."
-            },
-        ) {
-            Row(
-                Modifier.fillMaxWidth().height(72.dp),
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                r.days.forEachIndexed { i, v ->
-                    val last = r.isCurrent && i == r.days.lastIndex
-                    val grow = rememberGrow(r.fromMs, delayMs = i * 12, durationMs = 450)
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight(((v / max).toFloat().coerceIn(0.03f, 1f) * grow).coerceAtLeast(0.001f))
-                            .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                            .background(if (last) KashColors.Ink else KashColors.InkFaint)
-                    )
-                }
-            }
-            KashDivider(color = KashColors.LineStrong)
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp).clearAndSetSemantics { }) {
-                Text(KashDates.dayMonth(r.fromMs + 43_200_000L, cal), style = KashType.Micro.num(), color = KashColors.InkMuted)
-                Text(
-                    "Highest: ${KashDates.dayMonth(highMs, cal)} · ${KashMoney.whole(r.days[highIdx])}",
-                    style = KashType.Micro.num(), color = KashColors.InkMuted, textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    if (r.isCurrent) "Today" else KashDates.dayMonth(r.toMs - 43_200_000L, cal),
-                    style = KashType.Micro.copy(fontWeight = FontWeight.SemiBold), color = KashColors.Ink,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WhereYouPayMost(r: MonthReport) {
+private fun WhereYouPayMost(payees: List<PayeeTotal>) {
     Section("Where you pay most") {
-        r.topPayees.forEach { p ->
+        payees.forEach { p ->
             Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(p.name, style = KashType.Body, color = KashColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -398,10 +474,10 @@ private fun WhereYouPayMost(r: MonthReport) {
 }
 
 @Composable
-private fun SpentFrom(r: MonthReport, onAccount: (String) -> Unit) {
-    val max = r.perAccount.first().second.coerceAtLeast(1.0)
+private fun SpentFrom(perAccount: List<Pair<String, Double>>, onAccount: (String) -> Unit) {
+    val max = perAccount.first().second.coerceAtLeast(1.0)
     Section("Spent from") {
-        r.perAccount.forEach { (name, total) ->
+        perAccount.forEach { (name, total) ->
             Column(
                 Modifier.fillMaxWidth().kashClickable(press = KashPress.Highlight) { onAccount(name) }.padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
