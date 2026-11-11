@@ -276,3 +276,19 @@ test("income senders: one row each, real payers first", () => {
   assert.equal(s[2].payer, false);
   assert.equal(normaliseSource("Abebe (2519****1234)"), "abebe");
 });
+
+test("several picked incomes: the biggest sets payday, paychecks add up", () => {
+  const rows = [
+    ...salary,                                                            // ACME on the 28th, ~20k
+    credit(at(2026, 9, 5), 5000, "Rent Tenant"), credit(at(2026, 10, 5), 5000, "Rent Tenant"),
+  ];
+  const r = regularIncome(rows, { ...G, salarySources: ["Rent Tenant", "acme plc"] });
+  assert.equal(r.sources[0], "ACME PLC");                                 // the biggest leads
+  assert.equal(r.source, "ACME PLC + Rent Tenant");
+  assert.equal(r.usualDay, 28);
+  // Cycle 28 Sep → 28 Oct holds 21,000 + the 5 Oct rent.
+  assert.equal(r.paychecks[1].amount, 26000);
+  const p = paydayPattern(rows, { ...G, salarySources: ["Rent Tenant", "acme plc"] });
+  assert.equal(p.found, true);
+  assert.equal(p.picked, true);
+});

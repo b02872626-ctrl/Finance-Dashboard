@@ -2600,3 +2600,4 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 .pd-sender .muted.small { margin: 2px 0 0; }
 .pd-choose { white-space: nowrap; font-size: 13px; padding: 7px 12px; }
 .pd-choose[disabled] { opacity: .6; cursor: default; }
+.pd-sender.on .pd-choose { background: var(--k-ink); color: var(--k-surface); border-color: var(--k-ink); }
