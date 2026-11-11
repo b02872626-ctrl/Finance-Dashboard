@@ -69,6 +69,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 1.0.30: Kash Wrapped: last month's money story, ready to share; The Settings button is a gear now. Not yet installed on a real phone.
 - 2026-11-11 NAH-37 clean-up: the Settings icon is a gear (it was a ring
   with rays that read as a sun). Removed dead code left from the pre-Kash
   screens: the old Analytics, Insights and Period-insights flows and their
