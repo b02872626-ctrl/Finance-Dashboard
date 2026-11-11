@@ -324,6 +324,8 @@ private fun MainNavigation(
             popExitTransition = { ExitTransition.None }
         ) {
             composable(Screen.Dashboard.route) {
+                // Tells the user's accounts from others' ("Dear Hana …").
+                LaunchedEffect(userName) { dashVm.setUserName(userName) }
                 HomeScreen(
                     vm = dashVm,
                     tabBar = tabBar(KashTab.Home),
