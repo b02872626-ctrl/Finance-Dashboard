@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Tester builds update themselves, with a pop-up
+
+NAH-35. Update (Home card, Settings → Updates, and a new pop-up when Kash
+opens) now downloads the APK inside Kash and hands it to Android's
+installer instead of opening the browser. `version.json` carries `apk`
+(only `https://kash-140.pages.dev/apk/…` is accepted) and `sha256`;
+`scripts/release.sh` writes both and `verify` checks they match, and the
+app refuses a download whose SHA-256 differs. Older version.json files
+without the fields fall back to the download page. The pop-up's "Later"
+hides it for 3 days for that version; the Home card stays as before.
+Installing needs `REQUEST_INSTALL_PACKAGES`, which Google Play does not
+allow for self-updating apps: it is in the main manifest for now (there is
+no Play build yet) and must be removed for the Play upload
+(`docs/play-store-submission.md`). Play installs never show any of this.
+
 ## 2026-11-11 — Notifications talk like a friend texting
 
 Owner approved a casual voice for every notification (NAH-33): lowercase,

@@ -4,6 +4,9 @@
 
     <!-- SMS permissions -->
     <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Tester builds update themselves (NAH-35). Must be removed for the Play
+         build: see docs/play-store-submission.md. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
 
     <!-- Network (Supabase sync) -->
@@ -49,6 +52,17 @@
             </intent-filter>
         </receiver>
 
+
+        <!-- Hands the downloaded update APK to Android's installer. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
 
     </application>
 </manifest>

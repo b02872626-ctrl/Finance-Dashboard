@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import com.financeapp.notifications.UpdateInstaller
+import com.financeapp.ui.kash.components.KashDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,12 +35,12 @@ import com.financeapp.ui.kash.components.KashButtonVariant
 import com.financeapp.util.KashDates
 
 /**
- * Home card: "Kash 1.0.25 is ready" with the release notes, Update (opens
- * the download page) and Later (hides it until a newer build). Shown only
- * for tester installs with a newer build on the site.
+ * Home card: "Kash 1.0.25 is ready" with the release notes, Update
+ * (downloads and installs inside Kash) and Later (hides it until a newer
+ * build). Shown only for tester installs with a newer build on the site.
  */
 @Composable
-fun UpdateCard(latest: UpdateChecker.Latest, onUpdate: () -> Unit, onLater: () -> Unit, modifier: Modifier = Modifier) {
+fun UpdateCard(latest: UpdateChecker.Latest, onLater: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
@@ -57,10 +62,66 @@ fun UpdateCard(latest: UpdateChecker.Latest, onUpdate: () -> Unit, onLater: () -
         }
         ReleaseNotes(latest.notes.take(3))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KashButton("Update", onUpdate, Modifier.weight(1f), KashButtonVariant.Primary, compact = true)
+            UpdateButton(latest, Modifier.weight(1f))
             KashButton("Later", onLater, Modifier.weight(1f), KashButtonVariant.Quiet, compact = true)
         }
+        UpdateStatusLine()
     }
+}
+
+/**
+ * Pop-up when Kash opens and a newer tester build is out (NAH-35). "Later"
+ * (or closing it) hides it for 3 days for that version; the Home card stays.
+ */
+@Composable
+fun UpdatePopup(latest: UpdateChecker.Latest, onLater: () -> Unit) {
+    val status by UpdateInstaller.status.collectAsState()
+    val busy = status is UpdateInstaller.Status.Downloading
+    KashDialog(
+        title = "Kash ${latest.versionName} is ready",
+        description = "Installs over this one. Your data stays.",
+        onDismiss = onLater,
+        dismissible = !busy,
+    ) {
+        ReleaseNotes(latest.notes.take(4))
+        Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            UpdateButton(latest, Modifier.fillMaxWidth())
+            if (!busy) KashButton("Later", onLater, Modifier.fillMaxWidth(), KashButtonVariant.Quiet, compact = true)
+            UpdateStatusLine()
+        }
+    }
+}
+
+/** Update / Downloading 45% / Allow installs from Kash / Install / Try again. */
+@Composable
+fun UpdateButton(latest: UpdateChecker.Latest, modifier: Modifier = Modifier, label: String = "Update") {
+    val context = LocalContext.current
+    val status by UpdateInstaller.status.collectAsState()
+    val text = when (val s = status) {
+        is UpdateInstaller.Status.Downloading -> s.progress?.let { "Downloading ${(it * 100).toInt()}%" } ?: "Downloading…"
+        UpdateInstaller.Status.NeedsPermission -> "Allow installs from Kash"
+        UpdateInstaller.Status.Ready -> "Install"
+        is UpdateInstaller.Status.Failed -> "Try again"
+        UpdateInstaller.Status.Idle -> label
+    }
+    val busy = status is UpdateInstaller.Status.Downloading
+    KashButton(
+        text, { UpdateInstaller.start(context, latest) }, modifier, KashButtonVariant.Primary,
+        compact = true, busy = busy, enabled = !busy,
+    )
+}
+
+/** One quiet line under the button saying what is happening. */
+@Composable
+private fun UpdateStatusLine() {
+    val status by UpdateInstaller.status.collectAsState()
+    val line = when (val s = status) {
+        UpdateInstaller.Status.NeedsPermission -> "Android asks once: turn on \"Allow from this source\" for Kash, then come back."
+        UpdateInstaller.Status.Ready -> "Android's installer is open. Tap Install there to finish."
+        is UpdateInstaller.Status.Failed -> s.message
+        else -> null
+    } ?: return
+    Text(line, style = KashType.Caption, color = KashColors.InkMuted)
 }
 
 @Composable
@@ -92,7 +153,7 @@ fun updatesRowValue(s: UpdateChecker.State): String = when {
 
 /** Body of Settings → Updates (the page frame lives in SettingsScreens). */
 @Composable
-fun UpdatesContent(s: UpdateChecker.State, cal: String, onCheckNow: () -> Unit, onDownload: (String) -> Unit) {
+fun UpdatesContent(s: UpdateChecker.State, cal: String, onCheckNow: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(
             Modifier
@@ -114,7 +175,8 @@ fun UpdatesContent(s: UpdateChecker.State, cal: String, onCheckNow: () -> Unit, 
                     Text("What's new", style = KashType.Label, color = KashColors.InkMuted)
                     ReleaseNotes(latest.notes)
                 }
-                KashButton("Download Kash ${latest.versionName}", { onDownload(latest.url) }, Modifier.fillMaxWidth(), compact = true)
+                UpdateButton(latest, Modifier.fillMaxWidth(), label = "Update to Kash ${latest.versionName}")
+                UpdateStatusLine()
             }
         }
         if (!s.fromPlay) {

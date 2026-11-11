@@ -105,7 +105,6 @@ fun UpdatesPage(onBack: () -> Unit) {
             UpdatesContent(
                 s, cal,
                 onCheckNow = { scope.launch { com.financeapp.notifications.UpdateChecker.checkNow(context) } },
-                onDownload = { url -> openDownloadPage(context, url) },
             )
         }
     }

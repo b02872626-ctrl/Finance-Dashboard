@@ -69,6 +69,15 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-11 NAH-35 in-app update: Update downloads the APK inside Kash
+  (with progress), checks its SHA-256 against version.json, and opens
+  Android's installer; the first time, Android asks to allow installs
+  from Kash. A pop-up shows when Kash opens with an update waiting
+  ("Later" = 3 days). release.sh publishes `apk` and `sha256`. Works from
+  the first release that includes it onward (testers install that one the
+  old way). Play upload must drop REQUEST_INSTALL_PACKAGES. Unit tests
+  pass; not yet on a phone.
+
 - 2026-11-11 NAH-33 notifications: no scan, sync or backup notifications
   any more (owner's call). The in-app scan runs in the background worker,
   the foreground service and its permissions are gone, and the old

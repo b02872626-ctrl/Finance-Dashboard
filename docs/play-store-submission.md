@@ -31,6 +31,17 @@ Policy sources: [SMS and Call Log permissions](https://support.google.com/google
 
 ## 1. Blockers in the code (fix before the first upload)
 
+### 1z. Remove the tester self-update permission (added 2026-11-11, NAH-35)
+
+Tester builds update themselves, which needs
+`android.permission.REQUEST_INSTALL_PACKAGES` in `AndroidManifest.xml`.
+Play rejects self-updating apps that declare it. Before the first Play
+upload, build the Play AAB without it: add a `play` product flavor whose
+manifest has
+`<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />`
+(and drop the `.updates` FileProvider there too). The in-app update code
+already stays hidden for Play installs.
+
 ### 1a. Target API 36
 
 Play rejects new apps and updates that target below API 36 since
