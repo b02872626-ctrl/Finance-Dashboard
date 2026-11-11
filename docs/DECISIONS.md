@@ -6,6 +6,18 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-11 — Only real payers count as income for payday and "income landed"
+
+The owner's Payday card picked "Telebirr wallet top-up" as their income
+(Telebirr's "your account has been credited" names no sender: it is a
+top-up from the user's own bank or a Mela loan), so "70% spent by day 2"
+and the rest were wrong. Regular income (web Payday) and looksLikeSalary
+(app "income landed") now skip non-payers: top-ups, wallets, Mela/loans,
+deposits, cash, interest, refunds/reversals and bank names. On the web a
+payday must also be at least a quarter of a usual month's spending. The
+card compares ETB spent with the usual pace (no more "0% left, slower than
+usual") and expects the next payday on the usual day of the month.
+
 ## 2026-11-11 — Web dashboard: dark mode, hide amounts, and a polish round
 
 Owner's requests. Dark mode follows the system and a sun/moon switch

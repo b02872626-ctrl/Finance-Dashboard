@@ -329,6 +329,14 @@ export function monthlyInOut(txs, { cal, now, count = 6 }) {
 
 // ── Payday ──────────────────────────────────────────────────────────────────
 /**
+ * Credits that aren't someone paying the user: wallet top-ups (Telebirr's
+ * "your account has been credited" names no sender), loans, deposits,
+ * interest, refunds and bank names. Mirrors NotificationRules.isPayerName.
+ */
+const NOT_A_PAYER = /top-?up|wallet|\bmela\b|loan|credit|deposit|cash|interest|refund|revers|own account|^from |bank|^telebirr|^cbe\b|^boa\b|^awash|^dashen/i;
+export const isPayerName = (name) => !!name && !!name.trim() && !NOT_A_PAYER.test(name.trim());
+
+/**
  * The user's regular income: credits from one sender, within ±20% of their
  * usual amount, in 2 or more of the last 3 months (this one included).
  * Mirrors NotificationRules.looksLikeSalary. The biggest such income wins.
@@ -344,7 +352,7 @@ export function regularIncome(txs, { cal, now }) {
   for (const t of txs) {
     if (!isIncome(t)) continue;
     const who = (t.counterparty || "").trim();
-    if (!who || !Number.isFinite(timeOf(t))) continue;
+    if (!isPayerName(who) || !Number.isFinite(timeOf(t))) continue;
     const key = who.toLowerCase();
     if (!bySender.has(key)) bySender.set(key, { source: who, rows: [] });
     bySender.get(key).rows.push(t);
@@ -362,6 +370,14 @@ export function regularIncome(txs, { cal, now }) {
     if (!best || score > best.score) best = { source, amount: usual, paychecks, score };
   }
   if (!best) return null;
+  // A "payday" has to matter: at least a quarter of a usual month's spending
+  // (a small regular transfer isn't what the month runs on).
+  const monthSpend = [m2, m1].map((start) => {
+    const [, end] = monthBounds(start, cal);
+    return sum(txs.filter((t) => isSpending(t) && timeOf(t) >= start && timeOf(t) < end));
+  });
+  const usualMonth = median(monthSpend.filter((x) => x > 0)) || 0;
+  if (usualMonth > 0 && best.amount < usualMonth * 0.25) return null;
   return {
     source: best.source,
     amount: best.amount,
@@ -369,6 +385,19 @@ export function regularIncome(txs, { cal, now }) {
     paydays: best.paychecks.map((p) => p.at),
     usualDay: Math.round(median(best.paychecks.map((p) => dayOfMonth(p.at, cal)))),
   };
+}
+
+/** The next date on [day] of the month after [after] (and after [now]). */
+function nextUsualDay(after, day, cal, now) {
+  let [start] = monthBounds(after, cal);
+  for (let i = 0; i < 3; i++) {
+    const [, end] = monthBounds(start, cal);
+    const len = Math.round((end - start) / DAY);
+    const candidate = start + (Math.min(day, len) - 1) * DAY;
+    if (candidate > after + 10 * DAY && candidate > startOfDay(now)) return candidate;
+    start = end;
+  }
+  return startOfDay(after) + 30 * DAY;
 }
 
 /** Spending per day after a payday, as a running total, for [days] days. */
@@ -438,7 +467,7 @@ export function paydayPattern(txs, { cal, now }) {
     amount: reg.amount,
     usualDay: reg.usualDay,
     lastPayday: last,
-    nextPayday: startOfDay(last) + cycleLen * DAY,
+    nextPayday: nextUsualDay(last, reg.usualDay, cal, now),
     cycleLen,
     daysTo70,
     spentShare,

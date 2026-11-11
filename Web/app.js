@@ -3042,25 +3042,33 @@ function renderPayday(allTxs) {
   if (!p.found) {
     $("pd-source").textContent = "";
     $("pd-body").innerHTML = `<p class="ins-lead">We haven't spotted a regular income yet.</p>
-      <p class="muted small">Once the same sender pays you a similar amount in two of the last three months, Kash shows when it lands and how fast it goes.</p>`;
+      <p class="muted small">Once the same person or company pays you a similar amount in two of the last three months, Kash shows when it lands and how fast it goes. Top-ups, loans and moves between your own accounts don't count.</p>`;
     chart.innerHTML = ""; legend.classList.add("hidden");
     return p;
   }
   legend.classList.remove("hidden");
   $("pd-source").textContent = `${p.source} · about ${formatETB(p.amount)}`;
   const dayWord = state.calendar === "ethiopian" ? `day ${p.usualDay} of the month` : `the ${ordinal(p.usualDay)}`;
-  const leftNow = p.current.at(-1);
-  const usualNow = p.usual[p.current.length - 1];
-  const pace = leftNow == null || usualNow == null ? ""
-    : leftNow < usualNow - 0.05 ? "You're spending faster than usual this cycle."
-    : leftNow > usualNow + 0.05 ? "You're spending slower than usual this cycle."
-    : "You're on your usual pace this cycle.";
+  // Spent so far this cycle against the usual by the same day (ETB, so it
+  // stays honest when spending passes the paycheck).
+  const day = p.chart.which === "this" ? p.chart.spent.length : null;
+  const spentNow = day ? p.chart.spent[day - 1] : null;
+  const usualNow = day ? p.usualSpent[day - 1] : null;
+  const pace = spentNow == null || usualNow == null || usualNow <= 0 ? ""
+    : spentNow > usualNow * 1.1 ? "That's faster than usual."
+    : spentNow < usualNow * 0.9 ? "That's slower than usual."
+    : "That's your usual pace.";
+  const sinceLine = spentNow == null
+    ? `This pay cycle has just started; the chart shows the last one.`
+    : spentNow >= p.amount
+      ? `Since ${dayLabel(p.lastPayday)} you've spent ${formatETB(spentNow)}, more than this paycheck. ${pace}`
+      : `Since ${dayLabel(p.lastPayday)} you've spent ${formatETB(spentNow)}, ${Math.round((spentNow / p.amount) * 100)}% of it. ${pace}`;
   $("pd-body").innerHTML = `
     <p class="ins-lead">Your income usually lands around ${escapeHtml(dayWord)}.</p>
     <ul class="ins-facts muted small">
       ${p.daysTo70 != null ? `<li>By day ${p.daysTo70} after payday you've usually spent 70% of it.</li>`
         : p.spentShare != null ? `<li>You usually spend ${p.spentShare}% of it before the next payday.</li>` : ""}
-      <li>Since ${escapeHtml(dayLabel(p.lastPayday))}: ${Math.max(0, Math.round((leftNow ?? 1) * 100))}% of it left. ${escapeHtml(pace)}</li>
+      <li>${escapeHtml(sinceLine)}</li>
       <li>Next one expected around ${escapeHtml(dayLabel(p.nextPayday))}.</li>
     </ul>`;
   // Money spent since payday (ETB), against the usual pace and the paycheck.
