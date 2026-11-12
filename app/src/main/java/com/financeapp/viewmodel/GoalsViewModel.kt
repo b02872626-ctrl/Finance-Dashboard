@@ -53,6 +53,7 @@ data class GoalDraft(
     val deadline: Long?,
     val accountKey: String?,
     val note: String? = null,
+    val emoji: String? = null,
 )
 
 class GoalsViewModel(
@@ -101,6 +102,7 @@ class GoalsViewModel(
                 goals.create(
                     GoalEntity(
                         name = d.name.trim(),
+                        emoji = d.emoji,
                         type = d.type,
                         targetAmount = if (d.type == GoalType.OPEN_ENDED) null else d.amount,
                         targetMonths = if (d.type == GoalType.OPEN_ENDED) d.months else null,
@@ -126,6 +128,25 @@ class GoalsViewModel(
     }
 
     fun deleteSave(id: String) = viewModelScope.launch(Dispatchers.IO) { goals.deleteSave(id) }
+
+    /**
+     * Edit keeps the kind and when the goal started; the rest comes from [d].
+     * [onDone] gets null on success, or why the account can't be used.
+     */
+    fun edit(goal: GoalEntity, d: GoalDraft, onDone: (AccountInUseException?) -> Unit = {}) {
+        val updated = goal.copy(
+            name = d.name.trim(),
+            emoji = d.emoji,
+            targetAmount = if (goal.type == GoalType.OPEN_ENDED) null else d.amount,
+            targetMonths = if (goal.type == GoalType.OPEN_ENDED) d.months else null,
+            deadline = if (goal.type == GoalType.DATE_BOUND) d.deadline else null,
+            linkedAccountKey = d.accountKey,
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            val error = try { goals.update(updated); null } catch (e: AccountInUseException) { e }
+            withContext(Dispatchers.Main) { onDone(error) }
+        }
+    }
 
     /** [onDone] gets null on success, or why the account can't be used. */
     fun setAccount(goal: GoalEntity, key: String?, onDone: (AccountInUseException?) -> Unit = {}) {

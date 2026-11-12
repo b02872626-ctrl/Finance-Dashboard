@@ -248,6 +248,8 @@ fun GoalDetailScreen(
     onOpenTx: (Long) -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
+    onEdit: () -> Unit = {},
+    onChangeAccount: () -> Unit = {},
 ) {
     KashSystemBars(darkIcons = true)
     val cal = LocalCalendarSystem.current
@@ -333,6 +335,11 @@ fun GoalDetailScreen(
 
     if (menuOpen) KashSheet(title = goalTitle(goal), onDismiss = { menuOpen = false }) {
         KashListGroup {
+            if (!archived) KashListRow("Edit", onClick = { menuOpen = false; onEdit() })
+            if (!archived) KashListRow(
+                "Change account", value = accountLabel ?: "None",
+                onClick = { menuOpen = false; onChangeAccount() },
+            )
             if (!archived) KashListRow("Archive", hint = "Hide it from your goals and free its account", onClick = { menuOpen = false; onArchive() })
             KashListRow("Delete", labelColor = KashColors.MoneyOut, showDivider = false, onClick = { menuOpen = false; confirmDelete = true })
         }
