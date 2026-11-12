@@ -568,8 +568,8 @@ function addisLabel(ms, opts = { month: "short", day: "numeric" }) {
   return new Date(ms + ADDIS_OFFSET_MS).toLocaleDateString(undefined, { ...opts, timeZone: "UTC" });
 }
 
-// Block chart: each column is a stack of rounded cells. Filled cells are that
-// day's active users; grey cells pad every column up to the busiest day.
+// Line chart: one point per day, the area under it lightly filled. The busiest
+// day and today get a dot; hovering a day shows a guide line and its count.
 function renderDau(sessions) {
   const today = addisDayStart(Date.now());
   const days = Array.from({ length: DAU_DAYS }, (_, i) => {
@@ -588,40 +588,60 @@ function renderDau(sessions) {
   setTrend("dau", `vs ${avg7.toFixed(1)} avg`, trendDir(todayCount, Math.round(avg7 * 10) / 10));
 
   const max = Math.max(1, ...counts);
-  const rows = Math.min(10, Math.max(4, max));           // cells per column
-  const perCell = max / rows;
-  const peak = counts.indexOf(max);
-  const ticks = [max, Math.round(max / 2), 0];
+  const top = max <= 4 ? 4 : Math.ceil(max / 2) * 2;      // even top so the middle tick is whole
+  const peak = counts.indexOf(Math.max(...counts));
+  const ticks = [top, top / 2, 0];
+  // Plot coordinates are percentages (viewBox 0 0 100 100, stretched to fit).
+  const px = (i) => ((i + 0.5) / DAU_DAYS) * 100;
+  const py = (n) => 100 - (n / top) * 100;
+  const pts = counts.map((n, i) => `${px(i).toFixed(2)},${py(n).toFixed(2)}`);
+  const line = `M${pts.join(" L")}`;
+  const area = `${line} L${px(DAU_DAYS - 1).toFixed(2)},100 L${px(0).toFixed(2)},100 Z`;
+  const dot = (i, cls) => `<span class="ln-dot ${cls}" style="left:${px(i)}%;top:${py(counts[i])}%"></span>`;
 
   dauChart.innerHTML = `
-    <div class="blk-plot">
-      <div class="blk-y">${ticks.map((t) => `<span>${t}</span>`).join("")}</div>
-      <div class="blk-cols">${days.map((d, i) => {
-        const n = d.users.size;
-        const filled = n === 0 ? 0 : Math.max(1, Math.round(n / perCell));
-        const cells = Array.from({ length: rows }, (_, r) =>
-          `<i class="${rows - r <= filled ? "on" : ""}"></i>`).join("");
-        return `<div class="blk-col${i === days.length - 1 ? " is-today" : ""}${i === peak && max > 0 ? " is-peak" : ""}"
-          data-label="${escapeAttr(addisLabel(d.start, { weekday: "short", month: "short", day: "numeric" }))}" data-n="${n}">${cells}</div>`;
-      }).join("")}</div>
+    <div class="ln-plot">
+      <div class="ln-y">${ticks.map((t) => `<span>${t}</span>`).join("")}</div>
+      <div class="ln-area">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="dau-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--accent)" stop-opacity="0.22"/>
+            <stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
+          </linearGradient></defs>
+          ${ticks.map((t) => `<line class="ln-grid" x1="0" x2="100" y1="${py(t)}" y2="${py(t)}"/>`).join("")}
+          <path class="ln-fill" d="${area}" fill="url(#dau-fill)"/>
+          <path class="ln-line" d="${line}"/>
+        </svg>
+        ${max > 0 && peak !== DAU_DAYS - 1 ? dot(peak, "is-peak") : ""}
+        ${dot(DAU_DAYS - 1, "is-today")}
+        <span class="ln-guide hidden"></span>
+        <span class="ln-dot is-hover hidden"></span>
+        <div class="ln-hit">${days.map((d, i) =>
+          `<i data-i="${i}" data-label="${escapeAttr(addisLabel(d.start, { weekday: "short", month: "short", day: "numeric" }))}" data-n="${counts[i]}"></i>`).join("")}</div>
+      </div>
     </div>
-    <div class="blk-x">${days.map((d, i) =>
+    <div class="ln-x">${days.map((d, i) =>
       `<span>${i % 5 === 0 || i === days.length - 1 ? escapeHtml(i === days.length - 1 ? "Today" : addisLabel(d.start)) : ""}</span>`).join("")}</div>
     <div class="blk-tip hidden" role="status"></div>`;
 
   const tip = dauChart.querySelector(".blk-tip");
-  const plot = dauChart.querySelector(".blk-cols");
-  const show = (col) => {
-    if (!col) { tip.classList.add("hidden"); return; }
-    tip.innerHTML = `<strong>${escapeHtml(col.dataset.label)}</strong><span>Active users <b>${col.dataset.n}</b></span>`;
-    tip.classList.remove("hidden");
+  const hit = dauChart.querySelector(".ln-hit");
+  const guide = dauChart.querySelector(".ln-guide");
+  const hoverDot = dauChart.querySelector(".ln-dot.is-hover");
+  const show = (cell) => {
+    const parts = [tip, guide, hoverDot];
+    if (!cell) { parts.forEach((el) => el.classList.add("hidden")); return; }
+    const i = Number(cell.dataset.i);
+    tip.innerHTML = `<strong>${escapeHtml(cell.dataset.label)}</strong><span>Active users <b>${cell.dataset.n}</b></span>`;
+    guide.style.left = hoverDot.style.left = `${px(i)}%`;
+    hoverDot.style.top = `${py(counts[i])}%`;
+    parts.forEach((el) => el.classList.remove("hidden"));
     const box = dauChart.getBoundingClientRect();
-    const c = col.getBoundingClientRect();
-    const x = Math.min(Math.max(c.left - box.left + c.width / 2, 70), box.width - 70);
-    tip.style.left = `${x}px`;
+    const c = cell.getBoundingClientRect();
+    tip.style.left = `${Math.min(Math.max(c.left - box.left + c.width / 2, 70), box.width - 70)}px`;
   };
-  plot.addEventListener("pointerover", (e) => show(e.target.closest(".blk-col")));
-  plot.addEventListener("pointerleave", () => show(null));
+  hit.addEventListener("pointerover", (e) => show(e.target.closest("i")));
+  hit.addEventListener("pointerleave", () => show(null));
 }
 
 const BANK_TONES = ["tone-green", "tone-orange", "tone-blue"];
