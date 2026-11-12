@@ -69,6 +69,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Home no longer marks the owner's own accounts as someone
+  else's ("<Name>'s?") when the name in Settings isn't the one the banks
+  use. The name most SMS greet now always counts as the owner too
+  (`AccountOwnershipTest`, 6 tests). Not yet on a phone.
+
 - 2026-11-12 1.0.32: Moving money between your own accounts no longer counts as spending and income; Money-in and low-balance alerts arrive right away, even on busy days. Not yet installed on a real phone.
 - 2026-11-12 Notifications: income and low-balance alerts no longer wait
   for the evening digest when 3 alerts have already shown that day (the

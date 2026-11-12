@@ -43,6 +43,14 @@ class AccountOwnershipTest {
         assertEquals("hana", AccountOwnership.otherHolder(hana, owners))
     }
 
+    @Test fun aSettingsNameTheBanksNeverUseStillLeavesTheOwnersAccountsAlone() {
+        // Settings says "Sami", but every bank greets "Abebe": those are still the owner's.
+        val owners = AccountOwnership.ownerNames(mine + hana + tsion, userName = "Sami")
+        assertEquals(setOf("sami", "abebe"), owners)
+        assertNull(AccountOwnership.otherHolder(mine, owners))
+        assertEquals("hana", AccountOwnership.otherHolder(hana, owners))
+    }
+
     @Test fun shortFormsOfTheOwnersNameMatch() {
         val abe = List(2) { tx("Dear Abe your Account 1****4444 has been credited") }
         assertNull(AccountOwnership.otherHolder(abe, setOf("abebech")))
