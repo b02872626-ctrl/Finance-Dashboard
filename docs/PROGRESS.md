@@ -73,6 +73,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Admin dashboard: "Daily active users" is now a line chart
+  (was a block chart). Peak day and today get a dot; hover shows the day's count.
 - 2026-11-12 App session replay in PostHog, fully masked (all text, text
   fields and images hidden, no logs). Privacy policy updated. Owner
   checked it on a Galaxy S22 (branch build): recordings arrive, masked.
