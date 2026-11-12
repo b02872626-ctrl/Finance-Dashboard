@@ -2,12 +2,14 @@ package com.financeapp.data.repository
 
 import androidx.room.withTransaction
 import com.financeapp.data.accounts.AccountGrouping
+import com.financeapp.data.accounts.OwnTransferPairing
 import com.financeapp.data.categorize.CategoryPredictor
 import com.financeapp.data.db.AppDatabase
 import com.financeapp.data.db.CounterpartyAggregate
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.RawSmsEntity
 import com.financeapp.data.model.ReviewStatus
+import com.financeapp.data.model.Spending
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.model.TransactionCategoryCatalog
 import com.financeapp.parsing.ParserUtils
@@ -309,6 +311,28 @@ class TransactionRepository(
             }
         }
         return id
+    }
+
+    /**
+     * Files both legs of a move between the user's own accounts (CBE → CBE
+     * Birr, CBE 1 → CBE 2, …) under "Own accounts", so it is neither spending
+     * nor income. Finds them by pairing a money-out and a money-in row of the
+     * same amount seconds apart on two different accounts, or sharing a
+     * reference number ([OwnTransferPairing]). Rows with a category of their
+     * own are never touched. Safe to run again and again; returns the ids of
+     * the rows it filed this time.
+     */
+    suspend fun tagOwnTransfers(): Set<Long> {
+        val toTag = OwnTransferPairing.findPairs(txnDao.getOwnTransferPool())
+            .flatMap { it.toTag() }
+            .map { it.id }
+        if (toTag.isEmpty()) return emptySet()
+        db.withTransaction {
+            for (id in toTag) {
+                txnDao.applyReviewedCategory(id, Spending.OWN_ACCOUNTS, ReviewStatus.CONFIRMED)
+            }
+        }
+        return toTag.toSet()
     }
 
     suspend fun skipReview(id: Long) {

@@ -6,6 +6,27 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Moves between your own accounts are found by pairing the two texts
+
+Spending and income were inflated: only Telebirr's own transfer texts and
+some Berhan credits were typed as own-account moves, so CBE → CBE Birr,
+CBE 1 → CBE 2, CBE → Awash and the like counted as spending on one side and
+income on the other. Names can't tell them apart (people hold accounts under
+other names), and most bank SMS don't print the other account's number. So
+`OwnTransferPairing` pairs a money-out row and a money-in row of the same
+amount within 5 minutes on two different accounts (another bank, or another
+last-4 digits at the same bank), and files both as "Own accounts". A shared
+reference number is the fallback for legs that can't be told apart by
+account. A pair is taken only when neither leg has a rival partner, and a
+row with a category of its own is never touched: wrongly hiding a payment
+is worse than leaving a transfer in. A transfer already typed
+INTERNAL_TRANSFER ("to CBE…" / "from CBE…") anchors the other bank's leg.
+It runs after every SMS scan (new texts and old history), before alerts. The
+category syncs, so the web dashboard needs no change. On the owner's export,
+pairing at 60 seconds found ~400 debit/credit pairs (nearly all CBE ↔
+Telebirr); shared reference numbers matched none there, so the reference
+fallback is a safety net, not the main path.
+
 ## 2026-11-12 — No real people's details in the public repo
 
 The repo is public. Parser comments and tests had real testers' names, two
