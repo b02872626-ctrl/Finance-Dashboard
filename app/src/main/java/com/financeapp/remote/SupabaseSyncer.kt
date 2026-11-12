@@ -69,7 +69,10 @@ class SupabaseSyncer(private val context: Context) {
             return@withContext pushResult
         }
 
-        val pulled = runCatching { pullRemoteStates(repo) }
+        // Rows just uploaded decide how far back the pull reads: after a
+        // reinstall that is the whole re-read history.
+        val uploaded = if (pushResult is SupabaseSyncResult.Success) pendingTransactions else emptyList()
+        val pulled = runCatching { pullRemoteStates(repo, uploaded) }
             .getOrElse { e ->
                 ErrorLogRepository.fromContext(context).log("Supabase pull failed", e)
                 0
@@ -93,18 +96,22 @@ class SupabaseSyncer(private val context: Context) {
      * `isSynced = 0` — those have pending local edits and would lose the
      * user's work if we overwrote them.
      */
-    private suspend fun pullRemoteStates(repo: TransactionRepository): Int {
+    private suspend fun pullRemoteStates(
+        repo: TransactionRepository,
+        justUploaded: List<TransactionEntity>,
+    ): Int {
         val cfg = SupabaseConfigProvider.fromBuildConfig() ?: return 0
         val settingsRepo = SettingsRepository(context)
         val session = ensureFreshSession(settingsRepo, cfg) ?: return 0
 
         val client = SupabaseRestClient(cfg, session.accessToken)
-        // Last 90 days bounds the bandwidth without missing anything fresh.
-        val ninetyDaysAgo = System.currentTimeMillis() - 90L * 24 * 3600 * 1000L
+        // Last 90 days bounds the bandwidth without missing anything fresh;
+        // further back when older rows were just uploaded (a reinstall).
+        val since = CloudCategoryRestore.pullSinceMs(System.currentTimeMillis(), justUploaded)
         val sinceIso = java.text.SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US
         ).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
-            .format(java.util.Date(ninetyDaysAgo))
+            .format(java.util.Date(since))
 
         val remote = client.fetchTransactionStates(session.userId, sinceIso)
         if (remote.isEmpty()) return 0
@@ -134,6 +141,10 @@ class SupabaseSyncer(private val context: Context) {
             )
             updated++
         }
+        // Categories the user made themselves live only on the phone; bring
+        // back the ones the restored rows use so the picker shows them.
+        CloudCategoryRestore.customCategoriesToRestore(remote.map { it.category }, settingsRepo.getCustomCategories())
+            .forEach { settingsRepo.addCustomCategory(it) }
         return updated
     }
 

@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — An untouched row never overwrites a cloud category (NAH-41)
+
+Reinstalling and signing in again wiped every category. The reinstall
+re-reads all SMS as untouched rows (PENDING, no category); uploading them
+with `category = null` overwrote what Supabase had, and the pull only read
+the last 90 days. Now a row that is PENDING with no category uploads without
+`category` and `review_status` (separate upsert batch, since PostgREST needs
+the same keys per batch), so the cloud keeps its value; the pull that
+follows reaches back to the oldest row just uploaded (whole history after a
+reinstall) and pages through it; and custom category names used by restored
+rows go back into the user's own list. Trade-off: undoing a Skip or "Not a
+transaction" back to untouched doesn't reach the cloud. Category rules
+("use for this sender from now on") still live only on the phone and are
+not restored. See `remote/CloudCategoryRestore.kt`.
+
 ## 2026-11-12 — Web dashboard design basics (look unchanged)
 
 Owner's call: keep the dashboard's look, fix the basics (Apple HIG-style).
