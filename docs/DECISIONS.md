@@ -6,6 +6,14 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Goals: editing keeps the kind and the start date (NAH-14)
+
+Edit goal can change the name, emoji, amount, months, date and account,
+but not the kind (make a new goal for that). The goal's start date stays,
+so moving a goal to another account counts that account's money from
+when the goal was made, not from the edit. Simpler to explain than a
+second start date; revisit if testers find it surprising.
+
 ## 2026-11-12 — Goals in the app: one account feeds one goal (NAH-14)
 
 Goals move into the Android app as their own section. Money reaches a goal

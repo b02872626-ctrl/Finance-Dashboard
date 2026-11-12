@@ -5,13 +5,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Goals section in the app (NAH-14).** PR 1 (logic) and PR 2 (screens)
-  are done. Next: PR 3 New goal / Edit goal flow (kind → details →
-  account); until it lands, "+" on the Goals tab only shows a "comes in the
-  next update" message, so PR 2 and PR 3 must ship in the same release.
-  PR 4 later: Supabase sync (new SQL file adding a linked-account column
-  to `i_goals`), web dashboard brought in line, "goal reached"
-  notification. Until PR 4, goals live only on the phone.
+- **Goals section in the app (NAH-14).** PRs 1–3 (logic, screens, New /
+  Edit goal) are open, stacked: merge #67, then #68, then the New goal PR.
+  Then try it on a real phone and at 360dp before the next release. PR 4
+  later: Supabase sync (new SQL file adding a linked-account column to
+  `i_goals`), web dashboard brought in line, "goal reached" notification.
+  Until PR 4, goals live only on the phone.
 
 - **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
   downloads and 100 active users. Release and install on a real phone by
@@ -80,6 +79,14 @@ items to Done with the date, add what is next or blocked.
   account rule, see the submission checklist §5).
 
 ## Done
+
+- 2026-11-12 New goal and Edit goal (NAH-14, PR 3): "+" on Goals opens a
+  3-step form: kind (amount by a date / safety net / every month),
+  details (name, emoji, amount or months with "That's about X ETB", date
+  chips 3 / 6 / 12 months or a day picker in either calendar), then the
+  account (taken ones are greyed out with "Used by Laptop", or "None,
+  I'll add saves myself"). The goal page menu has Edit and Change
+  account. `GoalFormTest` (7). Not checked at 360dp or on a phone.
 
 - 2026-11-12 Goals screens (NAH-14, PR 2): a 4th tab (target icon) opens
   Goals with a sand top instead of slate: total saved, "2 of 3 on track",

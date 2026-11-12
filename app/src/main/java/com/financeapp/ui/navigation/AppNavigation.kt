@@ -65,6 +65,8 @@ import com.financeapp.ui.screens.HistoryScreen
 import com.financeapp.ui.screens.HomeScreen
 import com.financeapp.ui.screens.GoalDetailScreen
 import com.financeapp.ui.screens.GoalsScreen
+import com.financeapp.ui.screens.GoalFormScreen
+import com.financeapp.ui.screens.GoalFormStep
 import com.financeapp.ui.screens.NotificationsPage
 import com.financeapp.ui.screens.UpdatesPage
 import com.financeapp.ui.screens.WrappedScreen
@@ -438,10 +440,7 @@ private fun MainNavigation(
                     state = goals,
                     tabBar = tabBar(KashTab.Goals),
                     onOpenGoal = { navController.navigate("goal/$it") },
-                    // The New goal flow is the next PR (NAH-14, PR 3).
-                    onNewGoal = {
-                        Toast.makeText(context, "Making a goal comes in the next update", Toast.LENGTH_SHORT).show()
-                    },
+                    onNewGoal = { navController.navigate("goal_new") },
                 )
             }
             composable(
@@ -465,6 +464,48 @@ private fun MainNavigation(
                     onOpenTx = ::openTx,
                     onArchive = { goalsVm.archive(result.goal); back() },
                     onDelete = { goalsVm.delete(result.goal); back() },
+                    onEdit = { navController.navigate("goal_edit/$id") },
+                    onChangeAccount = { navController.navigate("goal_edit/$id?step=account") },
+                )
+            }
+            composable("goal_new") {
+                val goals by goalsVm.state.collectAsState()
+                GoalFormScreen(
+                    accounts = goals.accounts,
+                    averageMonthlySpend = goals.averageMonthlySpend,
+                    onClose = ::back,
+                    onSave = { draft, onError ->
+                        goalsVm.create(draft) { newId, error ->
+                            if (error != null) onError("${error.usedBy.name} already uses this account. Pick another, or none.")
+                            else if (newId != null) navController.navigate("goal/$newId") {
+                                popUpTo(Screen.Goals.route)
+                            }
+                        }
+                    },
+                )
+            }
+            composable(
+                route = "goal_edit/{goalId}?step={step}",
+                arguments = listOf(
+                    navArgument("goalId") { type = NavType.StringType },
+                    navArgument("step") { type = NavType.StringType; nullable = true; defaultValue = null },
+                )
+            ) { backStack ->
+                val id = backStack.arguments?.getString("goalId") ?: return@composable
+                val goals by goalsVm.state.collectAsState()
+                val goal = goals.result(id)?.goal ?: return@composable
+                GoalFormScreen(
+                    accounts = goals.accounts,
+                    averageMonthlySpend = goals.averageMonthlySpend,
+                    editing = goal,
+                    startAt = if (backStack.arguments?.getString("step") == "account") GoalFormStep.Account else GoalFormStep.Details,
+                    onClose = ::back,
+                    onSave = { draft, onError ->
+                        goalsVm.edit(goal, draft) { error ->
+                            if (error != null) onError("${error.usedBy.name} already uses this account. Pick another, or none.")
+                            else back()
+                        }
+                    },
                 )
             }
             composable(
