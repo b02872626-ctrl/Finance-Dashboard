@@ -57,6 +57,10 @@ enum class KashIcon(vararg val paths: String) {
     Backspace("M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7z", "M12 9.5l5 5M17 9.5l-5 5"),
     /** Added for the PIN and form error lines (not in the original 23). */
     Info("M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z", "M12 7.5v5.5M12 16.5v.01"),
+    /** Added for the Goals tab: a target, two rings and a centre. */
+    Target("M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z", "M16.5 12a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0z", "M12 12v.01"),
+    /** Added for the goal page menu. */
+    More("M5 12h.01M12 12h.01M19 12h.01"),
 }
 
 private val cache = HashMap<Pair<KashIcon, Float>, ImageVector>()

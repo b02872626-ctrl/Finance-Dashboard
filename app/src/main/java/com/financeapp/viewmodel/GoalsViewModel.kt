@@ -120,9 +120,9 @@ class GoalsViewModel(
         }
     }
 
-    fun logSave(goalId: String, amount: Double, note: String?) {
+    fun logSave(goalId: String, amount: Double, note: String?, atMs: Long = clock()) {
         if (amount <= 0.0) return
-        viewModelScope.launch(Dispatchers.IO) { goals.logSave(goalId, amount, note, clock()) }
+        viewModelScope.launch(Dispatchers.IO) { goals.logSave(goalId, amount, note, atMs) }
     }
 
     fun deleteSave(id: String) = viewModelScope.launch(Dispatchers.IO) { goals.deleteSave(id) }

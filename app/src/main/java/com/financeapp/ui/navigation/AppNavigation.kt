@@ -63,6 +63,8 @@ import com.financeapp.ui.screens.EditAccountPage
 import com.financeapp.ui.screens.ExportSheet
 import com.financeapp.ui.screens.HistoryScreen
 import com.financeapp.ui.screens.HomeScreen
+import com.financeapp.ui.screens.GoalDetailScreen
+import com.financeapp.ui.screens.GoalsScreen
 import com.financeapp.ui.screens.NotificationsPage
 import com.financeapp.ui.screens.UpdatesPage
 import com.financeapp.ui.screens.WrappedScreen
@@ -83,6 +85,10 @@ import com.financeapp.viewmodel.BankAnalyticsViewModel
 import com.financeapp.viewmodel.BankAnalyticsViewModelFactory
 import com.financeapp.viewmodel.DashboardViewModel
 import com.financeapp.viewmodel.DashboardViewModelFactory
+import com.financeapp.viewmodel.GoalsViewModel
+import com.financeapp.viewmodel.GoalsViewModelFactory
+import com.financeapp.data.db.AppDatabase
+import com.financeapp.data.repository.GoalRepository
 import com.financeapp.viewmodel.OnboardingViewModel
 import com.financeapp.viewmodel.OnboardingViewModelFactory
 import com.financeapp.viewmodel.ReviewQueueViewModel
@@ -104,6 +110,7 @@ sealed class Screen(val route: String) {
     object Analytics : Screen("analytics")
     object Profile : Screen("profile")
     object AddTransaction : Screen("add_transaction")
+    object Goals : Screen("goals")
 }
 
 @Composable
@@ -258,6 +265,9 @@ private fun MainNavigation(
     val txVm: TransactionsViewModel = viewModel(factory = remember { TransactionsViewModelFactory(repo) })
     val anlVm: AnalyticsViewModel = viewModel(factory = remember { AnalyticsViewModelFactory(repo) })
     val sourcesVm: OnboardingViewModel = viewModel(factory = remember { OnboardingViewModelFactory(repo, settingsRepo) })
+    val goalsVm: GoalsViewModel = viewModel(
+        factory = remember { GoalsViewModelFactory(GoalRepository(AppDatabase.getInstance(context.applicationContext)), repo) }
+    )
     val categories by setVm.categories.collectAsState()
     // Real recent picks for the picker's "Recent" row, pushed by the repo
     // every time the user confirms a category.
@@ -279,6 +289,7 @@ private fun MainNavigation(
                     KashTab.Home -> Screen.Dashboard
                     KashTab.History -> Screen.Transactions
                     KashTab.Analytics -> Screen.Analytics
+                    KashTab.Goals -> Screen.Goals
                 }
                 if (target == Screen.Transactions) txVm.clearFilters()
                 navController.navigate(target.route) {
@@ -419,6 +430,41 @@ private fun MainNavigation(
                     onReview = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
                     onAccount = ::openAccount,
                     onWrapped = { navController.navigate("wrapped/$it") },
+                )
+            }
+            composable(Screen.Goals.route) {
+                val goals by goalsVm.state.collectAsState()
+                GoalsScreen(
+                    state = goals,
+                    tabBar = tabBar(KashTab.Goals),
+                    onOpenGoal = { navController.navigate("goal/$it") },
+                    // The New goal flow is the next PR (NAH-14, PR 3).
+                    onNewGoal = {
+                        Toast.makeText(context, "Making a goal comes in the next update", Toast.LENGTH_SHORT).show()
+                    },
+                )
+            }
+            composable(
+                route = "goal/{goalId}",
+                arguments = listOf(navArgument("goalId") { type = NavType.StringType })
+            ) { backStack ->
+                val id = backStack.arguments?.getString("goalId") ?: return@composable
+                val goals by goalsVm.state.collectAsState()
+                val result = goals.result(id)
+                // Deleted (or not loaded yet): nothing to show; a delete pops back itself.
+                if (result == null) return@composable
+                var celebrated by remember(id) { mutableStateOf(id in settingsRepo.getCelebratedGoals()) }
+                GoalDetailScreen(
+                    result = result,
+                    accountLabel = goals.accountLabel(result.goal.linkedAccountKey),
+                    celebrate = !celebrated && result.goal.status == com.financeapp.data.model.GoalStatus.ACHIEVED,
+                    onCelebrated = { settingsRepo.markGoalCelebrated(id); celebrated = true },
+                    onBack = ::back,
+                    onAddSave = { amount, note, at -> goalsVm.logSave(id, amount, note, at) },
+                    onDeleteSave = goalsVm::deleteSave,
+                    onOpenTx = ::openTx,
+                    onArchive = { goalsVm.archive(result.goal); back() },
+                    onDelete = { goalsVm.delete(result.goal); back() },
                 )
             }
             composable(
