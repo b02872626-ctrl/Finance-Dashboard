@@ -6,7 +6,7 @@ import {
   accountSuffix, changePct, dayOfMonth, ethiopianToGregorian, gregorianToEthiopian,
   groupAccounts, inContext, isIncome, isSpending, lowBalanceDays, monthBounds,
   monthlyInOut, paydayPattern, regularIncome, spendOverview, weekStart, isPayerName,
-  incomeSenders, normaliseSource,
+  incomeSenders, normaliseSource, txFlow,
 } from "../../Web/insights.js";
 
 const at = (y, m, d, h = 12) => new Date(y, m - 1, d, h, 0).getTime();
@@ -25,6 +25,18 @@ test("own-account moves are neither spending nor income", () => {
   assert.equal(isSpending(tx(NOW, 10, { category: "Own accounts" })), false);
   assert.equal(isIncome(credit(NOW, 10, "Me", { category: "Own accounts" })), false);
   assert.equal(isSpending(tx(NOW, 10, { type: "PAYMENT" })), true);
+});
+
+test("transactions filter: credit, debit or internal transfer", () => {
+  assert.equal(txFlow(credit(NOW, 10)), "CREDIT");
+  assert.equal(txFlow(tx(NOW, 10)), "DEBIT");
+  assert.equal(txFlow(tx(NOW, 10, { type: "PAYMENT" })), "DEBIT");
+  assert.equal(txFlow(tx(NOW, 10, { type: "TRANSFER_OUT" })), "DEBIT");
+  assert.equal(txFlow(tx(NOW, 10, { type: "INTERNAL_TRANSFER" })), "INTERNAL");
+  // Tagged "Own accounts" counts as internal whichever way the SMS read.
+  assert.equal(txFlow(tx(NOW, 10, { category: "Own accounts" })), "INTERNAL");
+  assert.equal(txFlow(credit(NOW, 10, "Me", { category: "Own accounts" })), "INTERNAL");
+  assert.equal(txFlow(tx(NOW, 10, { type: "UNKNOWN" })), null);
 });
 
 test("Ethiopian conversion round-trips and months have the right length", () => {

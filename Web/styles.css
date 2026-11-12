@@ -747,6 +747,7 @@ input:focus, select:focus { border-color: var(--coral); }
 .tx-controls input[type="date"] { min-width: 150px; }
 .tx-controls input[type="number"] { min-width: 130px; max-width: 160px; }
 .tx-controls-row2 { margin-top: -4px; }
+.tx-flow-chips { margin-bottom: 10px; }
 .csv-btn { padding: 12px 18px; font-size: 13px; }
 
 .table-wrap { overflow-x: auto; }
@@ -2601,3 +2602,68 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 .pd-choose { white-space: nowrap; font-size: 13px; padding: 7px 12px; }
 .pd-choose[disabled] { opacity: .6; cursor: default; }
 .pd-sender.on .pd-choose { background: var(--k-ink); color: var(--k-surface); border-color: var(--k-ink); }
+
+/* =============================================================================
+   Design basics (Apple HIG-style). No visual change at rest: these only add
+   instant press feedback, a keyboard focus ring, bigger touch targets on
+   phones, and respect the reduced-motion / contrast / transparency settings.
+   ============================================================================= */
+
+/* Taps respond on press, with no 300ms double-tap-zoom delay and no grey
+   flash box on mobile. */
+button, [role="button"], [role="tab"], .tx-table tbody tr, a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+/* Instant, subtle press feedback on everything you can tap (it used to be on
+   a few buttons only). Applied on press with no delay; transform is
+   compositor-only, so it never janks. */
+.btn-primary:active, .btn-secondary:active, .btn-ghost:active, .btn-google:active, .fb-submit:active,
+.ins-chip:active, .period-pill:active, .view-tab:active, .calendar-toggle-btn:active,
+.hamburger-btn:active, .theme-toggle:active {
+  transform: scale(.97);
+}
+.tx-table tbody tr:active { background: var(--k-well); }
+
+/* Keyboard users can see where they are. Mouse and touch clicks show
+   nothing new (focus-visible only fires for keyboard focus). */
+button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
+a:focus-visible, .tx-table tbody tr:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--k-slate);
+  outline-offset: 2px;
+}
+
+/* Phones: filter chips and period pills are easy to hit (36px tall)
+   without looking different on a desktop with a mouse. */
+@media (pointer: coarse) {
+  .ins-chip, .k-panel-head .period-pill { min-height: 36px; }
+}
+
+/* Reduce motion: keep feedback, drop movement. Fades stay, slides, pops,
+   press-scale and the looping shimmer go. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+  .num-skel { animation: none !important; }
+  .big-number.just-rendered { animation: none; }
+  .btn-primary:active, .btn-secondary:active, .btn-ghost:active, .btn-google:active, .fb-submit:active,
+  .ins-chip:active, .period-pill:active, .view-tab:active, .calendar-toggle-btn:active,
+  .hamburger-btn:active, .theme-toggle:active { transform: none; }
+  .toast, .toast.visible, .budget-refund-toast, .budget-refund-toast.visible,
+  .batch-bar, .batch-bar.visible { transition-property: opacity; }
+  .toast.visible, .budget-refund-toast.visible { transform: translateX(-50%); }
+}
+
+/* Reduce transparency: solid scrim behind the transaction detail. */
+@media (prefers-reduced-transparency: reduce) {
+  .tx-modal-backdrop { backdrop-filter: none; background: rgb(43, 51, 64); }
+}
+
+/* Increase contrast: firmer lines and darker secondary text. */
+@media (prefers-contrast: more) {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+    --k-line: var(--k-line-strong);
+    --k-line-soft: var(--k-line-strong);
+    --k-ink-muted: var(--k-ink);
+  }
+  .card, .ins-chip, input, select { border-color: var(--k-ink-muted); }
+}

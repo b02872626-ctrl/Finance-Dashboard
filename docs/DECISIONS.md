@@ -6,6 +6,27 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Web dashboard design basics (look unchanged)
+
+Owner's call: keep the dashboard's look, fix the basics (Apple HIG-style).
+One block at the end of `Web/styles.css`: every button, tab, chip and pill
+shrinks slightly on press (before only some buttons did), no tap delay or
+grey tap flash on phones, a focus ring for keyboard users only
+(`:focus-visible`), chips and period pills 36px tall on touch screens, and
+the browser's reduce-motion, reduce-transparency and more-contrast settings
+are respected (no shimmer or slides; solid scrim; firmer lines). New styles
+go above that block or must keep these working.
+
+## 2026-11-12 — Web Transactions filter: Credit, Debit, Internal transfer
+
+The web dashboard's Transactions list gets an All / Credit / Debit /
+Internal transfer switch above the other filters. It follows the money
+rules, not the raw SMS type: Internal transfer is anything typed
+`INTERNAL_TRANSFER` or tagged "Own accounts" (rule 5), and those never show
+under Credit or Debit. Debit covers DEBIT, PAYMENT and TRANSFER_OUT. Rule in
+`txFlow` (`Web/insights.js`), tested in `tests/web/insights.test.mjs`. The
+detailed "All types" dropdown stays for the raw type.
+
 ## 2026-11-12 — App session replay, fully masked (reverses part of 2026-11-09)
 
 Owner's call: turn on PostHog session replay in the Android app to see
