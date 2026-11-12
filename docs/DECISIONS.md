@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — New category one tap away; tapping the Review card shows details (NAH-42)
+
+Owner's call: making a category took More → the end of the picker → New
+category → a dialog, and the details sheet only opened on a long-press
+nobody finds. Now the Review card's chips end with a dashed "New" chip; the
+picker puts "New category" first under the search, and typing a name that
+doesn't exist offers "Create “name”" which makes and picks it in one tap
+(History and Add get the same). A tap on the Review card opens the "Check
+this one" sheet (long-press still works), with a hint line on the card. The
+picker shows the transaction it's labelling at the top, with "Show details"
+opening the account, time, balance and SMS in place.
 ## 2026-11-12 — An untouched row never overwrites a cloud category (NAH-41)
 
 Reinstalling and signing in again wiped every category. The reinstall
