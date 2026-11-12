@@ -73,7 +73,9 @@ anything.
   `CrashReporting.scrub` must keep passing `CrashReportingTest`.
 - Product analytics go to PostHog (EU) through `remote/ProductAnalytics.kt`
   (app) and `Web/analytics.js` (site) only: named events, no autocapture,
-  no session replay, never money data. New app events go through
+  never money data. App session replay is allowed only fully masked (every
+  text, text field and image hidden, no logcat; `ProductAnalytics.replayConfig`);
+  no replay on the website or web dashboard. New app events go through
   `Telemetry.track`, which sends to both Supabase and PostHog;
   `ProductAnalyticsTest` must keep passing. Never load PostHog on `/admin/`.
 - Secrets only in `local.properties` (Supabase URL/key, `sentry.dsn`, `posthog.apiKey`, signing) or Supabase
