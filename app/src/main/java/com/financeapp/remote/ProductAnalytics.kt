@@ -7,13 +7,16 @@ import com.posthog.PersonProfiles
 import com.posthog.PostHog
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
+import com.posthog.android.replay.PostHogSessionReplayConfig
 
 /**
  * Product analytics through PostHog (EU cloud).
  *
  * Only the named events [Telemetry] already tracks, plus PostHog's app
  * opened / installed / updated events. No autocapture, no screen names, no
- * session replay, no surveys. Never SMS text, amounts, balances, accounts,
+ * surveys. Session replay is on but fully masked ([replayConfig]): every
+ * text, text field and image is a grey box, logcat is not sent, so a
+ * recording shows only layout and taps. Never SMS text, amounts, balances, accounts,
  * names, emails or phones: properties go through [sanitize] first. A phone
  * is known only by the same random install ID as [Telemetry] and Sentry.
  * Off in debug builds and when `posthog.apiKey` is not set in local.properties.
@@ -37,7 +40,8 @@ object ProductAnalytics {
                 captureApplicationLifecycleEvents = true
                 captureScreenViews = false
                 captureDeepLinks = false
-                sessionReplay = false
+                sessionReplay = true
+                sessionReplayConfig = replayConfig()
                 preloadFeatureFlags = false
                 sendFeatureFlagEvent = false
                 personProfiles = PersonProfiles.IDENTIFIED_ONLY
@@ -51,6 +55,19 @@ object ProductAnalytics {
             started = true
         }.onFailure { Log.w(TAG, "PostHog setup failed: ${it::class.java.simpleName}") }
     }
+
+    /**
+     * Fully masked replay. Kash screens are Compose, which PostHog records in
+     * screenshot mode; with these masks every Text, TextField and Image is
+     * painted over before the frame leaves the phone. Logcat stays home.
+     * `ProductAnalyticsTest` keeps these switches from being turned off.
+     */
+    internal fun replayConfig() = PostHogSessionReplayConfig(
+        maskAllTextInputs = true,
+        maskAllImages = true,
+        captureLogcat = false,
+        screenshot = true,
+    )
 
     fun capture(name: String, props: Map<String, Any?> = emptyMap()) {
         if (!started) return

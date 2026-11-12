@@ -37,6 +37,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- PostHog session replay is on and checked. Keep "Capture console logs"
+  off (PostHog → Settings → Session replay). Update the Play Console data
+  safety form (App interactions row) to match `docs/play-store-sms-declaration.md`.
+
 - Send the FOW Summit booth application by 18 Nov (NAH-32). Check
   whether a registered company is required.
 - Get a Gemini API key (Google AI Studio) for NAH-40; it goes into
@@ -69,6 +73,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 App session replay in PostHog, fully masked (all text, text
+  fields and images hidden, no logs). Privacy policy updated. Owner
+  checked it on a Galaxy S22 (branch build): recordings arrive, masked.
 - 2026-11-12 Home cleanup (owner's screenshots): no Cash card, and a bank
   switched off in "Banks Kash follows" leaves Home and the total; the
   "Leaves out 1 account…" line and the weekly bar strip are gone; account

@@ -55,7 +55,7 @@ Google does not count as sharing).
 | Financial info → Purchase history / Other financial info | Yes | App functionality, Analytics (parser fixes) | Required for automatic tracking |
 | Messages → SMS or MMS | Yes (money SMS from bank and wallet senders only; no codes or promos) | App functionality | Required for automatic tracking |
 | Personal info → Email address, Name | Yes | Account management | Required |
-| App activity → App interactions | Yes (named events to Supabase and PostHog; no screen recording) | Analytics | Required |
+| App activity → App interactions | Yes (named events to Supabase and PostHog; masked session replay: layout and taps only, all text and images hidden) | Analytics | Required |
 | App info and performance → Crash logs / Diagnostics | Yes (Sentry crash reports, scrubbed of money data) | Analytics | Required |
 | Device or other IDs | Yes (random install ID) | Analytics | Required |
 

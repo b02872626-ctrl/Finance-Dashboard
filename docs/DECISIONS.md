@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — App session replay, fully masked (reverses part of 2026-11-09)
+
+Owner's call: turn on PostHog session replay in the Android app to see
+where people get stuck. Masked fully: `maskAllTextInputs` (all Text and
+TextFields), `maskAllImages`, no logcat, screenshot mode (needed for
+Compose). Set in `ProductAnalytics.replayConfig()`; `ProductAnalyticsTest`
+fails if any mask is turned off. Same release-only, install-ID-only rules
+as the events. The website and web dashboard stay without replay (the
+dashboard shows money and uses the no-recorder posthog-js build). Privacy
+policy and Play data-safety notes now say recordings exist and what they
+hide. Recordings appear only after the owner turns on "Record user
+sessions" in PostHog.
+
 ## 2026-11-12 — Home shows only the banks Kash follows, and less around them
 
 Owner's call from screenshots. The hand-entered "Cash" account gets no card
