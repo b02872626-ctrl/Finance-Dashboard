@@ -188,6 +188,7 @@ fun AddScreen(
             onNewCategory = { newCategoryOpen = true },
             onUse = { vm.setCategory(it); pickerOpen = false },
             title = "Category",
+            onCreateCategory = { name -> pickerOpen = false; onAddCategory(name); vm.setCategory(name) },
         )
     }
     if (newCategoryOpen) {

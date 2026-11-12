@@ -73,6 +73,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Review: "New" category chip right on the card, "Create
+  “name”" from the picker search, tap the card for the SMS and details, and
+  the picker shows which transaction you're labelling (NAH-42). Not yet
+  checked on a real phone or at 360dp (no emulator on this Mac).
 - 2026-11-12 Categories survive a reinstall (NAH-41): signing in again on
   a fresh install brings back every category, including your own category
   names. Not yet installed on a real phone. Categories already wiped by the
