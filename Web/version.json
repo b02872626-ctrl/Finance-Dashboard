@@ -1,11 +1,11 @@
 {
-  "versionCode": 52,
-  "versionName": "1.0.32",
+  "versionCode": 53,
+  "versionName": "1.0.33",
   "url": "https://kash-140.pages.dev/download",
-  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.32.apk",
-  "sha256": "6e2f4c02e475cd936570587b509fa668dc4ecc953f5c43746eb8968fa7fb6597",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.33.apk",
+  "sha256": "9e252df449aa0e1bec353a8c98eb251e9a8db035b1314556106e54999739a06d",
   "notes": [
-    "Moving money between your own accounts no longer counts as spending and income",
-    "Money-in and low-balance alerts arrive right away, even on busy days"
+    "Fixed a crash when you tap \"They're mine\" or \"Hide them\" on the card about other people's accounts",
+    "Your own accounts are no longer marked as someone else's"
   ]
 }
