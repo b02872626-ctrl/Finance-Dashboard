@@ -73,6 +73,19 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 NAH-38 download page for the booth: headline "Every bank SMS
+  becomes your spending record." with "No bank login, nothing to type";
+  a bigger Download button that stays above the fold on a phone (the
+  rolling words hide there); a drawing of what Android shows for each of
+  the 5 install steps (one list, English/Amharic text); bank chips with the
+  app's bank marks; a new "Is my data safe?" section (matches the privacy
+  policy); the font no longer blocks the first paint (10 KB HTML, nothing
+  render-blocking). Checked in the browser at 375px and desktop, `?ref=fow`
+  reaches `apk_download_clicked`. Still open for NAH-38: owner proofreads
+  the two new Amharic lines (steps 1 and 2) and clicks through on a real
+  phone over a slow connection. Earlier (PR #31): Amharic steps, `?ref=`
+  tracking, `Web/flyer.html`.
+
 - 2026-11-12 App session replay in PostHog, fully masked (all text, text
   fields and images hidden, no logs). Privacy policy updated. Owner
   checked it on a Galaxy S22 (branch build): recordings arrive, masked.

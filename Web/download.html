@@ -4,11 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kash — Download for Android</title>
-  <meta name="description" content="Your bank and Telebirr SMS, already sorted into a clear history. Free, for Android." />
+  <meta name="description" content="Every bank and Telebirr SMS becomes your spending record. No bank login, nothing to type. Free, for Android." />
   <meta name="theme-color" content="#3D4859" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" />
+  <!-- The font loads without blocking the first paint: on a slow 3G phone the
+       page (and the Download button) shows in the system font straight away. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" /></noscript>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Crect width='108' height='108' rx='26' fill='%233D4859'/%3E%3Crect x='34' y='30' width='10' height='48' rx='5' fill='%23E9DFC6'/%3E%3Crect x='50' y='44' width='10' height='34' rx='5' fill='%23fff'/%3E%3Crect x='66' y='36' width='10' height='42' rx='5' fill='%23fff' fill-opacity='.45'/%3E%3C/svg%3E" />
   <style>
     /* Kash download page, on the app's design system ("Slate + sand",
@@ -135,9 +138,42 @@
     .card strong { color: var(--ink); font-weight: 600; }
     .card h3 { margin: 0; display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
     .card h3 .num svg { width: 20px; height: 20px; }
-    .banks { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
-    .banks li { padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); font-size: 13px; line-height: 18px; color: rgba(255,255,255,.86); }
+    .banks { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+    .banks li { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); font-size: 13px; line-height: 18px; color: rgba(255,255,255,.9); }
+    /* Bank marks: the app's placeholder marks (ui/kash KashBasics.kashBank):
+       code on the bank colour, muted ink for banks without one. */
+    .mark { min-width: 26px; height: 26px; padding: 0 5px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: -0.01em; color: #fff; background: #5F6877; }
+    .mark.cbe { background: #6B2E8E; } .mark.tb { background: #0F7A5E; } .mark.boa { background: #8F6418; }
     .banks-label { margin: 22px 0 0; font-size: 13px; color: rgba(255,255,255,.6); }
+    .hero .am-line { font-size: 17px; color: var(--sand); margin-top: -8px; }
+
+    /* Install step pictures: small drawings of what Android shows (generic,
+       English labels, as on most phones). Pure HTML/CSS, no image files. */
+    .card .pic { height: 150px; border-radius: 14px; background: var(--well); display: flex; align-items: flex-end; justify-content: center; overflow: hidden; padding: 14px 14px 0; }
+    .scr { width: 100%; max-width: 210px; height: 100%; background: #fff; border-radius: 14px 14px 0 0; border: 1px solid var(--line); border-bottom: 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 11px; line-height: 1.3; color: var(--ink); }
+    .scr .bar { height: 6px; width: 40%; border-radius: 3px; background: var(--line); }
+    .scr .row { display: flex; align-items: center; gap: 8px; }
+    .scr .ico { width: 22px; height: 22px; border-radius: 6px; background: var(--slate); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .scr .ico svg { width: 12px; height: 12px; }
+    .scr .t { font-weight: 600; font-size: 12px; }
+    .scr .m { color: var(--ink-muted); font-size: 10px; }
+    .scr .grow { flex: 1; min-width: 0; }
+    .scr .tap { color: #1A73E8; font-weight: 700; font-size: 11px; position: relative; }
+    .scr .tap::after, .scr .tgl::after, .scr .pill::after { content: ""; position: absolute; inset: -3px -6px; border-radius: 999px; border: 2px solid var(--money-out); }
+    .scr .tgl { width: 28px; height: 16px; border-radius: 8px; background: #1A73E8; position: relative; flex-shrink: 0; }
+    .scr .tgl i { position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+    .scr .btns { display: flex; justify-content: flex-end; gap: 18px; margin-top: auto; padding-bottom: 10px; }
+    .scr .btns span { color: #1A73E8; font-weight: 600; }
+    .scr .pill { position: relative; align-self: stretch; text-align: center; padding: 6px; border-radius: 999px; background: #1A73E8; color: #fff; font-weight: 600; }
+    .scr .soft { align-self: stretch; text-align: center; color: #1A73E8; font-weight: 600; padding-bottom: 10px; }
+    .scr.dim { background: #F1F3F4; }
+
+    /* Is my data safe? */
+    .qa { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    .qa li { background: var(--raised); border: 1px solid var(--line); border-radius: 20px; padding: 22px; }
+    .qa h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+    .qa p { margin: 0; color: var(--ink-muted); }
+    .links { display: flex; flex-wrap: wrap; gap: 0 24px; margin-top: 16px; }
     .lang { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--well); margin-top: 14px; }
     .lang button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink-muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; min-height: 36px; }
     .lang button[aria-pressed="true"] { background: var(--card, #fff); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
@@ -160,6 +196,10 @@
       :root { --inset: 16px; }
       .hero .wrap { padding-top: 24px; }
       .ctas .btn { width: 100%; }
+      .ctas .btn-accent { height: 64px; font-size: 18px; }
+      /* Keep the Download button above the fold on a phone. */
+      .wheel { display: none; }
+      .hero-copy { gap: 18px; }
     }
     @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .wheel ul { animation: none; } }
   </style>
@@ -174,7 +214,7 @@
       </a>
       <nav aria-label="Page">
         <a href="#install">How to install</a>
-        <a href="#permissions">Permissions</a>
+        <a href="#safe">Is it safe?</a>
         <a href="./">Web dashboard</a>
       </nav>
     </div>
@@ -185,7 +225,8 @@
       <div class="wrap">
         <div class="hero-copy">
           <span class="eyebrow" style="color: var(--on-slate-muted)">Now on Android</span>
-          <h1>Your bank SMS,<br />already sorted.</h1>
+          <h1>Every bank SMS becomes your spending record.</h1>
+          <p class="am-line" lang="am">የባንክ መልዕክቶችዎ፣ በራሳቸው ተደራጅተው።</p>
           <div class="wheel" role="img" aria-label="Kash sorts your spending, income, transfers, bills and monthly trends">
             <ul aria-hidden="true">
               <li><span class="well"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span>Spending</li>
@@ -196,7 +237,7 @@
               <li><span class="well"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span>Spending</li>
             </ul>
           </div>
-          <p>Kash turns CBE, Telebirr and other bank messages into a clear history. Nothing to type. Free, for Android.</p>
+          <p>No bank login, nothing to type. Kash reads the messages your bank and Telebirr already send you. Free, for Android.</p>
           <div class="ctas">
             <a class="btn btn-accent" href="apk/Kash-1.0.33.apk" download="Kash-1.0.33.apk">
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
@@ -207,8 +248,14 @@
           <div class="meta"><span>Version 1.0.33</span><span aria-hidden="true">·</span><span>2.6 MB</span><span aria-hidden="true">·</span><span>Android 6.0 or newer</span></div>
           <p class="banks-label">Reads SMS from</p>
           <ul class="banks" aria-label="Supported banks">
-            <li>CBE</li><li>CBE Birr</li><li>Telebirr</li><li>Bank of Abyssinia</li>
-            <li>Awash</li><li>Dashen</li><li>Berhan</li><li>Nib</li>
+            <li><span class="mark cbe" aria-hidden="true">CBE</span>CBE</li>
+            <li><span class="mark cbe" aria-hidden="true">CB</span>CBE Birr</li>
+            <li><span class="mark tb" aria-hidden="true">tb</span>Telebirr</li>
+            <li><span class="mark boa" aria-hidden="true">BoA</span>Bank of Abyssinia</li>
+            <li><span class="mark" aria-hidden="true">AB</span>Awash</li>
+            <li><span class="mark" aria-hidden="true">DB</span>Dashen</li>
+            <li><span class="mark" aria-hidden="true">BB</span>Berhan</li>
+            <li><span class="mark" aria-hidden="true">NB</span>Nib</li>
           </ul>
         </div>
 
@@ -269,19 +316,74 @@
             </div>
           </div>
         </div>
-        <ol class="cards" data-lang="en">
-          <li class="card"><span class="num">1</span><p>Tap <strong>Download for Android</strong> and wait for it to finish.</p></li>
-          <li class="card"><span class="num">2</span><p>Open the file from your notifications or your <strong>Downloads / My Files</strong> app.</p></li>
-          <li class="card"><span class="num">3</span><p>If Android says it can't install apps from this source, tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser, then go back.</p></li>
-          <li class="card"><span class="num">4</span><p>Tap <strong>Install</strong>. If Google Play Protect warns about an unknown app, tap <strong>More details → Install anyway</strong>.</p></li>
-          <li class="card next"><span class="num">5</span><p>Open Kash, allow <strong>SMS access</strong>, pick your banks, then sign in and set a 4-digit PIN.</p></li>
-        </ol>
-        <ol class="cards" data-lang="am" lang="am" hidden>
-          <li class="card"><span class="num">1</span><p><strong>Download for Android</strong> የሚለውን ይጫኑ፣ ማውረዱ እስኪጨርስ ይጠብቁ።</p></li>
-          <li class="card"><span class="num">2</span><p>ፋይሉን ከማሳወቂያዎችዎ ወይም ከ <strong>Downloads / My Files</strong> ይክፈቱ።</p></li>
-          <li class="card"><span class="num">3</span><p>Android ከዚህ ምንጭ መተግበሪያ መጫን አይቻልም ካለ፣ <strong>Settings</strong> ይጫኑ፣ ለአሳሽዎ <strong>Allow from this source</strong> ያብሩ፣ ከዚያ ይመለሱ።</p></li>
-          <li class="card"><span class="num">4</span><p><strong>Install</strong> ይጫኑ። Google Play Protect ማስጠንቀቂያ ካሳየ <strong>More details → Install anyway</strong> ይጫኑ።</p></li>
-          <li class="card next"><span class="num">5</span><p>Kashን ይክፈቱ፣ <strong>SMS</strong> እንዲያነብ ይፍቀዱ፣ ባንኮችዎን ይምረጡ፣ ከዚያ ይግቡና ባለ 4 አሃዝ ፒን ያስገቡ።</p></li>
+        <!-- One list; each step has its picture once and its text in both
+             languages (the switch shows one). Pictures are decorative: the
+             text says the same thing. Filenames say "Kash.apk" on purpose, so
+             release.sh's version check doesn't trip on them. -->
+        <ol class="cards">
+          <li class="card">
+            <div class="pic" aria-hidden="true">
+              <div class="scr dim">
+                <div class="bar"></div>
+                <div class="scr" style="height: auto; border-radius: 12px; border-bottom: 1px solid var(--line); margin-top: auto; margin-bottom: 10px">
+                  <div class="row"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span><span class="grow"><span class="t">Kash.apk</span><br /><span class="m">Download complete</span></span><span class="tap">Open</span></div>
+                </div>
+              </div>
+            </div>
+            <span class="num">1</span>
+            <p data-lang="en">Tap <strong>Download for Android</strong>. When it finishes, tap <strong>Open</strong>.</p>
+            <p data-lang="am" lang="am" hidden><strong>Download for Android</strong> የሚለውን ይጫኑ። ሲጨርስ <strong>Open</strong> ይጫኑ።</p>
+          </li>
+          <li class="card">
+            <div class="pic" aria-hidden="true">
+              <div class="scr">
+                <div class="row"><span class="ico" style="background: #F1F3F4"><svg viewBox="0 0 24 24" fill="none" stroke="#5F6877" stroke-width="2.4" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></span><span class="t">Files</span></div>
+                <span class="m">Downloads</span>
+                <div class="row"><span class="ico" style="background: #3E7A4A"><svg viewBox="0 0 24 24" fill="#fff"><rect x="7" y="9" width="10" height="9" rx="2"/><circle cx="10" cy="6.5" r="1"/><circle cx="14" cy="6.5" r="1"/></svg></span><span class="grow"><span class="t tap" style="color: var(--ink)">Kash.apk</span><br /><span class="m">Just now</span></span></div>
+                <div class="row" style="opacity: .45"><span class="ico" style="background: var(--handle)"></span><span class="grow"><span class="bar" style="display: block; width: 70%"></span></span></div>
+              </div>
+            </div>
+            <span class="num">2</span>
+            <p data-lang="en">Missed it? Open the file from your notifications or the <strong>Downloads / My Files</strong> app.</p>
+            <p data-lang="am" lang="am" hidden>ካለፈዎት፣ ፋይሉን ከማሳወቂያዎችዎ ወይም ከ <strong>Downloads / My Files</strong> ይክፈቱ።</p>
+          </li>
+          <li class="card">
+            <div class="pic" aria-hidden="true">
+              <div class="scr">
+                <div class="row"><span class="ico" style="background: #F1F3F4"><svg viewBox="0 0 24 24" fill="none" stroke="#5F6877" stroke-width="2.4" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></span><span class="t">Install unknown apps</span></div>
+                <div class="row"><span class="ico" style="background: #1A73E8; border-radius: 50%"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><circle cx="12" cy="12" r="4"/></svg></span><span class="t">Chrome</span></div>
+                <div class="row" style="margin-top: 6px"><span class="grow">Allow from this source</span><span class="tgl"><i></i></span></div>
+              </div>
+            </div>
+            <span class="num">3</span>
+            <p data-lang="en">If Android says it can't install apps from this source, tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser, then go back.</p>
+            <p data-lang="am" lang="am" hidden>Android ከዚህ ምንጭ መተግበሪያ መጫን አይቻልም ካለ፣ <strong>Settings</strong> ይጫኑ፣ ለአሳሽዎ <strong>Allow from this source</strong> ያብሩ፣ ከዚያ ይመለሱ።</p>
+          </li>
+          <li class="card">
+            <div class="pic" aria-hidden="true">
+              <div class="scr">
+                <div class="row"><span class="ico"><svg viewBox="0 0 108 108"><rect x="34" y="30" width="10" height="48" rx="5" fill="#E9DFC6"/><rect x="50" y="44" width="10" height="34" rx="5" fill="#fff"/><rect x="66" y="36" width="10" height="42" rx="5" fill="#fff" fill-opacity=".45"/></svg></span><span class="t">Kash</span></div>
+                <span>Do you want to install this app?</span>
+                <div class="btns"><span>Cancel</span><span class="tap">Install</span></div>
+              </div>
+            </div>
+            <span class="num">4</span>
+            <p data-lang="en">Tap <strong>Install</strong>. If Google Play Protect warns about an unknown app, tap <strong>More details → Install anyway</strong>.</p>
+            <p data-lang="am" lang="am" hidden><strong>Install</strong> ይጫኑ። Google Play Protect ማስጠንቀቂያ ካሳየ <strong>More details → Install anyway</strong> ይጫኑ።</p>
+          </li>
+          <li class="card next">
+            <div class="pic" aria-hidden="true">
+              <div class="scr">
+                <div class="row"><span class="ico" style="background: #F1F3F4"><svg viewBox="0 0 24 24" fill="none" stroke="#5F6877" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg></span></div>
+                <span>Allow <strong>Kash</strong> to send and view SMS messages?</span>
+                <span class="pill" style="margin-top: auto">Allow</span>
+                <span class="soft">Don't allow</span>
+              </div>
+            </div>
+            <span class="num">5</span>
+            <p data-lang="en">Open Kash, tap <strong>Allow</strong> for SMS, pick your banks, then sign in and set a 4-digit PIN.</p>
+            <p data-lang="am" lang="am" hidden>Kashን ይክፈቱ፣ ለ SMS <strong>Allow</strong> ይጫኑ፣ ባንኮችዎን ይምረጡ፣ ከዚያ ይግቡና ባለ 4 አሃዝ ፒን ያስገቡ።</p>
+          </li>
         </ol>
         <p class="notice">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>
@@ -311,9 +413,29 @@
             <p>To keep your transactions in your account, so they're on the web dashboard and safe if you change phones.</p>
           </div>
         </div>
-        <p class="promise">Kash never asks for your bank PIN or password, and can't move money.</p>
-        <a class="link" href="privacy.html">Read the privacy policy
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+      </section>
+
+      <section id="safe" class="block wrap">
+        <div class="block-head">
+          <div>
+            <span class="eyebrow" style="color: var(--ink-muted)">Your money, your messages</span>
+            <h2>Is my data safe?</h2>
+          </div>
+        </div>
+        <p class="promise" style="margin-top: 0">Kash never asks for your bank PIN or password, and can't move money.</p>
+        <ul class="qa">
+          <li><h3>Which messages does it read?</h3><p>Only SMS from the banks and wallets listed above. Messages from people, and anyone else, are skipped.</p></li>
+          <li><h3>Do my codes leave the phone?</h3><p>No. One-time codes, promotions and notices are never uploaded. Only money messages (payments, transfers, balances) are kept.</p></li>
+          <li><h3>Who can see my transactions?</h3><p>They live on your phone first and sync to your account over an encrypted connection. Other users can never see them. Kash's developer can look only to fix an import problem or answer your support request.</p></li>
+          <li><h3>Is my data sold?</h3><p>No. No ads, no selling, no sharing for marketing. Kash is free.</p></li>
+          <li><h3>Can I delete it?</h3><p>Yes, any time: Settings → Delete account removes your account and all its data, straight away.</p></li>
+        </ul>
+        <div class="links">
+          <a class="link" href="privacy.html">Read the privacy policy
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="link" href="delete-account.html">How to delete your account
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
       </section>
     </div>
   </main>
