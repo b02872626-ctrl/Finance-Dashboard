@@ -318,6 +318,12 @@
               <h3>Transactions</h3>
               <span class="muted small" id="tx-count">—</span>
             </header>
+            <div class="ins-chips tx-flow-chips" id="tx-flow-chips" role="group" aria-label="Money direction">
+              <button type="button" class="ins-chip active" data-flow="" aria-pressed="true">All</button>
+              <button type="button" class="ins-chip" data-flow="CREDIT" aria-pressed="false">Credit</button>
+              <button type="button" class="ins-chip" data-flow="DEBIT" aria-pressed="false">Debit</button>
+              <button type="button" class="ins-chip" data-flow="INTERNAL" aria-pressed="false">Internal transfer</button>
+            </div>
             <div class="tx-controls">
               <input type="search" id="tx-search" placeholder="Search counterparty, bank, ref…" autocomplete="off" />
               <select id="tx-type-filter">
