@@ -100,6 +100,8 @@ fun KashScreen(
     heroGap: Dp = KashSpace.GapXl,
     heroBottom: Dp = 26.dp,
     expandable: Boolean = true,
+    /** The top layer's colour: slate everywhere, sand in the Goals section. */
+    heroColor: androidx.compose.ui.graphics.Color = KashColors.Slate,
     content: @Composable ColumnScope.(bottomPadding: PaddingValues) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -131,7 +133,7 @@ fun KashScreen(
     val drag = rememberDraggableState { delta -> risen = (risen - delta).coerceIn(0f, limit[0]) }
 
     Layout(
-        modifier = modifier.fillMaxSize().background(KashColors.Slate),
+        modifier = modifier.fillMaxSize().background(heroColor),
         content = {
             Column(
                 Modifier
@@ -248,6 +250,7 @@ enum class KashTab(val label: String, val icon: KashIcon) {
     Home("Home", KashIcon.Home),
     History("History", KashIcon.History),
     Analytics("Analytics", KashIcon.Chart),
+    Goals("Goals", KashIcon.Target),
 }
 
 /** Height of the tab bar above the navigation bar (6 top + 52 tab + 4). */

@@ -66,6 +66,12 @@ object KashColors {
     val BankTelebirr = Color(0xFF0F7A5E)
     val BankBoa = Color(0xFF8F6418)
     val SuccessOnSlate = Color(0xFF9BD3A5) // PIN accepted
+    /** Goals section: a sand top instead of slate, slate-ink text on it. */
+    val GoalsHero = Sand
+    val GoalsInk = SlateInk
+    val GoalsInkMuted = Color(0xFF5E5A4E)
+    val GoalsTrack = Color(0x242B3340)    // slate-ink @ 14%
+    val GoalsReached = MoneyIn
     /** Backdrop behind sheets and dialogs. */
     val Backdrop = SlateInk.copy(alpha = 0.94f)
 }

@@ -5,13 +5,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Goals section in the app (NAH-14).** PR 1 (the logic, no screens) is
-  done. Next, one branch each: PR 2 Goals tab + goal page + "Add a save"
-  + "Goal reached" with the sand top; PR 3 New goal / Edit goal flow
-  (kind → details → account); PR 4 later: Supabase sync (new SQL file
-  adding a linked-account column to `i_goals`), web dashboard brought in
-  line (it still has no account link), "goal reached" notification. Until
-  PR 4, goals live only on the phone and don't survive a reinstall.
+- **Goals section in the app (NAH-14).** PRs 1–3 (logic, screens, New /
+  Edit goal) are open, stacked: merge #67, then #68, then the New goal PR.
+  Then try it on a real phone and at 360dp before the next release. PR 4
+  later: Supabase sync (new SQL file adding a linked-account column to
+  `i_goals`), web dashboard brought in line, "goal reached" notification.
+  Until PR 4, goals live only on the phone.
 
 - **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
   downloads and 100 active users. Release and install on a real phone by
@@ -80,6 +79,24 @@ items to Done with the date, add what is next or blocked.
   account rule, see the submission checklist §5).
 
 ## Done
+
+- 2026-11-12 New goal and Edit goal (NAH-14, PR 3): "+" on Goals opens a
+  3-step form: kind (amount by a date / safety net / every month),
+  details (name, emoji, amount or months with "That's about X ETB", date
+  chips 3 / 6 / 12 months or a day picker in either calendar), then the
+  account (taken ones are greyed out with "Used by Laptop", or "None,
+  I'll add saves myself"). The goal page menu has Edit and Change
+  account. `GoalFormTest` (7). Not checked at 360dp or on a phone.
+
+- 2026-11-12 Goals screens (NAH-14, PR 2): a 4th tab (target icon) opens
+  Goals with a sand top instead of slate: total saved, "2 of 3 on track",
+  one card per goal (bar, amounts, what to save next), a folded "Reached"
+  list, and an empty state. The goal page shows the big figure and bar,
+  pace and "save X a month", where the money comes from, and the history
+  (SMS rows open the transaction; your own saves can be removed). "Add a
+  save" sheet (amount, note, today or yesterday), Archive / Delete, and a
+  one-time "You reached it" card. `GoalCopyTest` (7). Not checked at 360dp
+  or on a phone (no emulator here; screenshot tests blocked on SDK 36).
 
 - 2026-11-12 Goals logic for the app (NAH-14, PR 1, no screens yet):
   goals are stored on the phone (3 kinds: an amount by a date, a safety
