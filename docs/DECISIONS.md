@@ -15,6 +15,52 @@ of waiting on two extra connections. The install-step pictures are small
 HTML/CSS drawings of the Android screens, not image files: no extra
 downloads, sharp on any screen. They say "Kash.apk" (no version) so
 `scripts/release.sh`'s "old version still on the page" check stays valid.
+## 2026-11-12 — New category one tap away; tapping the Review card shows details (NAH-42)
+
+Owner's call: making a category took More → the end of the picker → New
+category → a dialog, and the details sheet only opened on a long-press
+nobody finds. Now the Review card's chips end with a dashed "New" chip; the
+picker puts "New category" first under the search, and typing a name that
+doesn't exist offers "Create “name”" which makes and picks it in one tap
+(History and Add get the same). A tap on the Review card opens the "Check
+this one" sheet (long-press still works), with a hint line on the card. The
+picker shows the transaction it's labelling at the top, with "Show details"
+opening the account, time, balance and SMS in place.
+## 2026-11-12 — An untouched row never overwrites a cloud category (NAH-41)
+
+Reinstalling and signing in again wiped every category. The reinstall
+re-reads all SMS as untouched rows (PENDING, no category); uploading them
+with `category = null` overwrote what Supabase had, and the pull only read
+the last 90 days. Now a row that is PENDING with no category uploads without
+`category` and `review_status` (separate upsert batch, since PostgREST needs
+the same keys per batch), so the cloud keeps its value; the pull that
+follows reaches back to the oldest row just uploaded (whole history after a
+reinstall) and pages through it; and custom category names used by restored
+rows go back into the user's own list. Trade-off: undoing a Skip or "Not a
+transaction" back to untouched doesn't reach the cloud. Category rules
+("use for this sender from now on") still live only on the phone and are
+not restored. See `remote/CloudCategoryRestore.kt`.
+
+## 2026-11-12 — Web dashboard design basics (look unchanged)
+
+Owner's call: keep the dashboard's look, fix the basics (Apple HIG-style).
+One block at the end of `Web/styles.css`: every button, tab, chip and pill
+shrinks slightly on press (before only some buttons did), no tap delay or
+grey tap flash on phones, a focus ring for keyboard users only
+(`:focus-visible`), chips and period pills 36px tall on touch screens, and
+the browser's reduce-motion, reduce-transparency and more-contrast settings
+are respected (no shimmer or slides; solid scrim; firmer lines). New styles
+go above that block or must keep these working.
+
+## 2026-11-12 — Web Transactions filter: Credit, Debit, Internal transfer
+
+The web dashboard's Transactions list gets an All / Credit / Debit /
+Internal transfer switch above the other filters. It follows the money
+rules, not the raw SMS type: Internal transfer is anything typed
+`INTERNAL_TRANSFER` or tagged "Own accounts" (rule 5), and those never show
+under Credit or Debit. Debit covers DEBIT, PAYMENT and TRANSFER_OUT. Rule in
+`txFlow` (`Web/insights.js`), tested in `tests/web/insights.test.mjs`. The
+detailed "All types" dropdown stays for the raw type.
 
 ## 2026-11-12 — App session replay, fully masked (reverses part of 2026-11-09)
 

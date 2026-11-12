@@ -15,6 +15,14 @@ export const isOwnAccountTransfer = (tx) =>
   tx.type === "INTERNAL_TRANSFER" || (tx.category || "").trim() === OWN_ACCOUNTS;
 export const isSpending = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnAccountTransfer(tx);
 export const isIncome = (tx) => tx.type === "CREDIT" && !isOwnAccountTransfer(tx);
+// Which way the money went, for the Transactions filter: "CREDIT" (money in),
+// "DEBIT" (money out) or "INTERNAL" (between the user's own accounts, which is
+// neither). Null for types that are none of these (UNKNOWN).
+export const txFlow = (tx) =>
+  isOwnAccountTransfer(tx) ? "INTERNAL"
+  : tx.type === "CREDIT" ? "CREDIT"
+  : EXPENSE_TYPES.has(tx.type) ? "DEBIT"
+  : null;
 
 const timeOf = (tx) => Date.parse(tx.occurred_at);
 const amountOf = (tx) => Number(tx.amount) || 0;
