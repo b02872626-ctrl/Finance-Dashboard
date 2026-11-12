@@ -6,6 +6,22 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Download page install steps in English only (NAH-38)
+
+Owner's call: the English / አማርኛ switch on the install steps is gone, and
+the Amharic step text behind it with it (the `?lang=am` link and the saved
+language choice no longer do anything). The Amharic line under the headline
+stays. This replaces the NAH-38 goal of steps "in English and Amharic".
+
+## 2026-11-12 — Download page: font loads after first paint, pictures are HTML
+
+For booth visitors on slow 3G (NAH-38). The Google Fonts stylesheet on
+`Web/download.html` loads with `media="print"` swapped to `all` on load,
+so the page and its Download button paint in the system font first instead
+of waiting on two extra connections. The install-step pictures are small
+HTML/CSS drawings of the Android screens, not image files: no extra
+downloads, sharp on any screen. They say "Kash.apk" (no version) so
+`scripts/release.sh`'s "old version still on the page" check stays valid.
 ## 2026-11-12 — New category one tap away; tapping the Review card shows details (NAH-42)
 
 Owner's call: making a category took More → the end of the picker → New
