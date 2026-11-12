@@ -1,12 +1,11 @@
 {
-  "versionCode": 51,
-  "versionName": "1.0.31",
+  "versionCode": 52,
+  "versionName": "1.0.32",
   "url": "https://kash-140.pages.dev/download",
-  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.31.apk",
-  "sha256": "f4046eb210a6de7686656966ebeca856d29ce6994ccb17a2c03f2d9cb5348c5d",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.32.apk",
+  "sha256": "6e2f4c02e475cd936570587b509fa668dc4ecc953f5c43746eb8968fa7fb6597",
   "notes": [
-    "Accounts that belong to someone else can be hidden in one tap, and old quiet accounts no longer count in your total",
-    "Sharing your Wrapped makes a clean picture",
-    "No more \"money came in\" alerts for your own top-ups or loans"
+    "Moving money between your own accounts no longer counts as spending and income",
+    "Money-in and low-balance alerts arrive right away, even on busy days"
   ]
 }

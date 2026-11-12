@@ -69,6 +69,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 1.0.32: Moving money between your own accounts no longer counts as spending and income; Money-in and low-balance alerts arrive right away, even on busy days. Not yet installed on a real phone.
 - 2026-11-12 Notifications: income and low-balance alerts no longer wait
   for the evening digest when 3 alerts have already shown that day (the
   cap now applies to fee alerts only). The digest card no longer shows its
