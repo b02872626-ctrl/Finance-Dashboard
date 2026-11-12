@@ -1,11 +1,12 @@
 {
-  "versionCode": 53,
-  "versionName": "1.0.33",
+  "versionCode": 54,
+  "versionName": "1.0.34",
   "url": "https://kash-140.pages.dev/download",
-  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.33.apk",
-  "sha256": "9e252df449aa0e1bec353a8c98eb251e9a8db035b1314556106e54999739a06d",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.34.apk",
+  "sha256": "553c572e08a439d6dad1760aaae3efe0f24e6ca2c2712796501609bdae2df4c3",
   "notes": [
-    "Fixed a crash when you tap \"They're mine\" or \"Hide them\" on the card about other people's accounts",
-    "Your own accounts are no longer marked as someone else's"
+    "Home is cleaner: no Cash card, and banks you switch off leave Home and your total",
+    "The quiet-accounts line and the weekly bars are gone from Home",
+    "To help fix problems, Kash can record how screens are used, with every word, number and picture hidden"
   ]
 }
