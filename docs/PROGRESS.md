@@ -74,6 +74,11 @@ items to Done with the date, add what is next or blocked.
   use. The name most SMS greet now always counts as the owner too
   (`AccountOwnershipTest`, 6 tests). Not yet on a phone.
 
+- 2026-11-12 Crash fix: tapping "Hide them" or "They're mine" on the
+  "accounts get SMS for …" card could close Kash ("List is empty" while the
+  card animated away; seen once on 1.0.31). The card keeps its accounts
+  until it has gone. Not yet on a phone.
+
 - 2026-11-12 1.0.32: Moving money between your own accounts no longer counts as spending and income; Money-in and low-balance alerts arrive right away, even on busy days. Not yet installed on a real phone.
 - 2026-11-12 Notifications: income and low-balance alerts no longer wait
   for the evening digest when 3 alerts have already shown that day (the

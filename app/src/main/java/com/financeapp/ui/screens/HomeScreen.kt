@@ -180,9 +180,13 @@ fun HomeScreen(
                 val minePrefs = remember { context.getSharedPreferences("kash_accounts_mine", android.content.Context.MODE_PRIVATE) }
                 var kept by remember { mutableStateOf(minePrefs.getStringSet("kept", emptySet()).orEmpty()) }
                 val others = state.accountBalances.filter { it.otherHolder != null && "${it.bankName}#${it.accountNumber}" !in kept }
+                // While the card animates out, `others` is already empty: keep
+                // drawing the last accounts it showed (an empty list crashed 1.0.31).
+                var shownOthers by remember { mutableStateOf(others) }
+                if (others.isNotEmpty()) shownOthers = others
                 AnimatedVisibility(others.isNotEmpty(), enter = fadeIn() + expandVertically()) {
                     NotYoursCard(
-                        others,
+                        shownOthers,
                         onHide = { others.forEach { a ->
                             val suffix = a.accountSuffix ?: com.financeapp.data.accounts.AccountGrouping.accountSuffix(a.accountNumber)
                             if (suffix != null) vm.setAccountHidden(a.bankName, suffix, true)
@@ -432,7 +436,7 @@ private fun WeekBlock(state: DashboardState) {
 @Composable
 private fun NotYoursCard(accounts: List<AccountSummary>, onHide: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
     val names = accounts.mapNotNull { it.otherHolder }.distinct()
-    val who = when (names.size) { 1 -> names[0]; 2 -> "${names[0]} and ${names[1]}"; else -> names.dropLast(1).joinToString(", ") + " and " + names.last() }
+    val who = when (names.size) { 0 -> "someone else"; 1 -> names[0]; 2 -> "${names[0]} and ${names[1]}"; else -> names.dropLast(1).joinToString(", ") + " and " + names.last() }
     Column(
         modifier.fillMaxWidth().clip(KashShapes.Card).background(KashColors.SurfaceRaised)
             .border(1.dp, KashColors.Line, KashShapes.Card).padding(16.dp),
