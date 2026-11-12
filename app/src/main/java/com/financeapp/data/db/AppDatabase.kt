@@ -8,6 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.financeapp.data.model.CategoryRuleEntity
 import com.financeapp.data.model.ErrorLogEntity
+import com.financeapp.data.model.GoalContributionEntity
+import com.financeapp.data.model.GoalEntity
 import com.financeapp.data.model.RawSmsEntity
 import com.financeapp.data.model.SentNotificationEntity
 import com.financeapp.data.model.TransactionEntity
@@ -18,9 +20,11 @@ import com.financeapp.data.model.TransactionEntity
         RawSmsEntity::class,
         ErrorLogEntity::class,
         CategoryRuleEntity::class,
-        SentNotificationEntity::class
+        SentNotificationEntity::class,
+        GoalEntity::class,
+        GoalContributionEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,6 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun errorLogDao(): ErrorLogDao
     abstract fun categoryRuleDao(): CategoryRuleDao
     abstract fun sentNotificationDao(): SentNotificationDao
+    abstract fun goalDao(): GoalDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -51,6 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_9_10)
                     .addMigrations(MIGRATION_10_11)
                     .addMigrations(MIGRATION_11_12)
+                    .addMigrations(MIGRATION_12_13)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
@@ -212,6 +218,54 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `transactions` ADD COLUMN `hidden` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Goals section: savings goals and the saves logged by hand. */
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `goals` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `emoji` TEXT,
+                        `type` TEXT NOT NULL,
+                        `targetAmount` REAL,
+                        `targetMonths` INTEGER,
+                        `deadline` INTEGER,
+                        `priority` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `status` TEXT NOT NULL,
+                        `linkedAccountKey` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        `achievedAt` INTEGER,
+                        `isSynced` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_goals_status_priority` ON `goals` (`status`, `priority`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `goal_contributions` (
+                        `id` TEXT NOT NULL,
+                        `goalId` TEXT NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `contributedAt` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `isSynced` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`goalId`) REFERENCES `goals`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_goal_contributions_goalId_contributedAt` " +
+                        "ON `goal_contributions` (`goalId`, `contributedAt`)"
+                )
             }
         }
 
