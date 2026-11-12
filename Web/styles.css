@@ -2391,6 +2391,12 @@ input:focus, select:focus { border-color: var(--k-slate); outline: 2px solid var
 .ins-area { fill: var(--k-slate); fill-opacity: 0.10; }
 .ins-path { fill: none; stroke: var(--k-slate); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .ins-dot { stroke: var(--k-ink); stroke-width: 9; stroke-linecap: round; }
+.ins-guide { stroke: var(--k-ink); stroke-opacity: .18; stroke-width: 1; stroke-dasharray: 3 3; }
+.ins-hover-halo { stroke: var(--k-raised, var(--k-surface, #fff)); stroke-width: 17; stroke-linecap: round; }
+.ins-hover-dot { stroke-width: 11; }
+.ins-guide, .ins-hover-dot, .ins-hover-halo { pointer-events: none; }
+/* Drag sideways along the chart on a phone; vertical swipes still scroll. */
+.ins-line { touch-action: pan-y; }
 
 .io-in { fill: var(--green-income); }
 .io-out { fill: var(--coral); }
