@@ -5,6 +5,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- **Goals section in the app (NAH-14).** PR 1 (the logic, no screens) is
+  done. Next, one branch each: PR 2 Goals tab + goal page + "Add a save"
+  + "Goal reached" with the sand top; PR 3 New goal / Edit goal flow
+  (kind → details → account); PR 4 later: Supabase sync (new SQL file
+  adding a linked-account column to `i_goals`), web dashboard brought in
+  line (it still has no account link), "goal reached" notification. Until
+  PR 4, goals live only on the phone and don't survive a reinstall.
+
 - **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
   downloads and 100 active users. Release and install on a real phone by
   26 Nov. Sub-issues, one branch each: parsers NAH-29, notifications
@@ -72,6 +80,16 @@ items to Done with the date, add what is next or blocked.
   account rule, see the submission checklist §5).
 
 ## Done
+
+- 2026-11-12 Goals logic for the app (NAH-14, PR 1, no screens yet):
+  goals are stored on the phone (3 kinds: an amount by a date, a safety
+  net of N months of spending, a monthly amount). A goal can follow one of
+  your accounts: money landing there after the goal was made counts as
+  saved, money leaving takes it back (never below 0, never eating saves
+  logged by hand). One account feeds one goal at a time. Saves by hand
+  add on top. Pace (ahead / on track / behind / missed), "save X a month",
+  an estimated finish date and a monthly streak are worked out.
+  `GoalProgressTest` (29 tests). Nothing to see on the phone yet.
 
 - 2026-11-12 Web dashboard starts faster (NAH-39, part 2a): one pinned
   Supabase file instead of ~14, its imports download in parallel with

@@ -6,6 +6,28 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Goals in the app: one account feeds one goal (NAH-14)
+
+Goals move into the Android app as their own section. Money reaches a goal
+automatically when the goal follows one of the user's accounts (money in
+after the goal was made counts, money out takes it back, never below 0 and
+never eating saves logged by hand), or by hand. Owner's call: one account
+feeds one active goal. A first draft shared one account between goals in a
+priority order (like the web's "waterfall"); the owner found that too hard
+to explain. A reached or archived goal lets go of its account, and money
+after a goal is reached no longer counts for it.
+
+Goals live in Room (`goals`, `goal_contributions`, DB version 13) with
+UUID ids and the same type names as `i_goals`, so they can sync later.
+The linked account is local only until a SQL file adds a column for it.
+Re-importing SMS (Settings) does not wipe goals: they can't be rebuilt
+from SMS. Months follow the Gregorian calendar in the logic; the screens
+will follow the calendar setting for labels.
+
+The Goals section will have a sand top instead of slate (owner approved),
+so saving feels like a different place from spending. That lands with
+the screens (PR 2).
+
 ## 2026-11-12 — Web dashboard loads one pinned Supabase file (NAH-39)
 
 `Web/app.js` imported `https://esm.sh/@supabase/supabase-js@2`: a floating
