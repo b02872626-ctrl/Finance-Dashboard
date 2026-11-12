@@ -208,7 +208,14 @@ class SupabaseRestClient(
         if (uniqueTransactions.isEmpty()) return 0
 
         var total = 0
-        for (batch in uniqueTransactions.chunked(BATCH_SIZE)) {
+        // PostgREST needs the same keys on every object in one upsert, so rows
+        // that send their review state and rows that don't go in separate
+        // batches. Untouched rows leave the cloud's category alone (a
+        // reinstall re-reads every SMS as untouched; see CloudCategoryRestore).
+        val (reviewed, untouched) = uniqueTransactions.partition(CloudCategoryRestore::sendsReviewState)
+        val batches = reviewed.chunked(BATCH_SIZE).map { it to true } +
+            untouched.chunked(BATCH_SIZE).map { it to false }
+        for ((batch, sendReview) in batches) {
             val arr = JSONArray()
             for (tx in batch) {
                 val obj = JSONObject()
@@ -218,12 +225,12 @@ class SupabaseRestClient(
                 obj.put("occurred_at", isoUtc.format(Date(tx.dateTime)))
                 obj.put("sender", tx.sender)
                 obj.put("type", tx.type)
-                obj.put("category", tx.category ?: JSONObject.NULL)
-                // Daily Review fields — include so re-uploads don't clobber
-                // cloud-side state that was set by another client (e.g. web).
+                if (sendReview) {
+                    obj.put("category", tx.category ?: JSONObject.NULL)
+                    obj.put("review_status", tx.reviewStatus)
+                }
                 obj.put("predicted_category",   tx.predictedCategory ?: JSONObject.NULL)
                 obj.put("category_confidence",  tx.categoryConfidence ?: JSONObject.NULL)
-                obj.put("review_status",        tx.reviewStatus)
                 obj.put("merchant_key",         tx.merchantKey ?: JSONObject.NULL)
                 obj.put("amount", tx.amount)
                 obj.put("balance", tx.balance ?: JSONObject.NULL)
@@ -281,27 +288,35 @@ class SupabaseRestClient(
                 append("&occurred_at=gte.")
                 append(java.net.URLEncoder.encode(sinceIsoUtc, "UTF-8"))
             }
-            // Sensible bound — the user's history might be huge but the
-            // recent slice is what matters for sync.
-            append("&order=occurred_at.desc&limit=5000")
+            // Stable order so the pages below don't skip or repeat rows.
+            append("&order=occurred_at.desc,id.asc")
         }
         val cols = "select=id,category,predicted_category,category_confidence,review_status,merchant_key"
-        val body = request(
-            method = "GET",
-            path = "i_transactions?$cols&$filters"
-        )
-        val arr = JSONArray(body)
-        return List(arr.length()) { i ->
-            val o = arr.getJSONObject(i)
-            RemoteTxnState(
-                id                 = o.optLong("id"),
-                category           = o.optStringOrNull("category"),
-                predictedCategory  = o.optStringOrNull("predicted_category"),
-                categoryConfidence = if (o.isNull("category_confidence")) null else o.getDouble("category_confidence"),
-                reviewStatus       = o.optStringOrNull("review_status"),
-                merchantKey        = o.optStringOrNull("merchant_key")
+        // A restore after a reinstall can cover the whole history, so read
+        // it in pages (the server caps a single response).
+        val out = mutableListOf<RemoteTxnState>()
+        var offset = 0
+        while (true) {
+            val body = request(
+                method = "GET",
+                path = "i_transactions?$cols&$filters&limit=$PULL_PAGE_SIZE&offset=$offset"
             )
+            val arr = JSONArray(body)
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                out += RemoteTxnState(
+                    id                 = o.optLong("id"),
+                    category           = o.optStringOrNull("category"),
+                    predictedCategory  = o.optStringOrNull("predicted_category"),
+                    categoryConfidence = if (o.isNull("category_confidence")) null else o.getDouble("category_confidence"),
+                    reviewStatus       = o.optStringOrNull("review_status"),
+                    merchantKey        = o.optStringOrNull("merchant_key")
+                )
+            }
+            if (arr.length() < PULL_PAGE_SIZE || offset >= PULL_MAX_ROWS) break
+            offset += PULL_PAGE_SIZE
         }
+        return out
     }
 
     /** Defensive optString that returns real `null` (not the literal "null"). */
@@ -355,5 +370,9 @@ class SupabaseRestClient(
 
     private companion object {
         const val BATCH_SIZE = 500
+        /** Supabase's default cap on rows per response. */
+        const val PULL_PAGE_SIZE = 1000
+        /** Safety stop for the paged pull. */
+        const val PULL_MAX_ROWS = 50_000
     }
 }
