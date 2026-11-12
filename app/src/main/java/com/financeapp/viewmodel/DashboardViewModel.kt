@@ -88,6 +88,9 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
     /** The user's name (Settings / sign-in), to tell their accounts from others'. */
     private val _userName = MutableStateFlow("")
     fun setUserName(name: String) { _userName.value = name }
+    /** SMS senders switched off in "Banks Kash follows": their accounts leave Home. */
+    private val _offSenders = MutableStateFlow<Set<String>>(emptySet())
+    fun setOffSenders(senders: Set<String>) { _offSenders.value = senders }
 
     init { load() }
 
@@ -118,11 +121,12 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
                 repo.getAllTransactions(),
                 _chartRange,
                 reviewFlow,
-                _userName,
-            ) { recent, all, range, reviewWithOlder, userName ->
+                combine(_userName, _offSenders) { name, off -> name to off },
+            ) { recent, all, range, reviewWithOlder, nameAndOff ->
                 val (review, olderPending) = reviewWithOlder
+                val (userName, offSenders) = nameAndOff
                 val aggregatedData = aggregateData(all, range)
-                val accountBalances = buildAccountBalances(all, userName)
+                val accountBalances = buildAccountBalances(all, userName, offSenders)
                 val monthIncome  = all.filter {
                     (it.isIncome()) && it.dateTime >= monthStart
                 }.sumOf { it.amount }
@@ -173,10 +177,15 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
      *  bank where the user holds several accounts gets one card each. Includes
      *  accounts with zero / unknown balance so the user sees every source
      *  they've imported. */
-    private fun buildAccountBalances(all: List<TransactionEntity>, userName: String = ""): List<AccountSummary> {
+    private fun buildAccountBalances(
+        all: List<TransactionEntity>,
+        userName: String = "",
+        offSenders: Set<String> = emptySet(),
+    ): List<AccountSummary> {
         val owners = com.financeapp.data.accounts.AccountOwnership.ownerNames(all, userName)
         val now = System.currentTimeMillis()
         return AccountGrouping.group(all)
+            .filter { showsOnHome(it.bankName, it.transactions.map { t -> t.sender }, offSenders) }
             .map { group ->
                 val txns = group.transactions
                 val latestWithBalance = txns
@@ -297,4 +306,15 @@ class DashboardViewModelFactory(private val repo: TransactionRepository) :
         @Suppress("UNCHECKED_CAST")
         return DashboardViewModel(repo) as T
     }
+}
+
+/**
+ * Whether an account gets a card (and a share of the total) on Home. Not the
+ * hand-entered "Cash" account (owner, Nov 2026: cash isn't tracked as a
+ * balance), and not a bank whose every SMS sender is switched off in "Banks
+ * Kash follows".
+ */
+internal fun showsOnHome(bankName: String, senders: List<String>, offSenders: Set<String>): Boolean {
+    if (bankName.trim().equals("Cash", ignoreCase = true)) return false
+    return senders.isEmpty() || !senders.all { it in offSenders }
 }

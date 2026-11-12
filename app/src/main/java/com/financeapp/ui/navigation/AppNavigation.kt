@@ -326,6 +326,10 @@ private fun MainNavigation(
             composable(Screen.Dashboard.route) {
                 // Tells the user's accounts from others' ("Dear Hana …").
                 LaunchedEffect(userName) { dashVm.setUserName(userName) }
+                // Banks switched off in "Banks Kash follows" leave Home.
+                val homeSources by sourcesVm.sources.collectAsState()
+                val offSenders = remember(homeSources) { homeSources.filterNot { it.enabled }.map { it.sender }.toSet() }
+                LaunchedEffect(offSenders) { dashVm.setOffSenders(offSenders) }
                 HomeScreen(
                     vm = dashVm,
                     tabBar = tabBar(KashTab.Home),

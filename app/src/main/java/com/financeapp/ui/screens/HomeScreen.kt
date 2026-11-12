@@ -72,14 +72,12 @@ import com.financeapp.ui.kash.components.KashMoney
 import com.financeapp.ui.kash.components.KashScreen
 import com.financeapp.ui.kash.components.KashSkeleton
 import com.financeapp.ui.kash.components.KashSkeletonRow
-import com.financeapp.ui.kash.components.KashWeekChart
 import com.financeapp.ui.kash.groupByDay
 import com.financeapp.ui.kash.kashClickable
 import com.financeapp.util.KashDates
 import com.financeapp.util.LocalCalendarSystem
 import com.financeapp.viewmodel.DashboardState
 import com.financeapp.viewmodel.DashboardViewModel
-import java.util.Calendar
 
 /**
  * Home (AppHome, AppHomeEmpty, AppHomeCaughtUp, AppHomeOlder). The slate hero
@@ -157,7 +155,6 @@ fun HomeScreen(
                 }
                 if (!state.isLoading) {
                     ReviewBlock(state, hasAny, onReviewToday, onReviewOlder)
-                    if (hasAny) WeekBlock(state)
                 }
             },
         ) { pad ->
@@ -273,8 +270,6 @@ private fun FreshRow(fresh: Boolean, modifier: Modifier = Modifier, content: @Co
 private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolean, onToggle: () -> Unit) {
     // Accounts with no SMS for 3 months keep an old balance: left out.
     val total = state.accountBalances.filter { it.inTotal }.sumOf { it.balance }
-    val quiet = state.accountBalances.filter { it.stale }
-    val cal = LocalCalendarSystem.current
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Total balance", style = KashType.Body, color = KashColors.OnSlateMuted)
@@ -294,14 +289,6 @@ private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolea
             } else {
                 Column {
                     KashFigure(total, Modifier.padding(top = 4.dp), hidden = hasAny && !visible, countUp = true)
-                    if (quiet.isNotEmpty()) {
-                        val since = quiet.mapNotNull { it.lastActivityMs }.maxOrNull()
-                        Text(
-                            (if (quiet.size == 1) "Leaves out 1 account" else "Leaves out ${quiet.size} accounts") +
-                                (since?.let { " with no SMS since ${com.financeapp.util.KashDates.monthYear(it, cal)}" } ?: " that went quiet"),
-                            style = KashType.Caption, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
                 }
             }
         }
@@ -340,9 +327,9 @@ private fun AccountChip(a: AccountSummary, hidden: Boolean, onClick: () -> Unit)
     Column(
         Modifier
             .widthIn(min = 124.dp, max = 168.dp)
-            .clip(KashShapes.Control)
+            .clip(KashShapes.Chip)
             .background(KashColors.GhostFill)
-            .border(1.dp, KashColors.GhostLine, KashShapes.Control)
+            .border(1.dp, KashColors.GhostLine, KashShapes.Chip)
             .kashClickable(onClickLabel = "Open $name history", onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -411,21 +398,6 @@ private fun GhostStatus(icon: KashIcon, title: String, text: String, compact: Bo
             Text(text, style = if (compact) KashType.Micro else KashType.Caption, color = KashColors.OnSlateMuted)
         }
     }
-}
-
-/** This week's spending, Sunday first as the view model builds it; today in sand. */
-@Composable
-private fun WeekBlock(state: DashboardState) {
-    val week = state.weekActivity
-    if (week.size != 7) return
-    val todayIndex = Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY
-    val max = week.maxOf { it.amount }.coerceAtLeast(1.0)
-    val total = week.sumOf { it.amount }
-    KashWeekChart(
-        values = week.mapIndexed { i, p -> if (i > todayIndex) 0f else (p.amount / max).toFloat() },
-        today = todayIndex,
-        total = (if (total > 0) KashMoney.MINUS else "") + KashMoney.whole(total),
-    )
 }
 
 

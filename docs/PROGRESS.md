@@ -69,6 +69,11 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Home cleanup (owner's screenshots): no Cash card, and a bank
+  switched off in "Banks Kash follows" leaves Home and the total; the
+  "Leaves out 1 account…" line and the weekly bar strip are gone; account
+  cards have tighter corners (12dp). `HomeAccountsTest`. Not yet released.
+
 - 2026-11-12 1.0.33: Fixed a crash when you tap "They're mine" or "Hide them" on the card about other people's accounts; Your own accounts are no longer marked as someone else's. Not yet installed on a real phone.
 - 2026-11-12 Home no longer marks the owner's own accounts as someone
   else's ("<Name>'s?") when the name in Settings isn't the one the banks
