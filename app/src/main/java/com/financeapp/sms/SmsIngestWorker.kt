@@ -37,7 +37,14 @@ class SmsIngestWorker(
             // First run (empty ledger) and upgrade rescans replay history:
             // no transaction-level alerts from those.
             val firstRun = repo.countTransactions() == 0
-            val insertedTxs = repo.ingestAllReturningInserted(messages)
+            val ingested = repo.ingestAllReturningInserted(messages)
+            // Moves between the user's own accounts (CBE → CBE Birr, CBE 1 →
+            // CBE 2, …) are filed before alerts go out, so a transfer is never
+            // announced as spending. Also catches up history on older installs.
+            val ownMoves = runCatching { repo.tagOwnTransfers() }.getOrDefault(emptySet())
+            val insertedTxs = ingested.map {
+                if (it.id in ownMoves) it.copy(category = com.financeapp.data.model.Spending.OWN_ACCOUNTS) else it
+            }
             val inserted = insertedTxs.size
             if (inserted > 0 || firstRun) {
                 Telemetry.track(ctx, Telemetry.SCAN_COMPLETED, mapOf(

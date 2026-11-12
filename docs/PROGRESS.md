@@ -73,6 +73,18 @@ items to Done with the date, add what is next or blocked.
   for the evening digest when 3 alerts have already shown that day (the
   cap now applies to fee alerts only). The digest card no longer shows its
   first item twice (NAH-33).
+
+- 2026-11-12 Own-account moves: a money-out and a money-in of the same
+  amount within 5 minutes on two different accounts (CBE ↔ Telebirr, CBE 1
+  ↔ CBE 2, CBE ↔ Awash…) are filed as "Own accounts", so they stop counting
+  as spending and income. Shared reference number is the fallback. Runs on
+  every SMS scan, including old history (`OwnTransferPairing`, 16 tests).
+  Not yet on a phone. Still open: Telebirr → someone else's bank account is
+  treated as your own when the SMS shows no person's name; matching the
+  bank account number against your own accounts would fix that.
+
+- 2026-11-12 1.0.31: Accounts that belong to someone else can be hidden in one tap, and old quiet accounts no longer count in your total; Sharing your Wrapped makes a clean picture; No more "money came in" alerts for your own top-ups or loans. Not yet installed on a real phone.
+
 - 2026-11-11 Home: accounts whose SMS greet someone else are marked
   "<Name>'s?" and Home offers to hide them; accounts with no SMS for 90
   days leave the total and show "Last updated <month>". Rules unit-tested
