@@ -370,6 +370,21 @@ interface TransactionDao {
         merchantKey: String?
     ): Int
 
+    /**
+     * Rows that could be one leg of a move between the user's own accounts:
+     * money in or out with no category of its own yet, plus transfers a parser
+     * already typed as own-account (they anchor the other bank's matching leg).
+     * See OwnTransferPairing.
+     */
+    @Query("""
+        SELECT * FROM transactions
+         WHERE hidden = 0
+           AND type IN ('CREDIT', 'DEBIT', 'TRANSFER_OUT', 'PAYMENT', 'INTERNAL_TRANSFER')
+           AND (category IS NULL OR type = 'INTERNAL_TRANSFER')
+         ORDER BY dateTime ASC
+    """)
+    suspend fun getOwnTransferPool(): List<TransactionEntity>
+
     @Query("DELETE FROM transactions")
     suspend fun clear()
 
