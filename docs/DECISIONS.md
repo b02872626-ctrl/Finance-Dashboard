@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Home shows only the banks Kash follows, and less around them
+
+Owner's call from screenshots. The hand-entered "Cash" account gets no card
+on Home: cash isn't tracked as a balance. A bank switched off in "Banks Kash
+follows" leaves Home and the total too (switching it off already stopped new
+SMS; its old balance kept showing). The "Leaves out N accounts with no SMS
+since …" line is gone. Quiet accounts still stay out of the total and still
+say "Last updated <month>" on their card. The weekly bar strip under Review
+is gone from Home. Account cards use the Chip radius (12dp) instead of
+Control (16dp).
+
 ## 2026-11-12 — The name the banks greet always counts as the owner
 
 On 1.0.32 the owner saw their own CBE, Telebirr and CBE Birr cards marked
