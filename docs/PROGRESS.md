@@ -73,6 +73,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Web dashboard "Spending over time" (NAH-39, part 1): a dot
+  rides the line at the day under your cursor or finger, with a faint guide
+  down to the axis, and the line above the chart names that day. Checked
+  with made-up data; not yet signed in with real data.
 - 2026-11-12 NAH-38 download page for the booth: headline "Every bank SMS
   becomes your spending record." with "No bank login, nothing to type";
   a bigger Download button that stays above the fold on a phone (the
