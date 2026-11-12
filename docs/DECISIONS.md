@@ -6,6 +6,13 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Download page install steps in English only (NAH-38)
+
+Owner's call: the English / አማርኛ switch on the install steps is gone, and
+the Amharic step text behind it with it (the `?lang=am` link and the saved
+language choice no longer do anything). The Amharic line under the headline
+stays. This replaces the NAH-38 goal of steps "in English and Amharic".
+
 ## 2026-11-12 — Download page: font loads after first paint, pictures are HTML
 
 For booth visitors on slow 3G (NAH-38). The Google Fonts stylesheet on

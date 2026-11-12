@@ -174,9 +174,6 @@
     .qa h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
     .qa p { margin: 0; color: var(--ink-muted); }
     .links { display: flex; flex-wrap: wrap; gap: 0 24px; margin-top: 16px; }
-    .lang { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--well); margin-top: 14px; }
-    .lang button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink-muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; min-height: 36px; }
-    .lang button[aria-pressed="true"] { background: var(--card, #fff); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
     [lang="am"] { line-height: 1.6; }
     .notice { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: var(--well); font-size: 14px; line-height: 20px; max-width: 820px; }
     .notice svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--ink-muted); margin-top: 1px; }
@@ -308,16 +305,10 @@
             <h2>It takes a minute</h2>
           </div>
           <div>
-            <p class="lede" data-lang="en">Kash isn't on the Play Store yet, so Android asks you to confirm the install.</p>
-            <p class="lede" data-lang="am" lang="am" hidden>Kash ገና Play Store ላይ ስለሌለ፣ Android መጫኑን እንዲያረጋግጡ ይጠይቅዎታል።</p>
-            <div class="lang" role="group" aria-label="Language">
-              <button type="button" data-set-lang="en" aria-pressed="true">English</button>
-              <button type="button" data-set-lang="am" aria-pressed="false" lang="am">አማርኛ</button>
-            </div>
+            <p class="lede">Kash isn't on the Play Store yet, so Android asks you to confirm the install.</p>
           </div>
         </div>
-        <!-- One list; each step has its picture once and its text in both
-             languages (the switch shows one). Pictures are decorative: the
+        <!-- One list; each step has its picture once. Pictures are decorative: the
              text says the same thing. Filenames say "Kash.apk" on purpose, so
              release.sh's version check doesn't trip on them. -->
         <ol class="cards">
@@ -331,8 +322,7 @@
               </div>
             </div>
             <span class="num">1</span>
-            <p data-lang="en">Tap <strong>Download for Android</strong>. When it finishes, tap <strong>Open</strong>.</p>
-            <p data-lang="am" lang="am" hidden><strong>Download for Android</strong> የሚለውን ይጫኑ። ሲጨርስ <strong>Open</strong> ይጫኑ።</p>
+            <p>Tap <strong>Download for Android</strong>. When it finishes, tap <strong>Open</strong>.</p>
           </li>
           <li class="card">
             <div class="pic" aria-hidden="true">
@@ -344,8 +334,7 @@
               </div>
             </div>
             <span class="num">2</span>
-            <p data-lang="en">Missed it? Open the file from your notifications or the <strong>Downloads / My Files</strong> app.</p>
-            <p data-lang="am" lang="am" hidden>ካለፈዎት፣ ፋይሉን ከማሳወቂያዎችዎ ወይም ከ <strong>Downloads / My Files</strong> ይክፈቱ።</p>
+            <p>Missed it? Open the file from your notifications or the <strong>Downloads / My Files</strong> app.</p>
           </li>
           <li class="card">
             <div class="pic" aria-hidden="true">
@@ -356,8 +345,7 @@
               </div>
             </div>
             <span class="num">3</span>
-            <p data-lang="en">If Android says it can't install apps from this source, tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser, then go back.</p>
-            <p data-lang="am" lang="am" hidden>Android ከዚህ ምንጭ መተግበሪያ መጫን አይቻልም ካለ፣ <strong>Settings</strong> ይጫኑ፣ ለአሳሽዎ <strong>Allow from this source</strong> ያብሩ፣ ከዚያ ይመለሱ።</p>
+            <p>If Android says it can't install apps from this source, tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser, then go back.</p>
           </li>
           <li class="card">
             <div class="pic" aria-hidden="true">
@@ -368,8 +356,7 @@
               </div>
             </div>
             <span class="num">4</span>
-            <p data-lang="en">Tap <strong>Install</strong>. If Google Play Protect warns about an unknown app, tap <strong>More details → Install anyway</strong>.</p>
-            <p data-lang="am" lang="am" hidden><strong>Install</strong> ይጫኑ። Google Play Protect ማስጠንቀቂያ ካሳየ <strong>More details → Install anyway</strong> ይጫኑ።</p>
+            <p>Tap <strong>Install</strong>. If Google Play Protect warns about an unknown app, tap <strong>More details → Install anyway</strong>.</p>
           </li>
           <li class="card next">
             <div class="pic" aria-hidden="true">
@@ -381,14 +368,12 @@
               </div>
             </div>
             <span class="num">5</span>
-            <p data-lang="en">Open Kash, tap <strong>Allow</strong> for SMS, pick your banks, then sign in and set a 4-digit PIN.</p>
-            <p data-lang="am" lang="am" hidden>Kashን ይክፈቱ፣ ለ SMS <strong>Allow</strong> ይጫኑ፣ ባንኮችዎን ይምረጡ፣ ከዚያ ይግቡና ባለ 4 አሃዝ ፒን ያስገቡ።</p>
+            <p>Open Kash, tap <strong>Allow</strong> for SMS, pick your banks, then sign in and set a 4-digit PIN.</p>
           </li>
         </ol>
         <p class="notice">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>
-          <span data-lang="en"><strong>Samsung phones:</strong> the setting is under Settings → Apps → ⋮ → Special access → Install unknown apps. You can turn it off again after installing.</span>
-          <span data-lang="am" lang="am" hidden><strong>Samsung ስልኮች፦</strong> ቅንብሩ Settings → Apps → ⋮ → Special access → Install unknown apps ውስጥ ነው። ከጫኑ በኋላ መልሰው ማጥፋት ይችላሉ።</span>
+          <span><strong>Samsung phones:</strong> the setting is under Settings → Apps → ⋮ → Special access → Install unknown apps. You can turn it off again after installing.</span>
         </p>
       </section>
 
@@ -483,24 +468,5 @@
     });
   </script>
   <script src="analytics.js" defer></script>
-  <script>
-    (function () {
-      var KEY = "kash_lang";
-      function set(lang) {
-        document.querySelectorAll("[data-lang]").forEach(function (el) { el.hidden = el.getAttribute("data-lang") !== lang; });
-        document.querySelectorAll("[data-set-lang]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-set-lang") === lang)); });
-        try { localStorage.setItem(KEY, lang); } catch (e) {}
-      }
-      document.querySelectorAll("[data-set-lang]").forEach(function (b) {
-        b.addEventListener("click", function () { set(b.getAttribute("data-set-lang")); });
-      });
-      var start = "en";
-      try {
-        var q = new URLSearchParams(location.search).get("lang");
-        start = q === "am" || q === "en" ? q : (localStorage.getItem(KEY) || ((navigator.language || "").indexOf("am") === 0 ? "am" : "en"));
-      } catch (e) {}
-      set(start);
-    })();
-  </script>
 </body>
 </html>
