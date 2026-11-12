@@ -93,6 +93,16 @@ object GoalProgress {
         val projectedFinishMs: Long?,
         /** RECURRING: months in a row, before this one, that hit the amount. */
         val streakMonths: Int,
+        /**
+         * Where an even pace would be today, in birr: a straight line from the
+         * goal's start to its date (DATE_BOUND), or through the month
+         * (RECURRING). The mark on the progress bar. Null otherwise or once reached.
+         */
+        val evenPaceNow: Double? = null,
+        /** RECURRING: the longest run of months that reached the amount, this month included. */
+        val longestStreak: Int = 0,
+        /** RECURRING: when this month's saves first reached the amount; null if not yet. */
+        val monthDoneAtMs: Long? = null,
         /** Newest first. */
         val movements: List<Movement>,
     ) {
@@ -101,6 +111,8 @@ object GoalProgress {
 
     data class Summary(val results: List<Result>) {
         val totalSaved: Double get() = results.filter { it.goal.status != GoalStatus.ARCHIVED }.sumOf { it.saved }
+        /** Net saved this month across goals that aren't archived ("+21,500 ETB this month"). */
+        val savedThisMonth: Double get() = results.filter { it.goal.status != GoalStatus.ARCHIVED }.sumOf { it.savedThisMonth }
         val onTrack: Int get() = results.count { it.goal.status == GoalStatus.ACTIVE && it.pace in GOOD }
         val active: Int get() = results.count { it.goal.status == GoalStatus.ACTIVE }
     }
@@ -173,6 +185,7 @@ object GoalProgress {
         val fraction = if (target == null || target <= 0.0) 0.0 else (reachedAmount / target).coerceIn(0.0, 1.0)
 
         var monthsLeft: Int? = null
+        var evenPace: Double? = null
         // A monthly goal always says what's left this month (0 once it's reached).
         var perMonth: Double? = if (recurring && target != null) remaining else null
         val pace: Pace = when {
@@ -181,6 +194,7 @@ object GoalProgress {
             target == null -> Pace.NO_DEADLINE
             recurring -> {
                 val (day, days) = dayOfMonth(now, zone)
+                evenPace = target * day / days
                 paceAgainst(thisMonth, target * day / days, target)
             }
             g.type == GoalType.DATE_BOUND && g.deadline != null -> {
@@ -193,6 +207,7 @@ object GoalProgress {
                     perMonth = remaining / monthsLeft
                     val span = (g.deadline - g.createdAt).coerceAtLeast(1L)
                     val elapsed = ((now - g.createdAt).toDouble() / span).coerceIn(0.0, 1.0)
+                    evenPace = target * elapsed
                     paceAgainst(saved, target * elapsed, target)
                 }
             }
@@ -216,6 +231,9 @@ object GoalProgress {
             projectedFinishMs = projected,
             streakMonths = if (recurring && target != null) streak(g, target, moves, now, zone) else 0,
             movements = moves.sortedByDescending { it.atMs },
+            evenPaceNow = if (pace == Pace.REACHED) null else evenPace,
+            longestStreak = if (recurring && target != null) longestStreak(g, target, moves, now, zone) else 0,
+            monthDoneAtMs = if (recurring && target != null) monthDoneAt(target, moves, now, zone) else null,
         )
     }
 
@@ -242,6 +260,32 @@ object GoalProgress {
             count++
         }
         return count
+    }
+
+    /** RECURRING: the longest run of months (from the goal's first month to this one) that reached [target]. */
+    private fun longestStreak(g: GoalEntity, target: Double, moves: List<Movement>, now: Long, zone: TimeZone): Int {
+        val cal = Calendar.getInstance(zone).apply { timeInMillis = startOfMonth(g.createdAt, zone) }
+        val last = startOfMonth(now, zone)
+        var best = 0
+        var run = 0
+        while (cal.timeInMillis <= last) {
+            val monthStart = cal.timeInMillis
+            val inMonth = moves.filter { sameMonth(it.atMs, monthStart, zone) }.sumOf { it.amount }
+            run = if (inMonth + 0.005 >= target) run + 1 else 0
+            best = max(best, run)
+            cal.add(Calendar.MONTH, 1)
+        }
+        return best
+    }
+
+    /** RECURRING: the moment this month's running total first reached [target]. */
+    private fun monthDoneAt(target: Double, moves: List<Movement>, now: Long, zone: TimeZone): Long? {
+        var total = 0.0
+        moves.filter { sameMonth(it.atMs, now, zone) }.sortedBy { it.atMs }.forEach {
+            total += it.amount
+            if (total + 0.005 >= target) return it.atMs
+        }
+        return null
     }
 
     /** Average net saved a month over the last 3 months (this one included), counting only months the goal existed. */

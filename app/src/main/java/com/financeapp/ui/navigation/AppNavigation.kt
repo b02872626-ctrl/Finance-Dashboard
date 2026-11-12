@@ -286,7 +286,15 @@ private fun MainNavigation(
     // The tab bar for the three tab screens (icons only, dot under the active one).
     val tabBar: (KashTab) -> (@Composable () -> Unit) = { active ->
         {
-            KashTabBar(active, onSelect = { tab ->
+            val goalsDark = active == KashTab.Goals
+            KashTabBar(
+                active,
+                // The Goals section is dark; its tab bar follows.
+                background = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Sheet else KashColors.Surface,
+                line = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Line else KashColors.Line,
+                activeTint = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Ink else KashColors.Ink,
+                inactiveTint = if (goalsDark) com.financeapp.ui.goals.GoalsColors.InkFaint else KashColors.InkFaint,
+                onSelect = { tab ->
                 val target = when (tab) {
                     KashTab.Home -> Screen.Dashboard
                     KashTab.History -> Screen.Transactions
@@ -441,6 +449,7 @@ private fun MainNavigation(
                     tabBar = tabBar(KashTab.Goals),
                     onOpenGoal = { navController.navigate("goal/$it") },
                     onNewGoal = { navController.navigate("goal_new") },
+                    onStartKind = { kind -> navController.navigate("goal_new?kind=$kind") },
                 )
             }
             composable(
@@ -453,11 +462,20 @@ private fun MainNavigation(
                 // Deleted (or not loaded yet): nothing to show; a delete pops back itself.
                 if (result == null) return@composable
                 var celebrated by remember(id) { mutableStateOf(id in settingsRepo.getCelebratedGoals()) }
+                // Month done shows once per goal per month: "<id>:<yyyy-MM>".
+                val monthKey = remember(id) {
+                    id + ":" + java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).format(java.util.Date())
+                }
+                var monthSeen by remember(id) { mutableStateOf(monthKey in settingsRepo.getCelebratedGoals()) }
                 GoalDetailScreen(
                     result = result,
                     accountLabel = goals.accountLabel(result.goal.linkedAccountKey),
+                    averageMonthlySpend = goals.averageMonthlySpend,
                     celebrate = !celebrated && result.goal.status == com.financeapp.data.model.GoalStatus.ACHIEVED,
                     onCelebrated = { settingsRepo.markGoalCelebrated(id); celebrated = true },
+                    monthDone = !monthSeen && result.goal.type == com.financeapp.data.model.GoalType.RECURRING &&
+                        result.pace == com.financeapp.data.goals.GoalProgress.Pace.REACHED,
+                    onMonthDoneSeen = { settingsRepo.markGoalCelebrated(monthKey); monthSeen = true },
                     onBack = ::back,
                     onAddSave = { amount, note, at -> goalsVm.logSave(id, amount, note, at) },
                     onDeleteSave = goalsVm::deleteSave,
@@ -468,11 +486,17 @@ private fun MainNavigation(
                     onChangeAccount = { navController.navigate("goal_edit/$id?step=account") },
                 )
             }
-            composable("goal_new") {
+            composable(
+                route = "goal_new?kind={kind}",
+                arguments = listOf(navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) { backStack ->
                 val goals by goalsVm.state.collectAsState()
+                val kind = backStack.arguments?.getString("kind")
                 GoalFormScreen(
                     accounts = goals.accounts,
                     averageMonthlySpend = goals.averageMonthlySpend,
+                    // From a kind card on the empty Goals tab: straight to step 2, Back returns to Goals.
+                    initialType = kind,
                     onClose = ::back,
                     onSave = { draft, onError ->
                         goalsVm.create(draft) { newId, error ->

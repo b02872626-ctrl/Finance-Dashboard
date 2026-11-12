@@ -67,15 +67,17 @@ fun GoalFormScreen(
     onClose: () -> Unit,
     onSave: (GoalDraft, onError: (String) -> Unit) -> Unit,
     editing: GoalEntity? = null,
-    startAt: GoalFormStep = if (editing == null) GoalFormStep.Kind else GoalFormStep.Details,
+    /** A kind already picked (empty Goals tab): skip step 1. */
+    initialType: String? = null,
+    startAt: GoalFormStep = if (editing == null && initialType == null) GoalFormStep.Kind else GoalFormStep.Details,
 ) {
     KashSystemBars(darkIcons = true)
     val cal = LocalCalendarSystem.current
     val today = remember { KashDates.startOfDay(System.currentTimeMillis()) }
-    val steps = if (editing == null) GoalFormStep.entries else listOf(GoalFormStep.Details, GoalFormStep.Account)
+    val steps = if (editing == null && initialType == null) GoalFormStep.entries else listOf(GoalFormStep.Details, GoalFormStep.Account)
 
     var step by rememberSaveable { mutableStateOf(startAt) }
-    var type by rememberSaveable { mutableStateOf(editing?.type ?: GoalType.DATE_BOUND) }
+    var type by rememberSaveable { mutableStateOf(editing?.type ?: initialType?.takeIf { it in GoalType.ALL } ?: GoalType.DATE_BOUND) }
     val start = remember(editing) { editing?.let(GoalForm::fieldsOf) }
     var name by rememberSaveable { mutableStateOf(start?.name.orEmpty()) }
     var emoji by rememberSaveable { mutableStateOf(start?.emoji.orEmpty()) }

@@ -6,6 +6,31 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-13 — Goals is dark; icons instead of emoji (NAH-14)
+
+The Goals design came back (`design/goals-handoff`, kept outside git). Its
+final update makes the whole Goals section dark: top #161B22, sheet
+#1F252E, cards #29313C, with sand as the one accent (primary buttons,
+progress fills, icon wells, streak badge). Owner approved it. This
+replaces the sand top logged on 2026-11-12.
+
+- The rest of Kash stays light. Its components read `KashColors` directly,
+  so Goals has its own small kit (`ui/goals/GoalsKit.kt`: buttons, chips,
+  fields, rows, sheet, dialog, progress bar with a pace mark) instead of
+  re-theming the design system. `KashScreen` and `KashTabBar` take
+  colours; their defaults are unchanged.
+- Goals stays the last tab (Home, History, Analytics, Goals). The design
+  showed five tabs with Accounts, which is part of Home since NAH-28.
+- Goals get one of 12 stroke icons instead of an emoji. The icon key is
+  stored in the existing `emoji` column (no database change); a goal
+  without a known key shows its kind's icon.
+- Kept as before: removing a save asks first (no Undo snackbar); Add a
+  save stays on reached goals; no archived list yet.
+- New numbers, all from data already on the phone: the even pace today
+  (the mark on the bar), the longest monthly streak, when this month's
+  amount was reached ("Month done", once a month), "took N months" and
+  "N days early".
+
 ## 2026-11-12 — Goals: editing keeps the kind and the start date (NAH-14)
 
 Edit goal can change the name, emoji, amount, months, date and account,
