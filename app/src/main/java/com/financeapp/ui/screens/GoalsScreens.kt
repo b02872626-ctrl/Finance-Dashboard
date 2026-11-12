@@ -297,7 +297,7 @@ private fun GoalCard(r: GoalProgress.Result, accountLabel: String?, large: Boole
 private fun progressMark(r: GoalProgress.Result): Double? {
     val even = r.evenPaceNow ?: return null
     val target = r.target ?: return null
-    if (target <= 0.0) return null
+    if (target <= 0.0 || !GoalCopy.paceIsMeaningful(r)) return null
     return (even / target).coerceIn(0.0, 1.0)
 }
 

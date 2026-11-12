@@ -120,9 +120,21 @@ object GoalCopy {
         }
     }
 
+    /**
+     * A brand-new goal's even pace is a few birr ("25 ETB today") and its mark
+     * sits on the bar's edge like a cursor. Both show once the even pace is at
+     * least 1% of the target.
+     */
+    fun paceIsMeaningful(r: GoalProgress.Result): Boolean {
+        val even = r.evenPaceNow ?: return false
+        val target = r.target ?: return false
+        return target > 0.0 && even >= target * 0.01
+    }
+
     /** "An even pace would be 32,000 ETB today. That's the mark on the bar." (dated goals on the way). */
     fun evenPaceLine(r: GoalProgress.Result): String? {
         val even = r.evenPaceNow ?: return null
+        if (!paceIsMeaningful(r)) return null
         if (r.goal.type != GoalType.DATE_BOUND || r.pace == Pace.MISSED) return null
         return "An even pace would be ${etb(even)} today. That’s the mark on the bar."
     }

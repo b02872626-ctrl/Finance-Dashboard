@@ -333,16 +333,18 @@ private fun MainNavigation(
     }
     fun back() { navController.popBackStack() }
 
+    val goalsMotion = GoalsMotion(reduced = com.financeapp.ui.kash.rememberReducedMotion())
     Box(Modifier.fillMaxSize().background(KashColors.Slate)) {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
             modifier = Modifier.fillMaxSize(),
-            // No slide animations between screens: routes hard-cut.
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            popEnterTransition = { EnterTransition.None },
-            popExitTransition = { ExitTransition.None }
+            // Routes hard-cut, except crossing into or out of the Goals section
+            // (see goalsEnter / goalsExit).
+            enterTransition = { goalsEnter(goalsMotion) },
+            exitTransition = { goalsExit(goalsMotion) },
+            popEnterTransition = { goalsEnter(goalsMotion) },
+            popExitTransition = { goalsExit(goalsMotion) }
         ) {
             composable(Screen.Dashboard.route) {
                 // Tells the user's accounts from others' ("Dear Hana …").
@@ -623,6 +625,51 @@ private fun MainNavigation(
             }
         }
     }
+}
+
+// ─── Goals section motion ────────────────────────────────────────────────
+//
+// Apple's fluid-interface rules, applied to the one place the app changes
+// colour (light app ↔ dark Goals):
+//  - same path in and out: Goals is the right-most tab, so it arrives a
+//    little from the right and leaves back to the right;
+//  - no brightness jump: both sides crossfade instead of hard-cutting;
+//  - small and calm: a 1/12-width nudge, a critically damped spring
+//    (damping 1.0, response ~0.35 s), no bounce; navigation is never blocked
+//    and a new switch starts from what's on screen;
+//  - reduced motion: a plain 200 ms crossfade, no movement.
+// Every other route change stays a hard cut.
+
+class GoalsMotion(val reduced: Boolean) {
+    val fade: androidx.compose.animation.core.FiniteAnimationSpec<Float> =
+        if (reduced) androidx.compose.animation.core.tween(200)
+        else androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = 320f)
+    val slide: androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset> =
+        androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = 320f)
+}
+
+/** The Goals tab, a goal's page, and the New / Edit goal form. */
+private fun inGoals(entry: androidx.navigation.NavBackStackEntry): Boolean {
+    val route = entry.destination.route ?: return false
+    return route == Screen.Goals.route || route.startsWith("goal/") || route.startsWith("goal_new") || route.startsWith("goal_edit")
+}
+
+private fun androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.goalsEnter(
+    m: GoalsMotion,
+): EnterTransition {
+    val into = inGoals(targetState)
+    if (into == inGoals(initialState)) return EnterTransition.None
+    val fade = fadeIn(m.fade)
+    return if (into && !m.reduced) fade + androidx.compose.animation.slideInHorizontally(m.slide) { it / 12 } else fade
+}
+
+private fun androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.goalsExit(
+    m: GoalsMotion,
+): ExitTransition {
+    val outOf = inGoals(initialState)
+    if (outOf == inGoals(targetState)) return ExitTransition.None
+    val fade = fadeOut(m.fade)
+    return if (outOf && !m.reduced) fade + androidx.compose.animation.slideOutHorizontally(m.slide) { it / 12 } else fade
 }
 
 /** Settings → Email support: pre-filled email with version + device for triage. */

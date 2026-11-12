@@ -75,6 +75,8 @@ class GoalCopyTest {
             GoalCopy.evenPaceLine(result(even = 32_000.0)),
         )
         assertNull(GoalCopy.evenPaceLine(result(even = null)))
+        // A goal made today: 25 ETB of 90,000 is noise, so no line and no mark.
+        assertNull(GoalCopy.evenPaceLine(result(target = 90_000.0, even = 25.0)))
         assertNull(GoalCopy.evenPaceLine(result(pace = Pace.MISSED, even = 50_000.0)))
     }
 

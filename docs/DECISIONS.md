@@ -26,6 +26,14 @@ replaces the sand top logged on 2026-11-12.
   without a known key shows its kind's icon.
 - Kept as before: removing a save asks first (no Undo snackbar); Add a
   save stays on reached goals; no archived list yet.
+- Motion (owner asked, Apple's fluid-interface rules): crossing into the
+  Goals section, it fades in and slides 1/12 of the width from the right
+  (Goals is the right-most tab); leaving, it goes back the same way while
+  the other screen fades in. Critically damped spring (~0.35 s), no
+  bounce, never blocks taps. Reduced motion: a 200 ms crossfade. Every
+  other route change stays a hard cut.
+- A brand-new goal hides the pace mark and "An even pace would be…" until
+  the even pace is at least 1% of the target ("25 ETB today" was noise).
 - New numbers, all from data already on the phone: the even pace today
   (the mark on the bar), the longest monthly streak, when this month's
   amount was reached ("Month done", once a month), "took N months" and
