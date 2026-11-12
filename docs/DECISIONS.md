@@ -6,6 +6,18 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Web dashboard loads one pinned Supabase file (NAH-39)
+
+`Web/app.js` imported `https://esm.sh/@supabase/supabase-js@2`: a floating
+version (whatever esm.sh had that day) that redirected and then pulled ~14
+module files three requests deep before sign-in could start. It now imports
+esm.sh's single self-contained bundle of the version that was live
+(2.119.0), and `index.html` preloads it and `insights.js` next to `app.js`,
+so they download in parallel. The Figtree font no longer blocks the first
+paint (same trick as the download page). To update Supabase, change the
+version in both `app.js` and the `modulepreload` in `index.html`. The admin
+dashboard still uses `@2` and wasn't changed.
+
 ## 2026-11-12 — Download page install steps in English only (NAH-38)
 
 Owner's call: the English / አማርኛ switch on the install steps is gone, and

@@ -16,7 +16,10 @@ import {
   normaliseSource, incomeSenders,
 } from "./insights.js";
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// One pinned, self-contained file: "@2" floated to whatever esm.sh had that
+// day and pulled ~14 module files, three requests deep, before sign-in could
+// start. Keep the version in step with the modulepreload in index.html.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0/es2022/supabase-js.bundle.mjs";
 
 // ----------------------------------------------------------------------------
 // Config — same project as the Android app (local.properties).
