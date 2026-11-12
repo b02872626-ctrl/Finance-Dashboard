@@ -6,6 +6,15 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — The name the banks greet always counts as the owner
+
+On 1.0.32 the owner saw their own CBE, Telebirr and CBE Birr cards marked
+"<their name>'s?". The owner's name came from Settings (or the sign-in
+account) and only fell back to the name most SMS greet when Settings was
+empty, so a nickname or English name in Settings made every account look
+like someone else's. Now both names count as the owner. An account is
+"someone else's" only when its SMS greet a name that matches neither.
+
 ## 2026-11-12 — Income and low balance skip the daily alert cap
 
 Owner's call after a screenshot where "16.4k just came in" and "CBE is

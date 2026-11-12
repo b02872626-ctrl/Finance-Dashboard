@@ -35,11 +35,14 @@ object AccountOwnership {
 
     /**
      * Names that are the user: the first word of their name (Settings or the
-     * sign-in account), else the name most of all their SMS greet.
+     * sign-in account) and the name most of all their SMS greet. Both count,
+     * because the Settings name is often a nickname or an English name the
+     * banks never use; trusting it alone marked every one of the owner's own
+     * accounts as someone else's (1.0.32).
      */
     fun ownerNames(all: List<TransactionEntity>, userName: String?): Set<String> {
         val fromSettings = userName?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.lowercase()?.takeIf { it.length >= 2 }
-        return setOfNotNull(fromSettings ?: holder(all))
+        return setOfNotNull(fromSettings, holder(all))
     }
 
     /** Same person: equal, or one is a short form of the other ("abe" / "abebech"). */
