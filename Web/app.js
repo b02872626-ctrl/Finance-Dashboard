@@ -9,7 +9,7 @@
 // =============================================================================
 
 import {
-  EXPENSE_TYPES, OWN_ACCOUNTS, isOwnAccountTransfer, isSpending, isIncome,
+  EXPENSE_TYPES, OWN_ACCOUNTS, isOwnAccountTransfer, isSpending, isIncome, txFlow,
   ETHIOPIAN_MONTHS, gregorianToEthiopian, ethiopianToGregorian, prevEthiopianMonth,
   accountSuffix, shortBankLabel, groupAccounts,
   inContext, spendOverview, monthlyInOut, paydayPattern, lowBalanceDays, monthBounds, weekStart, DAY,
@@ -80,6 +80,7 @@ const txTbody        = $("tx-tbody");
 const txCount        = $("tx-count");
 const txSearch       = $("tx-search");
 const txTypeFilter   = $("tx-type-filter");
+const txFlowChips    = $("tx-flow-chips");
 const txCategoryFilter = $("tx-category-filter");
 const txBankFilter   = $("tx-bank-filter");
 const txDateFrom     = $("tx-date-from");
@@ -289,6 +290,7 @@ const state = {
   period: "month",
   search: "",
   typeFilter: "",
+  flowFilter: "",  // "" | "CREDIT" | "DEBIT" | "INTERNAL" (see txFlow)
   calendar: (() => {
     try { return localStorage.getItem("financeLore.calendar") || "gregorian"; }
     catch (_) { return "gregorian"; }
@@ -785,6 +787,20 @@ if (catDetailClose) {
 // ----------------------------------------------------------------------------
 txSearch.addEventListener("input", () => { state.search = txSearch.value.trim().toLowerCase(); renderTxTable(); });
 txTypeFilter.addEventListener("change", () => { state.typeFilter = txTypeFilter.value; renderTxTable(); });
+function setFlowFilter(flow) {
+  state.flowFilter = flow;
+  for (const b of txFlowChips.querySelectorAll("button[data-flow]")) {
+    const on = b.dataset.flow === flow;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-pressed", String(on));
+  }
+}
+txFlowChips.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-flow]");
+  if (!b) return;
+  setFlowFilter(b.dataset.flow);
+  renderTxTable();
+});
 txCategoryFilter.addEventListener("change", () => { state.categoryFilter = txCategoryFilter.value; renderTxTable(); });
 txBankFilter.addEventListener("change", () => { state.bankFilter = txBankFilter.value; renderTxTable(); });
 txDateFrom.addEventListener("change", () => { state.dateFrom = txDateFrom.value; renderTxTable(); });
@@ -793,6 +809,7 @@ txMinAmount.addEventListener("input", () => { state.minAmount = txMinAmount.valu
 txMaxAmount.addEventListener("input", () => { state.maxAmount = txMaxAmount.value; renderTxTable(); });
 txClearFilters.addEventListener("click", () => {
   state.search = ""; state.typeFilter = ""; state.categoryFilter = "";
+  setFlowFilter("");
   state.bankFilter = ""; state.dateFrom = ""; state.dateTo = "";
   state.minAmount = ""; state.maxAmount = "";
   txSearch.value = ""; txTypeFilter.value = ""; txCategoryFilter.value = "";
@@ -3559,6 +3576,7 @@ function applyTxFilters(txs) {
   const maxA = state.maxAmount === "" ? null : Number(state.maxAmount);
   return txs.filter((tx) => {
     if (t && tx.type !== t) return false;
+    if (state.flowFilter && txFlow(tx) !== state.flowFilter) return false;
     if (cat) {
       if (cat === "__UNCATEGORISED__") {
         if (tx.category && tx.category.trim() !== "") return false;
