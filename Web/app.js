@@ -78,6 +78,16 @@ const accountsList   = $("accounts-list");
 const accountsCount  = $("accounts-count");
 const txTbody        = $("tx-tbody");
 const txCount        = $("tx-count");
+const txMore         = $("tx-more");
+const txMoreLabel    = $("tx-more-label");
+const txMoreBtn      = $("tx-more-btn");
+const txAllBtn       = $("tx-all-btn");
+// The table draws TX_PAGE_ROWS rows at first; "Show 100 more" / "Show all"
+// raise the limit. Changing any filter starts again from the first page.
+const TX_PAGE_ROWS = 100;
+let txRowLimit = TX_PAGE_ROWS;
+let txFilterKey = "";
+
 const txSearch       = $("tx-search");
 const txTypeFilter   = $("tx-type-filter");
 const txFlowChips    = $("tx-flow-chips");
@@ -787,6 +797,8 @@ if (catDetailClose) {
 // ----------------------------------------------------------------------------
 txSearch.addEventListener("input", () => { state.search = txSearch.value.trim().toLowerCase(); renderTxTable(); });
 txTypeFilter.addEventListener("change", () => { state.typeFilter = txTypeFilter.value; renderTxTable(); });
+txMoreBtn.addEventListener("click", () => { txRowLimit += TX_PAGE_ROWS; renderTxTable(); });
+txAllBtn.addEventListener("click", () => { txRowLimit = Infinity; renderTxTable(); });
 function setFlowFilter(flow) {
   state.flowFilter = flow;
   for (const b of txFlowChips.querySelectorAll("button[data-flow]")) {
@@ -3555,11 +3567,22 @@ function renderWeekdayStrip(inRange) {
 // ----------------------------------------------------------------------------
 function renderTxTable() {
   const filtered = applyTxFilters(state.allTxs);
-  txCount.textContent = `${state.allTxs.length} loaded · ${filtered.length} shown`;
-  const recent = filtered.slice(0, 100);
-  txTbody.innerHTML = recent.length === 0
+  const key = JSON.stringify([state.search, state.typeFilter, state.flowFilter,
+    state.categoryFilter, state.bankFilter, state.dateFrom, state.dateTo,
+    state.minAmount, state.maxAmount]);
+  if (key !== txFilterKey) { txFilterKey = key; txRowLimit = TX_PAGE_ROWS; }
+  txCount.textContent = `${state.allTxs.length} loaded · ${filtered.length} match`;
+  const rows = filtered.slice(0, txRowLimit);
+  txTbody.innerHTML = rows.length === 0
     ? `<tr><td colspan="7" class="muted">No transactions match this filter.</td></tr>`
-    : recent.map(renderTxRow).join("");
+    : rows.map(renderTxRow).join("");
+  const hidden = filtered.length - rows.length;
+  txMore.classList.toggle("hidden", hidden <= 0);
+  if (hidden > 0) {
+    txMoreLabel.textContent = `Showing ${rows.length.toLocaleString()} of ${filtered.length.toLocaleString()}`;
+    txMoreBtn.textContent = `Show ${Math.min(TX_PAGE_ROWS, hidden)} more`;
+    txAllBtn.textContent = `Show all ${filtered.length.toLocaleString()}`;
+  }
 }
 
 function applyTxFilters(txs) {

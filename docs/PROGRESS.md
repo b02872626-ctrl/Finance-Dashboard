@@ -73,6 +73,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Web dashboard Transactions: "Show 100 more" / "Show all" under
+  the table (it used to stop at 100 rows with no way to see the rest).
+
 - 2026-11-12 Web dashboard design basics, look unchanged: press feedback
   everywhere, keyboard focus ring, bigger chips on phones, reduced-motion /
   contrast / transparency settings respected.

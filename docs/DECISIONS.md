@@ -6,6 +6,15 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-12 — Web Transactions list can show every row
+
+The Transactions table used to draw only the first 100 matching rows, with
+no way to see the rest, so a screenshot of it (or a sum of what's on
+screen) silently missed older rows. It still starts at 100, but a row under
+the table says "Showing 100 of N" with "Show 100 more" and "Show all N".
+Changing any filter goes back to the first 100. The count above the table
+now says "N match" instead of "N shown", because not all of them are drawn.
+
 ## 2026-11-12 — Web dashboard design basics (look unchanged)
 
 Owner's call: keep the dashboard's look, fix the basics (Apple HIG-style).
