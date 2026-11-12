@@ -7,8 +7,13 @@
     <title>Kash</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" />
+    <!-- The font loads after first paint (system font until then), as on the download page. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" /></noscript>
     <link rel="stylesheet" href="styles.css" />
+    <!-- Fetch app.js's imports alongside it instead of after it. -->
+    <link rel="modulepreload" href="insights.js" />
+    <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2.119.0/es2022/supabase-js.bundle.mjs" crossorigin />
     <script>
       // Pre-paint: pick the right starting view by checking localStorage
       // synchronously. Stops the login page from flashing on refresh when

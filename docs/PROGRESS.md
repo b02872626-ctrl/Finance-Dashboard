@@ -73,6 +73,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-12 Web dashboard starts faster (NAH-39, part 2a): one pinned
+  Supabase file instead of ~14, its imports download in parallel with
+  app.js, and the font no longer blocks the first paint. Signed-in "time to
+  data" not measured yet (needs the owner signed in).
 - 2026-11-12 Web dashboard "Spending over time" (NAH-39, part 1): a dot
   rides the line at the day under your cursor or finger, with a faint guide
   down to the axis, and the line above the chart names that day. Checked
