@@ -68,9 +68,15 @@ object NotificationRules {
     }
 
     /**
+     * Money in and low balance are about right now, so they never wait for
+     * the daily cap (only for quiet hours) and don't use it up.
+     */
+    val UNCAPPED = listOf(Trigger.INCOME, Trigger.LOW_BALANCE)
+
+    /**
      * Where a notification goes. Security always interrupts. Tier 1 waits
-     * out quiet hours and the daily cap in the digest, and shows in-app when
-     * Kash is open. Tier 2 always waits for the digest. Tier 3 overflow past
+     * out quiet hours in the digest, and the daily cap too unless it is in
+     * [UNCAPPED]; it shows in-app when Kash is open. Tier 2 always waits for the digest. Tier 3 overflow past
      * the weekly cap collapses into the digest.
      */
     fun deliver(
@@ -84,7 +90,7 @@ object NotificationRules {
         trigger == Trigger.SECURITY_LOCKOUT -> Delivery.SYSTEM
         tier == Tier.DIGEST -> Delivery.QUEUE
         quiet -> Delivery.QUEUE
-        tier == Tier.IMMEDIATE && tier1ShownToday >= MAX_TIER1_PER_DAY -> Delivery.QUEUE
+        tier == Tier.IMMEDIATE && trigger !in UNCAPPED && tier1ShownToday >= MAX_TIER1_PER_DAY -> Delivery.QUEUE
         tier == Tier.IMMEDIATE && foreground -> Delivery.IN_APP
         tier == Tier.SCHEDULED && tier3ShownThisWeek >= MAX_TIER3_PER_WEEK -> Delivery.QUEUE
         else -> Delivery.SYSTEM
