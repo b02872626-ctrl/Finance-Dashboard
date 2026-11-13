@@ -322,4 +322,44 @@ class GoalProgressTest {
         assertEquals(1, s.onTrack)
         assertEquals(1_500.0, s.totalSaved, 0.001)
     }
+
+    // ── Numbers for the design: even pace, streaks, month done ─────────────
+
+    @Test fun evenPaceIsTheStraightLineToday() {
+        val g = goal("car", target = 6_000.0, deadline = at(2026, 7, 1, 0))
+        val r = compute(listOf(g), listOf(into(3_000.0, at(2026, 3, 1))), at = at(2026, 4, 1, 0)).of("car")
+        assertEquals(6_000.0 * 90 / 181, r.evenPaceNow!!, 1.0)
+    }
+
+    @Test fun noEvenPaceOnceReachedOrForASafetyNet() {
+        val done = compute(listOf(goal("a", target = 1_000.0)), listOf(into(1_000.0, at(2026, 2, 1)))).of("a")
+        assertNull(done.evenPaceNow)
+        val net = goal("net", type = GoalType.OPEN_ENDED, target = null, months = 3, deadline = null)
+        assertNull(compute(listOf(net), spend = 4_000.0).of("net").evenPaceNow)
+    }
+
+    @Test fun longestStreakAndMonthDone() {
+        val g = goal("monthly", type = GoalType.RECURRING, target = 1_000.0, deadline = null)
+        val rows = listOf(
+            into(1_000.0, at(2026, 1, 5)),
+            into(1_000.0, at(2026, 2, 5)),
+            into(200.0, at(2026, 3, 5)),     // March short: run of 2 ends
+            into(600.0, at(2026, 4, 3)),
+            into(600.0, at(2026, 4, 9)),     // April done on the 9th
+        )
+        val r = compute(listOf(g), rows).of("monthly")
+        assertEquals(2, r.longestStreak)
+        assertEquals(0, r.streakMonths)
+        assertEquals(at(2026, 4, 9), r.monthDoneAtMs)
+    }
+
+    @Test fun summaryAddsUpThisMonth() {
+        val goals = listOf(goal("a"), goal("b", account = null), goal("old", account = null, status = GoalStatus.ARCHIVED))
+        val s = compute(
+            goals,
+            rows = listOf(into(700.0, at(2026, 4, 2)), into(900.0, at(2026, 3, 2))),
+            saves = listOf(manual("b", 300.0, at(2026, 4, 5)), manual("old", 999.0, at(2026, 4, 5))),
+        )
+        assertEquals(1_000.0, s.savedThisMonth, 0.001)
+    }
 }

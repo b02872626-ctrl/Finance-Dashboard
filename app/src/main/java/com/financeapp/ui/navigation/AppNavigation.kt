@@ -49,6 +49,7 @@ import com.financeapp.notifications.KashNotifier
 import com.financeapp.security.PinManager
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.components.KashSnackbar
+import com.financeapp.ui.goals.GoalsCrossingFrame
 import com.financeapp.ui.kash.components.KashTab
 import com.financeapp.ui.kash.components.KashTabBar
 import com.financeapp.ui.kash.components.kashBank
@@ -286,7 +287,15 @@ private fun MainNavigation(
     // The tab bar for the three tab screens (icons only, dot under the active one).
     val tabBar: (KashTab) -> (@Composable () -> Unit) = { active ->
         {
-            KashTabBar(active, onSelect = { tab ->
+            val goalsDark = active == KashTab.Goals
+            KashTabBar(
+                active,
+                // The Goals section is dark; its tab bar follows.
+                background = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Sheet else KashColors.Surface,
+                line = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Line else KashColors.Line,
+                activeTint = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Ink else KashColors.Ink,
+                inactiveTint = if (goalsDark) com.financeapp.ui.goals.GoalsColors.InkFaint else KashColors.InkFaint,
+                onSelect = { tab ->
                 val target = when (tab) {
                     KashTab.Home -> Screen.Dashboard
                     KashTab.History -> Screen.Transactions
@@ -325,43 +334,48 @@ private fun MainNavigation(
     }
     fun back() { navController.popBackStack() }
 
+    val goalsCrossing = remember { com.financeapp.ui.goals.GoalsCrossing() }
+    val reducedMotion = com.financeapp.ui.kash.rememberReducedMotion()
     Box(Modifier.fillMaxSize().background(KashColors.Slate)) {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
             modifier = Modifier.fillMaxSize(),
-            // No slide animations between screens: routes hard-cut.
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            popEnterTransition = { EnterTransition.None },
-            popExitTransition = { ExitTransition.None }
+            // Routes hard-cut. Crossing into or out of the Goals section, the
+            // tab screens draw a pixel wipe from the Goals tab (GoalsCrossingFrame).
+            enterTransition = { goalsCrossing.note(initialState, targetState, pop = false); EnterTransition.None },
+            exitTransition = { goalsCrossing.note(initialState, targetState, pop = false); ExitTransition.None },
+            popEnterTransition = { goalsCrossing.note(initialState, targetState, pop = true); EnterTransition.None },
+            popExitTransition = { goalsCrossing.note(initialState, targetState, pop = true); ExitTransition.None }
         ) {
             composable(Screen.Dashboard.route) {
-                // Tells the user's accounts from others' ("Dear Hana …").
-                LaunchedEffect(userName) { dashVm.setUserName(userName) }
-                // Banks switched off in "Banks Kash follows" leave Home.
-                val homeSources by sourcesVm.sources.collectAsState()
-                val offSenders = remember(homeSources) { homeSources.filterNot { it.enabled }.map { it.sender }.toSet() }
-                LaunchedEffect(offSenders) { dashVm.setOffSenders(offSenders) }
-                HomeScreen(
-                    vm = dashVm,
-                    tabBar = tabBar(KashTab.Home),
-                    onTxClick = ::openTx,
-                    onSeeAll = {
-                        txVm.clearFilters()
-                        navController.navigate(Screen.Transactions.route) {
-                            popUpTo(navController.graph.findStartDestination().id)
-                            launchSingleTop = true
-                        }
-                    },
-                    onSettings = { navController.navigate(Screen.Profile.route) },
-                    onAdd = { navController.navigate(Screen.AddTransaction.route) },
-                    onReviewToday = { navController.navigate(Screen.DailyReview.route) { launchSingleTop = true } },
-                    onReviewOlder = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
-                    onOpenAccount = ::openAccount,
-                    wrappedMonth = anlVm.wrappedCard.collectAsState().value,
-                    onOpenWrapped = { navController.navigate("wrapped/$it") },
-                )
+                GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) {
+                    // Tells the user's accounts from others' ("Dear Hana …").
+                    LaunchedEffect(userName) { dashVm.setUserName(userName) }
+                    // Banks switched off in "Banks Kash follows" leave Home.
+                    val homeSources by sourcesVm.sources.collectAsState()
+                    val offSenders = remember(homeSources) { homeSources.filterNot { it.enabled }.map { it.sender }.toSet() }
+                    LaunchedEffect(offSenders) { dashVm.setOffSenders(offSenders) }
+                    HomeScreen(
+                        vm = dashVm,
+                        tabBar = tabBar(KashTab.Home),
+                        onTxClick = ::openTx,
+                        onSeeAll = {
+                            txVm.clearFilters()
+                            navController.navigate(Screen.Transactions.route) {
+                                popUpTo(navController.graph.findStartDestination().id)
+                                launchSingleTop = true
+                            }
+                        },
+                        onSettings = { navController.navigate(Screen.Profile.route) },
+                        onAdd = { navController.navigate(Screen.AddTransaction.route) },
+                        onReviewToday = { navController.navigate(Screen.DailyReview.route) { launchSingleTop = true } },
+                        onReviewOlder = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
+                        onOpenAccount = ::openAccount,
+                        wrappedMonth = anlVm.wrappedCard.collectAsState().value,
+                        onOpenWrapped = { navController.navigate("wrapped/$it") },
+                    )
+                }
             }
             composable(
                 route = "wrapped/{month}",
@@ -422,26 +436,33 @@ private fun MainNavigation(
                         txVm.setSearch(search)
                     }
                 }
-                HistoryScreen(vm = txVm, tabBar = tabBar(KashTab.History), onTxClick = ::openTx)
+                GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) {
+                    HistoryScreen(vm = txVm, tabBar = tabBar(KashTab.History), onTxClick = ::openTx)
+                }
             }
             composable(Screen.Analytics.route) {
-                AnalyticsTabScreen(
-                    vm = anlVm,
-                    tabBar = tabBar(KashTab.Analytics),
-                    onCategory = { navController.navigate("category_detail/${Uri.encode(it)}") },
-                    onReview = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
-                    onAccount = ::openAccount,
-                    onWrapped = { navController.navigate("wrapped/$it") },
-                )
+                GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) {
+                    AnalyticsTabScreen(
+                        vm = anlVm,
+                        tabBar = tabBar(KashTab.Analytics),
+                        onCategory = { navController.navigate("category_detail/${Uri.encode(it)}") },
+                        onReview = { navController.navigate("${Screen.DailyReview.route}?scope=all") { launchSingleTop = true } },
+                        onAccount = ::openAccount,
+                        onWrapped = { navController.navigate("wrapped/$it") },
+                    )
+                }
             }
             composable(Screen.Goals.route) {
                 val goals by goalsVm.state.collectAsState()
-                GoalsScreen(
-                    state = goals,
-                    tabBar = tabBar(KashTab.Goals),
-                    onOpenGoal = { navController.navigate("goal/$it") },
-                    onNewGoal = { navController.navigate("goal_new") },
-                )
+                GoalsCrossingFrame(isGoals = true, crossing = goalsCrossing, reduced = reducedMotion) {
+                    GoalsScreen(
+                        state = goals,
+                        tabBar = tabBar(KashTab.Goals),
+                        onOpenGoal = { navController.navigate("goal/$it") },
+                        onNewGoal = { navController.navigate("goal_new") },
+                        onStartKind = { kind -> navController.navigate("goal_new?kind=$kind") },
+                    )
+                }
             }
             composable(
                 route = "goal/{goalId}",
@@ -453,11 +474,20 @@ private fun MainNavigation(
                 // Deleted (or not loaded yet): nothing to show; a delete pops back itself.
                 if (result == null) return@composable
                 var celebrated by remember(id) { mutableStateOf(id in settingsRepo.getCelebratedGoals()) }
+                // Month done shows once per goal per month: "<id>:<yyyy-MM>".
+                val monthKey = remember(id) {
+                    id + ":" + java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).format(java.util.Date())
+                }
+                var monthSeen by remember(id) { mutableStateOf(monthKey in settingsRepo.getCelebratedGoals()) }
                 GoalDetailScreen(
                     result = result,
                     accountLabel = goals.accountLabel(result.goal.linkedAccountKey),
+                    averageMonthlySpend = goals.averageMonthlySpend,
                     celebrate = !celebrated && result.goal.status == com.financeapp.data.model.GoalStatus.ACHIEVED,
                     onCelebrated = { settingsRepo.markGoalCelebrated(id); celebrated = true },
+                    monthDone = !monthSeen && result.goal.type == com.financeapp.data.model.GoalType.RECURRING &&
+                        result.pace == com.financeapp.data.goals.GoalProgress.Pace.REACHED,
+                    onMonthDoneSeen = { settingsRepo.markGoalCelebrated(monthKey); monthSeen = true },
                     onBack = ::back,
                     onAddSave = { amount, note, at -> goalsVm.logSave(id, amount, note, at) },
                     onDeleteSave = goalsVm::deleteSave,
@@ -468,11 +498,17 @@ private fun MainNavigation(
                     onChangeAccount = { navController.navigate("goal_edit/$id?step=account") },
                 )
             }
-            composable("goal_new") {
+            composable(
+                route = "goal_new?kind={kind}",
+                arguments = listOf(navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) { backStack ->
                 val goals by goalsVm.state.collectAsState()
+                val kind = backStack.arguments?.getString("kind")
                 GoalFormScreen(
                     accounts = goals.accounts,
                     averageMonthlySpend = goals.averageMonthlySpend,
+                    // From a kind card on the empty Goals tab: straight to step 2, Back returns to Goals.
+                    initialType = kind,
                     onClose = ::back,
                     onSave = { draft, onError ->
                         goalsVm.create(draft) { newId, error ->
@@ -599,6 +635,26 @@ private fun MainNavigation(
             }
         }
     }
+}
+
+// ─── Goals section crossing ──────────────────────────────────────────────
+
+/** The Goals tab, a goal's page, and the New / Edit goal form. */
+private fun inGoals(entry: androidx.navigation.NavBackStackEntry): Boolean {
+    val route = entry.destination.route ?: return false
+    return route == Screen.Goals.route || route.startsWith("goal/") || route.startsWith("goal_new") || route.startsWith("goal_edit")
+}
+
+/** Records whether this route change goes into or out of the Goals section. */
+private fun com.financeapp.ui.goals.GoalsCrossing.note(
+    from: androidx.navigation.NavBackStackEntry,
+    to: androidx.navigation.NavBackStackEntry,
+    pop: Boolean,
+) {
+    val a = inGoals(from)
+    val b = inGoals(to)
+    into = if (a == b) null else b
+    this.pop = pop
 }
 
 /** Settings → Email support: pre-filled email with version + device for triage. */

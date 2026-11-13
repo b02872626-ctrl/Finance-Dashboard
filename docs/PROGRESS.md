@@ -5,12 +5,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Goals section in the app (NAH-14).** PRs 1–3 (logic, screens, New /
-  Edit goal) are open, stacked: merge #67, then #68, then the New goal PR.
-  Then try it on a real phone and at 360dp before the next release. PR 4
-  later: Supabase sync (new SQL file adding a linked-account column to
-  `i_goals`), web dashboard brought in line, "goal reached" notification.
-  Until PR 4, goals live only on the phone.
+- **Goals section in the app (NAH-14).** Rebuilding it to the dark design
+  in `design/goals-handoff`. PR A (dark theme, Goals tab, goal page,
+  sheets, dialogs, icons) is open. Next, PR B: New goal / Edit goal in the
+  dark design (icon picker, step slide, the new step-2 and step-3 wording,
+  "Saving goal…"). Until PR B, the New goal form still has the old light
+  look. Later: Supabase sync, web dashboard, "goal reached" notification.
 
 - **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
   downloads and 100 active users. Release and install on a real phone by
@@ -79,6 +79,16 @@ items to Done with the date, add what is next or blocked.
   account rule, see the submission checklist §5).
 
 ## Done
+
+- 2026-11-13 Goals in the dark design (NAH-14, PR A): dark top and sheet
+  with sand as the accent; Goals tab with total, "+X ETB this month",
+  pace strip, quiet cards (next step only when off pace), one large card
+  for a single goal, empty state with the three kinds, "Every goal is
+  reached"; goal page with a pace mark on the bar, status card facts,
+  history by month; dark Add a save, More menu, Delete and Remove
+  dialogs; "You reached it" with a filling bar, check and haptic; "Month
+  done" for monthly goals. 12 goal icons replace emoji. Installed on the
+  owner's Galaxy S22; screens not yet looked at (phone locked).
 
 - 2026-11-12 New goal and Edit goal (NAH-14, PR 3): "+" on Goals opens a
   3-step form: kind (amount by a date / safety net / every month),

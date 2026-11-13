@@ -6,6 +6,44 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-13 — Goals is dark; icons instead of emoji (NAH-14)
+
+The Goals design came back (`design/goals-handoff`, kept outside git). Its
+final update makes the whole Goals section dark: top #161B22, sheet
+#1F252E, cards #29313C, with sand as the one accent (primary buttons,
+progress fills, icon wells, streak badge). Owner approved it. This
+replaces the sand top logged on 2026-11-12.
+
+- The rest of Kash stays light. Its components read `KashColors` directly,
+  so Goals has its own small kit (`ui/goals/GoalsKit.kt`: buttons, chips,
+  fields, rows, sheet, dialog, progress bar with a pace mark) instead of
+  re-theming the design system. `KashScreen` and `KashTabBar` take
+  colours; their defaults are unchanged.
+- Goals stays the last tab (Home, History, Analytics, Goals). The design
+  showed five tabs with Accounts, which is part of Home since NAH-28.
+- Goals get one of 12 stroke icons instead of an emoji. The icon key is
+  stored in the existing `emoji` column (no database change); a goal
+  without a known key shows its kind's icon.
+- Kept as before: removing a save asks first (no Undo snackbar); Add a
+  save stays on reached goals; no archived list yet.
+- Motion (owner asked: Apple's fluid-interface rules, then "a pixel wipe
+  with a dithered edge, not a scale"): crossing into the Goals section,
+  the dark screen spreads out of the Goals tab icon in a circle whose
+  edge is a 140dp band of 6dp pixels switched on in a Bayer 8×8 dither
+  (64 density steps; owner asked for "more pixel gradient");
+  leaving, it pulls back into the icon the same way (by tab: the arriving
+  screen is revealed outside a shrinking circle; by Back: the leaving
+  Goals screen shrinks on top). One critically damped spring (~0.55 s),
+  no bounce, taps never blocked. Reduced motion: a 200 ms fade. Built in
+  `ui/goals/GoalsReveal.kt` with NavHost transitions left as hard cuts.
+  Every other route change stays a hard cut.
+- A brand-new goal hides the pace mark and "An even pace would be…" until
+  the even pace is at least 1% of the target ("25 ETB today" was noise).
+- New numbers, all from data already on the phone: the even pace today
+  (the mark on the bar), the longest monthly streak, when this month's
+  amount was reached ("Month done", once a month), "took N months" and
+  "N days early".
+
 ## 2026-11-12 — Goals: editing keeps the kind and the start date (NAH-14)
 
 Edit goal can change the name, emoji, amount, months, date and account,
