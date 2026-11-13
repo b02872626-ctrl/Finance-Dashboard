@@ -6,6 +6,32 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-13 — Goals sync like transactions: phone first, cloud copy (NAH-14, PR C)
+
+- The phone stays the source of truth; `i_goals` / `i_goal_contributions`
+  are a copy for reinstalls, a second phone and the web dashboard.
+  `i_goals` gets one nullable column, `linked_account_key`
+  (`add_goal_linked_account.sql`); the key is the app's account key and
+  means nothing to the web, which keeps showing saves logged by hand only
+  until it is brought in line (its own issue).
+- Every pass pulls the whole cloud copy first, then pushes. Merge rule
+  (`GoalCloudSync.plan`): a cloud row the phone lacks is added; a synced
+  row that differs from the cloud takes the cloud's version (only the web
+  could have changed it: a local edit makes the row unsynced and is never
+  overwritten); a synced row missing from the cloud was deleted there and
+  goes from the phone too. No clock comparison, so a wrong phone clock
+  can't lose an edit.
+- Deletes made on the phone are remembered in a `goal_deletions` table
+  until the cloud row is gone (offline first), and a cloud row with a
+  pending delete is never pulled back. Pulling before pushing means a save
+  logged on a goal the web deleted is dropped, not refused forever.
+- Saves are insert-only in the cloud (their policy has no update), so
+  they are sent with ignore-duplicates. A cloud row whose timestamps
+  can't be read fails the pass rather than looking deleted.
+- Known limit, the same as transactions: the phone's goals belong to
+  whoever is signed in. Signing out and in as someone else would upload
+  them to that account.
+
 ## 2026-11-13 — New goal form in the dark design (NAH-14, PR B)
 
 - The form uses the dark Goals look like the rest of the section. The

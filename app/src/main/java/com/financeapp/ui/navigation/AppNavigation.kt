@@ -92,6 +92,7 @@ import com.financeapp.viewmodel.GoalsViewModel
 import com.financeapp.viewmodel.GoalsViewModelFactory
 import com.financeapp.data.db.AppDatabase
 import com.financeapp.data.repository.GoalRepository
+import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.viewmodel.OnboardingViewModel
 import com.financeapp.viewmodel.OnboardingViewModelFactory
 import com.financeapp.viewmodel.ReviewQueueViewModel
@@ -269,7 +270,15 @@ private fun MainNavigation(
     val anlVm: AnalyticsViewModel = viewModel(factory = remember { AnalyticsViewModelFactory(repo) })
     val sourcesVm: OnboardingViewModel = viewModel(factory = remember { OnboardingViewModelFactory(repo, settingsRepo) })
     val goalsVm: GoalsViewModel = viewModel(
-        factory = remember { GoalsViewModelFactory(GoalRepository(AppDatabase.getInstance(context.applicationContext)), repo) }
+        factory = remember {
+            GoalsViewModelFactory(
+                // A goal change asks for a sync pass (see GoalCloudSync).
+                GoalRepository(AppDatabase.getInstance(context.applicationContext)) {
+                    SupabaseSyncScheduler.enqueue(context.applicationContext)
+                },
+                repo,
+            )
+        }
     )
     val categories by setVm.categories.collectAsState()
     // Real recent picks for the picker's "Recent" row, pushed by the repo

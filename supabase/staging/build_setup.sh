@@ -36,6 +36,7 @@ money_senders.sql
 add_account_number.sql
 drop_ignored_raw_sms.sql
 lock_transactions_backup.sql
+add_goal_linked_account.sql
 "
 SKIPPED="migrate_banks_to_catalog.sql backfill_sessions_from_transactions.sql export_for_parsers.sql"
 

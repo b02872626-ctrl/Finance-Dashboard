@@ -28,8 +28,9 @@ object GoalStatus {
 }
 
 /**
- * One savings goal (Goals section). Mirrors public.i_goals; [linkedAccountKey]
- * is new and local for now (no column in Supabase yet).
+ * One savings goal (Goals section). Mirrors public.i_goals ([linkedAccountKey]
+ * is `linked_account_key`, supabase/add_goal_linked_account.sql); synced by
+ * remote/GoalCloudSync.kt.
  *
  * Money reaches a goal two ways (see GoalProgress):
  *  - automatically: money that lands in [linkedAccountKey] (the user's
@@ -93,3 +94,21 @@ data class GoalContributionEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val isSynced: Boolean = false,
 )
+
+/**
+ * A goal or save deleted on the phone whose cloud row is still to be
+ * deleted (offline first: it goes on the next sync pass). The id is the
+ * goal's or the contribution's; both are UUIDs, so they never clash.
+ */
+@Entity(tableName = "goal_deletions")
+data class GoalDeletionEntity(
+    @PrimaryKey val id: String,
+    /** [KIND_GOAL] or [KIND_CONTRIBUTION]. */
+    val kind: String,
+    val deletedAt: Long = System.currentTimeMillis(),
+) {
+    companion object {
+        const val KIND_GOAL = "GOAL"
+        const val KIND_CONTRIBUTION = "CONTRIBUTION"
+    }
+}

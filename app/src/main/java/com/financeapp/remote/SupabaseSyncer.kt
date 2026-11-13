@@ -2,8 +2,10 @@ package com.financeapp.remote
 
 import android.content.Context
 import com.financeapp.data.db.AppDatabase
+import com.financeapp.data.model.GoalDeletionEntity
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.ErrorLogRepository
+import com.financeapp.data.repository.GoalRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +25,9 @@ sealed class SupabaseSyncResult {
         val syncedTransactions: Int,
         val syncedRawMessages: Int,
         /** Local rows updated from cloud state (web→mobile pull). */
-        val pulledTransactions: Int = 0
+        val pulledTransactions: Int = 0,
+        /** Goal and save rows that went up or came down (GoalCloudSync). */
+        val syncedGoals: Int = 0,
     ) : SupabaseSyncResult()
 
     data class Failed(val message: String, val retryable: Boolean = false) : SupabaseSyncResult()
@@ -78,16 +82,66 @@ class SupabaseSyncer(private val context: Context) {
                 0
             }
 
+        // Goals ride along every pass (pull, then push), so a reinstall gets
+        // them back even when nothing else is pending. A failure here is
+        // logged and retried by the next pass; it never blocks transactions.
+        val goalRows = runCatching { syncGoals() }
+            .getOrElse { e ->
+                ErrorLogRepository.fromContext(context).log("Supabase goal sync failed", e)
+                0
+            }
+
         return@withContext when {
-            pushResult is SupabaseSyncResult.Success -> pushResult.copy(pulledTransactions = pulled)
-            pushResult == null && pulled == 0       -> SupabaseSyncResult.Noop
+            pushResult is SupabaseSyncResult.Success ->
+                pushResult.copy(pulledTransactions = pulled, syncedGoals = goalRows)
+            pushResult == null && pulled == 0 && goalRows == 0 -> SupabaseSyncResult.Noop
             pushResult == null                       -> SupabaseSyncResult.Success(
                 syncedTransactions = 0,
                 syncedRawMessages = 0,
-                pulledTransactions = pulled
+                pulledTransactions = pulled,
+                syncedGoals = goalRows,
             )
             else                                      -> pushResult
         }
+    }
+
+    /**
+     * Goals and saves (see GoalCloudSync). Pull first: the web's deletes and
+     * edits land before the phone's own changes go up, so a save logged on
+     * a goal the web just deleted is dropped here instead of being refused
+     * by the cloud on every pass. Returns how many rows moved either way.
+     */
+    private suspend fun syncGoals(): Int {
+        val cfg = SupabaseConfigProvider.fromBuildConfig() ?: return 0
+        val session = ensureFreshSession(SettingsRepository(context), cfg) ?: return 0
+        val client = SupabaseRestClient(cfg, session.accessToken)
+        val goals = GoalRepository(AppDatabase.getInstance(context))
+        val userId = session.userId
+
+        val deletions = goals.pendingDeletions()
+        val plan = GoalCloudSync.plan(
+            localGoals = goals.snapshot(),
+            localContributions = goals.contributionsSnapshot(),
+            cloudGoals = client.fetchGoals(userId),
+            cloudContributions = client.fetchGoalContributions(userId),
+            pendingDeletionIds = deletions.map { it.id }.toSet(),
+        )
+        var changed = goals.applyPlan(plan)
+
+        val (goneGoals, goneSaves) = deletions.partition { it.kind == GoalDeletionEntity.KIND_GOAL }
+        client.deleteGoals(userId, goneGoals.map { it.id })
+        goals.clearDeletions(goneGoals.map { it.id })
+        client.deleteGoalContributions(userId, goneSaves.map { it.id })
+        goals.clearDeletions(goneSaves.map { it.id })
+        changed += deletions.size
+
+        val pendingGoals = goals.unsyncedGoals()
+        client.upsertGoals(userId, pendingGoals.map { GoalCloudSync.toCloud(it) })
+        goals.markGoalsUploaded(pendingGoals)
+        val pendingSaves = goals.unsyncedContributions()
+        client.insertGoalContributions(userId, pendingSaves.map { GoalCloudSync.toCloud(it) })
+        goals.markContributionsUploaded(pendingSaves.map { it.id })
+        return changed + pendingGoals.size + pendingSaves.size
     }
 
     /**
