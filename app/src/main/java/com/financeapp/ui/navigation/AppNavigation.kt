@@ -529,11 +529,13 @@ private fun MainNavigation(
             ) { backStack ->
                 val id = backStack.arguments?.getString("goalId") ?: return@composable
                 val goals by goalsVm.state.collectAsState()
-                val goal = goals.result(id)?.goal ?: return@composable
+                val editResult = goals.result(id) ?: return@composable
+                val goal = editResult.goal
                 GoalFormScreen(
                     accounts = goals.accounts,
                     averageMonthlySpend = goals.averageMonthlySpend,
                     editing = goal,
+                    savedSoFar = editResult.saved,
                     startAt = if (backStack.arguments?.getString("step") == "account") GoalFormStep.Account else GoalFormStep.Details,
                     onClose = ::back,
                     onSave = { draft, onError ->
