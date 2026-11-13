@@ -26,12 +26,16 @@ replaces the sand top logged on 2026-11-12.
   without a known key shows its kind's icon.
 - Kept as before: removing a save asks first (no Undo snackbar); Add a
   save stays on reached goals; no archived list yet.
-- Motion (owner asked, Apple's fluid-interface rules): crossing into the
-  Goals section, it fades in and slides 1/12 of the width from the right
-  (Goals is the right-most tab); leaving, it goes back the same way while
-  the other screen fades in. Critically damped spring (~0.35 s), no
-  bounce, never blocks taps. Reduced motion: a 200 ms crossfade. Every
-  other route change stays a hard cut.
+- Motion (owner asked: Apple's fluid-interface rules, then "a pixel wipe
+  with a dithered edge, not a scale"): crossing into the Goals section,
+  the dark screen spreads out of the Goals tab icon in a circle whose
+  edge is a 54dp band of 6dp pixels switched on in a Bayer 4×4 dither;
+  leaving, it pulls back into the icon the same way (by tab: the arriving
+  screen is revealed outside a shrinking circle; by Back: the leaving
+  Goals screen shrinks on top). One critically damped spring (~0.55 s),
+  no bounce, taps never blocked. Reduced motion: a 200 ms fade. Built in
+  `ui/goals/GoalsReveal.kt` with NavHost transitions left as hard cuts.
+  Every other route change stays a hard cut.
 - A brand-new goal hides the pace mark and "An even pace would be…" until
   the even pace is at least 1% of the target ("25 ETB today" was noise).
 - New numbers, all from data already on the phone: the even pace today
