@@ -100,6 +100,11 @@ fun KashScreen(
     heroGap: Dp = KashSpace.GapXl,
     heroBottom: Dp = 26.dp,
     expandable: Boolean = true,
+    /** The top layer's colour: slate everywhere, sand in the Goals section. */
+    heroColor: androidx.compose.ui.graphics.Color = KashColors.Slate,
+    /** The sheet's colour and its handle: light everywhere, dark in the Goals section. */
+    sheetColor: androidx.compose.ui.graphics.Color = KashColors.Surface,
+    handleColor: androidx.compose.ui.graphics.Color = KashColors.Handle,
     content: @Composable ColumnScope.(bottomPadding: PaddingValues) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -131,7 +136,7 @@ fun KashScreen(
     val drag = rememberDraggableState { delta -> risen = (risen - delta).coerceIn(0f, limit[0]) }
 
     Layout(
-        modifier = modifier.fillMaxSize().background(KashColors.Slate),
+        modifier = modifier.fillMaxSize().background(heroColor),
         content = {
             Column(
                 Modifier
@@ -147,13 +152,14 @@ fun KashScreen(
                 Modifier
                     .fillMaxWidth()
                     .clip(KashShapes.Sheet)
-                    .background(KashColors.Surface)
+                    .background(sheetColor)
                     .then(if (expandable) Modifier.nestedScroll(rise) else Modifier)
             ) {
                 Column(Modifier.fillMaxSize().padding(horizontal = KashSpace.InsetApp)) {
                     if (handle) {
                         KashHandle(
-                            Modifier
+                            color = handleColor,
+                            modifier = Modifier
                                 .then(if (expandable) Modifier.draggable(drag, Orientation.Vertical) else Modifier)
                                 .padding(top = 10.dp, bottom = 10.dp)
                         )
@@ -180,14 +186,14 @@ fun KashScreen(
 
 /** The grab handle at the top of a sheet. */
 @Composable
-fun KashHandle(modifier: Modifier = Modifier) {
+fun KashHandle(modifier: Modifier = Modifier, color: androidx.compose.ui.graphics.Color = KashColors.Handle) {
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             Modifier
                 .width(40.dp)
                 .height(4.dp)
                 .clip(KashShapes.Pill)
-                .background(KashColors.Handle)
+                .background(color)
                 .clearAndSetSemantics { }
         )
     }
@@ -248,6 +254,7 @@ enum class KashTab(val label: String, val icon: KashIcon) {
     Home("Home", KashIcon.Home),
     History("History", KashIcon.History),
     Analytics("Analytics", KashIcon.Chart),
+    Goals("Goals", KashIcon.Target),
 }
 
 /** Height of the tab bar above the navigation bar (6 top + 52 tab + 4). */
@@ -258,9 +265,18 @@ val KashTabBarHeight: Dp = 62.dp
  * No text under icons. Only on the four tab screens.
  */
 @Composable
-fun KashTabBar(active: KashTab, onSelect: (KashTab) -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().background(KashColors.Surface)) {
-        KashDivider()
+fun KashTabBar(
+    active: KashTab,
+    onSelect: (KashTab) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Colours: light everywhere; the Goals section passes its dark set. */
+    background: androidx.compose.ui.graphics.Color = KashColors.Surface,
+    line: androidx.compose.ui.graphics.Color = KashColors.Line,
+    activeTint: androidx.compose.ui.graphics.Color = KashColors.Ink,
+    inactiveTint: androidx.compose.ui.graphics.Color = KashColors.InkFaint,
+) {
+    Column(modifier.fillMaxWidth().background(background)) {
+        KashDivider(color = line)
         Row(
             Modifier
                 .fillMaxWidth()
@@ -269,7 +285,7 @@ fun KashTabBar(active: KashTab, onSelect: (KashTab) -> Unit, modifier: Modifier 
         ) {
             KashTab.entries.forEach { tab ->
                 val on = tab == active
-                val tint = if (on) KashColors.Ink else KashColors.InkFaint
+                val tint = if (on) activeTint else inactiveTint
                 Column(
                     Modifier
                         .weight(1f)
@@ -291,7 +307,7 @@ fun KashTabBar(active: KashTab, onSelect: (KashTab) -> Unit, modifier: Modifier 
                         Modifier
                             .size(5.dp)
                             .clip(KashShapes.Pill)
-                            .background(if (on) KashColors.Ink else androidx.compose.ui.graphics.Color.Transparent)
+                            .background(if (on) activeTint else androidx.compose.ui.graphics.Color.Transparent)
                     )
                 }
             }

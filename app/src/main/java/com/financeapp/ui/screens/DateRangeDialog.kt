@@ -105,6 +105,7 @@ fun DateRangeDialog(
             today = today,
             start = start,
             end = end,
+            muted = { it > today },
             onPick = { day ->
                 val s = start
                 when {
@@ -137,6 +138,8 @@ private fun MonthGrid(
     today: Long,
     start: Long?,
     end: Long?,
+    /** Days drawn faint (future days in History; past days for a goal's date). */
+    muted: (Long) -> Boolean,
     onPick: (Long) -> Unit,
 ) {
     val monthEnd = KashDates.monthBounds(monthStart, calendarSystem).second
@@ -192,7 +195,7 @@ private fun MonthGrid(
                                 style = KashType.Body.num().copy(fontWeight = if (isEnd) FontWeight.SemiBold else FontWeight.Medium),
                                 color = when {
                                     isEnd -> KashColors.OnSlate
-                                    day > today -> KashColors.InkFaint
+                                    muted(day) -> KashColors.InkFaint
                                     else -> KashColors.Ink
                                 },
                             )

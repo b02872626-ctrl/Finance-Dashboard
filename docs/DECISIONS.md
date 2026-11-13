@@ -6,6 +6,59 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-13 — New goal form in the dark design (NAH-14, PR B)
+
+- The form uses the dark Goals look like the rest of the section. The
+  icon picker replaces the emoji field; the key is stored in the old
+  `emoji` column (no database change). A new goal starts on its kind's
+  icon (target, shield, repeat) until the owner picks one.
+- "About X ETB a month" under the date is what's left over the months
+  left, counted the same way as the goal page (30.44-day months, rounded
+  up, at least 1), so the number doesn't change after saving. Editing
+  takes off what's already saved.
+- Change account is its own page (one step, no step bar), with the note
+  that saves already on the goal stay.
+- Steps move with one critically damped spring: forward slides in from
+  the right, Back slides out to the right. Reduced motion: a 150 ms fade.
+
+## 2026-11-13 — Goals is dark; icons instead of emoji (NAH-14)
+
+The Goals design came back (`design/goals-handoff`, kept outside git). Its
+final update makes the whole Goals section dark: top #161B22, sheet
+#1F252E, cards #29313C, with sand as the one accent (primary buttons,
+progress fills, icon wells, streak badge). Owner approved it. This
+replaces the sand top logged on 2026-11-12.
+
+- The rest of Kash stays light. Its components read `KashColors` directly,
+  so Goals has its own small kit (`ui/goals/GoalsKit.kt`: buttons, chips,
+  fields, rows, sheet, dialog, progress bar with a pace mark) instead of
+  re-theming the design system. `KashScreen` and `KashTabBar` take
+  colours; their defaults are unchanged.
+- Goals stays the last tab (Home, History, Analytics, Goals). The design
+  showed five tabs with Accounts, which is part of Home since NAH-28.
+- Goals get one of 12 stroke icons instead of an emoji. The icon key is
+  stored in the existing `emoji` column (no database change); a goal
+  without a known key shows its kind's icon.
+- Kept as before: removing a save asks first (no Undo snackbar); Add a
+  save stays on reached goals; no archived list yet.
+- Motion (owner asked: Apple's fluid-interface rules, then "a pixel wipe
+  with a dithered edge, not a scale"): crossing into the Goals section,
+  the dark screen spreads out of the Goals tab icon in a circle whose
+  edge is a 140dp band of 6dp pixels switched on in a Bayer 8×8 dither
+  (64 density steps; owner asked for "more pixel gradient");
+  leaving, it pulls back into the icon the same way (by tab: the arriving
+  screen is revealed outside a shrinking circle; by Back: the leaving
+  Goals screen shrinks on top). One critically damped spring (~0.55 s),
+  no bounce, taps never blocked. Reduced motion: a 200 ms fade. Built in
+  `ui/goals/GoalsReveal.kt` with NavHost transitions left as hard cuts.
+  Every other route change stays a hard cut.
+- A brand-new goal hides the pace mark and "An even pace would be…" until
+  the even pace is at least 1% of the target ("25 ETB today" was noise).
+- New numbers, all from data already on the phone: the even pace today
+  (the mark on the bar), the longest monthly streak, when this month's
+  amount was reached ("Month done", once a month), "took N months" and
+  "N days early".
+
 ## 2026-11-12 — Web Transactions list can show every row
 
 The Transactions table used to draw only the first 100 matching rows, with
@@ -14,6 +67,90 @@ screen) silently missed older rows. It still starts at 100, but a row under
 the table says "Showing 100 of N" with "Show 100 more" and "Show all N".
 Changing any filter goes back to the first 100. The count above the table
 now says "N match" instead of "N shown", because not all of them are drawn.
+
+## 2026-11-12 — Goals: editing keeps the kind and the start date (NAH-14)
+
+Edit goal can change the name, emoji, amount, months, date and account,
+but not the kind (make a new goal for that). The goal's start date stays,
+so moving a goal to another account counts that account's money from
+when the goal was made, not from the edit. Simpler to explain than a
+second start date; revisit if testers find it surprising.
+
+## 2026-11-12 — Goals in the app: one account feeds one goal (NAH-14)
+
+Goals move into the Android app as their own section. Money reaches a goal
+automatically when the goal follows one of the user's accounts (money in
+after the goal was made counts, money out takes it back, never below 0 and
+never eating saves logged by hand), or by hand. Owner's call: one account
+feeds one active goal. A first draft shared one account between goals in a
+priority order (like the web's "waterfall"); the owner found that too hard
+to explain. A reached or archived goal lets go of its account, and money
+after a goal is reached no longer counts for it.
+
+Goals live in Room (`goals`, `goal_contributions`, DB version 13) with
+UUID ids and the same type names as `i_goals`, so they can sync later.
+The linked account is local only until a SQL file adds a column for it.
+Re-importing SMS (Settings) does not wipe goals: they can't be rebuilt
+from SMS. Months follow the Gregorian calendar in the logic; the screens
+will follow the calendar setting for labels.
+
+The Goals section will have a sand top instead of slate (owner approved),
+so saving feels like a different place from spending. That lands with
+the screens (PR 2).
+
+## 2026-11-12 — Web dashboard loads one pinned Supabase file (NAH-39)
+
+`Web/app.js` imported `https://esm.sh/@supabase/supabase-js@2`: a floating
+version (whatever esm.sh had that day) that redirected and then pulled ~14
+module files three requests deep before sign-in could start. It now imports
+esm.sh's single self-contained bundle of the version that was live
+(2.119.0), and `index.html` preloads it and `insights.js` next to `app.js`,
+so they download in parallel. The Figtree font no longer blocks the first
+paint (same trick as the download page). To update Supabase, change the
+version in both `app.js` and the `modulepreload` in `index.html`. The admin
+dashboard still uses `@2` and wasn't changed.
+
+## 2026-11-12 — Download page install steps in English only (NAH-38)
+
+Owner's call: the English / አማርኛ switch on the install steps is gone, and
+the Amharic step text behind it with it (the `?lang=am` link and the saved
+language choice no longer do anything). The Amharic line under the headline
+stays. This replaces the NAH-38 goal of steps "in English and Amharic".
+
+## 2026-11-12 — Download page: font loads after first paint, pictures are HTML
+
+For booth visitors on slow 3G (NAH-38). The Google Fonts stylesheet on
+`Web/download.html` loads with `media="print"` swapped to `all` on load,
+so the page and its Download button paint in the system font first instead
+of waiting on two extra connections. The install-step pictures are small
+HTML/CSS drawings of the Android screens, not image files: no extra
+downloads, sharp on any screen. They say "Kash.apk" (no version) so
+`scripts/release.sh`'s "old version still on the page" check stays valid.
+## 2026-11-12 — New category one tap away; tapping the Review card shows details (NAH-42)
+
+Owner's call: making a category took More → the end of the picker → New
+category → a dialog, and the details sheet only opened on a long-press
+nobody finds. Now the Review card's chips end with a dashed "New" chip; the
+picker puts "New category" first under the search, and typing a name that
+doesn't exist offers "Create “name”" which makes and picks it in one tap
+(History and Add get the same). A tap on the Review card opens the "Check
+this one" sheet (long-press still works), with a hint line on the card. The
+picker shows the transaction it's labelling at the top, with "Show details"
+opening the account, time, balance and SMS in place.
+## 2026-11-12 — An untouched row never overwrites a cloud category (NAH-41)
+
+Reinstalling and signing in again wiped every category. The reinstall
+re-reads all SMS as untouched rows (PENDING, no category); uploading them
+with `category = null` overwrote what Supabase had, and the pull only read
+the last 90 days. Now a row that is PENDING with no category uploads without
+`category` and `review_status` (separate upsert batch, since PostgREST needs
+the same keys per batch), so the cloud keeps its value; the pull that
+follows reaches back to the oldest row just uploaded (whole history after a
+reinstall) and pages through it; and custom category names used by restored
+rows go back into the user's own list. Trade-off: undoing a Skip or "Not a
+transaction" back to untouched doesn't reach the cloud. Category rules
+("use for this sender from now on") still live only on the phone and are
+not restored. See `remote/CloudCategoryRestore.kt`.
 
 ## 2026-11-12 — Web dashboard design basics (look unchanged)
 

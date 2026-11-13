@@ -152,6 +152,7 @@ fun TransactionScreen(
             onNewCategory = { newCategoryOpen = true },
             onUse = { pickerOpen = false; onCategorySelected(it) },
             title = "Category",
+            onCreateCategory = { name -> pickerOpen = false; onAddCategory(name); onCategorySelected(name) },
         )
     }
     if (newCategoryOpen) {

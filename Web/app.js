@@ -16,7 +16,10 @@ import {
   normaliseSource, incomeSenders,
 } from "./insights.js";
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// One pinned, self-contained file: "@2" floated to whatever esm.sh had that
+// day and pulled ~14 module files, three requests deep, before sign-in could
+// start. Keep the version in step with the modulepreload in index.html.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0/es2022/supabase-js.bundle.mjs";
 
 // ----------------------------------------------------------------------------
 // Config — same project as the Android app (local.properties).
@@ -467,6 +470,8 @@ function installStatPopOnUpdate() {
 let _sessionRow = null;
 let _sessionToken = null;
 let _heartbeatTimer = null;
+// Spending-over-time chart data for the hover dot (see otShow).
+let otHover = null;
 
 async function startSessionTracking(session) {
   if (_sessionRow || document.visibilityState === "hidden") return;
@@ -2974,7 +2979,8 @@ function renderOverview(allTxs) {
   $("ot-axis-from").textContent = dayLabel(o.from);
   $("ot-axis-to").textContent = dayLabel(o.to - 1);
   const lastIdx = o.days.map((d, i) => (d == null ? -1 : i)).filter((i) => i >= 0).at(-1);
-  $("ot-readout").textContent = lastIdx == null ? " " : `${dayLabel(o.from + lastIdx * DAY)}: ${formatETB(o.days[lastIdx])}`;
+  otHover = { o, lastIdx };
+  setOtReadout(lastIdx);
   $("ot-chart").innerHTML = renderSpendLineSvg(o);
 
   $("ot-payees").innerHTML = o.topPayees.length === 0
@@ -3016,8 +3022,72 @@ function renderSpendLineSvg(o) {
     ${area ? `<path d="${area}" class="ins-area"/>` : ""}
     ${line ? `<path d="${line}" class="ins-path" vector-effect="non-scaling-stroke"/>` : ""}
     ${last ? `<line x1="${last[0].toFixed(1)}" y1="${last[1].toFixed(1)}" x2="${last[0].toFixed(1)}" y2="${last[1].toFixed(1)}" class="ins-dot" vector-effect="non-scaling-stroke"/>` : ""}
+    <line id="ot-guide" x1="0" y1="0" x2="0" y2="${H - padB}" class="ins-guide" vector-effect="non-scaling-stroke" visibility="hidden"/>
+    <line id="ot-hover-halo" x1="0" y1="0" x2="0" y2="0" class="ins-hover-halo" vector-effect="non-scaling-stroke" visibility="hidden"/>
+    <line id="ot-hover-dot" x1="0" y1="0" x2="0" y2="0" class="ins-dot ins-hover-dot" vector-effect="non-scaling-stroke" visibility="hidden"/>
     ${hits}
   </svg>`;
+}
+
+// Spending-over-time hover: a dot rides the line at the day under the cursor
+// (or finger), with a faint guide down to the axis, and the readout above
+// the chart names that day. Leaving the chart goes back to the latest day.
+// The SVG stretches (preserveAspectRatio="none"), so the dot is a zero-length
+// line with a round cap, like .ins-dot, to stay round.
+function setOtReadout(i) {
+  const o = otHover && otHover.o;
+  $("ot-readout").textContent = !o || i == null ? " " : `${dayLabel(o.from + i * DAY)}: ${formatETB(o.days[i])}`;
+}
+
+// Nearest day that has a value, for a 0..1 position across the chart.
+function otNearestDay(days, frac) {
+  const n = days.length;
+  const want = Math.round(Math.min(1, Math.max(0, frac)) * Math.max(0, n - 1));
+  let best = null;
+  for (let i = 0; i < n; i++) {
+    if (days[i] == null) continue;
+    if (best == null || Math.abs(i - want) < Math.abs(best - want)) best = i;
+  }
+  return best;
+}
+
+function otPoint(o, i) {
+  const W = 600, H = 200, padT = 10, padB = 6;
+  const n = o.days.length;
+  const max = Math.max(1, ...o.days.filter((d) => d != null));
+  return [n > 1 ? (i / (n - 1)) * W : W / 2, padT + (1 - o.days[i] / max) * (H - padT - padB)];
+}
+
+function otShow(e) {
+  if (!otHover) return;
+  const chart = $("ot-chart");
+  const dot = $("ot-hover-dot"), halo = $("ot-hover-halo"), guide = $("ot-guide");
+  if (!chart || !dot || !halo || !guide) return;
+  const r = chart.getBoundingClientRect();
+  const i = otNearestDay(otHover.o.days, (e.clientX - r.left) / Math.max(1, r.width));
+  if (i == null) return;
+  const [px, py] = otPoint(otHover.o, i);
+  for (const el of [dot, halo, guide]) {
+    el.setAttribute("x1", px.toFixed(1)); el.setAttribute("x2", px.toFixed(1));
+    el.setAttribute("visibility", "visible");
+  }
+  for (const el of [dot, halo]) { el.setAttribute("y1", py.toFixed(1)); el.setAttribute("y2", py.toFixed(1)); }
+  setOtReadout(i);
+}
+
+function otHide() {
+  for (const id of ["ot-hover-dot", "ot-hover-halo", "ot-guide"]) { const el = $(id); if (el) el.setAttribute("visibility", "hidden"); }
+  if (otHover) setOtReadout(otHover.lastIdx);
+}
+
+{
+  const chart = document.getElementById("ot-chart");
+  if (chart) {
+    chart.addEventListener("pointermove", otShow);
+    chart.addEventListener("pointerdown", otShow);
+    chart.addEventListener("pointerleave", otHide);
+    chart.addEventListener("pointercancel", otHide);
+  }
 }
 
 // In and out bars per month, with a kept line that dips below zero when overspent.

@@ -57,6 +57,22 @@ enum class KashIcon(vararg val paths: String) {
     Backspace("M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7z", "M12 9.5l5 5M17 9.5l-5 5"),
     /** Added for the PIN and form error lines (not in the original 23). */
     Info("M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z", "M12 7.5v5.5M12 16.5v.01"),
+    // Goals, from design/goals-handoff (goals-bundle.js). Same 24 grid, 2px round stroke.
+    Target("M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z", "M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0z", "M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"),
+    More("M6.6 12a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0z", "M13.1 12a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0z", "M19.6 12a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0z"),
+    Edit("M4 20h4L19 9l-4-4L4 16z", "M13 7l4 4"),
+    Archive("M3 5h18v4H3z", "M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9", "M10 13h4"),
+    Trash("M4 7h16", "M10 11v6M14 11v6", "M6 7l1 13h10l1-13", "M9 7V4h6v3"),
+    Shield("M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"),
+    Laptop("M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1z", "M2 19h20"),
+    Phone("M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M11 18h2"),
+    School("M2 9l10-5 10 5-10 5z", "M6 11v5c2 2 10 2 12 0v-5", "M22 9v5"),
+    Rings("M14 13.5a5 5 0 1 1-10 0 5 5 0 0 1 10 0z", "M20 13.5a5 5 0 1 1-10 0 5 5 0 0 1 10 0z", "M10 5l2-2 2 2-2 2z"),
+    Plane("M21 3L3 10.5l7 3 3 7.5z", "M10 13.5L21 3"),
+    Car("M4 16v-4l2.5-5h11L20 12v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z", "M4 12h16", "M7 17v2.5M17 17v2.5"),
+    People("M12 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z", "M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6", "M16 5a3 3 0 0 1 0 6", "M18 14.5c1.8.8 3 2.7 3 5.5"),
+    Gift("M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z", "M3 7h18v4H3z", "M12 7v14", "M12 7c-1.5-3.5-5-4-5-1.5C7 7 12 7 12 7zM12 7c1.5-3.5 5-4 5-1.5C17 7 12 7 12 7z"),
+    Repeat("M17 2l3 3-3 3", "M4 11V9a4 4 0 0 1 4-4h12", "M7 22l-3-3 3-3", "M20 13v2a4 4 0 0 1-4 4H4"),
 }
 
 private val cache = HashMap<Pair<KashIcon, Float>, ImageVector>()

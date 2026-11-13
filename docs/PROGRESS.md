@@ -5,6 +5,13 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- **Goals section in the app (NAH-14).** Rebuilt to the dark design in
+  `design/goals-handoff`. PR A (dark theme, Goals tab, goal page, sheets,
+  dialogs, icons, pixel-wipe motion) and PR B (New goal / Edit goal /
+  Change account, dark) are open and ship together; PR B sits on PR A's
+  branch. PR B still needs a look on the phone. Later: Supabase sync, web
+  dashboard, "goal reached" notification, archived list.
+
 - **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
   downloads and 100 active users. Release and install on a real phone by
   26 Nov. Sub-issues, one branch each: parsers NAH-29, notifications
@@ -73,6 +80,84 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-13 New goal, Edit goal and Change account in the dark design
+  (NAH-14, PR B): dark step bar, icon picker (12 icons, sideways row),
+  name counter "6 / 40", "Save it by … · about X ETB a month", monthly
+  and safety-net notes with average spend, "Kash counts it for you" card,
+  account rows with bank badge and "Used by …" pill, "Saving goal…", a
+  dark "Save it by" date picker (follows the Ethiopian calendar setting),
+  Edit strip (kind + "Started …"), Change account as its own page. Steps
+  slide in from the right and back out to the right (fade with reduced
+  motion). Not yet checked on the phone (not connected).
+
+- 2026-11-13 Goals in the dark design (NAH-14, PR A): dark top and sheet
+  with sand as the accent; Goals tab with total, "+X ETB this month",
+  pace strip, quiet cards (next step only when off pace), one large card
+  for a single goal, empty state with the three kinds, "Every goal is
+  reached"; goal page with a pace mark on the bar, status card facts,
+  history by month; dark Add a save, More menu, Delete and Remove
+  dialogs; "You reached it" with a filling bar, check and haptic; "Month
+  done" for monthly goals. 12 goal icons replace emoji. Installed on the
+  owner's Galaxy S22; screens not yet looked at (phone locked).
+
+- 2026-11-12 New goal and Edit goal (NAH-14, PR 3): "+" on Goals opens a
+  3-step form: kind (amount by a date / safety net / every month),
+  details (name, emoji, amount or months with "That's about X ETB", date
+  chips 3 / 6 / 12 months or a day picker in either calendar), then the
+  account (taken ones are greyed out with "Used by Laptop", or "None,
+  I'll add saves myself"). The goal page menu has Edit and Change
+  account. `GoalFormTest` (7). Not checked at 360dp or on a phone.
+
+- 2026-11-12 Goals screens (NAH-14, PR 2): a 4th tab (target icon) opens
+  Goals with a sand top instead of slate: total saved, "2 of 3 on track",
+  one card per goal (bar, amounts, what to save next), a folded "Reached"
+  list, and an empty state. The goal page shows the big figure and bar,
+  pace and "save X a month", where the money comes from, and the history
+  (SMS rows open the transaction; your own saves can be removed). "Add a
+  save" sheet (amount, note, today or yesterday), Archive / Delete, and a
+  one-time "You reached it" card. `GoalCopyTest` (7). Not checked at 360dp
+  or on a phone (no emulator here; screenshot tests blocked on SDK 36).
+
+- 2026-11-12 Goals logic for the app (NAH-14, PR 1, no screens yet):
+  goals are stored on the phone (3 kinds: an amount by a date, a safety
+  net of N months of spending, a monthly amount). A goal can follow one of
+  your accounts: money landing there after the goal was made counts as
+  saved, money leaving takes it back (never below 0, never eating saves
+  logged by hand). One account feeds one goal at a time. Saves by hand
+  add on top. Pace (ahead / on track / behind / missed), "save X a month",
+  an estimated finish date and a monthly streak are worked out.
+  `GoalProgressTest` (29 tests). Nothing to see on the phone yet.
+
+- 2026-11-12 Web dashboard starts faster (NAH-39, part 2a): one pinned
+  Supabase file instead of ~14, its imports download in parallel with
+  app.js, and the font no longer blocks the first paint. Signed-in "time to
+  data" not measured yet (needs the owner signed in).
+- 2026-11-12 Web dashboard "Spending over time" (NAH-39, part 1): a dot
+  rides the line at the day under your cursor or finger, with a faint guide
+  down to the axis, and the line above the chart names that day. Checked
+  with made-up data; not yet signed in with real data.
+- 2026-11-12 NAH-38 download page for the booth: headline "Every bank SMS
+  becomes your spending record." with "No bank login, nothing to type";
+  a bigger Download button that stays above the fold on a phone (the
+  rolling words hide there); a drawing of what Android shows for each of
+  the 5 install steps (one list, English only: the owner had the
+  English / Amharic switch removed); bank chips with the
+  app's bank marks; a new "Is my data safe?" section (matches the privacy
+  policy); the font no longer blocks the first paint (10 KB HTML, nothing
+  render-blocking). Checked in the browser at 375px and desktop, `?ref=fow`
+  reaches `apk_download_clicked`. Still open for NAH-38: click through on a
+  real phone over a slow connection. Earlier (PR #31): Amharic steps, `?ref=`
+  tracking, `Web/flyer.html`.
+
+- 2026-11-12 Review: "New" category chip right on the card, "Create
+  “name”" from the picker search, tap the card for the SMS and details, and
+  the picker shows which transaction you're labelling (NAH-42). Not yet
+  checked on a real phone or at 360dp (no emulator on this Mac).
+- 2026-11-12 Categories survive a reinstall (NAH-41): signing in again on
+  a fresh install brings back every category, including your own category
+  names. Not yet installed on a real phone. Categories already wiped by the
+  old bug are not in the cloud any more and can't come back.
+- 2026-11-12 1.0.34: Home is cleaner: no Cash card, and banks you switch off leave Home and your total; The quiet-accounts line and the weekly bars are gone from Home; To help fix problems, Kash can record how screens are used, with every word, number and picture hidden. Not yet installed on a real phone.
 - 2026-11-12 Web dashboard Transactions: "Show 100 more" / "Show all" under
   the table (it used to stop at 100 rows with no way to see the rest).
 

@@ -175,6 +175,14 @@ class SettingsRepository(context: Context) {
         prefs.edit().putStringSet(KEY_HIDDEN_ACCOUNTS, current).apply()
     }
 
+    /** Goals whose "You reached it" card was already shown (by goal id), so it shows once. */
+    fun getCelebratedGoals(): Set<String> =
+        prefs.getStringSet(KEY_CELEBRATED_GOALS, emptySet()) ?: emptySet()
+
+    fun markGoalCelebrated(id: String) {
+        prefs.edit().putStringSet(KEY_CELEBRATED_GOALS, getCelebratedGoals() + id).apply()
+    }
+
     fun hiddenAccountsFlow(): Flow<Set<String>> = callbackFlow {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, k ->
             if (k == KEY_HIDDEN_ACCOUNTS) trySend(getHiddenAccounts())
@@ -313,6 +321,7 @@ class SettingsRepository(context: Context) {
         const val KEY_DISABLED_SENDERS = "disabled_senders"
         const val KEY_CUSTOM_CATEGORIES = "custom_categories"
         const val KEY_HIDDEN_ACCOUNTS = "hidden_accounts"
+        const val KEY_CELEBRATED_GOALS = "celebrated_goals"
         const val KEY_RECENT_CATEGORIES = "recent_categories"
         /** Max length of the recents row in the picker (kept tight to fit on one line). */
         const val RECENT_CAP = 6
