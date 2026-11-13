@@ -68,11 +68,11 @@ class GoalCloudSyncTest {
     fun `a synced goal missing from the cloud was deleted on the web, so it goes here too`() {
         val plan = GoalCloudSync.plan(
             listOf(localGoal("g1"), localGoal("g2", synced = false)),
-            listOf(localSave("s1", "g1"), localSave("s2", "g2")),
+            listOf(localSave("s1", "g1"), localSave("s2", "g2", synced = false)),
             emptyList(), emptyList(), zone = zone,
         )
         assertEquals(listOf("g1"), plan.goalIdsToDelete)
-        // s1 goes with its goal (cascade); s2 belongs to a goal still waiting to upload.
+        // s1 goes with its goal (cascade); s2 is waiting to upload with its goal.
         assertTrue(plan.contributionIdsToDelete.isEmpty())
     }
 
