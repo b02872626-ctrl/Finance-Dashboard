@@ -29,7 +29,8 @@ replaces the sand top logged on 2026-11-12.
 - Motion (owner asked: Apple's fluid-interface rules, then "a pixel wipe
   with a dithered edge, not a scale"): crossing into the Goals section,
   the dark screen spreads out of the Goals tab icon in a circle whose
-  edge is a 54dp band of 6dp pixels switched on in a Bayer 4×4 dither;
+  edge is a 140dp band of 6dp pixels switched on in a Bayer 8×8 dither
+  (64 density steps; owner asked for "more pixel gradient");
   leaving, it pulls back into the icon the same way (by tab: the arriving
   screen is revealed outside a shrinking circle; by Back: the leaving
   Goals screen shrinks on top). One critically damped spring (~0.55 s),

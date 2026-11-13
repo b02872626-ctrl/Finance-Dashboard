@@ -58,15 +58,29 @@ class GoalsCrossing {
 
 /** Side of a pixel in the wipe, and the width of the dithered edge. */
 private val PIXEL = 6.dp
-private val BAND = 54.dp
+private val BAND = 140.dp
 
-/** Bayer 4×4 thresholds, 0..1. */
-private val BAYER = floatArrayOf(
-    0f, 8f, 2f, 10f,
-    12f, 4f, 14f, 6f,
-    3f, 11f, 1f, 9f,
-    15f, 7f, 13f, 5f,
-).map { (it + 0.5f) / 16f }.toFloatArray()
+/** Bayer 8×8 thresholds, 0..1: 64 steps of pixel density across the edge. */
+private val BAYER: FloatArray = run {
+    val n = 8
+    val m = IntArray(n * n)
+    for (y in 0 until n) for (x in 0 until n) {
+        // Bit-reversal interleave of x xor y and y gives the classic ordered-dither matrix.
+        var v = 0
+        var xc = x xor y
+        var yc = y
+        var bit = n / 2
+        var mask = 0
+        while (bit > 0) {
+            v = v or (((yc and bit) != 0).let { if (it) 1 else 0 } shl (2 * mask))
+            v = v or (((xc and bit) != 0).let { if (it) 1 else 0 } shl (2 * mask + 1))
+            bit = bit shr 1
+            mask++
+        }
+        m[y * n + x] = v
+    }
+    FloatArray(n * n) { (m[it] + 0.5f) / (n * n) }
+}
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -155,6 +169,7 @@ private fun ContentDrawScope.drawWipe(mode: WipeMode, progress: Float, origin: O
     // The dithered band: cells between r − band and r. A cell is on when its
     // depth into the band passes its Bayer threshold.
     val inner = max(0f, r - band)
+    val hidden = Path()
     val rowFrom = max(0, floor((origin.y - r) / px).toInt())
     val rowTo = minOf(rows - 1, ceil((origin.y + r) / px).toInt())
     for (j in rowFrom..rowTo) {
@@ -169,16 +184,13 @@ private fun ContentDrawScope.drawWipe(mode: WipeMode, progress: Float, origin: O
             val d = hypot(cx - origin.x, dy)
             if (d <= inner || d > r) continue
             val depth = (r - d) / band              // 0 at the outer edge, 1 at the inner
-            val threshold = BAYER[(j and 3) * 4 + (i and 3)]
+            val threshold = BAYER[(j and 7) * 8 + (i and 7)]
             val shown = if (mode == WipeMode.Inside) depth >= threshold else depth < threshold
-            val rect = Rect(Offset(i * px, j * px), Size(px, px))
-            if (mode == WipeMode.Inside && !shown) {
-                drawRect(Color.Black, rect.topLeft, rect.size, blendMode = BlendMode.Clear)
-            } else if (mode == WipeMode.Outside && !shown) {
-                drawRect(Color.Black, rect.topLeft, rect.size, blendMode = BlendMode.Clear)
-            }
+            if (!shown) hidden.addRect(Rect(Offset(i * px, j * px), Size(px, px)))
         }
     }
+    // One draw call for every hidden pixel in the band.
+    drawPath(hidden, Color.Black, blendMode = BlendMode.Clear)
 }
 
 /** A circle of radius [r] made of whole pixel cells (one rectangle per row). */
