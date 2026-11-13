@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-13 — New goal form in the dark design (NAH-14, PR B)
+
+- The form uses the dark Goals look like the rest of the section. The
+  icon picker replaces the emoji field; the key is stored in the old
+  `emoji` column (no database change). A new goal starts on its kind's
+  icon (target, shield, repeat) until the owner picks one.
+- "About X ETB a month" under the date is what's left over the months
+  left, counted the same way as the goal page (30.44-day months, rounded
+  up, at least 1), so the number doesn't change after saving. Editing
+  takes off what's already saved.
+- Change account is its own page (one step, no step bar), with the note
+  that saves already on the goal stay.
+- Steps move with one critically damped spring: forward slides in from
+  the right, Back slides out to the right. Reduced motion: a 150 ms fade.
+
 ## 2026-11-13 — Goals is dark; icons instead of emoji (NAH-14)
 
 The Goals design came back (`design/goals-handoff`, kept outside git). Its

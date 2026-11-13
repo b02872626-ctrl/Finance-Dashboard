@@ -3,6 +3,7 @@ package com.financeapp.ui.screens
 import com.financeapp.data.goals.GoalProgress
 import com.financeapp.data.model.GoalEntity
 import com.financeapp.data.model.GoalType
+import com.financeapp.ui.kash.components.KashMoney
 import com.financeapp.util.EthiopianCalendar
 import com.financeapp.util.KashDates
 import com.financeapp.viewmodel.GoalDraft
@@ -18,6 +19,7 @@ import java.util.Locale
 object GoalForm {
 
     private const val DAY = 86_400_000L
+    private const val MONTH_MS = 30.44 * 86_400_000L
 
     /** The quick date choices, in months from today. */
     val QUICK_MONTHS = listOf(3, 6, 12)
@@ -76,7 +78,7 @@ object GoalForm {
     fun fieldsOf(g: GoalEntity): Fields = Fields(
         type = g.type,
         name = g.name,
-        emoji = g.emoji.orEmpty(),
+        emoji = com.financeapp.ui.goals.GoalIcons.keyOf(g),
         amount = g.targetAmount?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() }.orEmpty(),
         months = (g.targetMonths ?: 3).toString(),
         deadlineDay = g.deadline?.let { KashDates.startOfDay(it) },
@@ -88,14 +90,43 @@ object GoalForm {
         Calendar.getInstance().apply { timeInMillis = now; add(Calendar.MONTH, months) }.timeInMillis
     )
 
-    /** "That's about 39,000 ETB" under the safety-net months; null without spending history. */
-    fun safetyNetPreview(monthsText: String, averageMonthlySpend: Double): String? {
+    /**
+     * The safety-net note under the months: [text], with [bold] (the amount)
+     * set in a stronger weight. [known] is false before Kash has a full month
+     * of spending. Null when the months aren't valid.
+     */
+    data class NetPreview(val text: String, val bold: String?, val known: Boolean)
+
+    fun safetyNetPreview(monthsText: String, averageMonthlySpend: Double): NetPreview? {
         val months = monthsOf(monthsText) ?: return null
         val target = GoalProgress.targetOf(
             GoalEntity(name = "", type = GoalType.OPEN_ENDED, targetMonths = months), averageMonthlySpend,
-        ) ?: return "Kash works out the amount once it has a month of your spending"
-        return "That's about ${com.financeapp.ui.kash.components.KashMoney.whole(target)} ETB at your spending"
+        ) ?: return NetPreview(
+            "Kash works out the amount once it has a full month of your spending. You can start saving now.", null, false,
+        )
+        val amount = "${KashMoney.whole(target)} ETB"
+        return NetPreview("That’s about $amount at your spending of about ${KashMoney.whole(averageMonthlySpend)} ETB a month", amount, true)
     }
+
+    /**
+     * Under the date chips: "Save it by 15 June 2027 · about 3,629 ETB a month".
+     * The monthly figure is what's left ([saved] comes off when editing) over the
+     * months left, counted the way the goal page counts them. Null without a date.
+     */
+    fun datedHelper(amountText: String, deadlineDay: Long?, saved: Double, now: Long, cal: String): String? {
+        val day = deadlineDay ?: return null
+        val by = "Save it by ${dateLabel(day, cal)}"
+        val amount = amountOf(amountText) ?: return by
+        val left = amount - saved
+        val end = day + DAY - 1
+        if (left <= 0.5 || end < now) return by
+        val months = kotlin.math.max(1, kotlin.math.ceil((end - now) / MONTH_MS).toInt())
+        return "$by · about ${KashMoney.whole(left / months)} ETB a month"
+    }
+
+    /** The name field's counter: "6 / 40". */
+    const val NAME_MAX = 40
+    fun nameCount(name: String) = "${name.length} / $NAME_MAX"
 
     /** "15 June 2027" / "Sene 8, 2019". */
     fun dateLabel(ms: Long, cal: String): String =

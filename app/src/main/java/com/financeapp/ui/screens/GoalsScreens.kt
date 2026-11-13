@@ -92,10 +92,11 @@ import com.financeapp.viewmodel.GoalsState
 // Sand is the one accent. Pride first, quiet when on track, automatic first.
 
 @Composable
-private fun GoalsFrame(
+internal fun GoalsFrame(
     hero: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
     tabBar: (@Composable () -> Unit)? = null,
     heroGap: androidx.compose.ui.unit.Dp = 20.dp,
+    expandable: Boolean = true,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.(androidx.compose.foundation.layout.PaddingValues) -> Unit,
 ) {
     KashSystemBars(darkIcons = false, navDarkIcons = false)
@@ -103,6 +104,7 @@ private fun GoalsFrame(
         hero = hero,
         tabBar = tabBar,
         heroGap = heroGap,
+        expandable = expandable,
         heroColor = GoalsColors.Hero,
         sheetColor = GoalsColors.Sheet,
         handleColor = GoalsColors.Handle,

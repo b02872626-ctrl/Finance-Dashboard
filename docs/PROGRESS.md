@@ -5,12 +5,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Goals section in the app (NAH-14).** Rebuilding it to the dark design
-  in `design/goals-handoff`. PR A (dark theme, Goals tab, goal page,
-  sheets, dialogs, icons) is open. Next, PR B: New goal / Edit goal in the
-  dark design (icon picker, step slide, the new step-2 and step-3 wording,
-  "Saving goal…"). Until PR B, the New goal form still has the old light
-  look. Later: Supabase sync, web dashboard, "goal reached" notification.
+- **Goals section in the app (NAH-14).** Rebuilt to the dark design in
+  `design/goals-handoff`. PR A (dark theme, Goals tab, goal page, sheets,
+  dialogs, icons, pixel-wipe motion) and PR B (New goal / Edit goal /
+  Change account, dark) are open and ship together; PR B sits on PR A's
+  branch. PR B still needs a look on the phone. Later: Supabase sync, web
+  dashboard, "goal reached" notification, archived list.
 
 - **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
   downloads and 100 active users. Release and install on a real phone by
@@ -79,6 +79,16 @@ items to Done with the date, add what is next or blocked.
   account rule, see the submission checklist §5).
 
 ## Done
+
+- 2026-11-13 New goal, Edit goal and Change account in the dark design
+  (NAH-14, PR B): dark step bar, icon picker (12 icons, sideways row),
+  name counter "6 / 40", "Save it by … · about X ETB a month", monthly
+  and safety-net notes with average spend, "Kash counts it for you" card,
+  account rows with bank badge and "Used by …" pill, "Saving goal…", a
+  dark "Save it by" date picker (follows the Ethiopian calendar setting),
+  Edit strip (kind + "Started …"), Change account as its own page. Steps
+  slide in from the right and back out to the right (fade with reduced
+  motion). Not yet checked on the phone (not connected).
 
 - 2026-11-13 Goals in the dark design (NAH-14, PR A): dark top and sheet
   with sand as the accent; Goals tab with total, "+X ETB this month",

@@ -71,9 +71,25 @@ class GoalFormTest {
     }
 
     @Test fun safetyNetPreview() {
-        assertEquals("That's about 38,900 ETB at your spending", GoalForm.safetyNetPreview("3", 12_950.0))
-        assertEquals("Kash works out the amount once it has a month of your spending", GoalForm.safetyNetPreview("3", 0.0))
+        val net = GoalForm.safetyNetPreview("3", 12_950.0)!!
+        assertEquals("That’s about 38,900 ETB at your spending of about 12,950 ETB a month", net.text)
+        assertEquals("38,900 ETB", net.bold)
+        val none = GoalForm.safetyNetPreview("3", 0.0)!!
+        assertEquals("Kash works out the amount once it has a full month of your spending. You can start saving now.", none.text)
+        assertEquals(false, none.known)
         assertNull(GoalForm.safetyNetPreview("", 12_950.0))
+    }
+
+    @Test fun datedHelperSaysWhatAMonthTakes() {
+        val june = java.util.Calendar.getInstance().apply { clear(); set(2027, 5, 15) }.timeInMillis
+        val now = java.util.Calendar.getInstance().apply { clear(); set(2026, 10, 13, 9, 0) }.timeInMillis
+        // 13 Nov 2026 → 15 June 2027 is a little over 7 months: 8 months to go.
+        assertEquals("Save it by 15 June 2027 · about 7,500 ETB a month", GoalForm.datedHelper("60,000", june, 0.0, now, "GREGORIAN"))
+        // Editing: what's saved already comes off.
+        assertEquals("Save it by 15 June 2027 · about 5,000 ETB a month", GoalForm.datedHelper("60,000", june, 20_000.0, now, "GREGORIAN"))
+        assertEquals("Save it by 15 June 2027", GoalForm.datedHelper("", june, 0.0, now, "GREGORIAN"))
+        assertNull(GoalForm.datedHelper("60,000", null, 0.0, now, "GREGORIAN"))
+        assertEquals("6 / 40", GoalForm.nameCount("Laptop"))
     }
 
     @Test fun dateLabels() {
