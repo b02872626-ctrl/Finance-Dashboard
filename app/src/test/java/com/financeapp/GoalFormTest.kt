@@ -92,6 +92,20 @@ class GoalFormTest {
         assertEquals("6 / 40", GoalForm.nameCount("Laptop"))
     }
 
+    @Test fun amountsGroupAsYouType() {
+        assertEquals("60,000", GoalForm.groupAmount("60000"))
+        assertEquals("1,234,567.5", GoalForm.groupAmount("1234567.5"))
+        assertEquals("0.25", GoalForm.groupAmount(".255"))
+        assertEquals("", GoalForm.groupAmount("abc"))
+        assertEquals(60_000.0, GoalForm.amountOf(GoalForm.groupAmount("60000"))!!, 0.0)
+    }
+
+    @Test fun accountNumbersAreMasked() {
+        assertEquals("25****5678", GoalForm.maskNumber("251912345678"))
+        assertEquals("1*****1111", GoalForm.maskNumber("1*****1111"))
+        assertNull(GoalForm.maskNumber(" "))
+    }
+
     @Test fun dateLabels() {
         val ms = java.util.Calendar.getInstance().apply { clear(); set(2027, 5, 15, 12, 0) }.timeInMillis
         assertEquals("15 June 2027", GoalForm.dateLabel(ms, "GREGORIAN"))

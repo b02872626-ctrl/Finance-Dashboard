@@ -501,6 +501,7 @@ fun GoalsTextField(
     imeAction: ImeAction = ImeAction.Next,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     trailingLabel: String? = null,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
 ) {
     val style = if (big) KashType.TitleM.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold).num() else KashType.BodyL
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -529,6 +530,7 @@ fun GoalsTextField(
                     cursorBrush = SolidColor(GoalsColors.Accent),
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
                     keyboardActions = keyboardActions,
+                    visualTransformation = visualTransformation,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -621,7 +623,7 @@ fun GoalsDialog(
                 Modifier
                     .fillMaxWidth()
                     .widthIn(max = 420.dp)
-                    .clip(KashShapes.Sheet)
+                    .clip(RoundedCornerShape(28.dp))
                     .background(GoalsColors.Sheet)
                     .clickable(remember { MutableInteractionSource() }, indication = null, onClick = {}),
             ) {

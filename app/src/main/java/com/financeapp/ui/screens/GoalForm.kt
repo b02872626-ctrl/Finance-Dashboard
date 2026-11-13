@@ -124,6 +124,25 @@ object GoalForm {
         return "$by · about ${KashMoney.whole(left / months)} ETB a month"
     }
 
+    /** The amount as typed, grouped as you go: "60000" → "60,000". Keeps one decimal point, two places. */
+    fun groupAmount(text: String): String {
+        val clean = text.filter { it.isDigit() || it == '.' }
+        val dot = clean.indexOf('.')
+        val whole = (if (dot < 0) clean else clean.substring(0, dot)).trimStart('0').take(9)
+        val grouped = whole.reversed().chunked(3).joinToString(",").reversed()
+        if (dot < 0) return grouped
+        val frac = clean.substring(dot + 1).filter(Char::isDigit).take(2)
+        return (grouped.ifEmpty { "0" }) + "." + frac
+    }
+
+    /** An account number for the account list: "251912345678" → "25****5678". Already masked or short: as is. Blank: null. */
+    fun maskNumber(number: String): String? {
+        val n = number.trim()
+        if (n.isEmpty()) return null
+        if ('*' in n || n.length <= 6) return n
+        return n.take(2) + "****" + n.takeLast(4)
+    }
+
     /** The name field's counter: "6 / 40". */
     const val NAME_MAX = 40
     fun nameCount(name: String) = "${name.length} / $NAME_MAX"

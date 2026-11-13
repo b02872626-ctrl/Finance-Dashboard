@@ -230,7 +230,7 @@ fun GoalFormScreen(
                         editing = editing, type = type, cal = cal, now = now,
                         icon = icon, onIcon = { icon = it; iconPicked = true },
                         name = name, onName = { name = it.take(GoalForm.NAME_MAX) },
-                        amount = amount, onAmount = { t -> amount = t.filter { it.isDigit() || it == '.' || it == ',' }.take(12) },
+                        amount = amount, onAmount = { t -> amount = t.filter { it.isDigit() || it == '.' }.take(12) },
                         months = months, onMonths = { months = it },
                         deadline = deadline, onDeadline = { deadline = it }, onPickDate = { datePickerOpen = true },
                         savedSoFar = savedSoFar, averageMonthlySpend = averageMonthlySpend, errors = shown,
@@ -287,7 +287,7 @@ private fun Modifier.bleed(by: androidx.compose.ui.unit.Dp) = layout { measurabl
 @Composable
 private fun ColumnScope.KindStep(onPick: (String) -> Unit) {
     KindCards(selected = null, onPick = onPick)
-    Spacer(Modifier.height(4.dp))
+    Spacer(Modifier.weight(1f))
     GoalsNotice(KashIcon.Sms, "Whichever you pick, you can link one account next and Kash counts the money for you.")
 }
 
@@ -320,7 +320,7 @@ private fun ColumnScope.DetailsStep(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FieldLabel("Icon")
-        GoalIconPicker(icon, onIcon)
+        GoalIconPicker(icon, GoalIcons.defaultKey(editing?.type ?: type), onIcon)
     }
 
     GoalsTextField(
@@ -356,7 +356,7 @@ private fun ColumnScope.DetailsStep(
 
         GoalType.RECURRING -> {
             GoalsTextField(
-                amount, onAmount, "Amount a month", placeholder = "0", unit = "ETB", big = true,
+                amount, onAmount, "Amount a month", placeholder = "0", unit = "ETB", big = true, visualTransformation = AmountGrouping,
                 keyboardType = KeyboardType.Decimal, error = errors.amount,
             )
             HelperLine(KashIcon.Repeat, "Starts this month. On the 1st, a new month begins at 0.")
@@ -364,7 +364,7 @@ private fun ColumnScope.DetailsStep(
 
         else -> {
             GoalsTextField(
-                amount, onAmount, "Amount", placeholder = "0", unit = "ETB", big = true,
+                amount, onAmount, "Amount", placeholder = "0", unit = "ETB", big = true, visualTransformation = AmountGrouping,
                 keyboardType = KeyboardType.Decimal, error = errors.amount,
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -419,7 +419,7 @@ private fun EditStrip(goal: GoalEntity, cal: String) {
  * the screen edges. The chosen one is sand with a slate-ink ring.
  */
 @Composable
-private fun GoalIconPicker(selected: String, onPick: (String) -> Unit) {
+private fun GoalIconPicker(selected: String, first: String, onPick: (String) -> Unit) {
     Row(
         Modifier
             .bleed(KashSpace.InsetApp)
@@ -428,7 +428,8 @@ private fun GoalIconPicker(selected: String, onPick: (String) -> Unit) {
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        GoalIcons.ALL.forEach { o ->
+        // The kind's own icon leads, so the starting choice is in view.
+        GoalIcons.ALL.sortedBy { if (it.key == first) 0 else 1 }.forEach { o ->
             val on = o.key == selected
             Box(
                 Modifier
@@ -466,7 +467,7 @@ private fun ColumnScope.AccountStep(
                 val usedElsewhere = a.usedBy != null && a.usedBy.id != editing?.id
                 AccountOption(
                     label = a.label,
-                    detail = a.accountNumber.ifBlank { a.bankName },
+                    detail = GoalForm.maskNumber(a.accountNumber),
                     bankName = a.bankName,
                     checked = selected == a.key,
                     disabled = usedElsewhere,
@@ -755,6 +756,31 @@ private fun GoalsNotice(icon: KashIcon, text: String, bold: String? = null) {
             }
         }
         Text(styled, style = KashType.Caption.num(), color = GoalsColors.Ink)
+    }
+}
+
+/** Shows "60000" as "60,000" while the text itself stays plain digits (the cursor stays put). */
+private object AmountGrouping : androidx.compose.ui.text.input.VisualTransformation {
+    override fun filter(text: androidx.compose.ui.text.AnnotatedString): androidx.compose.ui.text.input.TransformedText {
+        val raw = text.text
+        val out = GoalForm.groupAmount(raw)
+        if (out.length == raw.length || out.filter { it != ',' } != raw) {
+            return androidx.compose.ui.text.input.TransformedText(text, androidx.compose.ui.text.input.OffsetMapping.Identity)
+        }
+        // Where each raw character lands in the grouped text.
+        val toOut = IntArray(raw.length + 1)
+        var o = 0
+        for (i in raw.indices) {
+            while (out[o] == ',') o++
+            toOut[i] = o
+            o++
+        }
+        toOut[raw.length] = out.length
+        val map = object : androidx.compose.ui.text.input.OffsetMapping {
+            override fun originalToTransformed(offset: Int) = toOut[offset.coerceIn(0, raw.length)]
+            override fun transformedToOriginal(offset: Int) = out.take(offset.coerceIn(0, out.length)).count { it != ',' }
+        }
+        return androidx.compose.ui.text.input.TransformedText(androidx.compose.ui.text.AnnotatedString(out), map)
     }
 }
 
