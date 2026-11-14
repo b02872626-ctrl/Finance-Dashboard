@@ -10,8 +10,9 @@ items to Done with the date, add what is next or blocked.
   see Done, PR #73 waiting for the owner's merge; (2) the sort card,
   Transaction details and Add transaction, done, PR #74 stacked on #73;
   (3) Review as the approved list with a Review tab replacing History,
-  done, its PR is stacked on #74. Merge in order 73 → 74 → 75. Then on a
-  phone: both themes, the sort card, Save on Add, the Review tab badge.
+  done; #73 and #76 are on main, the Review list waits as its own PR
+  against main. Then on a phone: both themes, the sort card, Save on
+  Add, the Review tab badge.
   Linear issues still to be made. Follow-ups, one branch each: the
   approved "All transactions" screen (search and filters on the sheet,
   canvas FD_AllTx / FD_Filters); re-record the Paparazzi goldens.
