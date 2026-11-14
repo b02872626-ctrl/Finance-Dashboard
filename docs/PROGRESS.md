@@ -173,6 +173,9 @@ items to Done with the date, add what is next or blocked.
   names. Not yet installed on a real phone. Categories already wiped by the
   old bug are not in the cloud any more and can't come back.
 - 2026-11-12 1.0.34: Home is cleaner: no Cash card, and banks you switch off leave Home and your total; The quiet-accounts line and the weekly bars are gone from Home; To help fix problems, Kash can record how screens are used, with every word, number and picture hidden. Not yet installed on a real phone.
+- 2026-11-12 Web dashboard Transactions: "Show 100 more" / "Show all" under
+  the table (it used to stop at 100 rows with no way to see the rest).
+
 - 2026-11-12 Web dashboard design basics, look unchanged: press feedback
   everywhere, keyboard focus ring, bigger chips on phones, reduced-motion /
   contrast / transparency settings respected.

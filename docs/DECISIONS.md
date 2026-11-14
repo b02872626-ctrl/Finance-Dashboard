@@ -85,6 +85,15 @@ replaces the sand top logged on 2026-11-12.
   amount was reached ("Month done", once a month), "took N months" and
   "N days early".
 
+## 2026-11-12 — Web Transactions list can show every row
+
+The Transactions table used to draw only the first 100 matching rows, with
+no way to see the rest, so a screenshot of it (or a sum of what's on
+screen) silently missed older rows. It still starts at 100, but a row under
+the table says "Showing 100 of N" with "Show 100 more" and "Show all N".
+Changing any filter goes back to the first 100. The count above the table
+now says "N match" instead of "N shown", because not all of them are drawn.
+
 ## 2026-11-12 — Goals: editing keeps the kind and the start date (NAH-14)
 
 Edit goal can change the name, emoji, amount, months, date and account,
