@@ -39,6 +39,8 @@ enum class KashIcon(vararg val paths: String) {
     ),
     Card("M5 5h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z", "M2 10h20"),
     History("M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z", "M12 7v5l3 2"),
+    /** The Review tab: an in-tray. */
+    Review("M3 13h5l2 3h4l2-3h5", "M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"),
     Chart("M7 19V5", "M12 19v-7", "M17 19V9"),
     Home("M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"),
     Export("M12 3v12M7 10l5 5 5-5M4 20h16"),

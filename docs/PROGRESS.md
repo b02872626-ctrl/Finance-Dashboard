@@ -8,12 +8,13 @@ items to Done with the date, add what is next or blocked.
 - **The approved canvas, in the app (sections 4, 5, 6 of "Final - Approved
   flow").** Three PRs, owner's decisions of 14 Nov: (1) dark theme, done,
   see Done, PR #73 waiting for the owner's merge; (2) the sort card,
-  Transaction details and Add transaction, done, see Done, its PR is
-  stacked on #73 and merges after it; (3) Review as the approved list with a Review tab
-  replacing History (History from Home's "Show all"), 44dp Sort, Today /
-  This month, snackbar above the tab bar, badge from this month's pending.
-  (3) reverses NAH-36 / NAH-42 on the owner's say-so. Row names stay 15sp
-  to line up with Home. Linear issues still to be made.
+  Transaction details and Add transaction, done, PR #74 stacked on #73;
+  (3) Review as the approved list with a Review tab replacing History,
+  done, its PR is stacked on #74. Merge in order 73 → 74 → 75. Then on a
+  phone: both themes, the sort card, Save on Add, the Review tab badge.
+  Linear issues still to be made. Follow-ups, one branch each: the
+  approved "All transactions" screen (search and filters on the sheet,
+  canvas FD_AllTx / FD_Filters); re-record the Paparazzi goldens.
 
 - **Goals section in the app (NAH-14).** The dark design (PR A, PR B)
   is on main. PR C, goals sync, is on a branch (Done, 2026-11-13), CI
@@ -91,6 +92,15 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-14 Review as the approved list (canvas section 6): Today / This
+  month tabs, day headers and Home-aligned rows with a 44dp Sort button
+  opening the sort card, "Check this one" on a row's tap, snackbar with
+  Undo above the tab bar, "Nothing to sort" state, "Show N from before this
+  month" for the backlog. The tab bar is Home, Analytics, Review (badge =
+  this month's pending), Goals; History is "All transactions" behind Home's
+  "See all". `ReviewListViewModel` replaces the swipe queue
+  (`ReviewListTest`). See DECISIONS 2026-11-14 (Review is a list). Not yet
+  on a phone.
 - 2026-11-14 The sort card, Transaction details and Add transaction as
   approved (canvas sections 4 and 5): `SortCardSheet` replaces the category
   picker in Review, on a transaction and on Add (own categories most used

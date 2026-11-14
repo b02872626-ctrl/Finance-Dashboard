@@ -67,6 +67,8 @@ fun KashTransactionRow(
     category: String? = null,
     showDivider: Boolean = true,
     onClick: (() -> Unit)? = null,
+    /** After the amount: Review's 44dp Sort button. */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val tone = when (direction) {
         KashDirection.In -> KashColors.MoneyIn
@@ -114,6 +116,7 @@ fun KashTransactionRow(
                 maxLines = 1,
                 softWrap = false,
             )
+            if (trailing != null) trailing()
         }
         if (showDivider) KashDivider()
     }
