@@ -6,11 +6,10 @@ items to Done with the date, add what is next or blocked.
 ## Next up
 
 - **Goals section in the app (NAH-14).** The dark design (PR A, PR B)
-  is on main. PR C, goals sync, is on a branch (Done, 2026-11-13); before
-  it merges, run `supabase/add_goal_linked_account.sql` on staging, the
-  isolation test, then live (owner task). Then on the phone: make a goal,
-  check it in Supabase, reinstall, sign in, and the goals should come
-  back. Still to do, one branch each: web dashboard brought in line (it
+  is on main. PR C, goals sync, is on a branch (Done, 2026-11-13), CI
+  green; the owner ran `add_goal_linked_account.sql` on Supabase on
+  13 Nov, so it can merge. Then on the phone: make a goal, check it in
+  Supabase, reinstall, sign in, and the goals should come back. Still to do, one branch each: web dashboard brought in line (it
   ignores the linked account and shows saves logged by hand only), "goal
   reached" notification, archived list.
 
@@ -46,11 +45,6 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
-- Before merging goals sync (NAH-14, PR C): run
-  `supabase/add_goal_linked_account.sql` on staging, then
-  `python3 supabase/staging/isolation_test.py`, then on live. Until the
-  column exists, every sync pass logs "Supabase goal sync failed" (the
-  rest of sync is unaffected).
 - PostHog session replay is on and checked. Keep "Capture console logs"
   off (PostHog → Settings → Session replay). Update the Play Console data
   safety form (App interactions row) to match `docs/play-store-sms-declaration.md`.
@@ -92,7 +86,7 @@ items to Done with the date, add what is next or blocked.
   of a change), deletes included; a reinstall or a second phone gets them
   back after sign-in; edits and deletes made on the web dashboard reach
   the phone. New SQL `add_goal_linked_account.sql` (one nullable column,
-  no policy change) must run on staging then live first. `GoalCloudSyncTest`
+  no policy change); the owner ran it on 13 Nov. `GoalCloudSyncTest`
   (12). Not run on a phone or against staging (no device or credentials
   here); unit tests run in CI only (no Android SDK in this session).
 - 2026-11-13 New goal, Edit goal and Change account in the dark design
