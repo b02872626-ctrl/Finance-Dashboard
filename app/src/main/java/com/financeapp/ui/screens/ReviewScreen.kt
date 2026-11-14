@@ -1,6 +1,5 @@
 package com.financeapp.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -195,8 +194,9 @@ fun ReviewScreen(
                     }
                 }
             }
-            AnimatedVisibility(
-                state.snackbar != null,
+            // The plain overload by name: inside the Box, the ColumnScope one is out of reach.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = state.snackbar != null,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 10.dp),
                 enter = fadeIn() + slideInVertically { it / 2 },
                 exit = fadeOut(),
