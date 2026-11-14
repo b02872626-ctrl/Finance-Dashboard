@@ -439,7 +439,7 @@ private fun Progress(fraction: Float, label: String, delayMs: Int = 0) {
             .clip(RoundedCornerShape(3.dp))
             .background(KashColors.Well)
             .semantics { contentDescription = label },
-    ) { Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f) * grow).fillMaxHeight().background(KashColors.Slate)) }
+    ) { Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f) * grow).fillMaxHeight().background(KashColors.Accent)) }
 }
 
 @Composable

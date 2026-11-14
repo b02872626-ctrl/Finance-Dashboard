@@ -35,6 +35,12 @@ class SettingsViewModel(
     val calendarSystem: StateFlow<String> = repo.calendarSystemFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), repo.getCalendarSystem())
 
+    /** Settings → Appearance: "LIGHT", "DARK" or "SYSTEM". */
+    val themeMode: StateFlow<String> = repo.themeModeFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), repo.getThemeMode())
+
+    fun setThemeMode(mode: String) = repo.setThemeMode(mode)
+
     fun toggleCalendarSystem() {
         val current = repo.getCalendarSystem()
         repo.setCalendarSystem(if (current == "ETHIOPIAN") "GREGORIAN" else "ETHIOPIAN")

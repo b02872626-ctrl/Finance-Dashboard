@@ -25,9 +25,15 @@ class SettingsRepository(context: Context) {
         prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETE, completed).apply()
     fun onboardingCompleteFlow(): Flow<Boolean> = prefFlow(KEY_ONBOARDING_COMPLETE, false)
 
-    fun getIsDarkMode(): Boolean = prefs.getBoolean("dark_mode", false)
-    fun isDarkMode(): Flow<Boolean> = prefFlow("dark_mode", false)
-    fun setIsDarkMode(enabled: Boolean) = prefs.edit().putBoolean("dark_mode", enabled).apply()
+    /**
+     * Settings → Appearance: "LIGHT", "DARK" or "SYSTEM" (match the phone), see
+     * ui/kash/KashThemeMode. The never-wired "dark_mode" switch of old builds
+     * counts as DARK; otherwise the phone decides.
+     */
+    fun getThemeMode(): String =
+        prefs.getString(KEY_THEME_MODE, null) ?: if (prefs.getBoolean("dark_mode", false)) "DARK" else "SYSTEM"
+    fun setThemeMode(mode: String) = prefs.edit().putString(KEY_THEME_MODE, mode).apply()
+    fun themeModeFlow(): Flow<String> = prefFlow(KEY_THEME_MODE, "").map { it.ifBlank { getThemeMode() } }
 
     fun getNotifications(): Boolean = prefs.getBoolean("notifications", true)
     fun setNotifications(enabled: Boolean) = prefs.edit().putBoolean("notifications", enabled).apply()
@@ -315,6 +321,7 @@ class SettingsRepository(context: Context) {
         const val KEY_LAST_SYNC_OK_MS = "last_sync_ok_ms"
         const val KEY_SYNC_PROBLEM = "sync_problem"
         const val KEY_SESSION_EXPIRED = "session_expired"
+        const val KEY_THEME_MODE = "theme_mode"
         const val KEY_SUPABASE_USER_ID = "supabase_user_id"
         const val KEY_SUPABASE_EMAIL = "supabase_email"
         const val KEY_SUPABASE_EXPIRES_AT_MS = "supabase_expires_at_ms"

@@ -82,7 +82,7 @@ fun KashSearchField(
                 onValueChange = onValueChange,
                 singleLine = true,
                 textStyle = KashType.Body.copy(color = text, fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
-                cursorBrush = SolidColor(if (onSlate) KashColors.Sand else KashColors.Slate),
+                cursorBrush = SolidColor(if (onSlate) KashColors.Sand else KashColors.Accent),
                 interactionSource = source,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 modifier = Modifier.fillMaxWidth(),
@@ -143,7 +143,7 @@ fun KashTextField(
                 readOnly = readOnly,
                 singleLine = true,
                 textStyle = KashType.BodyL.copy(color = if (locked) KashColors.InkMuted else KashColors.Ink),
-                cursorBrush = SolidColor(KashColors.Slate),
+                cursorBrush = SolidColor(KashColors.Accent),
                 interactionSource = source,
                 visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(

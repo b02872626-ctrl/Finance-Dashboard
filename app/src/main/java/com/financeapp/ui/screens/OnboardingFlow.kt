@@ -202,7 +202,7 @@ private val WHEEL = listOf(
 /** AppWelcome: light top with the rolling words, slate panel rising from the bottom. */
 @Composable
 private fun WelcomeScreen(onGetStarted: () -> Unit, onHaveAccount: () -> Unit) {
-    KashSystemBars(darkIcons = true, navDarkIcons = false)
+    KashSystemBars(darkIcons = !KashColors.isDark, navDarkIcons = false)
     BoxWithConstraints(Modifier.fillMaxSize().background(KashColors.Surface)) {
         val panelTop = maxHeight * 0.51f
         Column(

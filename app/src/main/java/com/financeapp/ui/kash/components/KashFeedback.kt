@@ -172,7 +172,7 @@ fun KashSnackbar(
 // ─── StepBar ─────────────────────────────────────────────────────────────
 
 /**
- * Kash.StepBar: segmented progress. Light (onboarding): slate segments, 4dp.
+ * Kash.StepBar: segmented progress. On the sheet (onboarding): accent segments, 4dp.
  * On slate (review): sand for done, ghost for the rest, 5dp.
  */
 @Composable
@@ -194,7 +194,7 @@ fun KashStepBar(current: Int, total: Int, modifier: Modifier = Modifier, onSlate
                         when {
                             onSlate && on -> KashColors.Sand
                             onSlate -> KashColors.GhostLine
-                            on -> KashColors.Slate
+                            on -> KashColors.Accent
                             else -> KashColors.LineStrong
                         }
                     )

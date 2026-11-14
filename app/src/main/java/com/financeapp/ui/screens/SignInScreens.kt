@@ -361,7 +361,7 @@ fun SignInAgainScreen(onSignedIn: () -> Unit) {
     val expired = remember { settings.isSessionExpired() }
     val state = rememberAuthFormState(onSignedIn)
     var signUpMode by remember { mutableStateOf(false) }
-    KashSystemBars(darkIcons = true)
+    KashSystemBars(darkIcons = !KashColors.isDark)
     Column(
         Modifier
             .fillMaxSize()
@@ -454,7 +454,7 @@ fun OnboardingPage(
     bottom: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    KashSystemBars(darkIcons = true)
+    KashSystemBars(darkIcons = !KashColors.isDark)
     Column(
         Modifier
             .fillMaxSize()

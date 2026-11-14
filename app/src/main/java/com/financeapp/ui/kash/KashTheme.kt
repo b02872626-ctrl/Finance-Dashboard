@@ -11,9 +11,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -34,46 +38,146 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.financeapp.R
 
+// Colours shared by both themes (never change with the setting).
+private val SlateInkColor = Color(0xFF2B3340)
+private val SandColor = Color(0xFFE9DFC6)
+private val WhiteColor = Color(0xFFFFFFFF)
+
 /**
- * Kash design system ("Slate + sand", light only). Values come straight from
- * design/kash-ui-handoff/design-system/tokens.json — change them there first.
+ * One set of the design-system colours. Light comes from
+ * design/kash-ui-handoff/design-system/tokens.json; dark from the Kash
+ * canvas's dark.css (the FD_ rows of the approved flow). Change them there
+ * first. [accent] is the one fill for selected states, primary buttons and
+ * the switch when on: slate on light sheets, sand on dark ones (sand never
+ * sits on a light sheet).
+ */
+data class KashPalette(
+    val dark: Boolean,
+    val slate: Color,
+    val surface: Color,
+    val surfaceRaised: Color,
+    val well: Color,
+    val line: Color,
+    val lineStrong: Color,
+    val handle: Color,
+    val ink: Color,
+    val inkMuted: Color,
+    val inkFaint: Color,
+    val moneyIn: Color,
+    val moneyOut: Color,
+    val moneyNeutral: Color,
+    val focus: Color,
+    val accent: Color,
+    val onAccent: Color,
+    val switchKnobOn: Color,
+    val switchKnobOff: Color,
+)
+
+object KashPalettes {
+    val Light = KashPalette(
+        dark = false,
+        slate = Color(0xFF3D4859),
+        surface = Color(0xFFF4F5F7),
+        surfaceRaised = WhiteColor,
+        well = Color(0xFFE7EAEF),
+        line = Color(0xFFE1E4E9),
+        lineStrong = Color(0xFFD5D9E0),
+        handle = Color(0xFFCBD0D8),
+        ink = Color(0xFF222A36),
+        inkMuted = Color(0xFF5F6877),
+        inkFaint = Color(0xFF7D8594),
+        moneyIn = Color(0xFF3E7A4A),
+        moneyOut = Color(0xFFA3412F),
+        moneyNeutral = Color(0xFF7D8594),
+        focus = Color(0xFF3D4859),
+        accent = Color(0xFF3D4859),
+        onAccent = WhiteColor,
+        switchKnobOn = WhiteColor,
+        switchKnobOff = WhiteColor,
+    )
+
+    /**
+     * dark.css, with one lift: ink-muted is 9AA3AF rather than 8A939F so a
+     * 15sp muted label on a raised card reads at 5:1 (8A939F gave 4.1:1).
+     */
+    val Dark = KashPalette(
+        dark = true,
+        slate = Color(0xFF161B22),
+        surface = Color(0xFF1F252E),
+        surfaceRaised = Color(0xFF29313C),
+        well = Color(0xFF262D37),
+        line = Color(0xFF262D37),
+        lineStrong = Color(0xFF343D49),
+        handle = Color(0xFF4A5361),
+        ink = Color(0xFFF1F3F6),
+        inkMuted = Color(0xFF9AA3AF),
+        inkFaint = Color(0xFF6F7885),
+        moneyIn = Color(0xFF7CC48B),
+        moneyOut = Color(0xFFF2907A),
+        moneyNeutral = Color(0xFF9AA3AF),
+        focus = SandColor,
+        accent = SandColor,
+        onAccent = SlateInkColor,
+        switchKnobOn = SlateInkColor,
+        switchKnobOff = Color(0xFF9AA3AF),
+    )
+}
+
+/**
+ * Kash design system ("Slate + sand"). The theme-dependent colours read the
+ * palette [KashTheme] chose, through snapshot state, so every screen,
+ * draw and layout repaints when the setting changes. The constants below
+ * the getters are the same in both themes.
  */
 object KashColors {
-    val Slate = Color(0xFF3D4859)
-    val SlateInk = Color(0xFF2B3340)
-    val Sand = Color(0xFFE9DFC6)
-    val OnSlate = Color(0xFFFFFFFF)
+    private var paletteState by mutableStateOf(KashPalettes.Light)
+
+    /** The palette in use; [KashTheme] sets it. */
+    val palette: KashPalette get() = paletteState
+    val isDark: Boolean get() = paletteState.dark
+    internal fun use(p: KashPalette) { if (paletteState !== p) paletteState = p }
+
+    val Slate: Color get() = paletteState.slate
+    val Surface: Color get() = paletteState.surface
+    val SurfaceRaised: Color get() = paletteState.surfaceRaised
+    val Well: Color get() = paletteState.well
+    val Line: Color get() = paletteState.line
+    val LineStrong: Color get() = paletteState.lineStrong
+    val Handle: Color get() = paletteState.handle
+    val Ink: Color get() = paletteState.ink
+    val InkMuted: Color get() = paletteState.inkMuted
+    val InkFaint: Color get() = paletteState.inkFaint
+    val MoneyIn: Color get() = paletteState.moneyIn
+    val MoneyOut: Color get() = paletteState.moneyOut
+    val MoneyNeutral: Color get() = paletteState.moneyNeutral
+    val Focus: Color get() = paletteState.focus
+    /** Selected states, primary buttons, the switch when on. */
+    val Accent: Color get() = paletteState.accent
+    val OnAccent: Color get() = paletteState.onAccent
+    val SwitchKnobOn: Color get() = paletteState.switchKnobOn
+    val SwitchKnobOff: Color get() = paletteState.switchKnobOff
+
+    val SlateInk = SlateInkColor
+    val Sand = SandColor
+    val OnSlate = WhiteColor
     val OnSlateMuted = Color(0xFFC6CDD8)
     val GhostFill = Color(0x12FFFFFF)      // white @ 7%
     val GhostLine = Color(0x38FFFFFF)      // white @ 22%
     val ChartBar = Color(0x2EFFFFFF)       // white @ 18%
     val SkeletonOnSlate = Color(0x1FFFFFFF) // white @ 12%
-    val Surface = Color(0xFFF4F5F7)
-    val SurfaceRaised = Color(0xFFFFFFFF)
-    val Well = Color(0xFFE7EAEF)
-    val Line = Color(0xFFE1E4E9)
-    val LineStrong = Color(0xFFD5D9E0)
-    val Handle = Color(0xFFCBD0D8)
-    val Ink = Color(0xFF222A36)
-    val InkMuted = Color(0xFF5F6877)
-    val InkFaint = Color(0xFF7D8594)
-    val MoneyIn = Color(0xFF3E7A4A)
-    val MoneyOut = Color(0xFFA3412F)
-    val MoneyNeutral = InkFaint
-    val Focus = Slate
-    val FocusOnSlate = Sand
+    val FocusOnSlate = SandColor
     val BankCbe = Color(0xFF6B2E8E)
     val BankTelebirr = Color(0xFF0F7A5E)
     val BankBoa = Color(0xFF8F6418)
     val SuccessOnSlate = Color(0xFF9BD3A5) // PIN accepted
     /** Goals section: a sand top instead of slate, slate-ink text on it. */
-    val GoalsHero = Sand
-    val GoalsInk = SlateInk
+    val GoalsHero = SandColor
+    val GoalsInk = SlateInkColor
     val GoalsInkMuted = Color(0xFF5E5A4E)
     val GoalsTrack = Color(0x242B3340)    // slate-ink @ 14%
-    val GoalsReached = MoneyIn
+    val GoalsReached: Color get() = paletteState.moneyIn
     /** Backdrop behind sheets and dialogs. */
-    val Backdrop = SlateInk.copy(alpha = 0.94f)
+    val Backdrop = SlateInkColor.copy(alpha = 0.94f)
 }
 
 val Figtree = FontFamily(
@@ -159,22 +263,25 @@ object KashSize {
     val SearchH = 46.dp
 }
 
-private val KashColorScheme = lightColorScheme(
-    primary = KashColors.Slate,
-    onPrimary = KashColors.OnSlate,
-    secondary = KashColors.Sand,
-    onSecondary = KashColors.SlateInk,
-    background = KashColors.Surface,
-    onBackground = KashColors.Ink,
-    surface = KashColors.Surface,
-    onSurface = KashColors.Ink,
-    surfaceVariant = KashColors.Well,
-    onSurfaceVariant = KashColors.InkMuted,
-    outline = KashColors.Line,
-    outlineVariant = KashColors.Line,
-    error = KashColors.MoneyOut,
-    onError = KashColors.OnSlate,
-    scrim = KashColors.SlateInk,
+/** Material's scheme, for the few Material widgets Kash uses (sheets, pull to refresh). */
+private fun materialScheme(p: KashPalette) = if (p.dark) darkColorScheme(
+    primary = p.accent, onPrimary = p.onAccent,
+    secondary = SandColor, onSecondary = SlateInkColor,
+    background = p.surface, onBackground = p.ink,
+    surface = p.surface, onSurface = p.ink,
+    surfaceVariant = p.well, onSurfaceVariant = p.inkMuted,
+    outline = p.line, outlineVariant = p.line,
+    error = p.moneyOut, onError = SlateInkColor,
+    scrim = SlateInkColor,
+) else lightColorScheme(
+    primary = p.accent, onPrimary = p.onAccent,
+    secondary = SandColor, onSecondary = SlateInkColor,
+    background = p.surface, onBackground = p.ink,
+    surface = p.surface, onSurface = p.ink,
+    surfaceVariant = p.well, onSurfaceVariant = p.inkMuted,
+    outline = p.line, outlineVariant = p.line,
+    error = p.moneyOut, onError = WhiteColor,
+    scrim = SlateInkColor,
 )
 
 private val KashTypography = Typography(
@@ -191,9 +298,15 @@ private val KashTypography = Typography(
     labelSmall = KashType.Micro,
 )
 
+/**
+ * [mode] comes from Settings → Appearance (Light, Dark, Match phone). The
+ * palette is set before the children compose, so the first frame is right.
+ */
 @Composable
-fun KashTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = KashColorScheme, typography = KashTypography, content = content)
+fun KashTheme(mode: KashThemeMode = KashThemeMode.LIGHT, content: @Composable () -> Unit) {
+    val palette = if (mode.isDark(isSystemInDarkTheme())) KashPalettes.Dark else KashPalettes.Light
+    KashColors.use(palette)
+    MaterialTheme(colorScheme = remember(palette) { materialScheme(palette) }, typography = KashTypography, content = content)
 }
 
 /** How a [kashClickable] answers a press. */
@@ -215,6 +328,8 @@ fun Modifier.kashClickable(
     role: Role? = Role.Button,
     onClickLabel: String? = null,
     press: KashPress = KashPress.Scale,
+    /** Fade a disabled target to 40%. False when the caller draws its own disabled look (KashButton). */
+    dim: Boolean = true,
     onClick: () -> Unit,
 ): Modifier = composed {
     val source = remember { MutableInteractionSource() }
@@ -236,7 +351,7 @@ fun Modifier.kashClickable(
     val wash by animateFloatAsState(if (down && press == KashPress.Highlight) 0.05f else 0f, tween(120), label = "wash")
     this
         .graphicsLayer { scaleX = scale; scaleY = scale }
-        .alpha(if (!enabled) 0.4f else if (pressed && press != KashPress.Highlight) 0.88f else 1f)
+        .alpha(if (!enabled) (if (dim) 0.4f else 1f) else if (pressed && press != KashPress.Highlight) 0.88f else 1f)
         .drawBehind { if (wash > 0f) drawRect(KashColors.Ink.copy(alpha = wash)) }
         .clickable(
             interactionSource = source,
@@ -251,10 +366,11 @@ fun Modifier.kashClickable(
 /**
  * Status/navigation bar icon colours for the screen being shown. Slate tops
  * want light icons ([darkIcons] false); light onboarding pages want dark.
- * [navDarkIcons] defaults to dark because app screens end on the light sheet.
+ * [navDarkIcons] follows the sheet: dark icons on the light theme's sheet,
+ * light icons on the dark theme's.
  */
 @Composable
-fun KashSystemBars(darkIcons: Boolean, navDarkIcons: Boolean = true) {
+fun KashSystemBars(darkIcons: Boolean, navDarkIcons: Boolean = !KashColors.isDark) {
     val view = androidx.compose.ui.platform.LocalView.current
     if (view.isInEditMode) return
     androidx.compose.runtime.SideEffect {

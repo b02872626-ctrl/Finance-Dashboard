@@ -46,7 +46,10 @@ import com.financeapp.ui.kash.KashSize
 import com.financeapp.ui.kash.KashSystemBars
 import com.financeapp.ui.kash.KashType
 import com.financeapp.ui.kash.components.KashButton
+import com.financeapp.ui.kash.KashIcon
+import com.financeapp.ui.kash.KashIconView
 import com.financeapp.ui.kash.components.KashChip
+import com.financeapp.ui.kash.components.KashSegmented
 import com.financeapp.ui.kash.components.KashScreen
 import com.financeapp.ui.kash.components.KashTextField
 import com.financeapp.ui.kash.components.KashTopBar
@@ -67,6 +70,7 @@ fun AddScreen(
     banks: List<String>,
     customCategories: List<String>,
     recentCategories: List<String>,
+    categoryUsage: List<SortCard.Use>,
     onAddCategory: (String) -> Unit,
     onSaved: () -> Unit,
     onClose: () -> Unit,
@@ -75,9 +79,7 @@ fun AddScreen(
     val state by vm.state.collectAsState()
     val context = LocalContext.current
     val cal = LocalCalendarSystem.current
-    var triedSave by remember { mutableStateOf(false) }
     var pickerOpen by remember { mutableStateOf(false) }
-    var newCategoryOpen by remember { mutableStateOf(false) }
     val amountFocus = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -92,22 +94,23 @@ fun AddScreen(
     }
 
     val isIncome = state.type == TransactionType.CREDIT.name
-    val nameError = if (triedSave && state.counterparty.isBlank()) {
-        if (isIncome) "Add who paid you so you can find it later." else "Add who you paid so you can find it later."
-    } else null
+    val kinds = listOf(
+        TransactionType.DEBIT.name to "Expense",
+        TransactionType.CREDIT.name to "Income",
+        TransactionType.TRANSFER_OUT.name to "Transfer",
+    )
 
     KashScreen(
         heroGap = 18.dp,
         heroBottom = 30.dp,
         hero = {
             KashTopBar("Add transaction", onBack = onClose)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    TransactionType.DEBIT.name to "Expense",
-                    TransactionType.CREDIT.name to "Income",
-                    TransactionType.TRANSFER_OUT.name to "Transfer",
-                ).forEach { (type, label) -> KashChip(label, state.type == type, { vm.setType(type) }, onSlate = true) }
-            }
+            KashSegmented(
+                options = kinds.map { it.second },
+                selected = kinds.indexOfFirst { it.first == state.type }.coerceAtLeast(0),
+                onSelect = { vm.setType(kinds[it].first) },
+                label = "Kind",
+            )
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.weight(1f)) {
                     if (state.amountText.isEmpty()) Text("0", style = KashType.FigureXl, color = KashColors.OnSlateMuted)
@@ -142,7 +145,6 @@ fun AddScreen(
                         else -> "Who got paid"
                     },
                     placeholder = if (isIncome) "e.g. Afro Trading PLC" else "e.g. Shoa Supermarket",
-                    error = nameError,
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(if (isIncome) "Paid into" else "Paid from", style = KashType.Label, color = KashColors.InkMuted)
@@ -156,52 +158,53 @@ fun AddScreen(
                     FieldButton("When", KashDates.whenShort(state.dateTimeMs, cal), Modifier.weight(1f)) {
                         pickDateTime(context, state.dateTimeMs, vm::setDateTime)
                     }
-                    FieldButton("Category", state.category ?: "Optional", Modifier.weight(1f), muted = state.category == null) {
+                    FieldButton("Category", state.category ?: "Pick one", Modifier.weight(1f), muted = state.category == null, trailing = KashIcon.ChevronDown) {
                         pickerOpen = true
                     }
                 }
                 KashTextField(state.note, vm::setNote, "Note", placeholder = "Optional", imeAction = androidx.compose.ui.text.input.ImeAction.Done)
                 state.errorMessage?.let { Text(it, style = KashType.Caption, color = KashColors.MoneyOut) }
             }
+            // Save wakes up once there is an amount and a name; until then it is
+            // the outlined, muted button, the same in both themes.
             KashButton(
                 if (state.saving) "Saving…" else "Save transaction",
-                {
-                    triedSave = true
-                    if (state.canSave) vm.save()
-                },
+                { if (state.canSave) vm.save() },
                 Modifier.fillMaxWidth().padding(pad),
                 busy = state.saving,
-                enabled = state.amount?.let { it > 0 } == true,
+                enabled = state.canSave || state.saving,
             )
         }
     }
 
     if (pickerOpen) {
-        CategoryPicker(
+        SortCardSheet(
             tx = null,
-            initial = state.category,
-            recent = recentCategories,
+            current = state.category,
             custom = customCategories,
+            usage = categoryUsage,
+            recent = recentCategories,
+            offerOwnAccounts = state.type == TransactionType.TRANSFER_OUT.name,
             applyToSimilar = false,
             onToggleApplyToSimilar = null,
             onClose = { pickerOpen = false },
-            onNewCategory = { newCategoryOpen = true },
-            onUse = { vm.setCategory(it); pickerOpen = false },
+            onPick = { vm.setCategory(it); pickerOpen = false },
+            onCreate = { name -> onAddCategory(name); vm.setCategory(name); pickerOpen = false },
             title = "Category",
-            onCreateCategory = { name -> pickerOpen = false; onAddCategory(name); vm.setCategory(name) },
-        )
-    }
-    if (newCategoryOpen) {
-        NewCategoryDialog(
-            onCancel = { newCategoryOpen = false },
-            onCreate = { name -> newCategoryOpen = false; pickerOpen = false; onAddCategory(name); vm.setCategory(name) },
         )
     }
 }
 
 /** A field-shaped button with a label above (When, Category). */
 @Composable
-private fun FieldButton(label: String, value: String, modifier: Modifier, muted: Boolean = false, onClick: () -> Unit) {
+private fun FieldButton(
+    label: String,
+    value: String,
+    modifier: Modifier,
+    muted: Boolean = false,
+    trailing: KashIcon? = null,
+    onClick: () -> Unit,
+) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = KashType.Label, color = KashColors.InkMuted)
         Box(
@@ -215,10 +218,13 @@ private fun FieldButton(label: String, value: String, modifier: Modifier, muted:
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
-            Text(
-                value, style = KashType.BodyL.num(), color = if (muted) KashColors.InkMuted else KashColors.Ink,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    value, style = KashType.BodyL.num(), color = if (muted) KashColors.InkMuted else KashColors.Ink,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                )
+                if (trailing != null) KashIconView(trailing, size = 16.dp, tint = if (muted) KashColors.InkMuted else KashColors.Ink)
+            }
         }
     }
 }

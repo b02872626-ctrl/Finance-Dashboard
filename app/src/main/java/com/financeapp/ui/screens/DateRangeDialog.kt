@@ -178,7 +178,7 @@ private fun MonthGrid(
                                 .clip(RoundedCornerShape(14.dp))
                                 .then(
                                     when {
-                                        isEnd -> Modifier.background(KashColors.Slate)
+                                        isEnd -> Modifier.background(KashColors.Accent)
                                         isToday -> Modifier.border(2.dp, KashColors.Ink, RoundedCornerShape(14.dp))
                                         else -> Modifier
                                     }
@@ -194,7 +194,7 @@ private fun MonthGrid(
                                 "$i",
                                 style = KashType.Body.num().copy(fontWeight = if (isEnd) FontWeight.SemiBold else FontWeight.Medium),
                                 color = when {
-                                    isEnd -> KashColors.OnSlate
+                                    isEnd -> KashColors.OnAccent
                                     muted(day) -> KashColors.InkFaint
                                     else -> KashColors.Ink
                                 },

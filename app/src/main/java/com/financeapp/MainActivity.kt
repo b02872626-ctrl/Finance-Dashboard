@@ -22,6 +22,7 @@ import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.sms.SmsIngestWorker
 import com.financeapp.ui.navigation.AppNavigation
 import com.financeapp.ui.kash.KashTheme
+import com.financeapp.ui.kash.KashThemeMode
 import androidx.activity.enableEdgeToEdge
 import kotlinx.coroutines.launch
 
@@ -73,7 +74,8 @@ class MainActivity : ComponentActivity() {
         refreshPermissionState()
 
         setContent {
-            KashTheme {
+            val themeMode by settingsRepo.themeModeFlow().collectAsState(initial = settingsRepo.getThemeMode())
+            KashTheme(KashThemeMode.fromStored(themeMode)) {
                 AppNavigation(
                     repo = repo,
                     settingsRepo = settingsRepo,
