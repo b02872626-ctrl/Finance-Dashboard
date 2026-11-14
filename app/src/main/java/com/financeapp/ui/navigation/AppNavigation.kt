@@ -77,9 +77,12 @@ import com.financeapp.ui.screens.PinSetupScreen
 import com.financeapp.ui.screens.PrivacyPage
 import com.financeapp.ui.screens.AppearancePage
 import com.financeapp.ui.screens.ReviewScreen
+import com.financeapp.ui.screens.ReviewList
+import com.financeapp.ui.screens.SortCard
 import com.financeapp.ui.screens.SettingsHomeScreen
 import com.financeapp.ui.screens.SignInAgainScreen
 import com.financeapp.ui.screens.TransactionScreen
+import com.financeapp.util.KashDates
 import com.financeapp.util.LocalCalendarSystem
 import com.financeapp.viewmodel.AddTransactionViewModel
 import com.financeapp.viewmodel.AddTransactionViewModelFactory
@@ -96,9 +99,8 @@ import com.financeapp.data.repository.GoalRepository
 import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.viewmodel.OnboardingViewModel
 import com.financeapp.viewmodel.OnboardingViewModelFactory
-import com.financeapp.viewmodel.ReviewQueueViewModel
-import com.financeapp.viewmodel.ReviewQueueViewModelFactory
-import com.financeapp.viewmodel.ReviewScope
+import com.financeapp.viewmodel.ReviewListViewModel
+import com.financeapp.viewmodel.ReviewListViewModelFactory
 import com.financeapp.viewmodel.SettingsViewModel
 import com.financeapp.viewmodel.SettingsViewModelFactory
 import com.financeapp.viewmodel.TransactionsViewModel
@@ -264,8 +266,7 @@ private fun MainNavigation(
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    val reviewTodayFac = remember { ReviewQueueViewModelFactory(repo, ReviewScope.TODAY) }
-    val reviewAllFac = remember { ReviewQueueViewModelFactory(repo, ReviewScope.ALL) }
+    val reviewFac = remember { ReviewListViewModelFactory(repo) }
     val dashVm: DashboardViewModel = viewModel(factory = remember { DashboardViewModelFactory(repo) })
     val txVm: TransactionsViewModel = viewModel(factory = remember { TransactionsViewModelFactory(repo) })
     val anlVm: AnalyticsViewModel = viewModel(factory = remember { AnalyticsViewModelFactory(repo) })
@@ -286,6 +287,9 @@ private fun MainNavigation(
     // every time the user confirms a category.
     val recentCategories by remember(settingsRepo) { settingsRepo.recentCategoriesFlow() }
         .collectAsState(initial = settingsRepo.getRecentCategories())
+    // The sort card's "most used first": how many rows carry each category.
+    val categoryUsage by remember(repo) { repo.categoryUsage() }.collectAsState(initial = emptyList())
+    val categoryUses = remember(categoryUsage) { categoryUsage.map { SortCard.Use(it.category, it.count) } }
 
     LaunchedEffect(pendingRoute) {
         if (!pendingRoute.isNullOrBlank()) {
@@ -298,8 +302,15 @@ private fun MainNavigation(
     val tabBar: (KashTab) -> (@Composable () -> Unit) = { active ->
         {
             val goalsDark = active == KashTab.Goals
+            // The Review tab's badge: this month's rows still to sort.
+            val tabCal = LocalCalendarSystem.current
+            val monthPending by remember(repo, tabCal) {
+                val (from, to) = KashDates.monthBounds(System.currentTimeMillis(), tabCal)
+                repo.countPendingBetween(from, to - 1)
+            }.collectAsState(initial = 0)
             KashTabBar(
                 active,
+                badges = ReviewList.badge(monthPending)?.let { mapOf(KashTab.Review to it) } ?: emptyMap(),
                 // The Goals section is dark; its tab bar follows.
                 background = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Sheet else KashColors.Surface,
                 line = if (goalsDark) com.financeapp.ui.goals.GoalsColors.Line else KashColors.Line,
@@ -308,11 +319,10 @@ private fun MainNavigation(
                 onSelect = { tab ->
                 val target = when (tab) {
                     KashTab.Home -> Screen.Dashboard
-                    KashTab.History -> Screen.Transactions
                     KashTab.Analytics -> Screen.Analytics
+                    KashTab.Review -> Screen.DailyReview
                     KashTab.Goals -> Screen.Goals
                 }
-                if (target == Screen.Transactions) txVm.clearFilters()
                 navController.navigate(target.route) {
                     popUpTo(navController.graph.findStartDestination().id) { saveState = false }
                     launchSingleTop = true
@@ -322,18 +332,19 @@ private fun MainNavigation(
         }
     }
 
+    /** The Review tab. [month] opens on This month with the older backlog shown (Home's "older ones", Analytics). */
     @Composable
-    fun ReviewRoute(vm: ReviewQueueViewModel) {
+    fun ReviewRoute(month: Boolean = false) {
+        val vm: ReviewListViewModel = viewModel(factory = reviewFac)
+        LaunchedEffect(month) { if (month) vm.showOlder() }
         ReviewScreen(
             vm = vm,
+            tabBar = tabBar(KashTab.Review),
             userName = userName,
             customCategories = categories,
             recentCategories = recentCategories,
+            categoryUsage = categoryUses,
             onAddCustomCategory = { setVm.addCustomCategory(it) },
-            onClose = { navController.popBackStack() },
-            onReviewOlder = {
-                navController.navigate("${Screen.DailyReview.route}?scope=all") { popUpTo(Screen.Dashboard.route) }
-            },
         )
     }
 
@@ -401,6 +412,7 @@ private fun MainNavigation(
                     banks = dash.accountBalances.map { kashBank(it.bankName).shortName }.distinct(),
                     customCategories = categories,
                     recentCategories = recentCategories,
+                    categoryUsage = categoryUses,
                     onAddCategory = { setVm.addCustomCategory(it) },
                     onSaved = ::back,
                     onClose = ::back,
@@ -447,7 +459,7 @@ private fun MainNavigation(
                     }
                 }
                 GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) {
-                    HistoryScreen(vm = txVm, tabBar = tabBar(KashTab.History), onTxClick = ::openTx)
+                    HistoryScreen(vm = txVm, onBack = ::back, onTxClick = ::openTx)
                 }
             }
             composable(Screen.Analytics.route) {
@@ -574,8 +586,10 @@ private fun MainNavigation(
                 tx?.let { transaction ->
                     TransactionScreen(
                         tx = transaction,
+                        userName = userName,
                         customCategories = categories,
                         recentCategories = recentCategories,
+                        categoryUsage = categoryUses,
                         onCategorySelected = {
                             txVm.updateCategory(txId, it)
                             tx = transaction.copy(category = it)
@@ -587,22 +601,17 @@ private fun MainNavigation(
             }
             // "Categorize today" (the notification) merged into Review.
             composable(Screen.Categorize.route) {
-                ReviewRoute(viewModel(key = "review_queue_today", factory = reviewTodayFac))
+                GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) { ReviewRoute() }
             }
             composable(
                 route = "${Screen.DailyReview.route}?scope={scope}",
                 arguments = listOf(navArgument("scope") { type = NavType.StringType; nullable = true; defaultValue = null })
             ) { backStack ->
                 val scopeArg = backStack.arguments?.getString("scope")
-                ReviewRoute(
-                    viewModel(
-                        key = "review_queue_${scopeArg ?: "today"}",
-                        factory = if (scopeArg == "all") reviewAllFac else reviewTodayFac
-                    )
-                )
+                GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) { ReviewRoute(month = scopeArg == "all") }
             }
             composable(Screen.DailyReview.route) {
-                ReviewRoute(viewModel(key = "review_queue_today", factory = reviewTodayFac))
+                GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) { ReviewRoute() }
             }
             composable(Screen.Profile.route) {
                 val sources by sourcesVm.sources.collectAsState()

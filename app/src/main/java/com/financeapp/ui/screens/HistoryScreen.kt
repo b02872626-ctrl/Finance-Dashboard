@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashIcon
 import com.financeapp.ui.kash.KashSystemBars
@@ -61,7 +62,7 @@ import com.financeapp.viewmodel.TxDirection
 @Composable
 fun HistoryScreen(
     vm: TransactionsViewModel,
-    tabBar: @Composable () -> Unit,
+    onBack: () -> Unit,
     onTxClick: (Long) -> Unit,
 ) {
     KashSystemBars(darkIcons = false)
@@ -81,11 +82,12 @@ fun HistoryScreen(
     LaunchedEffect(nearEnd) { if (nearEnd) vm.loadMore() }
 
     KashScreen(
-        tabBar = tabBar,
         heroGap = 16.dp,
         hero = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("History", style = KashType.TitleM, color = KashColors.OnSlate, modifier = Modifier.weight(1f))
+            // Reached from Home's "See all", not a tab any more (the Review tab took its place).
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                KashIconButton(KashIcon.Back, "Back", onBack, onSlate = true)
+                Text("All transactions", style = KashType.TitleS.copy(fontSize = 20.sp), color = KashColors.OnSlate, modifier = Modifier.weight(1f))
                 KashIconButton(KashIcon.Calendar, "Pick dates", { datesOpen = true }, onSlate = true)
             }
             KashSearchField(filter.searchQuery, vm::setSearch, "Search name, category, reference", onSlate = true)

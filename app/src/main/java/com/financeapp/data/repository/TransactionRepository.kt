@@ -5,6 +5,7 @@ import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.accounts.OwnTransferPairing
 import com.financeapp.data.categorize.CategoryPredictor
 import com.financeapp.data.db.AppDatabase
+import com.financeapp.data.db.CategoryUse
 import com.financeapp.data.db.CounterpartyAggregate
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.RawSmsEntity
@@ -62,6 +63,9 @@ class TransactionRepository(
             if (disabledSenders.isEmpty()) list else list
         }
 
+    /** The sort card's source: every category on a visible row, most used first. */
+    fun categoryUsage(): Flow<List<CategoryUse>> = txnDao.categoryUsage()
+
     suspend fun getLatestBySender(sender: String): TransactionEntity? =
         txnDao.getLatestBySender(sender)
 
@@ -118,6 +122,10 @@ class TransactionRepository(
         val (fromMs, toMs) = todayBounds(nowMs)
         return txnDao.snapshotPendingBetween(fromMs, toMs)
     }
+
+    /** PENDING rows between two instants (the Review tab's badge: this month). */
+    fun countPendingBetween(fromMs: Long, toMs: Long): Flow<Int> =
+        txnDao.countByStatusBetween(ReviewStatus.PENDING, fromMs, toMs)
 
     fun countTodayByReviewStatus(status: String, nowMs: Long = System.currentTimeMillis()): Flow<Int> {
         val (fromMs, toMs) = todayBounds(nowMs)

@@ -64,6 +64,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.financeapp.ui.kash.num
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -252,8 +257,8 @@ fun KashTopBar(
 
 enum class KashTab(val label: String, val icon: KashIcon) {
     Home("Home", KashIcon.Home),
-    History("History", KashIcon.History),
     Analytics("Analytics", KashIcon.Chart),
+    Review("Review", KashIcon.Review),
     Goals("Goals", KashIcon.Target),
 }
 
@@ -262,13 +267,16 @@ val KashTabBarHeight: Dp = 62.dp
 
 /**
  * Kash.TabBar: four icon-only tabs; the active one is ink with a 5dp dot.
- * No text under icons. Only on the four tab screens.
+ * No text under icons. Only on the four tab screens. [badges] puts a
+ * count on a tab (Review: this month's rows to sort), sand with slate-ink
+ * text in both themes.
  */
 @Composable
 fun KashTabBar(
     active: KashTab,
     onSelect: (KashTab) -> Unit,
     modifier: Modifier = Modifier,
+    badges: Map<KashTab, String> = emptyMap(),
     /** Colours: light everywhere; the Goals section passes its dark set. */
     background: androidx.compose.ui.graphics.Color = KashColors.Surface,
     line: androidx.compose.ui.graphics.Color = KashColors.Line,
@@ -296,13 +304,34 @@ fun KashTabBar(
                             onClick = { onSelect(tab) },
                         )
                         .semantics {
-                            contentDescription = tab.label
+                            contentDescription = badges[tab]?.let { "${tab.label}, $it to sort" } ?: tab.label
                             selected = on
                         },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
                 ) {
-                    KashIconView(tab.icon, size = 22.dp, tint = tint)
+                    Box {
+                        KashIconView(tab.icon, size = 22.dp, tint = tint)
+                        val badge = badges[tab]
+                        if (badge != null) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 12.dp, y = (-6).dp)
+                                    .height(18.dp)
+                                    .defaultMinSize(minWidth = 18.dp)
+                                    .clip(KashShapes.Pill)
+                                    .background(KashColors.Sand)
+                                    .padding(horizontal = 5.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    badge, style = KashType.Micro.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold).num(),
+                                    color = KashColors.SlateInk, maxLines = 1, softWrap = false,
+                                )
+                            }
+                        }
+                    }
                     Box(
                         Modifier
                             .size(5.dp)
@@ -326,6 +355,9 @@ fun KashTabBar(
 fun KashSheet(
     title: String,
     onDismiss: () -> Unit,
+    /** A smaller title row (the sort card), with [lead] drawn above it. */
+    compact: Boolean = false,
+    lead: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -339,22 +371,32 @@ fun KashSheet(
         scrimColor = KashColors.Backdrop,
         dragHandle = { KashHandle(Modifier.padding(top = 10.dp)) },
     ) {
-        KashSheetBody(title = title, onClose = onDismiss, content = content)
+        KashSheetBody(title = title, onClose = onDismiss, compact = compact, lead = lead, content = content)
     }
 }
 
 /** The inside of a sheet (also usable in previews). */
 @Composable
-fun KashSheetBody(title: String, onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun KashSheetBody(
+    title: String,
+    onClose: () -> Unit,
+    compact: Boolean = false,
+    lead: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(
         Modifier
             .fillMaxWidth()
             .padding(start = KashSpace.InsetApp, end = KashSpace.InsetApp, top = 4.dp, bottom = 28.dp)
             .navigationBarsPadding(),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 14.dp else 18.dp),
     ) {
+        if (lead != null) lead()
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = KashType.TitleM, color = KashColors.Ink, modifier = Modifier.weight(1f).semantics { heading() })
+            Text(
+                title, style = if (compact) KashType.TitleXs else KashType.TitleM, color = KashColors.Ink,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
             KashIconButton(KashIcon.ChevronDown, "Close", onClose)
         }
         content()

@@ -15,6 +15,12 @@ data class CounterpartyAggregate(
     val totalAmount: Double
 )
 
+/** How many visible rows carry a category (the sort card's "most used first"). */
+data class CategoryUse(
+    val category: String,
+    val count: Int
+)
+
 /** Row projection for the merchant-key backfill — id + raw counterparty. */
 data class MerchantKeyBackfillRow(
     val id: Long,
@@ -135,6 +141,17 @@ interface TransactionDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(tx: TransactionEntity): Long
+
+    /** Every category in use, with how many visible rows carry it; one row per spelling. */
+    @Query("""
+        SELECT TRIM(category) AS category, COUNT(*) AS count
+          FROM transactions
+         WHERE hidden = 0
+           AND category IS NOT NULL AND TRIM(category) != ''
+         GROUP BY LOWER(TRIM(category))
+         ORDER BY count DESC
+    """)
+    fun categoryUsage(): kotlinx.coroutines.flow.Flow<List<CategoryUse>>
 
     @Query("SELECT COUNT(*) FROM transactions")
     suspend fun count(): Int

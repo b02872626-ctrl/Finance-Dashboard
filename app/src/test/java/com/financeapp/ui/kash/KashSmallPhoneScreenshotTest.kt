@@ -55,7 +55,7 @@ class KashSmallPhoneScreenshotTest {
     @Test
     fun historyLongNamesEthiopian() = shot("ETHIOPIAN") {
         KashScreen(
-            tabBar = { KashTabBar(KashTab.History, {}) },
+            tabBar = { KashTabBar(KashTab.Review, {}, badges = mapOf(KashTab.Review to "12")) },
             heroGap = 16.dp,
             hero = {
                 Row(verticalAlignment = Alignment.CenterVertically) {

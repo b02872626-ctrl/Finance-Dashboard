@@ -328,6 +328,8 @@ fun Modifier.kashClickable(
     role: Role? = Role.Button,
     onClickLabel: String? = null,
     press: KashPress = KashPress.Scale,
+    /** Fade a disabled target to 40%. False when the caller draws its own disabled look (KashButton). */
+    dim: Boolean = true,
     onClick: () -> Unit,
 ): Modifier = composed {
     val source = remember { MutableInteractionSource() }
@@ -349,7 +351,7 @@ fun Modifier.kashClickable(
     val wash by animateFloatAsState(if (down && press == KashPress.Highlight) 0.05f else 0f, tween(120), label = "wash")
     this
         .graphicsLayer { scaleX = scale; scaleY = scale }
-        .alpha(if (!enabled) 0.4f else if (pressed && press != KashPress.Highlight) 0.88f else 1f)
+        .alpha(if (!enabled) (if (dim) 0.4f else 1f) else if (pressed && press != KashPress.Highlight) 0.88f else 1f)
         .drawBehind { if (wash > 0f) drawRect(KashColors.Ink.copy(alpha = wash)) }
         .clickable(
             interactionSource = source,

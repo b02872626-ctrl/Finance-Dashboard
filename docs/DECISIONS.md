@@ -6,6 +6,62 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-14 — Review is a list and a tab; History is reached from Home (canvas section 6)
+
+Reverses NAH-36 (swipe to categorise) and NAH-42 (tap the card for details)
+on the owner's say-so, 14 Nov: the approved "Final - Approved flow" page
+shows Review as a list, not a card.
+
+- Review lists the rows still to sort, newest first, under Today / This
+  month, with day headers and rows that line up with Home (15sp names).
+  Each row has a 44dp Sort button that opens the sort card; the row's tap
+  opens "Check this one" (details, Sort it, Not a transaction). No swipe,
+  no Skip: an unsorted row simply stays.
+- The hero counts ("5 to sort today", "All sorted"); the snackbar after a
+  sort ("Yonas Girma is Rent. New ones will be too.", Undo) sits above the
+  tab bar and the list keeps 76dp clear under its last row so it never
+  covers a Sort button.
+- The tab bar is Home, Analytics, Review, Goals. Review replaces History;
+  its badge is this month's pending count (sand with slate-ink text, none at
+  zero, 99+ cap). History ("All transactions") is reached from Home's
+  "See all" with a back button; its approved redesign (search and filters
+  on the sheet) is a separate issue.
+- Rows from before this month are not in the canvas; they are reachable
+  under This month through "Show N from before this month" (Home's "Review
+  older ones" and Analytics open there), so a fresh install's backlog is
+  never hidden.
+- The canvas's first-run tips (RvTip1–5) are not built; the Review tab's
+  badge and the hero copy carry the explanation.
+
+## 2026-11-14 — The sort card: your own categories, one tap sorts (canvas sections 4 and 5)
+
+The approved "Final - Approved flow" page is now the only reference. The
+category sheet in Review, on a transaction and on Add transaction becomes
+the approved sort card (`SortCardSheet`, rules in `SortCard`):
+
+- Only the user's own categories: every name they made or put on a
+  transaction, most used first (a Room count per category), then the latest
+  pick, then A–Z. No built-in catalog and no starter chips in the sheet; a
+  new user sees "None yet" and types a name. The built-in catalog
+  (`TransactionCategoryCatalog`) stays for predictions and old data.
+- Typing filters; when nothing matches exactly, "Add 'name'" makes the
+  category and sorts with it in one tap. The New category dialog is gone.
+- Tapping a chip sorts at once; there is no "Use" button. The suggestion
+  shows picked even when no row carries it yet, so one tap confirms it.
+- "Own accounts" is offered last only when the transaction looks like a
+  move between the user's accounts (the existing check), or on Add
+  transaction when the kind is Transfer.
+- The "Use for X from now on" switch reads "New payments from X too /
+  Sorts them as they come in"; same rule as before.
+
+Also from the same sections: Add transaction's kind is a segmented
+Expense / Income / Transfer control on the hero (sand when chosen, both
+themes); Category is a "Pick one" field; Save is the one disabled style
+(outline, muted text, no fade) until there is an amount and a name, and
+the system number keyboard stays. A transaction's "Received in CBE" line
+is 13sp; the More details row is 48dp. Review's swipe card is untouched
+until the next PR rebuilds Review as the approved list.
+
 ## 2026-11-14 — The app gets a dark theme; one accent per theme
 
 The approved canvas has every screen in dark (FD_) and light (FL_), and the
