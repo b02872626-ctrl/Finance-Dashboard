@@ -1,46 +1,19 @@
 package com.financeapp.ui.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.systemGestureExclusion
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathMeasure
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.layout.onSizeChanged
-import com.financeapp.ui.kash.animatedAmount
-import com.financeapp.ui.kash.rememberReducedMotion
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,7 +21,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,249 +35,201 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.financeapp.data.model.Spending
 import com.financeapp.data.model.TransactionCategoryCatalog
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.parsing.TransactionType
+import com.financeapp.ui.kash.Haptic
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashIcon
 import com.financeapp.ui.kash.KashIconView
-import com.financeapp.ui.kash.kashClickable
-import androidx.compose.ui.semantics.Role
 import com.financeapp.ui.kash.KashShapes
 import com.financeapp.ui.kash.KashSystemBars
 import com.financeapp.ui.kash.KashType
 import com.financeapp.ui.kash.accountLine
 import com.financeapp.ui.kash.accountShort
-import com.financeapp.ui.kash.components.KashBankBadge
 import com.financeapp.ui.kash.components.KashButton
 import com.financeapp.ui.kash.components.KashButtonVariant
-import com.financeapp.ui.kash.components.KashChip
+import com.financeapp.ui.kash.components.KashDayHeader
 import com.financeapp.ui.kash.components.KashDialog
 import com.financeapp.ui.kash.components.KashDirection
 import com.financeapp.ui.kash.components.KashFigure
 import com.financeapp.ui.kash.components.KashKeyValue
 import com.financeapp.ui.kash.components.KashKeyValueList
-import com.financeapp.ui.kash.components.KashListGroup
-import com.financeapp.ui.kash.components.KashListRow
 import com.financeapp.ui.kash.components.KashMoney
-import com.financeapp.ui.kash.components.KashNotice
 import com.financeapp.ui.kash.components.KashScreen
 import com.financeapp.ui.kash.components.KashSheet
 import com.financeapp.ui.kash.components.KashSkeleton
+import com.financeapp.ui.kash.components.KashSkeletonRow
 import com.financeapp.ui.kash.components.KashSnackbar
-import com.financeapp.ui.kash.components.KashStepBar
-import com.financeapp.ui.kash.components.KashTopBar
 import com.financeapp.ui.kash.components.KashTransactionRow
+import com.financeapp.ui.kash.dayNet
 import com.financeapp.ui.kash.displayName
+import com.financeapp.ui.kash.groupByDay
+import com.financeapp.ui.kash.kashClickable
 import com.financeapp.ui.kash.kashDirection
 import com.financeapp.ui.kash.num
-import com.financeapp.ui.kash.Haptic
 import com.financeapp.ui.kash.rememberHaptic
+import com.financeapp.ui.kash.rememberReducedMotion
 import com.financeapp.util.KashDates
 import com.financeapp.util.LocalCalendarSystem
-import com.financeapp.viewmodel.ReviewQueueState
-import com.financeapp.viewmodel.ReviewQueueViewModel
-import com.financeapp.viewmodel.ReviewScope
-import com.financeapp.viewmodel.ReviewSheet
+import com.financeapp.viewmodel.ReviewListViewModel
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * Review (AppReview, AppReviewTransfer, AppReviewUndo, AppEditTransaction,
- * AppReviewCategory, AppNewCategory, AppReviewApplyAll, AppReviewDone).
- * Also replaces "Categorize Today": every entry point opens this screen.
+ * Review, the tab (canvas section 6, "Final - Approved flow"): the rows
+ * still to sort, newest first, under Today / This month, each with a Sort
+ * button that opens the sort card. A row's tap shows its details. Every
+ * entry point (Home, Analytics, the notification) lands here.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ReviewScreen(
-    vm: ReviewQueueViewModel,
+    vm: ReviewListViewModel,
+    tabBar: @Composable () -> Unit,
     userName: String,
     customCategories: List<String>,
     recentCategories: List<String>,
     categoryUsage: List<SortCard.Use>,
     onAddCustomCategory: (String) -> Unit,
-    onClose: () -> Unit,
-    onReviewOlder: () -> Unit,
 ) {
     KashSystemBars(darkIcons = false)
     val state by vm.state.collectAsState()
+    val cal = LocalCalendarSystem.current
+    LaunchedEffect(cal) { vm.setCalendar(cal) }
     val haptic = rememberHaptic()
     // A review session: holds off the backlog nudge for 3 days.
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     LaunchedEffect(Unit) { com.financeapp.notifications.NotificationPrefs(appContext).lastReviewSessionMs = System.currentTimeMillis() }
-    // Admin retention metric: the queue was emptied in this visit (opening an
-    // already-finished queue doesn't count).
+    // Admin retention metric: the list was emptied in this visit (opening an
+    // already-empty one doesn't count).
     var sawPending by remember { mutableStateOf(false) }
-    LaunchedEffect(state.isLoading, state.complete) {
+    LaunchedEffect(state.isLoading, state.count) {
         if (state.isLoading) return@LaunchedEffect
-        if (!state.complete) sawPending = true
+        if (state.count > 0) sawPending = true
         else if (sawPending) {
             sawPending = false
-            com.financeapp.remote.Telemetry.track(appContext, com.financeapp.remote.Telemetry.REVIEW_COMPLETED, mapOf(
-                "scope" to state.scope.name, "reviewed" to state.doneToday
-            ))
+            com.financeapp.remote.Telemetry.track(appContext, com.financeapp.remote.Telemetry.REVIEW_COMPLETED, mapOf("scope" to state.tab.name))
         }
-    }
-    val current = state.current
-    val allCategories = remember(customCategories) { TransactionCategoryCatalog.allCategories(customCategories) }
-    // The category picked on the card; starts at the prediction (or Own
-    // accounts when the own-account check fires).
-    var selected by remember(current?.id) {
-        mutableStateOf(current?.let { if (looksOwnAccount(it, userName)) Spending.OWN_ACCOUNTS else it.category ?: it.predictedCategory })
     }
 
-    // Swipe: the card follows the finger; right confirms, left skips. Each
-    // card gets its own offset so the next one starts centred.
-    val reduced = rememberReducedMotion()
-    val scope = rememberCoroutineScope()
-    val swipe = remember(current?.id) { Animatable(0f) }
-    var cardWidth by remember { mutableFloatStateOf(1f) }
-    var flying by remember(current?.id) { mutableStateOf(false) }
-    fun fly(direction: Int, then: () -> Unit) {
-        if (flying) return
-        flying = true
-        if (reduced) {
-            // No flight, but never leave the card stuck: if it's still the
-            // same card afterwards (the "label all" question), it's usable again.
-            scope.launch { swipe.snapTo(0f) }
-            then()
-            flying = false
-            return
-        }
-        scope.launch {
-            swipe.animateTo(direction * cardWidth * 1.3f, tween(220))
-            then()
-            // Still the same card (the "label all" question opened, say):
-            // bring it back. A new card has its own offset, so this is a no-op then.
-            delay(600)
-            swipe.animateTo(0f, spring(dampingRatio = 0.7f))
-            flying = false
-        }
-    }
-    val confirm: (String) -> Unit = { cat -> haptic(Haptic.CONFIRM); fly(1) { vm.pickCategory(cat, advance = true) } }
-    val skip: () -> Unit = { haptic(Haptic.TAP); fly(-1) { vm.skip() } }
-
-    val total = state.totalToday.coerceAtLeast(state.doneToday)
-    val position = (state.doneToday + if (state.complete || current == null) 0 else 1).coerceAtMost(total)
+    val (figure, unit) = ReviewList.headline(state.tab, state.count)
+    val groups = remember(state.shown) { groupByDay(state.shown) }
 
     KashScreen(
-        heroGap = 18.dp,
-        heroBottom = 22.dp,
+        tabBar = tabBar,
+        heroGap = 14.dp,
         hero = {
-            KashTopBar(
-                "Review", onBack = onClose,
-                actions = {
-                    if (total > 0) Text("$position of $total", style = KashType.Label.num(), color = KashColors.OnSlateMuted)
-                },
-            )
-            if (total > 0) {
-                // Long backlogs (older scope) get a proportional bar, not 900 segments.
-                val segments = total.coerceAtMost(12)
-                val filled = if (total <= 12) state.doneToday else (state.doneToday * 12 / total)
-                KashStepBar(filled, segments, onSlate = true, label = "${state.doneToday} of $total reviewed")
+            Row(Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Review", style = KashType.TitleM, color = KashColors.OnSlate)
+            }
+            Column {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(figure, style = KashType.FigureXl, color = KashColors.OnSlate, maxLines = 1)
+                    Text(unit, style = KashType.FigureUnit, color = KashColors.OnSlateMuted, maxLines = 1, modifier = Modifier.padding(bottom = 6.dp))
+                }
+                Text(ReviewList.subtitle(state.tab, state.count), style = KashType.Body, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 6.dp))
             }
         },
     ) { pad ->
-        when {
-            state.isLoading -> Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                KashSkeleton(Modifier.fillMaxWidth(), height = 220.dp, radius = 20.dp)
-                KashSkeleton(width = 90.dp)
-                KashSkeleton(width = 240.dp, height = 38.dp, radius = 12.dp)
-            }
-            current == null -> DoneView(state, pad, onClose, onReviewOlder)
-            else -> Column(Modifier.fillMaxSize().padding(pad)) {
-                Column(
-                    Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
-                ) {
-                    SwipeableReviewCard(
-                        tx = current,
-                        offset = swipe,
-                        selected = selected,
-                        reduced = reduced,
-                        onWidth = { cardWidth = it },
-                        onLongPress = { haptic(Haptic.LONG); vm.openDetailSheet() },
-                        onDetails = { haptic(Haptic.TAP); vm.openDetailSheet() },
-                        onCrossed = { haptic(Haptic.TAP) },
-                        onRelease = { dx, velocity ->
-                            when (swipeOutcome(dx, velocity, cardWidth, hasCategory = selected != null)) {
-                                SwipeOutcome.Confirm -> confirm(selected!!)
-                                SwipeOutcome.Skip -> skip()
-                                SwipeOutcome.Pick -> {
-                                    scope.launch { swipe.animateTo(0f, spring(dampingRatio = 0.6f)) }
-                                    vm.openPickerSheet()
-                                }
-                                SwipeOutcome.Back -> scope.launch { swipe.animateTo(0f, spring(dampingRatio = 0.6f)) }
-                            }
-                        },
-                    )
-                    CategoryChoice(
-                        tx = current,
-                        userName = userName,
-                        selected = selected,
-                        recent = recentCategories,
-                        custom = customCategories,
-                        all = allCategories,
-                        onSelect = { haptic(Haptic.TAP); selected = it },
-                        onMore = vm::openPickerSheet,
-                        onNew = vm::openPickerSheet,
-                    )
-                }
-                AnimatedVisibility(
-                    state.snackbar != null,
-                    enter = fadeIn() + slideInVertically { it / 2 },
-                    exit = fadeOut(),
-                ) {
-                    var last by remember { mutableStateOf("") }
-                    state.snackbar?.let { last = it.text }
-                    KashSnackbar(last, Modifier.fillMaxWidth().padding(bottom = 10.dp), action = "Undo", onAction = vm::undo)
-                }
-                ReviewButtons(
-                    selected = selected,
-                    onSkip = skip,
-                    onConfirm = confirm,
-                    onPick = vm::openPickerSheet,
+        val bottom = pad.calculateBottomPadding()
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+                ReviewTabs(
+                    tab = state.tab, today = state.today.size, month = state.month.size,
+                    onSelect = { haptic(Haptic.TAP); vm.setTab(it) },
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 )
+                when {
+                    state.isLoading -> Column {
+                        KashSkeleton(Modifier.padding(top = 14.dp, bottom = 6.dp), width = 90.dp, height = 10.dp)
+                        repeat(5) { KashSkeletonRow() }
+                    }
+                    state.shown.isEmpty() -> NothingToSort(
+                        older = if (state.tab == ReviewTab.MONTH) state.older.size else 0,
+                        onShowOlder = vm::showOlder,
+                        modifier = Modifier.fillMaxSize().padding(bottom = bottom),
+                    )
+                    else -> LazyColumn(
+                        Modifier.fillMaxSize(),
+                        // Room under the last row for the snackbar, so it never covers a Sort button.
+                        contentPadding = PaddingValues(bottom = bottom + 76.dp),
+                    ) {
+                        groups.forEach { (day, rows) ->
+                            item(key = "h$day") {
+                                KashDayHeader(
+                                    KashDates.dayHeader(day, cal),
+                                    Modifier.animateItemPlacement(),
+                                    net = if (state.tab == ReviewTab.MONTH) dayNet(rows) else null,
+                                )
+                            }
+                            items(rows, key = { it.id }) { tx ->
+                                KashTransactionRow(
+                                    name = tx.displayName(),
+                                    amount = tx.amount,
+                                    direction = tx.kashDirection(),
+                                    modifier = Modifier.animateItemPlacement(),
+                                    account = tx.accountShort(),
+                                    time = KashDates.time(tx.dateTime),
+                                    onClick = { vm.openDetail(tx) },
+                                    trailing = { SortButton(tx.displayName()) { haptic(Haptic.TAP); vm.openSort(tx) } },
+                                )
+                            }
+                        }
+                        if (state.tab == ReviewTab.MONTH && state.older.isNotEmpty() && !state.showOlder) {
+                            item(key = "older") { OlderRow(state.older.size, vm::showOlder) }
+                        }
+                    }
+                }
+            }
+            // The plain overload by name: inside the Box, the ColumnScope one is out of reach.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = state.snackbar != null,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 10.dp),
+                enter = fadeIn() + slideInVertically { it / 2 },
+                exit = fadeOut(),
+            ) {
+                var last by remember { mutableStateOf("") }
+                state.snackbar?.let { last = it.text }
+                KashSnackbar(last, Modifier.fillMaxWidth(), action = "Undo", onAction = vm::undo)
             }
         }
     }
 
-    if (current != null && state.sheet == ReviewSheet.Detail) {
+    state.detail?.let { tx ->
         CheckThisOneSheet(
-            tx = current,
-            onClose = vm::closeSheet,
-            onChangeCategory = vm::openPickerSheet,
-            onNotATransaction = { haptic(Haptic.CONFIRM); vm.markNotATransaction() },
+            tx = tx,
+            onClose = vm::closeSheets,
+            onChangeCategory = { vm.openSort(tx) },
+            onNotATransaction = { haptic(Haptic.CONFIRM); vm.markNotATransaction(tx) },
         )
     }
-    if (current != null && state.sheet == ReviewSheet.Picker) {
-        val sort: (String) -> Unit = { cat ->
-            haptic(Haptic.CONFIRM)
-            selected = cat
-            vm.pickCategory(cat, advance = true, applyToSimilar = state.applyToSimilar)
-        }
+    state.sorting?.let { tx ->
+        val own = looksOwnAccount(tx, userName)
+        val sort: (String) -> Unit = { cat -> haptic(Haptic.CONFIRM); vm.sort(tx, cat) }
         SortCardSheet(
-            tx = current,
-            current = selected,
+            tx = tx,
+            // The suggestion shows picked, so one tap confirms it.
+            current = if (own) Spending.OWN_ACCOUNTS else tx.category ?: tx.predictedCategory,
             custom = customCategories,
             usage = categoryUsage,
             recent = recentCategories,
-            offerOwnAccounts = looksOwnAccount(current, userName),
+            offerOwnAccounts = own,
             applyToSimilar = state.applyToSimilar,
             onToggleApplyToSimilar = vm::toggleApplyToSimilar,
-            onClose = vm::closeSheet,
+            onClose = vm::closeSheets,
             onPick = sort,
             onCreate = { name -> onAddCustomCategory(name); sort(TransactionCategoryCatalog.normalize(name)) },
         )
@@ -318,8 +248,8 @@ fun ReviewScreen(
 }
 
 /**
- * The existing own-account check: the parser typed it as an internal
- * transfer, or an outgoing counterparty carries part of the user's name.
+ * The own-account check: the parser typed it as an internal transfer, or
+ * an outgoing counterparty carries part of the user's name.
  */
 internal fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
     if (tx.category != null) return tx.category == Spending.OWN_ACCOUNTS
@@ -333,321 +263,95 @@ internal fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
         .any { it in cpLow }
 }
 
-/** What letting go of the review card does. */
-internal enum class SwipeOutcome { Confirm, Skip, Pick, Back }
-
-/** Past this share of the card's width, letting go acts. */
-internal const val SWIPE_LINE = 0.35f
-/** A flick this fast (px/s) acts even before the line. */
-internal const val FLICK_VELOCITY = 1800f
-
-/**
- * Right confirms the picked category (or opens the picker when there is
- * none), left skips, anything short of the line springs back. A quick flick
- * counts as if the card had travelled a fifth of a second further.
- */
-internal fun swipeOutcome(dx: Float, velocity: Float, width: Float, hasCategory: Boolean): SwipeOutcome {
-    val reach = dx + if (kotlin.math.abs(velocity) > FLICK_VELOCITY) velocity * 0.2f else 0f
-    val line = width * SWIPE_LINE
-    return when {
-        reach > line -> if (hasCategory) SwipeOutcome.Confirm else SwipeOutcome.Pick
-        reach < -line -> SwipeOutcome.Skip
-        else -> SwipeOutcome.Back
-    }
-}
-
-/**
- * The review card on a leash: drag it sideways and it tilts with you, a
- * label says what letting go will do, past 35% of its width it goes. A new
- * card rises into place from slightly smaller.
- *
- * The drag is read before the card's own move and tilt (pointerInput sits
- * outside graphicsLayer): reading it inside measured the finger against a
- * card that was already following it, so the card lagged, jittered and
- * flicks barely registered (NAH-36).
- */
+/** Today N / This month N on the well; a check instead of a count once a slice is done. 44dp tall. */
 @Composable
-private fun SwipeableReviewCard(
-    tx: TransactionEntity,
-    offset: Animatable<Float, AnimationVector1D>,
-    selected: String?,
-    reduced: Boolean,
-    onWidth: (Float) -> Unit,
-    onLongPress: () -> Unit,
-    onDetails: () -> Unit,
-    onCrossed: () -> Unit,
-    onRelease: (dx: Float, velocity: Float) -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    var width by remember { mutableFloatStateOf(1f) }
-    val rise = remember(tx.id) { Animatable(if (reduced) 1f else 0f) }
-    LaunchedEffect(tx.id) { if (!reduced) rise.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)) }
-    val progress = (offset.value / (width * SWIPE_LINE)).coerceIn(-1f, 1f)
-    // A tick when the drag crosses the line, either way.
-    val armed = kotlin.math.abs(progress) >= 1f
-    LaunchedEffect(armed) { if (armed) onCrossed() }
-
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f); onWidth(width) }
-            // Swipes on the card are for the card, not Android's back gesture.
-            .systemGestureExclusion()
-            .pointerInput(tx.id) {
-                val tracker = VelocityTracker()
-                var x = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = { tracker.resetTracking(); x = offset.value },
-                    onDragEnd = { onRelease(x, tracker.calculateVelocity().x) },
-                    onDragCancel = { scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.6f)) } },
-                ) { change, dx ->
-                    change.consume()
-                    tracker.addPosition(change.uptimeMillis, change.position)
-                    // One running total, so fast moves can't overwrite each other.
-                    x += dx
-                    scope.launch { offset.snapTo(x) }
-                }
-            }
-            .graphicsLayer {
-                val s = 0.95f + 0.05f * rise.value
-                scaleX = s; scaleY = s
-                translationY = (1f - rise.value) * 16.dp.toPx()
-                translationX = offset.value
-                rotationZ = offset.value / width * 8f
-                alpha = (0.6f + 0.4f * rise.value) * (1f - (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) * 0.6f)
-            },
+private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, onSelect: (ReviewTab) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .height(44.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(KashColors.Well)
+            .padding(3.dp)
+            .selectableGroup(),
     ) {
-        ReviewCard(tx, onLongPress, onDetails)
-        if (progress != 0f) {
-            val right = progress > 0
-            Box(
-                Modifier.matchParentSize().padding(18.dp),
-                contentAlignment = if (right) Alignment.CenterStart else Alignment.CenterEnd,
+        ReviewTab.entries.forEach { t ->
+            val on = t == tab
+            val count = if (t == ReviewTab.TODAY) today else month
+            Row(
+                Modifier
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (on) KashColors.SurfaceRaised else androidx.compose.ui.graphics.Color.Transparent)
+                    .selectable(selected = on, role = Role.Tab, onClick = { onSelect(t) })
+                    .semantics { contentDescription = if (count == 0) "${t.label}, all sorted" else "${t.label}, $count to sort" }
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    if (right) (selected?.let { "Confirm as $it" } ?: "Pick a category") else "Skip",
-                    style = KashType.LabelL,
-                    color = if (right) KashColors.OnSlate else KashColors.Ink,
-                    modifier = Modifier
-                        .graphicsLayer { alpha = kotlin.math.abs(progress); rotationZ = if (right) -6f else 6f }
-                        .clip(KashShapes.Chip)
-                        .background(if (right) KashColors.MoneyIn else KashColors.Well)
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    t.label,
+                    style = KashType.Label.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium),
+                    color = if (on) KashColors.Ink else KashColors.InkMuted,
+                    maxLines = 1, softWrap = false,
                 )
+                if (count > 0) Text(count.toString(), style = KashType.Label.num(), color = KashColors.InkMuted, maxLines = 1)
+                else KashIconView(KashIcon.Check, size = 14.dp, tint = KashColors.InkMuted, strokeWidth = 2.4f)
             }
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/** The row's 44dp Sort button: on the well, ink. */
 @Composable
-private fun ReviewCard(tx: TransactionEntity, onLongPress: () -> Unit, onDetails: () -> Unit) {
-    val cal = LocalCalendarSystem.current
-    val dir = tx.kashDirection()
-    val tone = when (dir) {
-        KashDirection.In -> KashColors.MoneyIn
-        KashDirection.Out -> KashColors.MoneyOut
-        KashDirection.Transfer -> KashColors.MoneyNeutral
-    }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(KashShapes.Card)
-            .background(KashColors.SurfaceRaised)
-            .border(1.dp, KashColors.Line, KashShapes.Card)
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClickLabel = "See details",
-                onClick = onDetails,
-                onLongClickLabel = "Check this one",
-                onLongClick = onLongPress,
-            )
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                KashBankBadge(tx.bankName, size = 32.dp)
-                Text(tx.accountShort(), style = KashType.Label, color = KashColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Text(KashDates.whenShort(tx.dateTime, cal), style = KashType.Label.num(), color = KashColors.InkMuted)
-        }
-        Column {
-            KashFigure(
-                tx.amount, style = KashType.FigureL, color = tone, unitColor = tone,
-                sign = KashMoney.sign(dir),
-            )
-            Text(
-                buildAnnotatedString {
-                    append(if (dir == KashDirection.In) "from " else "to ")
-                    withStyle(SpanStyle(color = KashColors.Ink, fontWeight = FontWeight.SemiBold)) { append(tx.displayName()) }
-                },
-                style = KashType.BodyL, color = KashColors.InkMuted, modifier = Modifier.padding(top = 6.dp),
-                maxLines = 2, overflow = TextOverflow.Ellipsis,
-            )
-        }
-        // The account is already named at the top of the card.
-        tx.balance?.let {
-            KashKeyValueList(listOf(KashKeyValue("Balance after", KashMoney.amount(it), numeric = true)), card = false)
-        }
-        // Tapping anywhere on the card opens the details; this says so.
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            KashIconView(KashIcon.Sms, contentDescription = null, tint = KashColors.InkMuted, size = 16.dp)
-            Text("Tap for the SMS and details", style = KashType.Caption, color = KashColors.InkMuted, modifier = Modifier.weight(1f))
-            KashIconView(KashIcon.ChevronRight, contentDescription = null, tint = KashColors.InkMuted, size = 16.dp)
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CategoryChoice(
-    tx: TransactionEntity,
-    userName: String,
-    selected: String?,
-    recent: List<String>,
-    custom: List<String>,
-    all: List<String>,
-    onSelect: (String) -> Unit,
-    onMore: () -> Unit,
-    onNew: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (looksOwnAccount(tx, userName) && tx.category == null) {
-            val bank = tx.counterparty?.takeIf { tx.type == TransactionType.INTERNAL_TRANSFER.name }
-            KashNotice(
-                (if (bank != null) "Looks like a move to your own $bank account." else "Looks like a move to your own account.") +
-                    " Own-account moves aren't counted as spending.",
-                icon = KashIcon.Transfer,
-            )
-        }
-        Text("What was it?", style = KashType.Label, color = KashColors.InkMuted)
-        // Every category the user made, then their recent picks (minus
-        // those already shown); More opens the full catalog. A brand-new
-        // user with neither gets a few everyday starters.
-        val sections = remember(selected, recent, custom, all) {
-            val yours = custom.filter { c -> TransactionCategoryCatalog.defaultCategories.none { it.equals(c, true) } }
-                .distinctBy { it.lowercase() }
-            val shown = yours.map { it.lowercase() }.toSet()
-            val picks = (listOfNotNull(selected) + recent)
-                .filter { c -> c.isNotBlank() && (all.any { it.equals(c, true) } || c == selected) }
-                .distinctBy { it.lowercase() }
-                .filter { it.lowercase() !in shown }
-            buildList {
-                if (yours.isNotEmpty()) add("Yours" to yours)
-                if (picks.isNotEmpty()) add("Recent picks" to picks)
-                if (isEmpty()) add("" to listOf("Food", "Transport", "Bills", "Shopping"))
-            }
-        }
-        sections.forEachIndexed { i, (name, cats) ->
-            if (name.isNotEmpty()) Text(name, style = KashType.Caption, color = KashColors.InkMuted)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                cats.forEach { c -> KashChip(c, c.equals(selected, true), { onSelect(c) }, checkWhenSelected = true) }
-                if (i == sections.lastIndex) {
-                    KashChip("More", false, onMore, trailing = KashIcon.ChevronRight)
-                    KashChip("New", false, onNew, leading = KashIcon.Plus, dashed = true)
-                }
-            }
-        }
-    }
-}
-
-/** Skip + Confirm side by side; stacked when the confirm label is long. */
-@Composable
-private fun ReviewButtons(selected: String?, onSkip: () -> Unit, onConfirm: (String) -> Unit, onPick: () -> Unit) {
-    val label = selected?.let { "Confirm as $it" } ?: "Pick a category"
-    val action = { if (selected != null) onConfirm(selected) else onPick() }
-    if (label.length > 24) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            KashButton(label, action, Modifier.fillMaxWidth())
-            KashButton("Skip", onSkip, Modifier.fillMaxWidth(), KashButtonVariant.Secondary)
-        }
-    } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KashButton("Skip", onSkip, Modifier.widthIn(min = 104.dp), KashButtonVariant.Secondary)
-            KashButton(label, action, Modifier.weight(1f))
-        }
-    }
-}
-
-/** AppReviewDone (and the empty queue). */
-@Composable
-private fun DoneView(
-    state: ReviewQueueState,
-    pad: androidx.compose.foundation.layout.PaddingValues,
-    onHome: () -> Unit,
-    onOlder: () -> Unit,
-) {
-    Column(Modifier.fillMaxSize().padding(pad)) {
-        Column(
-            Modifier.weight(1f).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            DrawnCheck()
-            Spacer(Modifier.height(20.dp))
-            Text("All caught up", style = KashType.TitleM, color = KashColors.Ink)
-            Text(
-                when {
-                    state.scope == ReviewScope.ALL -> "Every transaction has a category now."
-                    state.totalToday == 0 -> "Nothing new today.\nWe'll nudge you when new SMS arrive."
-                    state.totalToday == 1 -> "Today's transaction is sorted.\nWe'll nudge you when new SMS arrive."
-                    else -> "Today's ${animatedAmount(state.totalToday.toDouble()).roundToInt()} transactions are sorted.\nWe'll nudge you when new SMS arrive."
-                },
-                style = KashType.BodyL, color = KashColors.InkMuted, textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-        if (state.scope == ReviewScope.TODAY && state.olderPending > 0) {
-            KashListGroup(Modifier.padding(bottom = 22.dp)) {
-                KashListRow(
-                    label = if (state.olderPending == 1) "1 older one needs a category" else "${state.olderPending} older ones need a category",
-                    hint = "From before today",
-                    icon = KashIcon.History,
-                    showDivider = false,
-                    onClick = onOlder,
-                )
-            }
-        }
-        KashButton("Back to home", onHome, Modifier.fillMaxWidth())
-    }
-}
-
-/** The done tile: pops in, then its check draws itself. */
-@Composable
-private fun DrawnCheck() {
-    val reduced = rememberReducedMotion()
-    val pop = remember { Animatable(if (reduced) 1f else 0.6f) }
-    val draw = remember { Animatable(if (reduced) 1f else 0f) }
-    LaunchedEffect(Unit) {
-        if (reduced) return@LaunchedEffect
-        launch { pop.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow)) }
-        delay(120)
-        draw.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
-    }
+private fun SortButton(name: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(64.dp)
-            .graphicsLayer { scaleX = pop.value; scaleY = pop.value }
-            .clip(KashShapes.Control)
-            .background(KashColors.Accent)
-            .semantics { contentDescription = "Done" },
+            .padding(start = 4.dp)
+            .kashClickable(onClickLabel = "Sort $name", onClick = onClick)
+            .height(44.dp)
+            .clip(KashShapes.Chip)
+            .background(KashColors.Well)
+            .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(26.dp)) {
-            // The Check icon's path (24-unit grid): 20,6 → 9,17 → 4,12, drawn from the short end.
-            val u = size.width / 24f
-            val path = Path().apply { moveTo(4 * u, 12 * u); lineTo(9 * u, 17 * u); lineTo(20 * u, 6 * u) }
-            val measure = PathMeasure().apply { setPath(path, false) }
-            val part = Path()
-            measure.getSegment(0f, measure.length * draw.value, part, true)
-            drawPath(part, KashColors.OnAccent, style = Stroke(width = 2.4f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        Text("Sort", style = KashType.Caption.copy(fontWeight = FontWeight.SemiBold), color = KashColors.Ink, maxLines = 1, softWrap = false)
+    }
+}
+
+/** Under This month: the backlog from before, on request. */
+@Composable
+private fun OlderRow(count: Int, onShow: () -> Unit) {
+    KashButton(
+        if (count == 1) "Show 1 from before this month" else "Show $count from before this month",
+        onShow, Modifier.fillMaxWidth().padding(top = 14.dp), KashButtonVariant.Secondary, compact = true,
+    )
+}
+
+/** The list is empty: a check in a well, "Nothing to sort". */
+@Composable
+private fun NothingToSort(older: Int, onShowOlder: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(70.dp))
+        Box(
+            Modifier.size(72.dp).clip(RoundedCornerShape(24.dp)).background(KashColors.Well),
+            contentAlignment = Alignment.Center,
+        ) { KashIconView(KashIcon.Check, size = 30.dp, tint = KashColors.MoneyIn, strokeWidth = 2.4f) }
+        Text("Nothing to sort", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.padding(top = 10.dp))
+        Text(
+            "New payments to people you’ve sorted sort themselves. Anything new shows up here.",
+            style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = KashColors.InkMuted,
+            textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp).widthIn(max = 270.dp),
+        )
+        if (older > 0) {
+            KashButton(
+                if (older == 1) "Show 1 from before this month" else "Show $older from before this month",
+                onShowOlder, Modifier.padding(top = 22.dp).widthIn(max = 300.dp), KashButtonVariant.Secondary, compact = true,
+            )
         }
     }
 }
 
-/** AppEditTransaction: long-press on the card. */
+/** AppEditTransaction: a row's tap. */
 @Composable
 private fun CheckThisOneSheet(
     tx: TransactionEntity,
@@ -686,7 +390,7 @@ private fun CheckThisOneSheet(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            KashButton("Change category", onChangeCategory, Modifier.fillMaxWidth())
+            KashButton("Sort it", onChangeCategory, Modifier.fillMaxWidth())
             KashButton("Not a transaction", onNotATransaction, Modifier.fillMaxWidth(), KashButtonVariant.Secondary)
         }
     }
@@ -718,7 +422,7 @@ private fun ApplyAllDialog(
     }
     KashDialog(
         title = "Put all $total in $category?",
-        description = "Kash found $total transactions with $name. Kash can label them together.",
+        description = "Kash found $total transactions with $name. Kash can sort them together.",
         onDismiss = onDismiss,
     ) {
         Column {
@@ -740,7 +444,7 @@ private fun ApplyAllDialog(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            KashButton("Label all $total", labelAll, Modifier.fillMaxWidth())
+            KashButton("Sort all $total", labelAll, Modifier.fillMaxWidth())
             KashButton("Just this one", onJustOne, Modifier.fillMaxWidth(), KashButtonVariant.Quiet)
         }
     }

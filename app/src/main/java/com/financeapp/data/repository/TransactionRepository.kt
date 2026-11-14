@@ -123,6 +123,10 @@ class TransactionRepository(
         return txnDao.snapshotPendingBetween(fromMs, toMs)
     }
 
+    /** PENDING rows between two instants (the Review tab's badge: this month). */
+    fun countPendingBetween(fromMs: Long, toMs: Long): Flow<Int> =
+        txnDao.countByStatusBetween(ReviewStatus.PENDING, fromMs, toMs)
+
     fun countTodayByReviewStatus(status: String, nowMs: Long = System.currentTimeMillis()): Flow<Int> {
         val (fromMs, toMs) = todayBounds(nowMs)
         return txnDao.countByStatusBetween(status, fromMs, toMs)
