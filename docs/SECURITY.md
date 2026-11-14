@@ -63,7 +63,7 @@ is still `is_admin()`.
 | `i_feedback` | Survey answers | — | read, insert own | — | `add_feedback.sql` |
 | `i_category_rules` | Learned category rules | — | all on own rows | — | `add_daily_review.sql` |
 | `i_budgets`, `i_budget_categories` | Budgets | — | read, insert, update, delete own (categories: no update) | — | `add_budgets.sql` |
-| `i_goals`, `i_goal_contributions` | Savings goals | — | read, insert, update, delete own (contributions: no update) | — | `add_goals.sql` |
+| `i_goals`, `i_goal_contributions` | Savings goals | — | read, insert, update, delete own (contributions: no update) | — | `add_goals.sql`, `add_goal_linked_account.sql` (one column, no policy change) |
 | `i_income_entries`, `i_income_dismissed` | Income | — | read, insert, update, delete own (dismissed: no update) | — | `add_income.sql` |
 | `i_ledger_entries`, `i_ledger_repayments` | Money lent and borrowed | — | read, insert, update, delete own (repayments: no update) | — | `add_ledger.sql` |
 

@@ -34,6 +34,7 @@ class TransactionRepository(
 ) {
 
     private val txnDao = db.transactionDao()
+    private val goalDao = db.goalDao()
     private val rawDao = db.rawSmsDao()
     private val ruleDao = db.categoryRuleDao()
     private val predictor = CategoryPredictor(ruleDao)
@@ -429,8 +430,9 @@ class TransactionRepository(
     suspend fun countUnsyncedRawMessages(): Int =
         rawDao.countUnsynced()
 
+    /** Rows waiting to go to Supabase: transactions, raw SMS, and goal changes (GoalCloudSync). */
     suspend fun countPendingCloudSyncItems(): Int =
-        countUnsyncedTransactions() + countUnsyncedRawMessages()
+        countUnsyncedTransactions() + countUnsyncedRawMessages() + goalDao.countPendingSync()
 
     suspend fun markTransactionsSynced(ids: List<Long>) {
         if (ids.isEmpty()) return

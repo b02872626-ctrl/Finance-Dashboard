@@ -5,12 +5,13 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Goals section in the app (NAH-14).** Rebuilt to the dark design in
-  `design/goals-handoff`. PR A (dark theme, Goals tab, goal page, sheets,
-  dialogs, icons, pixel-wipe motion) and PR B (New goal / Edit goal /
-  Change account, dark) are open and ship together; PR B sits on PR A's
-  branch. PR B still needs a look on the phone. Later: Supabase sync, web
-  dashboard, "goal reached" notification, archived list.
+- **Goals section in the app (NAH-14).** The dark design (PR A, PR B)
+  is on main. PR C, goals sync, is on a branch (Done, 2026-11-13), CI
+  green; the owner ran `add_goal_linked_account.sql` on Supabase on
+  13 Nov, so it can merge. Then on the phone: make a goal, check it in
+  Supabase, reinstall, sign in, and the goals should come back. Still to do, one branch each: web dashboard brought in line (it
+  ignores the linked account and shows saves logged by hand only), "goal
+  reached" notification, archived list.
 
 - **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
   downloads and 100 active users. Release and install on a real phone by
@@ -80,6 +81,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-13 Goals sync to Supabase (NAH-14, PR C): goals and saves go to
+  `i_goals` / `i_goal_contributions` on every sync pass (within a minute
+  of a change), deletes included; a reinstall or a second phone gets them
+  back after sign-in; edits and deletes made on the web dashboard reach
+  the phone. New SQL `add_goal_linked_account.sql` (one nullable column,
+  no policy change); the owner ran it on 13 Nov. `GoalCloudSyncTest`
+  (12). Not run on a phone or against staging (no device or credentials
+  here); unit tests run in CI only (no Android SDK in this session).
 - 2026-11-13 New goal, Edit goal and Change account in the dark design
   (NAH-14, PR B): dark step bar, icon picker (12 icons, sideways row),
   name counter "6 / 40", "Save it by … · about X ETB a month", monthly

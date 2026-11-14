@@ -319,6 +319,146 @@ class SupabaseRestClient(
         return out
     }
 
+    // ---- Goals (remote/GoalCloudSync.kt) ----
+
+    /** Upserts by id. On an update the trigger on i_goals sets updated_at itself. */
+    fun upsertGoals(userId: String, goals: List<GoalCloudSync.CloudGoal>): Int {
+        if (goals.isEmpty()) return 0
+        val arr = JSONArray()
+        for (g in goals) {
+            arr.put(
+                JSONObject()
+                    .put("id", g.id)
+                    .put("user_id", userId)
+                    .put("name", g.name)
+                    .put("emoji", g.emoji ?: JSONObject.NULL)
+                    .put("type", g.type)
+                    .put("target_amount", g.targetAmount ?: JSONObject.NULL)
+                    .put("target_months", g.targetMonths ?: JSONObject.NULL)
+                    .put("deadline", g.deadline ?: JSONObject.NULL)
+                    .put("priority", g.priority)
+                    .put("note", g.note ?: JSONObject.NULL)
+                    .put("status", g.status)
+                    .put("linked_account_key", g.linkedAccountKey ?: JSONObject.NULL)
+                    .put("created_at", isoUtc.format(Date(g.createdAt)))
+                    .put("updated_at", isoUtc.format(Date(g.updatedAt)))
+                    .put("achieved_at", g.achievedAt?.let { isoUtc.format(Date(it)) } ?: JSONObject.NULL)
+            )
+        }
+        request(
+            method = "POST",
+            path = "i_goals?on_conflict=id",
+            body = arr.toString(),
+            prefer = "resolution=merge-duplicates,return=minimal"
+        )
+        return goals.size
+    }
+
+    /** A save never changes, and its policy has no update, so an existing row is left alone. */
+    fun insertGoalContributions(userId: String, contributions: List<GoalCloudSync.CloudContribution>): Int {
+        if (contributions.isEmpty()) return 0
+        val arr = JSONArray()
+        for (c in contributions) {
+            arr.put(
+                JSONObject()
+                    .put("id", c.id)
+                    .put("user_id", userId)
+                    .put("goal_id", c.goalId)
+                    .put("amount", c.amount)
+                    .put("contributed_at", isoUtc.format(Date(c.contributedAt)))
+                    .put("note", c.note ?: JSONObject.NULL)
+                    .put("created_at", isoUtc.format(Date(c.createdAt)))
+            )
+        }
+        request(
+            method = "POST",
+            path = "i_goal_contributions?on_conflict=id",
+            body = arr.toString(),
+            prefer = "resolution=ignore-duplicates,return=minimal"
+        )
+        return contributions.size
+    }
+
+    fun deleteGoals(userId: String, ids: List<String>) = deleteRows("i_goals", userId, ids)
+
+    fun deleteGoalContributions(userId: String, ids: List<String>) = deleteRows("i_goal_contributions", userId, ids)
+
+    private fun deleteRows(table: String, userId: String, ids: List<String>) {
+        if (ids.isEmpty()) return
+        // Ids are UUIDs the phone made, so nothing to escape in the list.
+        request(
+            method = "DELETE",
+            path = "$table?user_id=eq.$userId&id=in.(${ids.joinToString(",")})",
+            prefer = "return=minimal"
+        )
+    }
+
+    /** Every goal of the signed-in user (a handful; one page). */
+    fun fetchGoals(userId: String): List<GoalCloudSync.CloudGoal> {
+        val body = request(
+            method = "GET",
+            path = "i_goals?select=*&user_id=eq.$userId&order=created_at.asc,id.asc&limit=$PULL_PAGE_SIZE"
+        )
+        val arr = JSONArray(body)
+        val out = mutableListOf<GoalCloudSync.CloudGoal>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            out += GoalCloudSync.CloudGoal(
+                id = o.getString("id"),
+                name = o.optStringOrNull("name") ?: "",
+                emoji = o.optStringOrNull("emoji"),
+                type = o.getString("type"),
+                targetAmount = o.optDoubleOrNull("target_amount"),
+                targetMonths = if (o.isNull("target_months")) null else o.getInt("target_months"),
+                deadline = o.optStringOrNull("deadline"),
+                priority = o.optInt("priority", 100),
+                note = o.optStringOrNull("note"),
+                status = o.optStringOrNull("status") ?: "ACTIVE",
+                linkedAccountKey = o.optStringOrNull("linked_account_key"),
+                createdAt = requireIso(o, "created_at"),
+                updatedAt = requireIso(o, "updated_at"),
+                achievedAt = GoalCloudSync.parseIsoMs(o.optStringOrNull("achieved_at")),
+            )
+        }
+        return out
+    }
+
+    /** Every save of the signed-in user, in pages. */
+    fun fetchGoalContributions(userId: String): List<GoalCloudSync.CloudContribution> {
+        val out = mutableListOf<GoalCloudSync.CloudContribution>()
+        var offset = 0
+        while (true) {
+            val body = request(
+                method = "GET",
+                path = "i_goal_contributions?select=*&user_id=eq.$userId&order=contributed_at.asc,id.asc" +
+                    "&limit=$PULL_PAGE_SIZE&offset=$offset"
+            )
+            val arr = JSONArray(body)
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                out += GoalCloudSync.CloudContribution(
+                    id = o.getString("id"),
+                    goalId = o.getString("goal_id"),
+                    amount = o.getDouble("amount"),
+                    contributedAt = requireIso(o, "contributed_at"),
+                    note = o.optStringOrNull("note"),
+                    createdAt = requireIso(o, "created_at"),
+                )
+            }
+            if (arr.length() < PULL_PAGE_SIZE || offset >= PULL_MAX_ROWS) break
+            offset += PULL_PAGE_SIZE
+        }
+        return out
+    }
+
+    /** A timestamp the merge can't do without: a row it can't read fails the whole pass rather than looking deleted. */
+    private fun requireIso(o: JSONObject, key: String): Long =
+        GoalCloudSync.parseIsoMs(o.optStringOrNull(key))
+            ?: throw IllegalStateException("Unreadable $key in ${o.optString("id")}")
+
+    private fun JSONObject.optDoubleOrNull(key: String): Double? =
+        if (!has(key) || isNull(key)) null else getDouble(key)
+
     /** Defensive optString that returns real `null` (not the literal "null"). */
     private fun JSONObject.optStringOrNull(key: String): String? =
         if (!has(key) || isNull(key)) null else getString(key)

@@ -9,6 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.financeapp.data.model.CategoryRuleEntity
 import com.financeapp.data.model.ErrorLogEntity
 import com.financeapp.data.model.GoalContributionEntity
+import com.financeapp.data.model.GoalDeletionEntity
 import com.financeapp.data.model.GoalEntity
 import com.financeapp.data.model.RawSmsEntity
 import com.financeapp.data.model.SentNotificationEntity
@@ -22,9 +23,10 @@ import com.financeapp.data.model.TransactionEntity
         CategoryRuleEntity::class,
         SentNotificationEntity::class,
         GoalEntity::class,
-        GoalContributionEntity::class
+        GoalContributionEntity::class,
+        GoalDeletionEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -57,6 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_10_11)
                     .addMigrations(MIGRATION_11_12)
                     .addMigrations(MIGRATION_12_13)
+                    .addMigrations(MIGRATION_13_14)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
@@ -265,6 +268,16 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_goal_contributions_goalId_contributedAt` " +
                         "ON `goal_contributions` (`goalId`, `contributedAt`)"
+                )
+            }
+        }
+
+        /** Goals sync: deletes made on the phone wait here for the cloud (GoalDeletionEntity). */
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `goal_deletions` (`id` TEXT NOT NULL, `kind` TEXT NOT NULL, " +
+                        "`deletedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
                 )
             }
         }
