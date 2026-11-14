@@ -37,7 +37,12 @@ class SmsIngestWorker(
             // First run (empty ledger) and upgrade rescans replay history:
             // no transaction-level alerts from those.
             val firstRun = repo.countTransactions() == 0
-            val ingested = repo.ingestAllReturningInserted(messages)
+            progress.value = ScanProgress(0, messages.size)
+            val ingested = try {
+                repo.ingestAllReturningInserted(messages) { done -> progress.value = ScanProgress(done, messages.size) }
+            } finally {
+                progress.value = null
+            }
             // Moves between the user's own accounts (CBE → CBE Birr, CBE 1 →
             // CBE 2, …) are filed before alerts go out, so a transfer is never
             // announced as spending. Also catches up history on older installs.
@@ -71,8 +76,12 @@ class SmsIngestWorker(
         }
     }
 
+    /** How far the running scan is (Home's "Reading your SMS"); null when none runs. */
+    data class ScanProgress(val done: Int, val total: Int)
+
     companion object {
         private const val UNIQUE_WORK_NAME = "sms_ingest_now"
+        val progress = kotlinx.coroutines.flow.MutableStateFlow<ScanProgress?>(null)
         private const val KEY_RESCAN = "rescan"
 
         /**

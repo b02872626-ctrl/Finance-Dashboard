@@ -64,14 +64,11 @@ import com.financeapp.ui.kash.components.KashBankBadge
 import com.financeapp.ui.kash.components.KashButton
 import com.financeapp.ui.kash.components.KashButtonVariant
 import com.financeapp.ui.kash.components.KashDivider
-import com.financeapp.ui.kash.components.KashFigure
-import com.financeapp.ui.kash.components.KashMoney
 import com.financeapp.ui.kash.components.KashScreen
 import com.financeapp.ui.kash.components.KashSwitch
 import com.financeapp.ui.kash.components.kashBank
 import com.financeapp.ui.kash.num
 import com.financeapp.ui.kash.rememberReducedMotion
-import com.financeapp.viewmodel.OnboardingSummary
 import com.financeapp.viewmodel.OnboardingViewModel
 import com.financeapp.viewmodel.OnboardingViewModelFactory
 import com.financeapp.viewmodel.SmsSource
@@ -80,12 +77,13 @@ import java.text.NumberFormat
 import java.util.Locale
 
 // =============================================================================
-// First launch (HANDOFF row 1): Welcome → Allow SMS → (SMS denied) → Choose
-// sources → Sign in → Your money at a glance. The PIN is created next, by the
-// PIN gate in AppNavigation. Steps already done are skipped.
+// First launch (canvas section 1): Welcome → Allow SMS → (SMS denied) → Choose
+// sources → Sign in. The PIN is created next, by the PIN gate in
+// AppNavigation, then Home opens while the SMS are still being read. Steps
+// already done are skipped.
 // =============================================================================
 
-private enum class Step { Welcome, AllowSms, SmsDenied, Sources, SignIn, Summary }
+private enum class Step { Welcome, AllowSms, SmsDenied, Sources, SignIn }
 
 /**
  * Drives the first-launch steps. [isSignedIn] and [hasSmsAccess] are live;
@@ -109,12 +107,14 @@ fun OnboardingFlow(
     var askedSms by rememberSaveable { mutableStateOf(false) }
 
     /** The next step that still needs doing, in the designed order. */
-    fun next(): Step = when {
+    fun next(): Step? = when {
         !hasSmsAccess && !skippedSms -> Step.AllowSms
-        hasSmsAccess && step != Step.Sources && step != Step.SignIn && step != Step.Summary -> Step.Sources
+        hasSmsAccess && step != Step.Sources && step != Step.SignIn -> Step.Sources
         !isSignedIn -> Step.SignIn
-        else -> Step.Summary
+        else -> null
     }
+    /** Nothing left to do: onboarding is over (the PIN gate follows). */
+    fun go(next: Step?) { if (next == null) onFinish() else step = next }
 
     // Permission granted (dialog or settings) → move on to the sources.
     LaunchedEffect(hasSmsAccess) {
@@ -136,7 +136,6 @@ fun OnboardingFlow(
                 skippedSms -> Step.SmsDenied
                 else -> Step.AllowSms
             }
-            Step.Summary -> if (hasSmsAccess) Step.Sources else Step.Welcome
         }
     }
     BackHandler(enabled = step != Step.Welcome) { back() }
@@ -146,7 +145,7 @@ fun OnboardingFlow(
             onGetStarted = { signInFirst = false; step = if (hasSmsAccess) Step.Sources else Step.AllowSms },
             onHaveAccount = {
                 signInFirst = true
-                step = if (isSignedIn) next() else Step.SignIn
+                if (isSignedIn) go(next()) else step = Step.SignIn
             },
         )
         Step.AllowSms -> AllowSmsScreen(
@@ -156,7 +155,7 @@ fun OnboardingFlow(
         )
         Step.SmsDenied -> SmsDeniedScreen(
             onBack = ::back,
-            onByHand = { skippedSms = true; step = if (isSignedIn) Step.Summary else Step.SignIn },
+            onByHand = { skippedSms = true; if (isSignedIn) onFinish() else step = Step.SignIn },
         )
         Step.Sources -> {
             val sources by vm.sources.collectAsState()
@@ -166,24 +165,20 @@ fun OnboardingFlow(
                 totalFound = total,
                 onBack = ::back,
                 onToggle = vm::setSourceEnabled,
-                onImport = { step = if (isSignedIn) Step.Summary else Step.SignIn },
+                onImport = { if (isSignedIn) onFinish() else step = Step.SignIn },
             )
         }
         Step.SignIn -> OnboardingSignInStep(
             signInFirst = signInFirst,
             onBack = ::back,
             onSignedIn = {
-                step = when {
-                    signInFirst && hasSmsAccess -> Step.Sources
-                    signInFirst && !skippedSms -> Step.AllowSms
-                    else -> Step.Summary
+                when {
+                    signInFirst && hasSmsAccess -> step = Step.Sources
+                    signInFirst && !skippedSms -> step = Step.AllowSms
+                    else -> onFinish()
                 }
             },
         )
-        Step.Summary -> {
-            val summary by vm.summary.collectAsState()
-            SummaryScreen(summary, onContinue = onFinish)
-        }
     }
 }
 
@@ -442,6 +437,8 @@ private fun SourcesScreen(
     onImport: () -> Unit,
 ) {
     val importing = sources.filter { it.enabled }.sumOf { it.count }
+    // The same list feeds both numbers, so the headline and "Import N" never disagree mid-scan.
+    val found = if (sources.isEmpty()) totalFound else sources.sumOf { it.count }
     OnboardingPage(
         step = 2,
         onBack = onBack,
@@ -486,7 +483,7 @@ private fun SourcesScreen(
         Column {
             Text("Found on this phone", style = KashType.Label, color = KashColors.InkMuted)
             Text(
-                buildFoundLine(totalFound),
+                buildFoundLine(found),
                 style = KashType.FigureXl, color = KashColors.Ink, modifier = Modifier.padding(top = 6.dp),
             )
             Text(
@@ -503,92 +500,4 @@ private fun buildFoundLine(n: Int) = androidx.compose.ui.text.buildAnnotatedStri
     pushStyle(KashType.FigureUnit.toSpanStyle().copy(color = KashColors.InkMuted))
     append(if (n == 1) " transaction" else " transactions")
     pop()
-}
-
-// ─── Your money at a glance ──────────────────────────────────────────────
-
-/** AppSummary. Every number is from the real transactions; rows without data hide. */
-@Composable
-private fun SummaryScreen(summary: OnboardingSummary, onContinue: () -> Unit) {
-    KashSystemBars(darkIcons = false)
-    KashScreen(
-        heroGap = 22.dp,
-        heroBottom = 28.dp,
-        hero = {
-            Text("Your money at a glance", style = KashType.TitleM, color = KashColors.OnSlate, modifier = Modifier.padding(top = 6.dp))
-            if (summary.avgMonthlySpend != null) {
-                Column {
-                    Text("You spend about", style = KashType.Body, color = KashColors.OnSlateMuted)
-                    KashFigure(
-                        summary.avgMonthlySpend, showDecimals = false, currency = "ETB a month",
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-            } else {
-                Text(
-                    if (summary.transactionCount == 0) "No bank SMS found yet. New ones show up on Home as they arrive."
-                    else "Not enough spending yet to show a monthly figure.",
-                    style = KashType.BodyL, color = KashColors.OnSlateMuted,
-                )
-            }
-            if (summary.months.isNotEmpty()) {
-                val max = summary.months.maxOf { it.spent }.coerceAtLeast(1.0)
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(104.dp)
-                        .semantics { contentDescription = "Monthly spending, last six months; this month is highlighted" },
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    summary.months.forEachIndexed { i, m ->
-                        val current = i == summary.months.lastIndex
-                        Column(
-                            Modifier.weight(1f).fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .fillMaxHeight((m.spent / max).toFloat().coerceIn(0.04f, 1f))
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(if (current) KashColors.Sand else KashColors.ChartBar)
-                                )
-                            }
-                            Text(
-                                m.label, style = KashType.Micro, textAlign = TextAlign.Center,
-                                color = if (current) KashColors.OnSlate else KashColors.OnSlateMuted,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-    ) { pad ->
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            if (summary.transactionCount > 0) SummaryRow(KashIcon.History, "Transactions found", count(summary.transactionCount), divider = summary.topPayee != null || summary.avgMonthlyIncome != null)
-            summary.topPayee?.let { SummaryRow(KashIcon.Out, "Most money goes to", it, divider = summary.avgMonthlyIncome != null, arrow = true) }
-            summary.avgMonthlyIncome?.let { SummaryRow(KashIcon.In, "Money in, a month", "${KashMoney.whole(it)} ETB", divider = false, arrow = true) }
-        }
-        KashButton("Continue", onContinue, Modifier.fillMaxWidth().padding(bottom = 12.dp).padding(pad))
-    }
-}
-
-@Composable
-private fun SummaryRow(icon: KashIcon, label: String, value: String, divider: Boolean, arrow: Boolean = false) {
-    Column {
-        Row(
-            Modifier.fillMaxWidth().padding(vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(Modifier.size(40.dp).clip(KashShapes.Field).background(KashColors.Well), contentAlignment = Alignment.Center) {
-                KashIconView(icon, size = 20.dp, tint = KashColors.Ink, strokeWidth = if (arrow) 2.2f else 2f)
-            }
-            Text(label, style = KashType.Body.copy(fontWeight = FontWeight.Normal), color = KashColors.InkMuted, modifier = Modifier.weight(1f))
-            Text(value, style = KashType.BodyStrong.num(), color = KashColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
-        }
-        if (divider) KashDivider()
-    }
 }

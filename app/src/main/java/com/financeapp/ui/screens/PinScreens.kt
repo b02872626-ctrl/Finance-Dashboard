@@ -42,6 +42,9 @@ import com.financeapp.ui.kash.KashSize
 import com.financeapp.ui.kash.KashSpace
 import com.financeapp.ui.kash.KashSystemBars
 import com.financeapp.ui.kash.KashType
+import com.financeapp.ui.kash.components.KashScreen
+import com.financeapp.ui.kash.components.KashIconButton
+import androidx.compose.ui.text.font.FontWeight
 import com.financeapp.ui.kash.components.KashButton
 import com.financeapp.ui.kash.components.KashButtonVariant
 import com.financeapp.ui.kash.components.KashDialog
@@ -228,6 +231,10 @@ fun PinLockScreen(
         LaunchedEffect(Unit) { delay(UNLOCK_LOADING_MS); onUnlocked() }
         return
     }
+    if (confirmForgot) {
+        ForgotPinScreen(onBack = { confirmForgot = false }, onSignIn = onForgot)
+        return
+    }
     // Hold the green dots for a beat before the loading screen.
     LaunchedEffect(accepted) { if (accepted) { delay(ACCEPTED_HOLD_MS); unlocking = true } }
 
@@ -274,12 +281,6 @@ fun PinLockScreen(
         },
     )
 
-    if (confirmForgot) {
-        ForgotPinDialog(
-            onSignInAgain = { confirmForgot = false; onForgot() },
-            onCancel = { confirmForgot = false },
-        )
-    }
 }
 
 private const val UNLOCK_LOADING_MS = 900L
@@ -304,30 +305,30 @@ private fun UnlockLoading() {
     }
 }
 
-/** AppForgotPin. */
+/** Forgot PIN (new): a page, not a dialog. Sign in again, then set a new PIN. */
 @Composable
-private fun ForgotPinDialog(onSignInAgain: () -> Unit, onCancel: () -> Unit) {
-    KashDialog(
-        title = "Forgot your PIN?",
-        description = "Sign in to your Kash account again, then choose a new PIN.",
-        onDismiss = onCancel,
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(KashShapes.Card)
-                .background(KashColors.SurfaceRaised)
-                .border(1.dp, KashColors.Line, KashShapes.Card)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            KashIconView(KashIcon.Lock, size = 20.dp, tint = KashColors.Ink)
-            Text("Your transactions on this phone stay where they are.", style = KashType.Body, color = KashColors.Ink)
-        }
-        Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            KashButton("Sign in again", onSignInAgain, Modifier.fillMaxWidth())
-            KashButton("Cancel", onCancel, Modifier.fillMaxWidth(), KashButtonVariant.Quiet)
+private fun ForgotPinScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
+    KashSystemBars(darkIcons = false)
+    androidx.activity.compose.BackHandler(onBack = onBack)
+    KashScreen(
+        heroGap = 18.dp,
+        expandable = false,
+        hero = {
+            Row { KashIconButton(KashIcon.Back, "Back", onBack, onSlate = true) }
+            Column {
+                Text("Forgot your PIN?", style = KashType.TitleM, color = KashColors.OnSlate)
+                Text("No problem. It takes a minute.", style = KashType.Body, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(top = 8.dp)) {
+            Text("Sign in again with your Kash account, then set a new PIN.", style = KashType.Body, color = KashColors.Ink)
+            Text(
+                "Your transactions, categories and goals stay as they are.",
+                style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = KashColors.InkMuted,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            KashButton("Sign in", onSignIn, Modifier.fillMaxWidth().padding(top = 22.dp))
         }
     }
 }
