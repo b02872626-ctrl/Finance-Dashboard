@@ -194,7 +194,7 @@ private fun MonthGrid(
                                 "$i",
                                 style = KashType.Body.num().copy(fontWeight = if (isEnd) FontWeight.SemiBold else FontWeight.Medium),
                                 color = when {
-                                    isEnd -> KashColors.OnSlate
+                                    isEnd -> KashColors.OnAccent
                                     muted(day) -> KashColors.InkFaint
                                     else -> KashColors.Ink
                                 },
