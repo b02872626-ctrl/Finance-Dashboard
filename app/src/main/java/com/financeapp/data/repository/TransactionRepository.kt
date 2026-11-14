@@ -5,6 +5,7 @@ import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.accounts.OwnTransferPairing
 import com.financeapp.data.categorize.CategoryPredictor
 import com.financeapp.data.db.AppDatabase
+import com.financeapp.data.db.CategoryUse
 import com.financeapp.data.db.CounterpartyAggregate
 import com.financeapp.data.db.MonthlyAggregate
 import com.financeapp.data.model.RawSmsEntity
@@ -61,6 +62,9 @@ class TransactionRepository(
         txnDao.getMonthlyAggregates(fromMs).map { list ->
             if (disabledSenders.isEmpty()) list else list
         }
+
+    /** The sort card's source: every category on a visible row, most used first. */
+    fun categoryUsage(): Flow<List<CategoryUse>> = txnDao.categoryUsage()
 
     suspend fun getLatestBySender(sender: String): TransactionEntity? =
         txnDao.getLatestBySender(sender)

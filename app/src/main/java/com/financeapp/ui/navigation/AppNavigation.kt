@@ -77,6 +77,7 @@ import com.financeapp.ui.screens.PinSetupScreen
 import com.financeapp.ui.screens.PrivacyPage
 import com.financeapp.ui.screens.AppearancePage
 import com.financeapp.ui.screens.ReviewScreen
+import com.financeapp.ui.screens.SortCard
 import com.financeapp.ui.screens.SettingsHomeScreen
 import com.financeapp.ui.screens.SignInAgainScreen
 import com.financeapp.ui.screens.TransactionScreen
@@ -286,6 +287,9 @@ private fun MainNavigation(
     // every time the user confirms a category.
     val recentCategories by remember(settingsRepo) { settingsRepo.recentCategoriesFlow() }
         .collectAsState(initial = settingsRepo.getRecentCategories())
+    // The sort card's "most used first": how many rows carry each category.
+    val categoryUsage by remember(repo) { repo.categoryUsage() }.collectAsState(initial = emptyList())
+    val categoryUses = remember(categoryUsage) { categoryUsage.map { SortCard.Use(it.category, it.count) } }
 
     LaunchedEffect(pendingRoute) {
         if (!pendingRoute.isNullOrBlank()) {
@@ -329,6 +333,7 @@ private fun MainNavigation(
             userName = userName,
             customCategories = categories,
             recentCategories = recentCategories,
+            categoryUsage = categoryUses,
             onAddCustomCategory = { setVm.addCustomCategory(it) },
             onClose = { navController.popBackStack() },
             onReviewOlder = {
@@ -401,6 +406,7 @@ private fun MainNavigation(
                     banks = dash.accountBalances.map { kashBank(it.bankName).shortName }.distinct(),
                     customCategories = categories,
                     recentCategories = recentCategories,
+                    categoryUsage = categoryUses,
                     onAddCategory = { setVm.addCustomCategory(it) },
                     onSaved = ::back,
                     onClose = ::back,
@@ -574,8 +580,10 @@ private fun MainNavigation(
                 tx?.let { transaction ->
                     TransactionScreen(
                         tx = transaction,
+                        userName = userName,
                         customCategories = categories,
                         recentCategories = recentCategories,
+                        categoryUsage = categoryUses,
                         onCategorySelected = {
                             txVm.updateCategory(txId, it)
                             tx = transaction.copy(category = it)

@@ -98,13 +98,10 @@ import com.financeapp.ui.kash.components.KashListRow
 import com.financeapp.ui.kash.components.KashMoney
 import com.financeapp.ui.kash.components.KashNotice
 import com.financeapp.ui.kash.components.KashScreen
-import com.financeapp.ui.kash.components.KashSearchField
 import com.financeapp.ui.kash.components.KashSheet
 import com.financeapp.ui.kash.components.KashSkeleton
 import com.financeapp.ui.kash.components.KashSnackbar
 import com.financeapp.ui.kash.components.KashStepBar
-import com.financeapp.ui.kash.components.KashSwitch
-import com.financeapp.ui.kash.components.KashTextField
 import com.financeapp.ui.kash.components.KashTopBar
 import com.financeapp.ui.kash.components.KashTransactionRow
 import com.financeapp.ui.kash.displayName
@@ -131,6 +128,7 @@ fun ReviewScreen(
     userName: String,
     customCategories: List<String>,
     recentCategories: List<String>,
+    categoryUsage: List<SortCard.Use>,
     onAddCustomCategory: (String) -> Unit,
     onClose: () -> Unit,
     onReviewOlder: () -> Unit,
@@ -161,7 +159,6 @@ fun ReviewScreen(
     var selected by remember(current?.id) {
         mutableStateOf(current?.let { if (looksOwnAccount(it, userName)) Spending.OWN_ACCOUNTS else it.category ?: it.predictedCategory })
     }
-    var newCategoryOpen by remember { mutableStateOf(false) }
 
     // Swipe: the card follows the finger; right confirms, left skips. Each
     // card gets its own offset so the next one starts centred.
@@ -257,7 +254,7 @@ fun ReviewScreen(
                         all = allCategories,
                         onSelect = { haptic(Haptic.TAP); selected = it },
                         onMore = vm::openPickerSheet,
-                        onNew = { newCategoryOpen = true },
+                        onNew = vm::openPickerSheet,
                     )
                 }
                 AnimatedVisibility(
@@ -288,34 +285,23 @@ fun ReviewScreen(
         )
     }
     if (current != null && state.sheet == ReviewSheet.Picker) {
-        CategoryPicker(
+        val sort: (String) -> Unit = { cat ->
+            haptic(Haptic.CONFIRM)
+            selected = cat
+            vm.pickCategory(cat, advance = true, applyToSimilar = state.applyToSimilar)
+        }
+        SortCardSheet(
             tx = current,
-            initial = selected,
-            recent = recentCategories,
+            current = selected,
             custom = customCategories,
+            usage = categoryUsage,
+            recent = recentCategories,
+            offerOwnAccounts = looksOwnAccount(current, userName),
             applyToSimilar = state.applyToSimilar,
             onToggleApplyToSimilar = vm::toggleApplyToSimilar,
             onClose = vm::closeSheet,
-            onNewCategory = { newCategoryOpen = true },
-            onCreateCategory = { name ->
-                onAddCustomCategory(name)
-                selected = TransactionCategoryCatalog.normalize(name)
-            },
-            onUse = { cat ->
-                haptic(Haptic.CONFIRM)
-                selected = cat
-                vm.pickCategory(cat, advance = true, applyToSimilar = state.applyToSimilar)
-            },
-        )
-    }
-    if (newCategoryOpen) {
-        NewCategoryDialog(
-            onCancel = { newCategoryOpen = false },
-            onCreate = { name ->
-                newCategoryOpen = false
-                onAddCustomCategory(name)
-                selected = TransactionCategoryCatalog.normalize(name)
-            },
+            onPick = sort,
+            onCreate = { name -> onAddCustomCategory(name); sort(TransactionCategoryCatalog.normalize(name)) },
         )
     }
     state.confirmApplyAll?.let { dialog ->
@@ -335,7 +321,7 @@ fun ReviewScreen(
  * The existing own-account check: the parser typed it as an internal
  * transfer, or an outgoing counterparty carries part of the user's name.
  */
-private fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
+internal fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
     if (tx.category != null) return tx.category == Spending.OWN_ACCOUNTS
     if (tx.type == TransactionType.INTERNAL_TRANSFER.name) return true
     val cp = tx.counterparty ?: return false
@@ -702,181 +688,6 @@ private fun CheckThisOneSheet(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             KashButton("Change category", onChangeCategory, Modifier.fillMaxWidth())
             KashButton("Not a transaction", onNotATransaction, Modifier.fillMaxWidth(), KashButtonVariant.Secondary)
-        }
-    }
-}
-
-/**
- * AppReviewCategory. Sections come from the real category catalog plus the
- * user's own; the bottom switch is the "apply to similar" rule.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun CategoryPicker(
-    tx: TransactionEntity?,
-    initial: String?,
-    recent: List<String>,
-    custom: List<String>,
-    applyToSimilar: Boolean,
-    onToggleApplyToSimilar: (() -> Unit)?,
-    onClose: () -> Unit,
-    onNewCategory: () -> Unit,
-    onUse: (String) -> Unit,
-    title: String = "Pick a category",
-    /** Makes a category from the search text in one tap; null opens [onNewCategory] instead. */
-    onCreateCategory: ((String) -> Unit)? = null,
-) {
-    var query by remember { mutableStateOf("") }
-    var pick by remember(initial) { mutableStateOf(initial) }
-    val sectionNames = mapOf("Common" to "Everyday", "Lifestyle" to "Lifestyle", "Money in/out" to "Money in and between accounts")
-    val sections = buildList {
-        val rec = recent.filter { it.isNotBlank() }.distinctBy { it.lowercase() }.take(6)
-        if (rec.isNotEmpty()) add("Recent" to rec)
-        TransactionCategoryCatalog.sections.forEach { (name, cats) -> add((sectionNames[name] ?: name) to cats) }
-        val own = custom.filter { c -> TransactionCategoryCatalog.defaultCategories.none { it.equals(c, true) } }
-        if (own.isNotEmpty()) add("Yours" to own)
-    }
-    val all = TransactionCategoryCatalog.allCategories(custom)
-    KashSheet(title, onDismiss = onClose) {
-        // Which transaction this is, so the sheet never hides what you're labelling.
-        if (tx != null) PickerTransactionSummary(tx)
-        KashSearchField(query, { query = it }, "Search categories")
-        Column(
-            Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            if (query.isNotBlank()) {
-                val typed = TransactionCategoryCatalog.normalize(query)
-                val hits = all.filter { it.contains(typed, ignoreCase = true) }
-                val exact = all.any { it.equals(typed, ignoreCase = true) }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    hits.forEach { c -> KashChip(c, c == pick, { pick = c }) }
-                    when {
-                        exact -> Unit
-                        onCreateCategory != null -> KashChip(
-                            "Create \u201C${typed.take(32)}\u201D", false,
-                            { val name = typed.take(32); onCreateCategory(name); pick = name; query = "" },
-                            leading = KashIcon.Plus, dashed = true,
-                        )
-                        else -> KashChip("New category", false, onNewCategory, leading = KashIcon.Plus, dashed = true)
-                    }
-                }
-            } else {
-                // First thing under the search, not after every section.
-                KashChip("New category", false, onNewCategory, leading = KashIcon.Plus, dashed = true)
-                sections.forEach { (name, cats) ->
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(name, style = KashType.Label, color = KashColors.InkMuted)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            cats.forEach { c -> KashChip(c, c == pick, { pick = c }) }
-                        }
-                    }
-                }
-            }
-        }
-        val name = tx?.counterparty?.trim()?.takeIf { it.isNotBlank() && !tx.merchantKey.isNullOrBlank() }
-        if (name != null && onToggleApplyToSimilar != null) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(KashShapes.Card)
-                    .background(KashColors.SurfaceRaised)
-                    .border(1.dp, KashColors.Line, KashShapes.Card)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Use for $name from now on", style = KashType.BodyStrong, color = KashColors.Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        "Future SMS from this sender land in ${pick ?: "this category"}",
-                        style = KashType.Caption, color = KashColors.InkMuted,
-                    )
-                }
-                KashSwitch(applyToSimilar, { onToggleApplyToSimilar() }, "Use for $name from now on")
-            }
-        }
-        KashButton(
-            pick?.let { "Use $it" } ?: "Pick one above",
-            { pick?.let(onUse) },
-            Modifier.fillMaxWidth(),
-            enabled = pick != null,
-        )
-    }
-}
-
-/**
- * The transaction being labelled, at the top of the picker. Details opens
- * in place: the full line-up and the SMS Kash read.
- */
-@Composable
-private fun PickerTransactionSummary(tx: TransactionEntity) {
-    val cal = LocalCalendarSystem.current
-    val dir = tx.kashDirection()
-    val tone = when (dir) {
-        KashDirection.In -> KashColors.MoneyIn
-        KashDirection.Out -> KashColors.MoneyOut
-        KashDirection.Transfer -> KashColors.MoneyNeutral
-    }
-    var open by remember(tx.id) { mutableStateOf(false) }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(KashShapes.Card)
-            .background(KashColors.SurfaceRaised)
-            .border(1.dp, KashColors.Line, KashShapes.Card)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KashBankBadge(tx.bankName, size = 28.dp)
-            Column(Modifier.weight(1f)) {
-                Text(tx.displayName(), style = KashType.BodyStrong, color = KashColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(KashDates.whenShort(tx.dateTime, cal), style = KashType.Caption.num(), color = KashColors.InkMuted, maxLines = 1)
-            }
-            KashFigure(tx.amount, style = KashType.BodyStrong, color = tone, unitColor = tone, sign = KashMoney.sign(dir))
-        }
-        Text(
-            if (open) "Hide details" else "Show details",
-            style = KashType.Label, color = KashColors.Ink,
-            modifier = Modifier
-                .clip(KashShapes.Chip)
-                .kashClickable(role = Role.Button) { open = !open }
-                .padding(vertical = 4.dp),
-        )
-        AnimatedVisibility(open) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                KashKeyValueList(
-                    listOf(
-                        KashKeyValue("Account", tx.accountLine(), numeric = true),
-                        KashKeyValue("When", KashDates.full(tx.dateTime, cal), numeric = true),
-                    ) + listOfNotNull(tx.balance?.let { KashKeyValue("Balance after", KashMoney.amount(it), numeric = true) }),
-                    card = false,
-                )
-                Text(
-                    tx.rawBody, style = KashType.Caption, color = KashColors.Ink,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 140.dp)
-                        .clip(KashShapes.Field)
-                        .background(KashColors.Well)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                )
-            }
-        }
-    }
-}
-
-/** AppNewCategory. */
-@Composable
-fun NewCategoryDialog(onCancel: () -> Unit, onCreate: (String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    KashDialog(title = "New category", description = "A short name to group transactions by.", onDismiss = onCancel) {
-        KashTextField(name, { name = it.take(32) }, "Name", placeholder = "e.g. Gym")
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            KashButton("Create", { if (name.isNotBlank()) onCreate(name.trim()) }, Modifier.fillMaxWidth(), enabled = name.isNotBlank())
-            KashButton("Cancel", onCancel, Modifier.fillMaxWidth(), KashButtonVariant.Quiet)
         }
     }
 }

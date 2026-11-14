@@ -326,6 +326,9 @@ fun KashTabBar(
 fun KashSheet(
     title: String,
     onDismiss: () -> Unit,
+    /** A smaller title row (the sort card), with [lead] drawn above it. */
+    compact: Boolean = false,
+    lead: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -339,22 +342,32 @@ fun KashSheet(
         scrimColor = KashColors.Backdrop,
         dragHandle = { KashHandle(Modifier.padding(top = 10.dp)) },
     ) {
-        KashSheetBody(title = title, onClose = onDismiss, content = content)
+        KashSheetBody(title = title, onClose = onDismiss, compact = compact, lead = lead, content = content)
     }
 }
 
 /** The inside of a sheet (also usable in previews). */
 @Composable
-fun KashSheetBody(title: String, onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun KashSheetBody(
+    title: String,
+    onClose: () -> Unit,
+    compact: Boolean = false,
+    lead: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(
         Modifier
             .fillMaxWidth()
             .padding(start = KashSpace.InsetApp, end = KashSpace.InsetApp, top = 4.dp, bottom = 28.dp)
             .navigationBarsPadding(),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 14.dp else 18.dp),
     ) {
+        if (lead != null) lead()
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = KashType.TitleM, color = KashColors.Ink, modifier = Modifier.weight(1f).semantics { heading() })
+            Text(
+                title, style = if (compact) KashType.TitleXs else KashType.TitleM, color = KashColors.Ink,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
             KashIconButton(KashIcon.ChevronDown, "Close", onClose)
         }
         content()

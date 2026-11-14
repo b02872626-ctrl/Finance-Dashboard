@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.financeapp.data.model.TransactionEntity
@@ -66,8 +69,10 @@ import com.financeapp.util.LocalCalendarSystem
 @Composable
 fun TransactionScreen(
     tx: TransactionEntity,
+    userName: String,
     customCategories: List<String>,
     recentCategories: List<String>,
+    categoryUsage: List<SortCard.Use>,
     onCategorySelected: (String) -> Unit,
     onAddCategory: (String) -> Unit,
     onBack: () -> Unit,
@@ -77,7 +82,6 @@ fun TransactionScreen(
     val cal = LocalCalendarSystem.current
     val dir = tx.kashDirection()
     var pickerOpen by remember { mutableStateOf(false) }
-    var newCategoryOpen by remember { mutableStateOf(false) }
     var moreOpen by rememberSaveable(tx.id) { mutableStateOf(false) }
 
     KashScreen(
@@ -96,7 +100,7 @@ fun TransactionScreen(
                         KashDirection.Out -> "Paid from ${tx.accountShort()}"
                         KashDirection.Transfer -> "Moved from ${tx.accountShort()}"
                     },
-                    style = KashType.Body, color = KashColors.OnSlateMuted,
+                    style = KashType.Caption, color = KashColors.OnSlateMuted,
                 )
                 KashFigure(tx.amount, sign = KashMoney.sign(dir))
                 Text(tx.displayName(), style = KashType.BodyL, color = KashColors.OnSlate, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -141,29 +145,18 @@ fun TransactionScreen(
     }
 
     if (pickerOpen) {
-        CategoryPicker(
-            tx = null,
-            initial = tx.category,
-            recent = recentCategories,
+        SortCardSheet(
+            tx = tx,
+            current = tx.category,
             custom = customCategories,
+            usage = categoryUsage,
+            recent = recentCategories,
+            offerOwnAccounts = looksOwnAccount(tx, userName),
             applyToSimilar = false,
             onToggleApplyToSimilar = null,
             onClose = { pickerOpen = false },
-            onNewCategory = { newCategoryOpen = true },
-            onUse = { pickerOpen = false; onCategorySelected(it) },
-            title = "Category",
-            onCreateCategory = { name -> pickerOpen = false; onAddCategory(name); onCategorySelected(name) },
-        )
-    }
-    if (newCategoryOpen) {
-        NewCategoryDialog(
-            onCancel = { newCategoryOpen = false },
-            onCreate = { name ->
-                newCategoryOpen = false
-                pickerOpen = false
-                onAddCategory(name)
-                onCategorySelected(name)
-            },
+            onPick = { pickerOpen = false; onCategorySelected(it) },
+            onCreate = { name -> pickerOpen = false; onAddCategory(name); onCategorySelected(name) },
         )
     }
 }
@@ -179,7 +172,12 @@ private fun MoreDetails(tx: TransactionEntity, open: Boolean, onToggle: () -> Un
     }
     Column {
         Row(
-            Modifier.fillMaxWidth().kashClickable(press = KashPress.Highlight, onClick = onToggle).padding(vertical = 14.dp),
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .kashClickable(press = KashPress.Highlight, onClick = onToggle)
+                .padding(vertical = 14.dp)
+                .semantics { stateDescription = if (open) "Expanded" else "Collapsed" },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(if (open) "Fewer details" else "More details", style = KashType.Body, color = KashColors.Ink, modifier = Modifier.weight(1f))

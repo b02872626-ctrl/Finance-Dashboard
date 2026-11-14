@@ -6,6 +6,35 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-14 — The sort card: your own categories, one tap sorts (canvas sections 4 and 5)
+
+The approved "Final - Approved flow" page is now the only reference. The
+category sheet in Review, on a transaction and on Add transaction becomes
+the approved sort card (`SortCardSheet`, rules in `SortCard`):
+
+- Only the user's own categories: every name they made or put on a
+  transaction, most used first (a Room count per category), then the latest
+  pick, then A–Z. No built-in catalog and no starter chips in the sheet; a
+  new user sees "None yet" and types a name. The built-in catalog
+  (`TransactionCategoryCatalog`) stays for predictions and old data.
+- Typing filters; when nothing matches exactly, "Add 'name'" makes the
+  category and sorts with it in one tap. The New category dialog is gone.
+- Tapping a chip sorts at once; there is no "Use" button. The suggestion
+  shows picked even when no row carries it yet, so one tap confirms it.
+- "Own accounts" is offered last only when the transaction looks like a
+  move between the user's accounts (the existing check), or on Add
+  transaction when the kind is Transfer.
+- The "Use for X from now on" switch reads "New payments from X too /
+  Sorts them as they come in"; same rule as before.
+
+Also from the same sections: Add transaction's kind is a segmented
+Expense / Income / Transfer control on the hero (sand when chosen, both
+themes); Category is a "Pick one" field; Save is the one disabled style
+(outline, muted text, no fade) until there is an amount and a name, and
+the system number keyboard stays. A transaction's "Received in CBE" line
+is 13sp; the More details row is 48dp. Review's swipe card is untouched
+until the next PR rebuilds Review as the approved list.
+
 ## 2026-11-14 — The app gets a dark theme; one accent per theme
 
 The approved canvas has every screen in dark (FD_) and light (FL_), and the
