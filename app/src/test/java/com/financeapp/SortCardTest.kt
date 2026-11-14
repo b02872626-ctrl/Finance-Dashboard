@@ -42,7 +42,7 @@ class SortCardTest {
     fun `search narrows the list and offers to add a name nobody has`() {
         val yours = listOf("Rent", "Groceries", "Gym")
         assertEquals(SortCard.Search(yours, null), SortCard.search("", yours))
-        assertEquals(SortCard.Search(listOf("Groceries", "Gym"), "G"), SortCard.search("g", yours))
+        assertEquals(SortCard.Search(listOf("Groceries", "Gym"), "g"), SortCard.search("g", yours))
         assertEquals(SortCard.Search(listOf("Rent"), null), SortCard.search("rent", yours))
         val fresh = SortCard.search("School fees", yours)
         assertEquals(emptyList<String>(), fresh.matches)
