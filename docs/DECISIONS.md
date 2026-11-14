@@ -6,6 +6,26 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-14 — The app gets a dark theme; one accent per theme
+
+The approved canvas has every screen in dark (FD_) and light (FL_), and the
+app was light only. Now:
+
+- `KashColors` reads a palette the theme picks: light from tokens.json,
+  dark from the canvas's dark.css. Call sites stay as they were.
+- One accent for selected states, primary buttons, the switch when on,
+  radio dots, step bars and progress fills: slate on the light sheet,
+  sand on the dark one. Sand never sits on a light sheet; the slate top
+  keeps its sand accent in both themes.
+- Settings → Appearance offers Light, Dark and Match phone. A fresh install
+  and every existing one get Match phone (the old, never-wired dark_mode
+  switch counts as Dark). Change the default here if testers prefer light.
+- Dark ink-muted is 9AA3AF, not dark.css's 8A939F: a 15sp muted label on a
+  raised card needs 4.5:1 and 8A939F gives 4.1:1. The canvas token should
+  follow. `KashPaletteTest` checks every text pairing in both themes.
+- The Goals section keeps its own dark kit; the number keyboard is the
+  phone's and follows the phone, not the app setting (owner's call).
+
 ## 2026-11-13 — Goals sync like transactions: phone first, cloud copy (NAH-14, PR C)
 
 - The phone stays the source of truth; `i_goals` / `i_goal_contributions`

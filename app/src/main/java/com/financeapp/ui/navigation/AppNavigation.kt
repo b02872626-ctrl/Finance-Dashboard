@@ -75,6 +75,7 @@ import com.financeapp.ui.screens.OnboardingFlow
 import com.financeapp.ui.screens.PinLockScreen
 import com.financeapp.ui.screens.PinSetupScreen
 import com.financeapp.ui.screens.PrivacyPage
+import com.financeapp.ui.screens.AppearancePage
 import com.financeapp.ui.screens.ReviewScreen
 import com.financeapp.ui.screens.SettingsHomeScreen
 import com.financeapp.ui.screens.SignInAgainScreen
@@ -611,6 +612,7 @@ private fun MainNavigation(
                     followedBanks = sources.count { it.enabled },
                     onBack = ::back,
                     onEditAccount = { navController.navigate("profile_edit") },
+                    onAppearance = { navController.navigate("profile_appearance") },
                     onPrivacy = { navController.navigate("profile_security") },
                     onNotifications = { navController.navigate("profile_notifications") },
                     onUpdates = { navController.navigate("profile_updates") },
@@ -625,6 +627,7 @@ private fun MainNavigation(
                 }
             }
             composable("profile_edit") { EditAccountPage(vm = setVm, onBack = ::back) }
+            composable("profile_appearance") { AppearancePage(vm = setVm, onBack = ::back) }
             composable("profile_security") { PrivacyPage(onBack = ::back) }
             composable("profile_notifications") { NotificationsPage(vm = setVm, onBack = ::back) }
             composable("profile_updates") { UpdatesPage(onBack = ::back) }

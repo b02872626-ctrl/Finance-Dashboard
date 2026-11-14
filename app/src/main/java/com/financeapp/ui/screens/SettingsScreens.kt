@@ -50,7 +50,18 @@ import com.financeapp.ui.kash.components.KashRadioRow
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.repository.ErrorLogRepository
 import com.financeapp.export.TransactionCsv
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.financeapp.ui.kash.KashColors
+import com.financeapp.ui.kash.KashPalette
+import com.financeapp.ui.kash.KashPalettes
+import com.financeapp.ui.kash.KashThemeMode
 import com.financeapp.ui.kash.KashIcon
 import com.financeapp.ui.kash.KashIconView
 import com.financeapp.ui.kash.KashShapes
@@ -138,6 +149,7 @@ fun SettingsHomeScreen(
     followedBanks: Int,
     onBack: () -> Unit,
     onEditAccount: () -> Unit,
+    onAppearance: () -> Unit,
     onPrivacy: () -> Unit,
     onNotifications: () -> Unit,
     onChangePin: () -> Unit,
@@ -152,6 +164,7 @@ fun SettingsHomeScreen(
     val notifications by vm.notificationsEnabled.collectAsState()
     val systemNotifications = rememberSystemNotificationsAllowed()
     val cal by vm.calendarSystem.collectAsState()
+    val themeMode by vm.themeMode.collectAsState()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
     KashSystemBars(darkIcons = false)
@@ -184,6 +197,7 @@ fun SettingsHomeScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             KashListGroup {
+                KashListRow("Appearance", icon = KashIcon.Appearance, value = KashThemeMode.fromStored(themeMode).label, onClick = onAppearance)
                 KashListRow("Privacy and data", icon = KashIcon.Eye, onClick = onPrivacy)
                 KashListRow("Notifications", icon = KashIcon.Sms, value = notificationsRowValue(notifications, systemNotifications), onClick = onNotifications)
                 KashListRow("Change PIN", icon = KashIcon.Lock, onClick = onChangePin)
@@ -703,5 +717,127 @@ fun ExportSheet(all: List<TransactionEntity>, onClose: () -> Unit) {
             busy = exporting,
             enabled = rows.isNotEmpty(),
         )
+    }
+}
+
+// ─── Appearance ──────────────────────────────────────────────────────────
+
+/** Settings → Appearance: Light, Dark or Match phone (canvas section 13). */
+@Composable
+fun AppearancePage(vm: SettingsViewModel, onBack: () -> Unit) {
+    val stored by vm.themeMode.collectAsState()
+    val mode = KashThemeMode.fromStored(stored)
+    SettingsPage(
+        "Appearance", onBack,
+        heroExtra = {
+            Text(
+                "Pick how Kash looks. The top stays dark in both, so your balance always stands out.",
+                style = KashType.Body.copy(fontWeight = FontWeight.Normal), color = KashColors.OnSlateMuted,
+            )
+        },
+    ) { pad ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad)) {
+            Text(
+                "Theme", style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = KashColors.InkMuted,
+                modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                KashThemeMode.entries.forEach { m ->
+                    ThemeOption(m, selected = m == mode, Modifier.weight(1f)) { vm.setThemeMode(m.name) }
+                }
+            }
+            Text(
+                "Match phone follows your phone’s setting, so Kash goes dark when your phone does.",
+                style = KashType.Caption.copy(lineHeight = 20.sp), color = KashColors.InkMuted,
+                modifier = Modifier.padding(top = 18.dp),
+            )
+        }
+    }
+}
+
+/** One theme to pick: a small Kash screen in that theme, then a radio and its name. */
+@Composable
+private fun ThemeOption(mode: KashThemeMode, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier
+            .clip(shape)
+            .border(2.dp, if (selected) KashColors.Accent else Color.Transparent, shape)
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        ThemePreview(mode)
+        Row(
+            Modifier.padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(20.dp)
+                    .clip(KashShapes.Pill)
+                    .then(
+                        if (selected) Modifier.background(KashColors.Accent)
+                        else Modifier.border(2.dp, KashColors.LineStrong, KashShapes.Pill)
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected) KashIconView(KashIcon.Check, size = 12.dp, tint = KashColors.OnAccent, strokeWidth = 3.4f)
+            }
+            Text(mode.label, style = KashType.Label.copy(fontWeight = FontWeight.SemiBold), color = KashColors.Ink)
+        }
+    }
+}
+
+/** The bottom-right half, for the Match phone preview. */
+private val DiagonalHalf = GenericShape { size, _ ->
+    moveTo(size.width, 0f)
+    lineTo(size.width, size.height)
+    lineTo(0f, size.height)
+    close()
+}
+
+/** A 150dp Kash screen in [mode]: slate top with two lines, sheet with a card and three rows. */
+@Composable
+private fun ThemePreview(mode: KashThemeMode) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(Modifier.fillMaxWidth().height(150.dp).clip(shape).border(1.dp, KashColors.Line, shape)) {
+        when (mode) {
+            KashThemeMode.LIGHT -> MiniScreen(KashPalettes.Light)
+            KashThemeMode.DARK -> MiniScreen(KashPalettes.Dark)
+            KashThemeMode.SYSTEM -> {
+                MiniScreen(KashPalettes.Light)
+                Box(Modifier.matchParentSize().clip(DiagonalHalf)) { MiniScreen(KashPalettes.Dark) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniScreen(p: KashPalette) {
+    Box(Modifier.fillMaxSize().background(p.slate)) {
+        Box(Modifier.padding(start = 10.dp, top = 14.dp).size(30.dp, 6.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = 0.5f)))
+        Box(Modifier.padding(start = 10.dp, top = 26.dp).size(48.dp, 10.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = 0.85f)))
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(98.dp)
+                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                .background(p.surface),
+        ) {
+            Box(Modifier.padding(start = 10.dp, end = 10.dp, top = 12.dp).fillMaxWidth().height(18.dp).clip(RoundedCornerShape(5.dp)).background(p.surfaceRaised))
+            listOf(38 to 26, 52 to 18, 66 to 34).forEach { (top, end) ->
+                Box(Modifier.padding(start = 10.dp, end = end.dp, top = top.dp).fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(p.lineStrong))
+            }
+        }
     }
 }

@@ -82,7 +82,7 @@ fun KashButton(
 ) {
     val quiet = variant == KashButtonVariant.Quiet || variant == KashButtonVariant.QuietOnSlate
     val (bg, fg, border) = when (variant) {
-        KashButtonVariant.Primary -> Triple(KashColors.Slate, KashColors.OnSlate, null)
+        KashButtonVariant.Primary -> Triple(KashColors.Accent, KashColors.OnAccent, null)
         KashButtonVariant.Accent -> Triple(KashColors.Sand, KashColors.SlateInk, null)
         KashButtonVariant.Secondary -> Triple(KashColors.SurfaceRaised, KashColors.Ink, KashColors.Line)
         KashButtonVariant.Danger -> Triple(KashColors.MoneyOut, KashColors.OnSlate, null)
@@ -116,8 +116,9 @@ fun KashButton(
                 Text(text, style = labelStyle, color = fg, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
             }
             if (badge != null) {
+                // The badge inverts its button: sand on slate, slate-ink on sand.
                 val (badgeBg, badgeFg) =
-                    if (variant == KashButtonVariant.Accent) KashColors.SlateInk to KashColors.Sand
+                    if (bg == KashColors.Sand) KashColors.SlateInk to KashColors.Sand
                     else KashColors.Sand to KashColors.SlateInk
                 Box(
                     modifier = Modifier
@@ -172,8 +173,8 @@ fun KashIconButton(
 // ─── Chip ────────────────────────────────────────────────────────────────
 
 /**
- * Kash.Chip: a noun. On surface the selected chip is slate; on slate
- * ([onSlate]) it is sand — that sand is the screen's one accent.
+ * Kash.Chip: a noun. On the sheet the selected chip is the accent (slate in
+ * light, sand in dark); on slate ([onSlate]) it is sand, the screen's one accent.
  * [trailing] adds a chevron ("This month ⌄", "More ›").
  */
 @Composable
@@ -192,7 +193,7 @@ fun KashChip(
     val (bgTarget, lineTarget, fgTarget) = when {
         onSlate && selected -> Triple(KashColors.Sand, KashColors.Sand, KashColors.SlateInk)
         onSlate -> Triple(KashColors.GhostFill, KashColors.GhostLine, KashColors.OnSlate)
-        selected -> Triple(KashColors.Slate, KashColors.Slate, KashColors.OnSlate)
+        selected -> Triple(KashColors.Accent, KashColors.Accent, KashColors.OnAccent)
         else -> Triple(KashColors.SurfaceRaised, KashColors.Line, KashColors.Ink)
     }
     // Selection fills in rather than snapping.
@@ -236,7 +237,7 @@ fun KashChip(
 // ─── Switch ──────────────────────────────────────────────────────────────
 
 /**
- * Kash.Switch: 46×28, acts at once. On = slate, off = line-strong.
+ * Kash.Switch: 46×28, acts at once. On = accent (slate / sand), off = line-strong.
  * [label] is the accessible name ("Track Telebirr").
  */
 @Composable
@@ -253,7 +254,7 @@ fun KashSwitch(
             .width(46.dp)
             .height(28.dp)
             .clip(KashShapes.Pill)
-            .background(if (checked) KashColors.Slate else KashColors.LineStrong)
+            .background(if (checked) KashColors.Accent else KashColors.LineStrong)
             .toggleable(
                 value = checked,
                 enabled = enabled,
@@ -269,7 +270,7 @@ fun KashSwitch(
                 .offset(x = knobX, y = 3.dp)
                 .size(22.dp)
                 .clip(KashShapes.Pill)
-                .background(KashColors.SurfaceRaised)
+                .background(if (checked) KashColors.SwitchKnobOn else KashColors.SwitchKnobOff)
         )
     }
 }

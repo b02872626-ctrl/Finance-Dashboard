@@ -645,7 +645,7 @@ private fun DrawnCheck() {
             .size(64.dp)
             .graphicsLayer { scaleX = pop.value; scaleY = pop.value }
             .clip(KashShapes.Control)
-            .background(KashColors.Slate)
+            .background(KashColors.Accent)
             .semantics { contentDescription = "Done" },
         contentAlignment = Alignment.Center,
     ) {
@@ -656,7 +656,7 @@ private fun DrawnCheck() {
             val measure = PathMeasure().apply { setPath(path, false) }
             val part = Path()
             measure.getSegment(0f, measure.length * draw.value, part, true)
-            drawPath(part, KashColors.OnSlate, style = Stroke(width = 2.4f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(part, KashColors.OnAccent, style = Stroke(width = 2.4f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
 }

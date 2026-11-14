@@ -255,7 +255,7 @@ fun KashListRow(
 
 // ─── RadioRow ────────────────────────────────────────────────────────────
 
-/** Kash.RadioRow: one choice of many; the picked row is bold with a slate dot. */
+/** Kash.RadioRow: one choice of many; the picked row is bold with an accent dot. */
 @Composable
 fun KashRadioRow(label: String, checked: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier) {
@@ -277,10 +277,10 @@ fun KashRadioRow(label: String, checked: Boolean, onClick: () -> Unit, modifier:
                 Modifier
                     .size(22.dp)
                     .clip(KashShapes.Pill)
-                    .border(2.dp, if (checked) KashColors.Slate else KashColors.LineStrong, KashShapes.Pill),
+                    .border(2.dp, if (checked) KashColors.Accent else KashColors.LineStrong, KashShapes.Pill),
                 contentAlignment = Alignment.Center,
             ) {
-                if (checked) Box(Modifier.size(10.dp).clip(KashShapes.Pill).background(KashColors.Slate))
+                if (checked) Box(Modifier.size(10.dp).clip(KashShapes.Pill).background(KashColors.Accent))
             }
             Text(
                 label,

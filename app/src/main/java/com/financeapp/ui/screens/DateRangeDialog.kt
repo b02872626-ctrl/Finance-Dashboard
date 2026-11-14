@@ -178,7 +178,7 @@ private fun MonthGrid(
                                 .clip(RoundedCornerShape(14.dp))
                                 .then(
                                     when {
-                                        isEnd -> Modifier.background(KashColors.Slate)
+                                        isEnd -> Modifier.background(KashColors.Accent)
                                         isToday -> Modifier.border(2.dp, KashColors.Ink, RoundedCornerShape(14.dp))
                                         else -> Modifier
                                     }

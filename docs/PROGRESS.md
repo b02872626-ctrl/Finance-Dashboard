@@ -5,6 +5,18 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
+- **The approved canvas, in the app (sections 4, 5, 6 of "Final - Approved
+  flow").** Three PRs, owner's decisions of 14 Nov: (1) dark theme, done,
+  see Done; (2) the sort card as approved (own categories most used first,
+  search, "Add 'name'", Own accounts chip when it looks like an own move,
+  no catalog), Transaction details, Add transaction (segmented kind, Category
+  as a "Pick one" field, Save needs amount + name, a real disabled style,
+  system keyboard kept); (3) Review as the approved list with a Review tab
+  replacing History (History from Home's "Show all"), 44dp Sort, Today /
+  This month, snackbar above the tab bar, badge from this month's pending.
+  (3) reverses NAH-36 / NAH-42 on the owner's say-so. Row names stay 15sp
+  to line up with Home. Linear issues still to be made.
+
 - **Goals section in the app (NAH-14).** The dark design (PR A, PR B)
   is on main. PR C, goals sync, is on a branch (Done, 2026-11-13), CI
   green; the owner ran `add_goal_linked_account.sql` on Supabase on
@@ -80,6 +92,14 @@ items to Done with the date, add what is next or blocked.
   account rule, see the submission checklist §5).
 
 ## Done
+
+- 2026-11-14 Dark theme in the app (canvas section 13, prerequisite for
+  the rest): Settings → Appearance with Light, Dark and Match phone
+  (default Match phone), palette-backed `KashColors`, one accent per theme
+  (slate in light, sand in dark) on buttons, chips, switches, radios, step
+  bars and progress fills, status and navigation bars follow.
+  `KashPaletteTest` (4). Not run on a phone; no Android SDK in this
+  session, so CI is the only build.
 
 - 2026-11-13 Goals sync to Supabase (NAH-14, PR C): goals and saves go to
   `i_goals` / `i_goal_contributions` on every sync pass (within a minute
