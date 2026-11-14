@@ -1,15 +1,18 @@
 name: Test APK
 
-# Builds a debug APK of any branch for a phone check, on request (Actions →
-# Test APK → Run workflow, or the API). The build points at the staging
-# Supabase project through the two staging secrets; without them Supabase
-# is off, as in CI. Not a release: those come from scripts/release.sh on main.
+# Builds a debug APK of any branch for a phone check, on request: Actions →
+# Test APK → Run workflow (once this file is on main), or a push whose commit
+# message contains "[apk]". The build points at the staging Supabase project
+# through the two staging secrets; without them Supabase is off, as in CI.
+# Not a release: those come from scripts/release.sh on main.
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   apk:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[apk]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
