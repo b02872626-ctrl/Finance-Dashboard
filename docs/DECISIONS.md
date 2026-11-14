@@ -6,6 +6,33 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-14 — Review is a list and a tab; History is reached from Home (canvas section 6)
+
+Reverses NAH-36 (swipe to categorise) and NAH-42 (tap the card for details)
+on the owner's say-so, 14 Nov: the approved "Final - Approved flow" page
+shows Review as a list, not a card.
+
+- Review lists the rows still to sort, newest first, under Today / This
+  month, with day headers and rows that line up with Home (15sp names).
+  Each row has a 44dp Sort button that opens the sort card; the row's tap
+  opens "Check this one" (details, Sort it, Not a transaction). No swipe,
+  no Skip: an unsorted row simply stays.
+- The hero counts ("5 to sort today", "All sorted"); the snackbar after a
+  sort ("Yonas Girma is Rent. New ones will be too.", Undo) sits above the
+  tab bar and the list keeps 76dp clear under its last row so it never
+  covers a Sort button.
+- The tab bar is Home, Analytics, Review, Goals. Review replaces History;
+  its badge is this month's pending count (sand with slate-ink text, none at
+  zero, 99+ cap). History ("All transactions") is reached from Home's
+  "See all" with a back button; its approved redesign (search and filters
+  on the sheet) is a separate issue.
+- Rows from before this month are not in the canvas; they are reachable
+  under This month through "Show N from before this month" (Home's "Review
+  older ones" and Analytics open there), so a fresh install's backlog is
+  never hidden.
+- The canvas's first-run tips (RvTip1–5) are not built; the Review tab's
+  badge and the hero copy carry the explanation.
+
 ## 2026-11-14 — The sort card: your own categories, one tap sorts (canvas sections 4 and 5)
 
 The approved "Final - Approved flow" page is now the only reference. The

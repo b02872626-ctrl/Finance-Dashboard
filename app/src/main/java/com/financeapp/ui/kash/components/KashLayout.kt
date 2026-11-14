@@ -64,6 +64,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.financeapp.ui.kash.num
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -252,8 +257,8 @@ fun KashTopBar(
 
 enum class KashTab(val label: String, val icon: KashIcon) {
     Home("Home", KashIcon.Home),
-    History("History", KashIcon.History),
     Analytics("Analytics", KashIcon.Chart),
+    Review("Review", KashIcon.Review),
     Goals("Goals", KashIcon.Target),
 }
 
@@ -262,13 +267,16 @@ val KashTabBarHeight: Dp = 62.dp
 
 /**
  * Kash.TabBar: four icon-only tabs; the active one is ink with a 5dp dot.
- * No text under icons. Only on the four tab screens.
+ * No text under icons. Only on the four tab screens. [badges] puts a
+ * count on a tab (Review: this month's rows to sort), sand with slate-ink
+ * text in both themes.
  */
 @Composable
 fun KashTabBar(
     active: KashTab,
     onSelect: (KashTab) -> Unit,
     modifier: Modifier = Modifier,
+    badges: Map<KashTab, String> = emptyMap(),
     /** Colours: light everywhere; the Goals section passes its dark set. */
     background: androidx.compose.ui.graphics.Color = KashColors.Surface,
     line: androidx.compose.ui.graphics.Color = KashColors.Line,
@@ -296,13 +304,34 @@ fun KashTabBar(
                             onClick = { onSelect(tab) },
                         )
                         .semantics {
-                            contentDescription = tab.label
+                            contentDescription = badges[tab]?.let { "${tab.label}, $it to sort" } ?: tab.label
                             selected = on
                         },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
                 ) {
-                    KashIconView(tab.icon, size = 22.dp, tint = tint)
+                    Box {
+                        KashIconView(tab.icon, size = 22.dp, tint = tint)
+                        val badge = badges[tab]
+                        if (badge != null) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 12.dp, y = (-6).dp)
+                                    .height(18.dp)
+                                    .defaultMinSize(minWidth = 18.dp)
+                                    .clip(KashShapes.Pill)
+                                    .background(KashColors.Sand)
+                                    .padding(horizontal = 5.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    badge, style = KashType.Micro.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold).num(),
+                                    color = KashColors.SlateInk, maxLines = 1, softWrap = false,
+                                )
+                            }
+                        }
+                    }
                     Box(
                         Modifier
                             .size(5.dp)
