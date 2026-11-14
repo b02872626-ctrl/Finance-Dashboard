@@ -108,9 +108,13 @@ fun KashTextField(
     enabled: Boolean = true,
     readOnly: Boolean = false,
     password: Boolean = false,
+    /** Show a password in clear (the eye toggle). */
+    reveal: Boolean = false,
     keyboardType: KeyboardType = KeyboardType.Text,
     imeAction: ImeAction = ImeAction.Next,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    /** Inside the field at the right: the eye toggle on a password field. */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
@@ -129,30 +133,35 @@ fun KashTextField(
                 .clip(KashShapes.Field)
                 .background(if (locked) KashColors.Well else KashColors.SurfaceRaised)
                 .border(if (focused && error == null) 2.dp else 1.dp, line, KashShapes.Field)
-                .padding(horizontal = 14.dp)
+                .padding(start = 14.dp, end = if (trailing != null) 6.dp else 14.dp)
                 .then(if (error != null) Modifier.semantics { this.error(error) } else Modifier),
             contentAlignment = Alignment.CenterStart,
         ) {
-            if (value.isEmpty() && placeholder.isNotEmpty()) {
-                Text(placeholder, style = KashType.BodyL, color = KashColors.InkMuted, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty() && placeholder.isNotEmpty()) {
+                        Text(placeholder, style = KashType.BodyL, color = KashColors.InkMuted, maxLines = 1)
+                    }
+                    BasicTextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        enabled = enabled,
+                        readOnly = readOnly,
+                        singleLine = true,
+                        textStyle = KashType.BodyL.copy(color = if (locked) KashColors.InkMuted else KashColors.Ink),
+                        cursorBrush = SolidColor(KashColors.Accent),
+                        interactionSource = source,
+                        visualTransformation = if (password && !reveal) PasswordVisualTransformation() else VisualTransformation.None,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = if (password) KeyboardType.Password else keyboardType,
+                            imeAction = imeAction,
+                        ),
+                        keyboardActions = keyboardActions,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (trailing != null) trailing()
             }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                enabled = enabled,
-                readOnly = readOnly,
-                singleLine = true,
-                textStyle = KashType.BodyL.copy(color = if (locked) KashColors.InkMuted else KashColors.Ink),
-                cursorBrush = SolidColor(KashColors.Accent),
-                interactionSource = source,
-                visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = if (password) KeyboardType.Password else keyboardType,
-                    imeAction = imeAction,
-                ),
-                keyboardActions = keyboardActions,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
         val line2 = error ?: hint
         if (line2 != null) {

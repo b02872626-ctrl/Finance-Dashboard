@@ -53,6 +53,15 @@ class SupabaseAuthClient(private val config: SupabaseConfig) {
         }
     }
 
+    /** Emails a password reset link; the web dashboard handles the link (type=recovery). */
+    fun recover(email: String) {
+        request(
+            method = "POST",
+            url = config.authBaseUrl + "recover",
+            body = JSONObject().put("email", email).toString()
+        )
+    }
+
     fun refresh(refreshToken: String): SupabaseAuthSession {
         val resp = request(
             method = "POST",

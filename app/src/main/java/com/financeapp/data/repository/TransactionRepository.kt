@@ -561,11 +561,16 @@ class TransactionRepository(
 
     suspend fun ingest(sms: SmsMessage): IngestResult = ingestDetailed(sms).result
 
-    suspend fun ingestAllReturningInserted(messages: List<SmsMessage>): List<TransactionEntity> {
+    suspend fun ingestAllReturningInserted(
+        messages: List<SmsMessage>,
+        /** Called with how many messages are done, every few and at the end. */
+        onProgress: ((Int) -> Unit)? = null,
+    ): List<TransactionEntity> {
         val inserted = mutableListOf<TransactionEntity>()
-        for (sms in messages) {
+        messages.forEachIndexed { i, sms ->
             val res = ingestDetailed(sms)
             res.inserted?.let(inserted::add)
+            if (onProgress != null && (i % 20 == 19 || i == messages.lastIndex)) onProgress(i + 1)
         }
         return inserted
     }

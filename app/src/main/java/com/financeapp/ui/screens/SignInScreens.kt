@@ -1,6 +1,22 @@
 package com.financeapp.ui.screens
 
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import com.financeapp.ui.kash.KashIcon
+import com.financeapp.ui.kash.KashIconView
+import com.financeapp.ui.kash.components.KashIconButton
+import com.financeapp.ui.kash.components.KashScreen
+import com.financeapp.ui.kash.components.KashStepBar
 import android.content.Context
 import android.content.ContextWrapper
 import android.util.Patterns
@@ -98,16 +114,33 @@ class AuthFormState(
     /** Neutral messages (e.g. "check your email to confirm"). */
     var info by mutableStateOf<String?>(null)
     var busy by mutableStateOf(AuthBusy.None)
+    /** The reset email is on its way. */
+    var resetBusy by mutableStateOf(false)
 
     val isBusy get() = busy != AuthBusy.None
 
     fun clearMessages() { error = null; info = null }
 
-    private fun validate(): String? {
-        if (email.isBlank() || password.isBlank()) return "Email and password are required."
-        if (!Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) return "Enter a valid email address."
-        if (password.length < 6) return "Password must be at least 6 characters."
-        return null
+    private fun validate(signUp: Boolean): String? =
+        AuthRules.validate(signUp, email, password) { Patterns.EMAIL_ADDRESS.matcher(it).matches() }
+
+    /** Forgot password: emails a reset link, then [onSent]. */
+    fun sendReset(onSent: () -> Unit) {
+        clearMessages()
+        AuthRules.validateEmail(email) { Patterns.EMAIL_ADDRESS.matcher(it).matches() }?.let { error = it; return }
+        val cfg = SupabaseConfigProvider.fromBuildConfig()
+            ?: run { error = "Sign-in isn't available in this version of the app."; return }
+        resetBusy = true
+        scope.launch(Dispatchers.IO) {
+            val result = runCatching { SupabaseAuthClient(cfg).recover(email.trim()) }
+            withContext(Dispatchers.Main) {
+                resetBusy = false
+                result.onSuccess { onSent() }.onFailure { ex ->
+                    error = friendlyAuthError(ex, "Couldn't send the link. Please try again.")
+                    scope.launch(Dispatchers.IO) { errorRepo.log("Supabase password reset failed", ex) }
+                }
+            }
+        }
     }
 
     private suspend fun save(session: com.financeapp.remote.SupabaseAuthSession): Boolean {
@@ -133,7 +166,7 @@ class AuthFormState(
 
     fun signIn() {
         clearMessages()
-        validate()?.let { error = it; return }
+        validate(signUp = false)?.let { error = it; return }
         val cfg = SupabaseConfigProvider.fromBuildConfig()
             ?: run { error = "Sign-in isn't available in this version of the app."; return }
         busy = AuthBusy.SignIn
@@ -151,7 +184,7 @@ class AuthFormState(
 
     fun signUp() {
         clearMessages()
-        validate()?.let { error = it; return }
+        validate(signUp = true)?.let { error = it; return }
         val cfg = SupabaseConfigProvider.fromBuildConfig()
             ?: run { error = "Sign-in isn't available in this version of the app."; return }
         busy = AuthBusy.SignUp
@@ -234,78 +267,307 @@ fun rememberAuthFormState(onSignedIn: () -> Unit): AuthFormState {
     return remember { AuthFormState(context, scope, onSignedIn) }
 }
 
+/** Which account the sheet's tabs mean. */
+enum class AuthMode(val label: String) { New("New to Kash"), Existing("I have an account") }
+
+private enum class AuthPage { Form, Forgot, Sent }
+
 /**
- * Placeholder for Google's official "Continue with Google" button: white,
- * #747775 border, Roboto Medium. The G mark is a dashed stand-in until the
- * official asset is supplied.
+ * The approved sign-in (canvas section 1, "Sign in"): slate top with the
+ * [header] (step bar or wordmark) and the heading; a sheet with the New to
+ * Kash / I have an account tabs, email, password with an eye, the main
+ * button, then Google. Forgot password is its own page behind the sheet.
  */
 @Composable
-private fun GoogleButton(onClick: () -> Unit, enabled: Boolean, busy: Boolean) {
+fun AuthScreen(
+    state: AuthFormState,
+    startMode: AuthMode,
+    header: @Composable () -> Unit,
+    body: String = "Your financial history survives a new phone and shows on the web.",
+) {
+    var mode by remember { mutableStateOf(startMode) }
+    var page by remember { mutableStateOf(AuthPage.Form) }
+    var reveal by remember { mutableStateOf(false) }
+    when (page) {
+        AuthPage.Forgot -> {
+            ForgotPasswordScreen(state, onBack = { page = AuthPage.Form }, onSent = { page = AuthPage.Sent })
+            return
+        }
+        AuthPage.Sent -> {
+            ResetSentScreen(
+                email = state.email.trim(),
+                onBack = { page = AuthPage.Forgot },
+                onBackToSignIn = { page = AuthPage.Form },
+                onResend = { state.sendReset {} },
+            )
+            return
+        }
+        AuthPage.Form -> Unit
+    }
+    val existing = mode == AuthMode.Existing
+    val submit = { if (existing) state.signIn() else state.signUp() }
+    val mainBusy = state.busy == AuthBusy.SignIn || state.busy == AuthBusy.SignUp
+    KashSystemBars(darkIcons = false)
+    KashScreen(
+        heroGap = 22.dp,
+        heroBottom = 26.dp,
+        expandable = false,
+        hero = {
+            header()
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(if (existing) "Welcome back" else "Never lose your history", style = KashType.TitleL, color = KashColors.OnSlate)
+                Text(body, style = KashType.Body, color = KashColors.OnSlateMuted, modifier = Modifier.widthIn(max = 270.dp))
+            }
+        },
+    ) { pad ->
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(pad),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            AuthTabs(mode, enabled = !state.isBusy) { mode = it; state.clearMessages() }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                KashTextField(
+                    value = state.email,
+                    onValueChange = { state.email = it; state.clearMessages() },
+                    label = "Email",
+                    placeholder = "you@example.com",
+                    keyboardType = KeyboardType.Email,
+                    enabled = !state.isBusy,
+                )
+                KashTextField(
+                    value = state.password,
+                    onValueChange = { state.password = it; state.clearMessages() },
+                    label = "Password",
+                    placeholder = if (existing) "Your password" else "At least ${AuthRules.MIN_NEW_PASSWORD} characters",
+                    password = true,
+                    reveal = reveal,
+                    enabled = !state.isBusy,
+                    imeAction = ImeAction.Done,
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    trailing = { RevealToggle(reveal) { reveal = !reveal } },
+                )
+                if (existing) {
+                    Text(
+                        "Forgot password?", style = KashType.Label, color = KashColors.InkMuted,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clip(KashShapes.Chip)
+                            .kashClickable(role = Role.Button) { state.clearMessages(); page = AuthPage.Forgot }
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                    )
+                }
+                // Every message on its own line: a Google failure never paints the password field red.
+                state.error?.let { Text(it, style = KashType.Caption, color = KashColors.MoneyOut) }
+                state.info?.let { Text(it, style = KashType.Caption, color = KashColors.InkMuted) }
+            }
+            KashButton(
+                when {
+                    state.busy == AuthBusy.SignIn -> "Signing in…"
+                    state.busy == AuthBusy.SignUp -> "Creating your account…"
+                    existing -> "Sign in"
+                    else -> "Create account"
+                },
+                submit, Modifier.fillMaxWidth(),
+                busy = mainBusy, enabled = !state.isBusy || mainBusy,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.weight(1f).height(1.dp).background(KashColors.LineStrong))
+                Text("or continue with", style = KashType.Caption, color = KashColors.InkMuted)
+                Box(Modifier.weight(1f).height(1.dp).background(KashColors.LineStrong))
+            }
+            GoogleButton(onClick = state::google, enabled = !state.isBusy || state.busy == AuthBusy.Google, busy = state.busy == AuthBusy.Google)
+            Text(
+                "Your bank messages and transactions are synced. Never your personal chats.",
+                style = KashType.Caption, color = KashColors.InkMuted, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+/** New to Kash | I have an account, on the well. */
+@Composable
+private fun AuthTabs(mode: AuthMode, enabled: Boolean, onSelect: (AuthMode) -> Unit) {
     Row(
         Modifier
-            .kashClickable(enabled = enabled, onClick = onClick)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(KashColors.Well)
+            .padding(4.dp)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        AuthMode.entries.forEach { m ->
+            val on = m == mode
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (on) KashColors.SurfaceRaised else Color.Transparent)
+                    .selectable(selected = on, enabled = enabled, role = Role.Tab, onClick = { onSelect(m) }),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    m.label,
+                    style = KashType.Label.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium),
+                    color = if (on) KashColors.Ink else KashColors.InkMuted,
+                    maxLines = 1, softWrap = false,
+                )
+            }
+        }
+    }
+}
+
+/** The eye inside the password field. */
+@Composable
+private fun RevealToggle(revealed: Boolean, onToggle: () -> Unit) {
+    Box(
+        Modifier
+            .size(40.dp)
+            .clip(KashShapes.Chip)
+            .kashClickable(onClickLabel = if (revealed) "Hide password" else "Show password", onClick = onToggle),
+        contentAlignment = Alignment.Center,
+    ) {
+        KashIconView(if (revealed) KashIcon.EyeOff else KashIcon.Eye, size = 18.dp, tint = KashColors.InkMuted)
+    }
+}
+
+/** Google's blue button with the G on a white tile at the left, as approved. */
+@Composable
+private fun GoogleButton(onClick: () -> Unit, enabled: Boolean, busy: Boolean) {
+    Box(
+        Modifier
+            .kashClickable(enabled = enabled, onClickLabel = "Continue with Google", onClick = onClick)
             .fillMaxWidth()
             .height(52.dp)
             .clip(KashShapes.Control)
-            .background(Color.White)
-            .border(1.dp, Color(0xFF747775), KashShapes.Control),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            .background(Color(0xFF1A73E8)),
     ) {
-        if (busy) {
-            KashSpinner(size = 18.dp, color = Color(0xFF1F1F1F))
-        } else {
-            Box(
-                Modifier
-                    .size(20.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .border(1.dp, Color(0xFF9A9A9A), RoundedCornerShape(4.dp)),
-                contentAlignment = Alignment.Center,
-            ) { Text("G", fontSize = 9.sp, color = Color(0xFF6F6F6F)) }
+        Box(
+            Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 4.dp)
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFF5F5F5)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (busy) KashSpinner(size = 18.dp, color = Color(0xFF1F1F1F)) else GoogleG(22.dp)
         }
         Text(
             "Continue with Google",
-            style = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 15.sp),
-            color = Color(0xFF1F1F1F),
-            maxLines = 1,
+            style = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
+            color = Color.White, maxLines = 1,
+            modifier = Modifier.align(Alignment.Center),
         )
     }
 }
 
-/** Google button, "or with email" divider, email + password with messages under them. */
+/** The four-colour G. */
 @Composable
-private fun AuthFields(state: AuthFormState, onSubmit: () -> Unit) {
-    GoogleButton(onClick = state::google, enabled = !state.isBusy || state.busy == AuthBusy.Google, busy = state.busy == AuthBusy.Google)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.weight(1f).height(1.dp).background(KashColors.LineStrong))
-        Text("or with email", style = KashType.Caption, color = KashColors.InkMuted)
-        Box(Modifier.weight(1f).height(1.dp).background(KashColors.LineStrong))
+private fun GoogleG(size: Dp) {
+    val vector = remember {
+        ImageVector.Builder(name = "GoogleG", defaultWidth = 48.dp, defaultHeight = 48.dp, viewportWidth = 48f, viewportHeight = 48f).apply {
+            listOf(
+                0xFFFFC107 to "M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 7.1 29.3 5 24 5 13.5 5 5 13.5 5 24s8.5 19 19 19 19-8.5 19-19c0-1.3-.1-2.5-.4-3.5z",
+                0xFFFF3D00 to "M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 7.1 29.3 5 24 5c-7.3 0-13.6 4.1-16.7 9.7z",
+                0xFF4CAF50 to "M24 43c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.4 34 26.8 35 24 35c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 38.6 16.2 43 24 43z",
+                0xFF1976D2 to "M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.5-.4-3.5z",
+            ).forEach { (color, d) ->
+                addPath(pathData = PathParser().parsePathString(d).toNodes(), fill = SolidColor(Color(color)))
+            }
+        }.build()
     }
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        KashTextField(
-            value = state.email,
-            onValueChange = { state.email = it; state.clearMessages() },
-            label = "Email",
-            placeholder = "you@example.com",
-            keyboardType = KeyboardType.Email,
-            enabled = !state.isBusy,
-        )
-        KashTextField(
-            value = state.password,
-            onValueChange = { state.password = it; state.clearMessages() },
-            label = "Password",
-            placeholder = "At least 6 characters",
-            password = true,
-            enabled = !state.isBusy,
-            error = state.error,
-            hint = state.info,
-            imeAction = ImeAction.Done,
-            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-        )
+    Image(vector, contentDescription = null, modifier = Modifier.size(size))
+}
+
+/** Forgot password (new): the email, then "Send reset link". */
+@Composable
+private fun ForgotPasswordScreen(state: AuthFormState, onBack: () -> Unit, onSent: () -> Unit) {
+    KashSystemBars(darkIcons = false)
+    BackHandler(onBack = onBack)
+    KashScreen(
+        heroGap = 18.dp,
+        expandable = false,
+        hero = {
+            Row { KashIconButton(KashIcon.Back, "Back", onBack, onSlate = true) }
+            Column {
+                Text("Reset your password", style = KashType.TitleM, color = KashColors.OnSlate)
+                Text("We’ll email you a link to set a new one.", style = KashType.Body, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+    ) { pad ->
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(pad).padding(top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            KashTextField(
+                value = state.email,
+                onValueChange = { state.email = it; state.clearMessages() },
+                label = "Email",
+                placeholder = "you@example.com",
+                keyboardType = KeyboardType.Email,
+                enabled = !state.resetBusy,
+                imeAction = ImeAction.Done,
+                keyboardActions = KeyboardActions(onDone = { state.sendReset(onSent) }),
+            )
+            state.error?.let { Text(it, style = KashType.Caption, color = KashColors.MoneyOut) }
+            KashButton(
+                if (state.resetBusy) "Sending…" else "Send reset link", { state.sendReset(onSent) }, Modifier.fillMaxWidth(),
+                busy = state.resetBusy,
+            )
+            Text(
+                "Signed in with Google? Reset it in your Google account.",
+                style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = KashColors.InkMuted,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
-/** Onboarding step 3 of 3 (AppSignIn). [signInFirst] starts in sign-in mode. */
+/** Reset link sent (new). */
+@Composable
+private fun ResetSentScreen(email: String, onBack: () -> Unit, onBackToSignIn: () -> Unit, onResend: () -> Unit) {
+    KashSystemBars(darkIcons = false)
+    BackHandler(onBack = onBack)
+    KashScreen(
+        heroGap = 18.dp,
+        expandable = false,
+        hero = {
+            Row { KashIconButton(KashIcon.Back, "Back", onBack, onSlate = true) }
+            Column {
+                Text("Link sent", style = KashType.TitleM, color = KashColors.OnSlate)
+                Text("Open it on this phone to set a new password.", style = KashType.Body, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+    ) { pad ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(pad), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(Modifier.height(18.dp))
+            Box(
+                Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(KashColors.Well),
+                contentAlignment = Alignment.Center,
+            ) { KashIconView(KashIcon.Sms, size = 22.dp, tint = KashColors.Ink) }
+            Text("Check your email", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.padding(top = 10.dp))
+            Text(
+                "We sent a link to $email. It works for 30 minutes.",
+                style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = KashColors.InkMuted,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp).widthIn(max = 280.dp),
+            )
+            KashButton("Back to sign in", onBackToSignIn, Modifier.fillMaxWidth().padding(top = 26.dp))
+            Text(
+                "Didn’t get it? Send again", style = KashType.Label, color = KashColors.InkMuted,
+                modifier = Modifier
+                    .padding(top = 10.dp)
+                    .clip(KashShapes.Chip)
+                    .kashClickable(role = Role.Button, onClick = onResend)
+                    .padding(vertical = 6.dp, horizontal = 8.dp),
+            )
+        }
+    }
+}
+
+/** Onboarding step 3 of 3 (Sign in). [signInFirst] starts on "I have an account". */
 @Composable
 fun OnboardingSignInStep(
     signInFirst: Boolean,
@@ -313,46 +575,22 @@ fun OnboardingSignInStep(
     onSignedIn: () -> Unit,
 ) {
     val state = rememberAuthFormState(onSignedIn)
-    var signInMode by remember { mutableStateOf(signInFirst) }
-    OnboardingPage(
-        step = 3,
-        onBack = onBack,
-        bottom = {
-            if (signInMode) {
-                KashButton(
-                    if (state.busy == AuthBusy.SignIn) "Signing in…" else "Sign in", state::signIn, Modifier.fillMaxWidth(),
-                    busy = state.busy == AuthBusy.SignIn, enabled = !state.isBusy || state.busy == AuthBusy.SignIn,
-                )
-                KashButton(
-                    "Create a new account", { signInMode = false; state.clearMessages() }, Modifier.fillMaxWidth(),
-                    KashButtonVariant.Quiet, enabled = !state.isBusy,
-                )
-            } else {
-                KashButton(
-                    if (state.busy == AuthBusy.SignUp) "Creating your account…" else "Create account", state::signUp, Modifier.fillMaxWidth(),
-                    busy = state.busy == AuthBusy.SignUp, enabled = !state.isBusy || state.busy == AuthBusy.SignUp,
-                )
-                KashButton(
-                    "I have an account — sign in", { signInMode = true; state.clearMessages() }, Modifier.fillMaxWidth(),
-                    KashButtonVariant.Quiet, enabled = !state.isBusy,
-                )
+    AuthScreen(
+        state = state,
+        startMode = if (signInFirst) AuthMode.Existing else AuthMode.New,
+        header = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                KashIconButton(KashIcon.Back, "Back", onBack, onSlate = true)
+                KashStepBar(current = 3, total = 3, modifier = Modifier.weight(1f), onSlate = true, label = "Step 3 of 3")
+                Spacer(Modifier.size(44.dp))
             }
         },
-    ) {
-        Column {
-            Text("Keep a copy\nin the cloud", style = KashType.TitleL, color = KashColors.Ink)
-            Text(
-                "Your history survives a new phone and shows on the web. It syncs whenever you are online.",
-                style = KashType.BodyL, color = KashColors.InkMuted, modifier = Modifier.padding(top = 14.dp),
-            )
-        }
-        AuthFields(state, onSubmit = { if (signInMode) state.signIn() else state.signUp() })
-    }
+    )
 }
 
 /**
- * AppSignInAgain: shown when onboarding is done but there is no session —
- * the session expired, the user logged out, or chose "Forgot PIN?".
+ * Signed out after onboarding: the session expired, the user logged out, or
+ * chose "Forgot PIN?". The same sheet, on "I have an account".
  */
 @Composable
 fun SignInAgainScreen(onSignedIn: () -> Unit) {
@@ -360,48 +598,17 @@ fun SignInAgainScreen(onSignedIn: () -> Unit) {
     val settings = remember { SettingsRepository(context.applicationContext) }
     val expired = remember { settings.isSessionExpired() }
     val state = rememberAuthFormState(onSignedIn)
-    var signUpMode by remember { mutableStateOf(false) }
-    KashSystemBars(darkIcons = !KashColors.isDark)
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(KashColors.Surface)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(start = KashSpace.InsetOnboarding, end = KashSpace.InsetOnboarding, top = KashSpace.HeaderTop, bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
-    ) {
-        Box(Modifier.height(44.dp), contentAlignment = Alignment.CenterStart) {
-            Text("kash", style = KashType.Wordmark, color = KashColors.Ink)
-        }
-        Column {
-            Text(if (signUpMode) "Create an account" else "Sign in again", style = KashType.TitleL, color = KashColors.Ink)
-            Text(
-                if (expired) "You were signed out because your session expired. Your transactions on this phone are safe."
-                else "Sign in to your Kash account. Your transactions on this phone are safe.",
-                style = KashType.BodyL, color = KashColors.InkMuted, modifier = Modifier.padding(top = 12.dp),
-            )
-        }
-        AuthFields(state, onSubmit = { if (signUpMode) state.signUp() else state.signIn() })
-        Spacer(Modifier.height(8.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (signUpMode) {
-                KashButton(
-                    if (state.busy == AuthBusy.SignUp) "Creating your account…" else "Create account", state::signUp, Modifier.fillMaxWidth(),
-                    busy = state.busy == AuthBusy.SignUp, enabled = !state.isBusy || state.busy == AuthBusy.SignUp,
-                )
-                KashButton("I have an account — sign in", { signUpMode = false; state.clearMessages() }, Modifier.fillMaxWidth(), KashButtonVariant.Quiet, enabled = !state.isBusy)
-            } else {
-                KashButton(
-                    if (state.busy == AuthBusy.SignIn) "Signing in…" else "Sign in", state::signIn, Modifier.fillMaxWidth(),
-                    busy = state.busy == AuthBusy.SignIn, enabled = !state.isBusy || state.busy == AuthBusy.SignIn,
-                )
-                KashButton("Create a new account", { signUpMode = true; state.clearMessages() }, Modifier.fillMaxWidth(), KashButtonVariant.Quiet, enabled = !state.isBusy)
+    AuthScreen(
+        state = state,
+        startMode = AuthMode.Existing,
+        header = {
+            Box(Modifier.height(44.dp), contentAlignment = Alignment.CenterStart) {
+                Text("kash", style = KashType.Wordmark, color = KashColors.OnSlate)
             }
-        }
-    }
+        },
+        body = if (expired) "You were signed out because your session expired. Your transactions on this phone are safe."
+        else "Sign in to your Kash account. Your transactions on this phone are safe.",
+    )
 }
 
 private fun findActivity(context: Context): Activity? {
