@@ -34,6 +34,14 @@ object AppTips {
     /** The sort card, first time: drawn inside the sheet (it is its own window). */
     const val SORTING_KEY = "tips_sorting"
 
+    val allTransactions = KashTipSet(
+        "tips_all_transactions", "ALL TRANSACTIONS",
+        listOf(
+            KashTip("search", "Find anything", "Every transaction lives here now. Search by name, amount or reference."),
+            KashTip("filters", "Narrow it down", "Money in or out, a month, an account, a category. The sliders button has every filter."),
+        ),
+    )
+
     val analytics = KashTipSet(
         "tips_analytics", "ANALYTICS",
         listOf(

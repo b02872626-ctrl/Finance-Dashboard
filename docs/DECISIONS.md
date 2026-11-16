@@ -6,6 +6,17 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Last audit fixes; Add keeps the phone's keyboard
+
+- All transactions tips as approved: "Find anything" (search) and "Narrow
+  it down" (filter chips), once.
+- Analytics: tapping This week / This month switches the chart to that
+  range; the picked tile gets a brighter outline.
+- Settings: bell, bank and envelope icons for Notifications, Banks Kash
+  follows and Email support; GC / EC is a sliding segmented switch.
+- The custom number keypad on Add transaction (canvas FD_AddKeyboard) is
+  not built: the owner wants the phone's own keyboard.
+
 ## 2026-11-16 — Home: Show all transactions button and "Is this account yours?"
 
 - Home's list ends with a full-width "Show all transactions" button pinned

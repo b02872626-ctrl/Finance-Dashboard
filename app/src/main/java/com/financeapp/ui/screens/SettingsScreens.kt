@@ -1,5 +1,6 @@
 package com.financeapp.ui.screens
 
+import com.financeapp.ui.kash.kashSliderIndicator
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -199,12 +200,12 @@ fun SettingsHomeScreen(
             KashListGroup {
                 KashListRow("Appearance", icon = KashIcon.Appearance, value = KashThemeMode.fromStored(themeMode).label, showInReplay = true, onClick = onAppearance)
                 KashListRow("Privacy and data", icon = KashIcon.Eye, showInReplay = true, onClick = onPrivacy)
-                KashListRow("Notifications", icon = KashIcon.Sms, value = notificationsRowValue(notifications, systemNotifications), showInReplay = true, onClick = onNotifications)
+                KashListRow("Notifications", icon = KashIcon.Bell, value = notificationsRowValue(notifications, systemNotifications), showInReplay = true, onClick = onNotifications)
                 KashListRow("Change PIN", icon = KashIcon.Lock, showInReplay = true, onClick = onChangePin)
-                KashListRow("Banks Kash follows", icon = KashIcon.Card, value = followedBanks.toString(), showInReplay = true, onClick = onBanks)
+                KashListRow("Banks Kash follows", icon = KashIcon.Bank, value = followedBanks.toString(), showInReplay = true, onClick = onBanks)
                 KashListRow("Export transactions", icon = KashIcon.Export, showInReplay = true, onClick = onExport)
                 KashListRow("Updates", icon = KashIcon.Info, value = updatesRowValue(update), showInReplay = true, onClick = onUpdates)
-                KashListRow("Email support", icon = KashIcon.External, showDivider = false, showInReplay = true, onClick = onSupport)
+                KashListRow("Email support", icon = KashIcon.Mail, showDivider = false, showInReplay = true, onClick = onSupport)
             }
             Row(
                 Modifier
@@ -221,9 +222,24 @@ fun SettingsHomeScreen(
                     Text("Calendar", style = KashType.Body, color = KashColors.Ink)
                     Text("Changes every date in the app", style = KashType.Caption, color = KashColors.InkMuted)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    KashChip("GC", cal != "ETHIOPIAN", { if (cal == "ETHIOPIAN") vm.toggleCalendarSystem() }, showInReplay = true)
-                    KashChip("EC", cal == "ETHIOPIAN", { if (cal != "ETHIOPIAN") vm.toggleCalendarSystem() }, showInReplay = true)
+                // GC / EC as a segmented switch (approved FD_Settings): the well, the pick raised, sliding.
+                val slider = com.financeapp.ui.kash.rememberKashSlider()
+                val ec = cal == "ETHIOPIAN"
+                Row(
+                    Modifier.clip(RoundedCornerShape(12.dp)).background(KashColors.Well).padding(3.dp)
+                        .kashSliderIndicator(slider, if (ec) 1 else 0, KashColors.SurfaceRaised, 9.dp),
+                ) {
+                    listOf("GC" to false, "EC" to true).forEachIndexed { i, (label, isEc) ->
+                        val on = ec == isEc
+                        Box(
+                            with(slider) { Modifier.slot(i) }.height(30.dp).clip(RoundedCornerShape(9.dp))
+                                .kashClickable(onClickLabel = if (isEc) "Ethiopian calendar" else "Gregorian calendar") { if (!on) vm.toggleCalendarSystem() }
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(label, style = KashType.Caption.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium), color = if (on) KashColors.Ink else KashColors.InkMuted)
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(18.dp))
