@@ -94,7 +94,7 @@ fun KashButton(
     // an outline with muted text, not a faded fill (Save on Add transaction).
     val off = !enabled && !busy && !quiet
     val (bg, fg, border) = when {
-        off -> Triple(Color.Transparent, KashColors.InkMuted, KashColors.LineStrong)
+        off -> Triple(KashColors.DisabledFill, KashColors.InkMuted, null)
         variant == KashButtonVariant.Primary -> Triple(KashColors.Accent, KashColors.OnAccent, null)
         variant == KashButtonVariant.Accent -> Triple(KashColors.Sand, KashColors.SlateInk, null)
         variant == KashButtonVariant.Secondary -> Triple(KashColors.SurfaceRaised, KashColors.Ink, KashColors.Line)
@@ -217,8 +217,9 @@ fun KashChip(
     val (bgTarget, lineTarget, fgTarget) = when {
         onSlate && selected -> Triple(KashColors.Sand, KashColors.Sand, KashColors.SlateInk)
         onSlate -> Triple(KashColors.GhostFill, KashColors.GhostLine, KashColors.OnSlate)
-        selected -> Triple(KashColors.Accent, KashColors.Accent, KashColors.OnAccent)
-        else -> Triple(KashColors.SurfaceRaised, KashColors.Line, KashColors.Ink)
+        selected -> Triple(KashColors.ChipOn, KashColors.ChipOn, KashColors.OnChipOn)
+        // Off chips are outlined, as approved: no fill, strong line, muted text.
+        else -> Triple(Color.Transparent, KashColors.LineStrong, KashColors.InkMuted)
     }
     // Selection fills in rather than snapping.
     val bg by animateColorAsState(bgTarget, tween(160), label = "chipBg")

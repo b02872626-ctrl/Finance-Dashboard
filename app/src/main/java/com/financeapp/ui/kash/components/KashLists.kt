@@ -207,9 +207,8 @@ fun KashListGroup(modifier: Modifier = Modifier, content: @Composable ColumnScop
     Column(
         modifier
             .fillMaxWidth()
-            .clip(KashShapes.Card)
-            .background(KashColors.SurfaceRaised)
-            .border(1.dp, KashColors.Line, KashShapes.Card),
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            .background(KashColors.SurfaceRaised),
         content = content,
     )
 }
