@@ -1,5 +1,7 @@
 package com.financeapp.ui.navigation
 
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import android.content.Intent
@@ -369,10 +371,10 @@ private fun MainNavigation(
             modifier = Modifier.fillMaxSize(),
             // Routes hard-cut. Crossing into or out of the Goals section, the
             // tab screens draw a pixel wipe from the Goals tab (GoalsCrossingFrame).
-            enterTransition = { goalsCrossing.note(initialState, targetState, pop = false); EnterTransition.None },
-            exitTransition = { goalsCrossing.note(initialState, targetState, pop = false); ExitTransition.None },
-            popEnterTransition = { goalsCrossing.note(initialState, targetState, pop = true); EnterTransition.None },
-            popExitTransition = { goalsCrossing.note(initialState, targetState, pop = true); ExitTransition.None }
+            enterTransition = { goalsCrossing.note(initialState, targetState, pop = false); KashNavMotion.enter(goalsCrossing, initialState, targetState, reducedMotion, pop = false) },
+            exitTransition = { goalsCrossing.note(initialState, targetState, pop = false); KashNavMotion.exit(goalsCrossing, initialState, targetState, reducedMotion, pop = false) },
+            popEnterTransition = { goalsCrossing.note(initialState, targetState, pop = true); KashNavMotion.enter(goalsCrossing, initialState, targetState, reducedMotion, pop = true) },
+            popExitTransition = { goalsCrossing.note(initialState, targetState, pop = true); KashNavMotion.exit(goalsCrossing, initialState, targetState, reducedMotion, pop = true) }
         ) {
             composable(Screen.Dashboard.route) {
                 GoalsCrossingFrame(isGoals = false, crossing = goalsCrossing, reduced = reducedMotion) {
@@ -699,5 +701,49 @@ private fun openSupportEmail(context: Context) {
     }
     runCatching { context.startActivity(intent) }.onFailure {
         Toast.makeText(context, "No email app found. Write to us at $address", Toast.LENGTH_LONG).show()
+    }
+}
+
+/**
+ * How screens come and go (Apple's spatial consistency: a page leaves the
+ * way it came). A page opened from a tab slides in from the right on a
+ * critically damped spring, and Back slides it out to the right; the page
+ * under it shifts a quarter-width and comes back. Tab to tab cross-fades.
+ * Crossing into or out of Goals keeps its own pixel wipe (no transition
+ * here). Reduced motion: a short fade.
+ */
+private object KashNavMotion {
+    private fun isTab(route: String?): Boolean = route != null && (
+        route == Screen.Dashboard.route || route == Screen.Analytics.route ||
+            route == Screen.Goals.route || route.startsWith(Screen.DailyReview.route)
+        )
+
+    private fun bothTabs(a: androidx.navigation.NavBackStackEntry, b: androidx.navigation.NavBackStackEntry) =
+        isTab(a.destination.route) && isTab(b.destination.route)
+
+    fun enter(
+        crossing: com.financeapp.ui.goals.GoalsCrossing,
+        from: androidx.navigation.NavBackStackEntry,
+        to: androidx.navigation.NavBackStackEntry,
+        reduced: Boolean,
+        pop: Boolean,
+    ): EnterTransition = when {
+        crossing.into != null -> EnterTransition.None
+        reduced || bothTabs(from, to) -> fadeIn(com.financeapp.ui.kash.KashSpring.settle(0.25f))
+        pop -> slideInHorizontally(com.financeapp.ui.kash.KashSpring.settle()) { -it / 4 }
+        else -> slideInHorizontally(com.financeapp.ui.kash.KashSpring.settle()) { it }
+    }
+
+    fun exit(
+        crossing: com.financeapp.ui.goals.GoalsCrossing,
+        from: androidx.navigation.NavBackStackEntry,
+        to: androidx.navigation.NavBackStackEntry,
+        reduced: Boolean,
+        pop: Boolean,
+    ): ExitTransition = when {
+        crossing.into != null -> ExitTransition.None
+        reduced || bothTabs(from, to) -> fadeOut(com.financeapp.ui.kash.KashSpring.settle(0.25f))
+        pop -> slideOutHorizontally(com.financeapp.ui.kash.KashSpring.settle()) { it }
+        else -> slideOutHorizontally(com.financeapp.ui.kash.KashSpring.settle()) { -it / 4 }
     }
 }

@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.text.font.FontWeight
@@ -268,8 +269,17 @@ fun WrappedPopup(onWatch: () -> Unit, onLater: () -> Unit) {
         onDismissRequest = onLater,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Grows in from 94% on a no-bounce spring (it appeared, nothing threw it).
+        val reduced = com.financeapp.ui.kash.rememberReducedMotion()
+        val shown = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0f) }
+        androidx.compose.runtime.LaunchedEffect(Unit) { shown.animateTo(1f, com.financeapp.ui.kash.KashSpring.settle(0.4f)) }
         Column(
             Modifier
+                .graphicsLayer {
+                    alpha = shown.value
+                    val k = 0.94f + 0.06f * shown.value
+                    scaleX = k; scaleY = k
+                }
                 .padding(horizontal = 22.dp)
                 .fillMaxWidth()
                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(28.dp))

@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.horizontalScroll
 import com.financeapp.ui.kash.components.LocalKashTips
 import com.financeapp.ui.kash.components.tipAnchor
+import com.financeapp.ui.kash.kashSliderIndicator
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -180,7 +181,7 @@ fun ReviewScreen(
                             item(key = "m$monthStart") {
                                 KashDayHeader(
                                     "${KashDates.monthYear(monthStart + 86_400_000L, cal)} · ${rows.size}",
-                                    Modifier.animateItemPlacement(),
+                                    Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f)),
                                 )
                             }
                             itemsIndexed(rows, key = { _, it -> it.id }) { i, tx ->
@@ -188,7 +189,7 @@ fun ReviewScreen(
                                     name = tx.displayName(),
                                     amount = tx.amount,
                                     direction = tx.kashDirection(),
-                                    modifier = Modifier.animateItemPlacement(),
+                                    modifier = Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f)),
                                     account = tx.accountShort(),
                                     time = KashDates.whenShort(tx.dateTime, cal),
                                     onClick = { vm.openDetail(tx) },
@@ -210,7 +211,7 @@ fun ReviewScreen(
                             item(key = "h$day") {
                                 KashDayHeader(
                                     KashDates.dayHeader(day, cal),
-                                    Modifier.animateItemPlacement(),
+                                    Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f)),
                                     net = if (state.tab == ReviewTab.MONTH) dayNet(rows) else null,
                                 )
                             }
@@ -219,7 +220,7 @@ fun ReviewScreen(
                                     name = tx.displayName(),
                                     amount = tx.amount,
                                     direction = tx.kashDirection(),
-                                    modifier = Modifier.animateItemPlacement(),
+                                    modifier = Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f)),
                                     account = tx.accountShort(),
                                     time = KashDates.time(tx.dateTime),
                                     onClick = { vm.openDetail(tx) },
@@ -306,6 +307,7 @@ internal fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
 /** Today N / This month N on the well; a check instead of a count once a slice is done. 44dp tall. */
 @Composable
 private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, earlier: Int, onSelect: (ReviewTab) -> Unit, modifier: Modifier = Modifier) {
+    val slider = com.financeapp.ui.kash.rememberKashSlider()
     Row(
         modifier
             .tipAnchor("tabs")
@@ -314,6 +316,8 @@ private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, earlier: Int, onS
             .clip(RoundedCornerShape(13.dp))
             .background(KashColors.Well)
             .padding(3.dp)
+            // The highlight slides to the picked tab (Apple-style), not a jump.
+            .kashSliderIndicator(slider, tab.ordinal, KashColors.SurfaceRaised, 10.dp)
             .selectableGroup(),
     ) {
         ReviewTab.entries.forEach { t ->
@@ -322,10 +326,9 @@ private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, earlier: Int, onS
             // Earlier shows only when there is a backlog.
             if (t == ReviewTab.EARLIER && count == 0 && !on) return@forEach
             Row(
-                Modifier
+                with(slider) { Modifier.slot(t.ordinal) }
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (on) KashColors.SurfaceRaised else androidx.compose.ui.graphics.Color.Transparent)
                     .selectable(selected = on, role = Role.Tab, onClick = { onSelect(t) })
                     .semantics { contentDescription = if (count == 0) "${t.label}, all sorted" else "${t.label}, $count to sort" }
                     .padding(horizontal = 12.dp),

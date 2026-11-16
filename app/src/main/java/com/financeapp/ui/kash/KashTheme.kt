@@ -351,10 +351,11 @@ fun Modifier.kashClickable(
         press == KashPress.Dip -> 0.92f
         else -> 1f
     }
-    // Fast in, a little bounce on the way back out.
+    // Lands on press (finger down, not up) and settles back with no wobble:
+    // nothing was thrown, so nothing overshoots.
     val scale by animateFloatAsState(
         target,
-        if (down) spring(stiffness = Spring.StiffnessHigh) else spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+        if (down) KashSpring.press() else KashSpring.settle(0.3f),
         label = "press",
     )
     val wash by animateFloatAsState(if (down && press == KashPress.Highlight) 0.05f else 0f, tween(120), label = "wash")

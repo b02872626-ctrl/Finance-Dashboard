@@ -243,7 +243,7 @@ fun KashChip(
         if (checkWhenSelected) {
             AnimatedVisibility(
                 selected,
-                enter = expandHorizontally() + scaleIn(spring(dampingRatio = 0.5f)) + fadeIn(),
+                enter = expandHorizontally(com.financeapp.ui.kash.KashSpring.settle()) + scaleIn(com.financeapp.ui.kash.KashSpring.settle()) + fadeIn(),
                 exit = shrinkHorizontally() + fadeOut(),
             ) { KashIconView(KashIcon.Check, size = 16.dp, tint = fg, strokeWidth = 2.4f) }
         }

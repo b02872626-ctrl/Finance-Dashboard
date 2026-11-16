@@ -6,6 +6,23 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Motion follows Apple's fluid-interface rules (springs, no wobble)
+
+- One set of springs (`KashSpring`), described in Apple's terms: damping
+  ratio and response. `settle` (damping 1, no overshoot) is the default for
+  everything; `flick` (0.8) only after a gesture that carried momentum.
+- Presses land on finger-down and settle back with no bounce (was a 0.5
+  damping bounce on release). The chip check and PIN dot pops no longer
+  wobble.
+- Pages slide in from the right and Back slides them out to the right (the
+  page under shifts a quarter-width); tab to tab cross-fades. The Goals
+  pixel wipe is unchanged.
+- Segmented controls (Review's Today / This month / Earlier, All
+  transactions' All / In / Out) slide their highlight to the pick.
+- The Wrapped pop-up and tip cards grow in; the tip spotlight glides from
+  one item to the next. List rows reorder on the same spring.
+- Reduced motion (Android "Remove animations"): fades or instant.
+
 ## 2026-11-16 — Dark mode: chart marks and slate icons use the approved greys
 
 - Slate is the dark theme's background, so marks drawn in Slate vanished
