@@ -9,6 +9,7 @@ import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.parsing.TransactionType
 import com.financeapp.util.KashDates
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -16,7 +17,7 @@ import java.util.*
 
 /** History's period sheet. Bounds follow the calendar setting. */
 enum class HistoryRange(val label: String) {
-    WEEK("This week"), MONTH("This month"), LAST_MONTH("Last month"), YEAR("This year"), ALL("All time"), CUSTOM("Pick dates")
+    WEEK("This week"), MONTH("This month"), LAST_MONTH("Last month"), LAST_3("Last 3 months"), YEAR("This year"), ALL("All time"), CUSTOM("Pick dates")
 }
 
 /** History's In / Out chips. Null = All (own-account moves only show under All). */
@@ -30,16 +31,80 @@ data class TransactionsFilter(
     val toMs: Long                  = Long.MAX_VALUE,
     val searchQuery: String         = "",
     val range: HistoryRange         = HistoryRange.MONTH,
-    val direction: TxDirection?     = null
+    val direction: TxDirection?     = null,
+    /** Banks to show (TransactionEntity.bankName); empty = all. */
+    val accounts: Set<String>       = emptySet(),
+    /** Categories to show; empty = all. */
+    val categories: Set<String>     = emptySet(),
+    val minAmount: Double?          = null,
+    val maxAmount: Double?          = null,
+    val showOnly: Set<ShowOnly>     = emptySet(),
 ) {
+    /** How many of the sheet's filters are on (the filter button's dot, the chips' state). */
+    val sheetFilterCount: Int get() =
+        accounts.size.coerceAtMost(1) + categories.size.coerceAtMost(1) +
+            (if (minAmount != null || maxAmount != null) 1 else 0) + showOnly.size
+
     /** Effective [from, to) for the period, in the given calendar. */
     fun bounds(calendarSystem: String, now: Long = System.currentTimeMillis()): Pair<Long, Long> = when (range) {
         HistoryRange.WEEK -> KashDates.weekStart(now) to Long.MAX_VALUE
         HistoryRange.MONTH -> KashDates.monthBounds(now, calendarSystem).first to Long.MAX_VALUE
         HistoryRange.LAST_MONTH -> KashDates.monthBounds(KashDates.monthBounds(now, calendarSystem).first - 1, calendarSystem)
+        HistoryRange.LAST_3 -> {
+            // This month and the two before it.
+            val m0 = KashDates.monthBounds(now, calendarSystem).first
+            val m1 = KashDates.monthBounds(m0 - 1, calendarSystem).first
+            KashDates.monthBounds(m1 - 1, calendarSystem).first to Long.MAX_VALUE
+        }
         HistoryRange.YEAR -> KashDates.yearBounds(now, calendarSystem).first to Long.MAX_VALUE
         HistoryRange.ALL -> 0L to Long.MAX_VALUE
         HistoryRange.CUSTOM -> fromMs to toMs
+    }
+}
+
+/** All filters → Show only. */
+enum class ShowOnly(val label: String) {
+    NOT_SORTED("Not sorted yet"), FEES("Fees"), BETWEEN_MINE("Between my accounts"), BY_HAND("Added by hand")
+}
+
+/** What All transactions keeps, besides the period. Pure; see TxFilterRulesTest. */
+object TxFilterRules {
+    fun matches(tx: TransactionEntity, f: TransactionsFilter): Boolean {
+        val q = f.searchQuery.trim()
+        if (q.isNotBlank() && !matchesSearch(tx, q)) return false
+        if (!matchesDirection(tx, f.direction)) return false
+        if (f.accounts.isNotEmpty() && f.accounts.none { it.equals(tx.bankName, true) }) return false
+        if (f.categories.isNotEmpty() && f.categories.none { it.equals(tx.category?.trim(), true) }) return false
+        f.minAmount?.let { if (tx.amount < it) return false }
+        f.maxAmount?.let { if (tx.amount > it) return false }
+        // Several "show only" picks widen each other: any of them.
+        if (f.showOnly.isNotEmpty() && f.showOnly.none { showOnly(tx, it) }) return false
+        return true
+    }
+
+    fun showOnly(tx: TransactionEntity, s: ShowOnly): Boolean = when (s) {
+        ShowOnly.NOT_SORTED -> tx.reviewStatus == com.financeapp.data.model.ReviewStatus.PENDING
+        ShowOnly.FEES -> tx.category?.trim().equals("Fees", true)
+        ShowOnly.BETWEEN_MINE -> tx.isOwnAccountTransfer()
+        ShowOnly.BY_HAND -> tx.sender == "manual"
+    }
+
+    fun matchesDirection(tx: TransactionEntity, d: TxDirection?): Boolean = when (d) {
+        null -> true
+        TxDirection.IN -> tx.isIncome()
+        TxDirection.OUT -> tx.isSpending() || (tx.type != TransactionType.CREDIT.name && !tx.isOwnAccountTransfer())
+    }
+
+    /** Name, reference, bank, category, or the amount as typed ("560", "1,250"). */
+    fun matchesSearch(tx: TransactionEntity, q: String): Boolean {
+        val digits = q.replace(",", "")
+        val amountHit = digits.isNotEmpty() && digits.all { it.isDigit() || it == '.' } &&
+            (java.math.BigDecimal(tx.amount).stripTrailingZeros().toPlainString().startsWith(digits.trimEnd('.')))
+        return amountHit ||
+            tx.counterparty?.contains(q, ignoreCase = true) == true ||
+            tx.refNumber?.contains(q, ignoreCase = true) == true ||
+            tx.bankName.contains(q, ignoreCase = true) ||
+            tx.category?.contains(q, ignoreCase = true) == true
     }
 }
 
@@ -77,10 +142,8 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
             repo.getFiltered(f.sender, f.type, from, to - 1)
                 .map { list ->
                     val q = f.searchQuery.trim()
-                    val filtered = list.filter { tx ->
-                        (q.isBlank() || matchesSearch(tx, q)) && matchesDirection(tx, f.direction)
-                    }
-                    buildDayGroups(filtered, limit, q.isNotBlank() || f.range != HistoryRange.ALL)
+                    val filtered = list.filter { tx -> TxFilterRules.matches(tx, f) }
+                    buildDayGroups(filtered, limit, q.isNotBlank() || f.range != HistoryRange.ALL || f.sheetFilterCount > 0)
                         .also { _loaded.value = true }
                 }
         }
@@ -109,6 +172,23 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
     fun setRange(r: HistoryRange) { _filter.update { it.copy(range = r) } }
     fun setDirection(d: TxDirection?) { _filter.update { it.copy(direction = d) } }
     fun clearFilters()         { _filter.value = TransactionsFilter() }
+
+    /** The banks and categories the filters sheet offers, from every transaction, most used first. */
+    val filterOptions: StateFlow<Pair<List<String>, List<String>>> = repo.getAllTransactions()
+        .map { all ->
+            val banks = all.groupingBy { it.bankName }.eachCount().entries.sortedByDescending { it.value }.map { it.key }
+            val cats = all.mapNotNull { it.category?.trim()?.takeIf { c -> c.isNotBlank() && !c.equals(com.financeapp.data.model.Spending.OWN_ACCOUNTS, true) } }
+                .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key }
+            banks to cats
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<String>() to emptyList())
+
+    /** How many rows [draft] would show ("Show 214 transactions"). */
+    suspend fun countFor(draft: TransactionsFilter): Int {
+        val (from, to) = draft.bounds(_calendar.value)
+        return repo.getFiltered(draft.sender, draft.type, from, to - 1).first().count { TxFilterRules.matches(it, draft) }
+    }
 
     fun updateCategory(id: Long, category: String?, allowBulkSuggestion: Boolean = false) {
         viewModelScope.launch {
@@ -147,7 +227,7 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
         val f = _filter.value
         val (from, to) = f.bounds(_calendar.value)
         val base = repo.getFiltered(f.sender, f.type, from, to - 1).first()
-            .filter { matchesDirection(it, f.direction) }
+            .filter { TxFilterRules.matches(it, f.copy(searchQuery = "")) }
 
         val q = f.searchQuery.trim()
         if (q.isBlank()) return base
@@ -155,17 +235,7 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
         return base.filter { tx -> matchesSearch(tx, q) }
     }
 
-    private fun matchesDirection(tx: TransactionEntity, d: TxDirection?): Boolean = when (d) {
-        null -> true
-        TxDirection.IN -> tx.isIncome()
-        TxDirection.OUT -> tx.isSpending() || (tx.type != TransactionType.CREDIT.name && !tx.isOwnAccountTransfer())
-    }
-
-    private fun matchesSearch(tx: TransactionEntity, q: String): Boolean =
-        tx.counterparty?.contains(q, ignoreCase = true) == true ||
-            tx.refNumber?.contains(q, ignoreCase = true) == true ||
-            tx.bankName.contains(q, ignoreCase = true) ||
-            tx.category?.contains(q, ignoreCase = true) == true
+    private fun matchesSearch(tx: TransactionEntity, q: String): Boolean = TxFilterRules.matchesSearch(tx, q)
 
     private suspend fun maybeSuggestBulkCategory(id: Long, category: String?) {
         val normalizedCategory = category?.trim().orEmpty()

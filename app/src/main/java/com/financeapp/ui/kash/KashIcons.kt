@@ -46,6 +46,8 @@ enum class KashIcon(vararg val paths: String) {
     Export("M12 3v12M7 10l5 5 5-5M4 20h16"),
     Calendar("M6 5h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z", "M3 10h18M8 3v4M16 3v4"),
     Search("M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0z", "M20 20l-3.5-3.5"),
+    /** All filters (the sliders, approved FD_AllTx). */
+    Filters("M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12", "M18 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z", "M12 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0z", "M20 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"),
     Share("M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 15V3M7 8l5-5 5 5"),
     Sms("M4 5h16v11H8l-4 4z"),
     Lock("M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z", "M8 11V7a4 4 0 0 1 8 0v4"),
