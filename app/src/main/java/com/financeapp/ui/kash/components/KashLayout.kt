@@ -317,7 +317,7 @@ fun KashTabBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
                 ) {
-                    Box {
+                    Box(if (tab == KashTab.Review) Modifier.tipAnchor("reviewtab") else Modifier) {
                         KashIconView(tab.icon, size = 22.dp, tint = tint)
                         val badge = badges[tab]
                         if (badge != null) {

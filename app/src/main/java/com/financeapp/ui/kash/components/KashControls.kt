@@ -65,7 +65,11 @@ import com.financeapp.ui.kash.num
 
 // ─── Button ──────────────────────────────────────────────────────────────
 
-enum class KashButtonVariant { Primary, Accent, Secondary, Danger, Quiet, QuietOnSlate }
+enum class KashButtonVariant {
+    Primary, Accent, Secondary, Danger, Quiet, QuietOnSlate,
+    /** On slate, the second choice under an Accent: ghost fill, outline, white text (Welcome). */
+    OutlineOnSlate,
+}
 
 /**
  * Kash.Button. Full width by default; labels never wrap (one line, no shrink).
@@ -96,6 +100,7 @@ fun KashButton(
         variant == KashButtonVariant.Secondary -> Triple(KashColors.SurfaceRaised, KashColors.Ink, KashColors.Line)
         variant == KashButtonVariant.Danger -> Triple(KashColors.MoneyOut, KashColors.OnSlate, null)
         variant == KashButtonVariant.Quiet -> Triple(Color.Transparent, KashColors.InkMuted, null)
+        variant == KashButtonVariant.OutlineOnSlate -> Triple(KashColors.GhostFill, KashColors.OnSlate, KashColors.OnSlateMuted)
         else -> Triple(Color.Transparent, KashColors.OnSlateMuted, null)
     }
     val height = when {
@@ -111,7 +116,7 @@ fun KashButton(
             .height(height)
             .clip(KashShapes.Control)
             .background(bg)
-            .then(if (border != null) Modifier.border(1.dp, border, KashShapes.Control) else Modifier)
+            .then(if (border != null) Modifier.border(if (variant == KashButtonVariant.OutlineOnSlate) 1.5.dp else 1.dp, border, KashShapes.Control) else Modifier)
             // Busy keeps full strength (kashClickable dims disabled ones).
             .then(if (busy) Modifier.semantics { contentDescription = text } else Modifier)
             .padding(start = 18.dp, end = if (badge != null) 8.dp else 18.dp),

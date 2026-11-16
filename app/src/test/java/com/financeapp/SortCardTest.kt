@@ -55,4 +55,13 @@ class SortCardTest {
         assertEquals(SortCard.MAX_NAME, SortCard.search(long, emptyList()).addName!!.length)
         assertNull(SortCard.search("   ", emptyList()).addName)
     }
+
+    @Test
+    fun `built-in names saved without being used stay out`() {
+        val yours = SortCard.yours(
+            custom = listOf("Edom", "Bills", "Health", "Food", "Transport"),
+            usage = listOf(Use("Edom", 4), Use("Food", 2)),
+        )
+        assertEquals(listOf("Edom", "Food"), yours)
+    }
 }

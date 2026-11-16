@@ -94,6 +94,8 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-16 Review (PR open, stacked on the onboarding PR): Review older ones off Home, Earlier tab grouped by month, lands on the first tab with something to sort and moves on, sort card hides unused built-in names, Create and sort next to the box, Review and sorting tips. Next: Goals "save daily" and Goals tips check, then release 1.0.36.
+- 2026-11-16 Onboarding from the updated canvas (PR open): first SMS read bank by bank, no restart on new SMS, Home "Getting your transactions ready" bar, no counts on Choose sources, outlined "I already have an account", new-user tips on Home, Analytics and Goals, Wrapped as a pop-up. Next: the Review changes (Review older ones off Home, land on This month, older months grouped, only your own categories, Create and sort), then Goals "save daily", then release 1.0.36.
 - 2026-11-16 1.0.35: New sign-in: tabs for Sign in and Create account, plus Forgot password; Goals: save toward something and see how close you are; Dark theme: pick Light, Dark or Match phone in Settings → Appearance; Review is now the list of your transactions and replaces History; Make a new category in one tap while sorting, and see the transaction as you do; Your categories stay after you reinstall and sign in again. Not yet installed on a real phone.
 - 2026-11-16 Session replay shows Kash's own fixed labels (screen
   titles, buttons, fixed chips, Settings rows); money, names, accounts,
