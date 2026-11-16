@@ -175,7 +175,7 @@ fun HomeScreen(
                         KashIconButton(KashIcon.Settings, "Settings", onSettings, onSlate = true)
                     }
                 }
-                BalanceBlock(state, hasAny, balanceVisible, counting = reading, progress = scan?.let { if (it.total == 0) 0f else it.done.toFloat() / it.total }, modifier = Modifier.tipAnchor("balance")) { balanceVisible = !balanceVisible }
+                BalanceBlock(state, hasAny, balanceVisible, counting = reading, progress = scan, modifier = Modifier.tipAnchor("balance")) { balanceVisible = !balanceVisible }
                 // Home, still reading: one card per bank, done / reading / waiting.
                 val p = scan
                 if (p != null) {
@@ -386,8 +386,8 @@ private fun BalanceBlock(
     hasAny: Boolean,
     visible: Boolean,
     counting: Boolean = false,
-    /** The first read's progress: a counting bar instead of the figure. */
-    progress: Float? = null,
+    /** The first read's progress: messages read so far over a bar, instead of the figure. */
+    progress: SmsIngestWorker.ScanProgress? = null,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit,
 ) {
@@ -408,15 +408,23 @@ private fun BalanceBlock(
         }
         Crossfade(state.isLoading || counting, label = "balance") { loading ->
             if (loading && progress != null) {
-                // Home, still reading: "Counting…" over a bar that fills as Kash reads.
+                // Home, still reading: "1,240 of 2,039 messages" over a bar that fills as Kash reads.
+                val fmt = remember { java.text.NumberFormat.getIntegerInstance(java.util.Locale.US) }
+                val fraction = if (progress.total == 0) 0f else (progress.done.toFloat() / progress.total).coerceIn(0f, 1f)
                 Column(
                     Modifier.padding(top = 10.dp).height(44.dp).fillMaxWidth()
-                        .semantics { contentDescription = "Counting your balance, ${(progress * 100).toInt()} percent" },
+                        .semantics { contentDescription = "Reading messages, ${progress.done} of ${progress.total}" },
                     verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
                 ) {
-                    Text("Counting…", style = KashType.Body, color = KashColors.OnSlateMuted)
+                    Text(
+                        buildAnnotatedString {
+                            append(fmt.format(progress.done))
+                            withStyle(SpanStyle(color = KashColors.OnSlateMuted)) { append(" of ${fmt.format(progress.total)} messages") }
+                        },
+                        style = KashType.Body.num(), color = KashColors.OnSlate,
+                    )
                     Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
-                        Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().clip(KashShapes.Pill).background(KashColors.Sand))
+                        Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(KashShapes.Pill).background(KashColors.Sand))
                     }
                 }
             } else if (loading) {

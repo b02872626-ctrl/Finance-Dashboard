@@ -39,7 +39,8 @@ Entries before 2026-11-05 were reconstructed from the git history.
   "Getting your transactions ready" bar instead of rows trickling in, and
   there is no overall bar or count on the hero (owner's canvas comments).
   Revised the same day (owner's comments): the one bar is a counting bar
-  under Total balance, the bank being read shows only "412 of 1,439", and
+  under Total balance with the message count over it ("1,240 of 2,039
+  messages"), the bank being read shows only "412 of 1,439", and
   the sheet shows faded rows with no card. Home keeps no search or
   filters; those belong to All transactions.
   Trade-off: a reference number seen at two banks now keeps the first
