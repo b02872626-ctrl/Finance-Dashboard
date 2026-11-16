@@ -61,7 +61,7 @@ object ProductAnalytics {
      * Fully masked replay. Kash screens are Compose, which PostHog records in
      * screenshot mode; with these masks every Text, TextField and Image is
      * painted over before the frame leaves the phone, except fixed labels
-     * marked with `Modifier.replayLabel()`. Logcat stays home.
+     * marked by `KashReplay.kt` (see ProductAnalyticsTest). Logcat stays home.
      * `ProductAnalyticsTest` keeps these switches from being turned off.
      */
     internal fun replayConfig() = PostHogSessionReplayConfig(
