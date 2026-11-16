@@ -104,7 +104,7 @@ fun AddScreen(
         heroGap = 18.dp,
         heroBottom = 30.dp,
         hero = {
-            KashTopBar("Add transaction", onBack = onClose)
+            KashTopBar("Add transaction", onBack = onClose, showInReplay = true)
             KashSegmented(
                 options = kinds.map { it.second },
                 selected = kinds.indexOfFirst { it.first == state.type }.coerceAtLeast(0),

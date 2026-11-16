@@ -60,6 +60,7 @@ import com.financeapp.ui.kash.KashSize
 import com.financeapp.ui.kash.KashTheme
 import com.financeapp.ui.kash.KashType
 import com.financeapp.ui.kash.kashClickable
+import com.financeapp.ui.kash.replayLabel
 import com.financeapp.ui.kash.num
 
 // ─── Button ──────────────────────────────────────────────────────────────
@@ -126,7 +127,12 @@ fun KashButton(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (busy) KashSpinner(size = 18.dp, color = fg)
                 else if (icon != null) KashIconView(icon, size = 18.dp, tint = fg)
-                Text(text, style = labelStyle, color = fg, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+                // Button words are Kash's own ("Save transaction", "Show 3 from before this month"):
+                // visible in session replay. Never put money or a name in a button.
+                Text(
+                    text, style = labelStyle, color = fg, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
+                    modifier = Modifier.replayLabel(),
+                )
             }
             if (badge != null) {
                 // The badge inverts its button: sand on slate, slate-ink on sand.
@@ -202,6 +208,11 @@ fun KashChip(
     dashed: Boolean = false,
     /** Show a check that scales in while selected (category choices). */
     checkWhenSelected: Boolean = false,
+    /**
+     * True only when [text] is Kash's own words ("This month", "All"): it then
+     * shows in session replay. Categories, banks and anything the user typed: false.
+     */
+    showInReplay: Boolean = false,
 ) {
     val (bgTarget, lineTarget, fgTarget) = when {
         onSlate && selected -> Triple(KashColors.Sand, KashColors.Sand, KashColors.SlateInk)
@@ -242,6 +253,7 @@ fun KashChip(
             color = if (dashed) KashColors.InkMuted else fg,
             maxLines = 1,
             softWrap = false,
+            modifier = Modifier.replayLabel(showInReplay),
         )
         if (trailing != null) KashIconView(trailing, size = 16.dp, tint = fg)
     }
@@ -289,6 +301,8 @@ fun KashSegmented(
                     style = if (on) KashType.Caption.copy(fontWeight = FontWeight.SemiBold) else KashType.Caption.copy(fontWeight = FontWeight.Medium),
                     color = if (on) KashColors.SlateInk else KashColors.OnSlateMuted,
                     maxLines = 1, softWrap = false,
+                    // Kinds like "Expense" / "Income": Kash's own words.
+                    modifier = Modifier.replayLabel(),
                 )
             }
         }

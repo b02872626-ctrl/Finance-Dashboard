@@ -14,9 +14,10 @@ import com.posthog.android.replay.PostHogSessionReplayConfig
  *
  * Only the named events [Telemetry] already tracks, plus PostHog's app
  * opened / installed / updated events. No autocapture, no screen names, no
- * surveys. Session replay is on but fully masked ([replayConfig]): every
- * text, text field and image is a grey box, logcat is not sent, so a
- * recording shows only layout and taps. Never SMS text, amounts, balances, accounts,
+ * surveys. Session replay is on but masked ([replayConfig]): every text,
+ * text field and image is a grey box, logcat is not sent, so a recording
+ * shows layout and taps. Only Kash's own fixed labels (screen titles,
+ * buttons, fixed chips, Settings rows) show, via `ui/kash/KashReplay.kt`. Never SMS text, amounts, balances, accounts,
  * names, emails or phones: properties go through [sanitize] first. A phone
  * is known only by the same random install ID as [Telemetry] and Sentry.
  * Off in debug builds and when `posthog.apiKey` is not set in local.properties.
@@ -59,7 +60,8 @@ object ProductAnalytics {
     /**
      * Fully masked replay. Kash screens are Compose, which PostHog records in
      * screenshot mode; with these masks every Text, TextField and Image is
-     * painted over before the frame leaves the phone. Logcat stays home.
+     * painted over before the frame leaves the phone, except fixed labels
+     * marked by `KashReplay.kt` (see ProductAnalyticsTest). Logcat stays home.
      * `ProductAnalyticsTest` keeps these switches from being turned off.
      */
     internal fun replayConfig() = PostHogSessionReplayConfig(

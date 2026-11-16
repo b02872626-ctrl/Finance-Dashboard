@@ -258,9 +258,9 @@ private fun OverTime(o: SpendOverview, cal: String, onPick: (SpendPreset) -> Uni
             Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            KashChip("This week", o.preset == SpendPreset.THIS_WEEK, { onPick(SpendPreset.THIS_WEEK) })
-            KashChip("This month", o.preset == SpendPreset.THIS_MONTH, { onPick(SpendPreset.THIS_MONTH) })
-            KashChip("30 days", o.preset == SpendPreset.LAST_30, { onPick(SpendPreset.LAST_30) })
+            KashChip("This week", o.preset == SpendPreset.THIS_WEEK, { onPick(SpendPreset.THIS_WEEK) }, showInReplay = true)
+            KashChip("This month", o.preset == SpendPreset.THIS_MONTH, { onPick(SpendPreset.THIS_MONTH) }, showInReplay = true)
+            KashChip("30 days", o.preset == SpendPreset.LAST_30, { onPick(SpendPreset.LAST_30) }, showInReplay = true)
             KashChip(
                 if (o.preset == SpendPreset.CUSTOM) rangeLabel(o.fromMs, o.toMs - 1, cal) else "Pick dates",
                 o.preset == SpendPreset.CUSTOM, onPickDates, leading = KashIcon.Calendar,
