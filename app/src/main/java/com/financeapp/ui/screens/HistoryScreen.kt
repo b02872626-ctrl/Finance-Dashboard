@@ -1,6 +1,29 @@
 package com.financeapp.ui.screens
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import com.financeapp.ui.kash.KashIconView
+import com.financeapp.ui.kash.KashShapes
+import com.financeapp.ui.kash.kashClickable
+import com.financeapp.ui.kash.components.KashMoney
+import com.financeapp.ui.kash.components.KashTextField
+import com.financeapp.ui.kash.components.kashBank
+import com.financeapp.viewmodel.ShowOnly
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,9 +78,11 @@ import com.financeapp.viewmodel.TransactionsViewModel
 import com.financeapp.viewmodel.TxDirection
 
 /**
- * History tab (AppHistory, AppHistoryLoading, AppHistoryEmpty,
- * AppHistoryPeriod, AppHistoryDate, AppHistoryEC, AppSmallHistory).
- * Export moved to Settings.
+ * All transactions (approved FD_AllTx / FD_Filters), reached from Home's
+ * "See all". Search and filters live here and nowhere else: the search
+ * box with the filters button, then All / In / Out and the month,
+ * account, category and amount chips, then the list by day with each
+ * day's net. The chips and the button open the Filters sheet.
  */
 @Composable
 fun HistoryScreen(
@@ -69,11 +94,13 @@ fun HistoryScreen(
     val groups by vm.transactions.collectAsState()
     val loaded by vm.loaded.collectAsState()
     val filter by vm.filter.collectAsState()
+    val options by vm.filterOptions.collectAsState()
     val cal = LocalCalendarSystem.current
     val focus = LocalFocusManager.current
     LaunchedEffect(cal) { vm.setCalendar(cal) }
 
     var periodOpen by remember { mutableStateOf(false) }
+    var filtersOpen by remember { mutableStateOf(false) }
     var datesOpen by remember { mutableStateOf(false) }
     val list = rememberLazyListState()
 
@@ -84,44 +111,44 @@ fun HistoryScreen(
     KashScreen(
         heroGap = 16.dp,
         hero = {
-            // Reached from Home's "See all", not a tab any more (the Review tab took its place).
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 KashIconButton(KashIcon.Back, "Back", onBack, onSlate = true)
                 Text("All transactions", style = KashType.TitleS.copy(fontSize = 20.sp), color = KashColors.OnSlate, modifier = Modifier.weight(1f))
-                KashIconButton(KashIcon.Calendar, "Pick dates", { datesOpen = true }, onSlate = true)
-            }
-            KashSearchField(filter.searchQuery, vm::setSearch, "Search name, category, reference", onSlate = true)
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                KashChip("All", filter.direction == null, { focus.clearFocus(); vm.setDirection(null) }, onSlate = true, showInReplay = true)
-                KashChip("In", filter.direction == TxDirection.IN, { focus.clearFocus(); vm.setDirection(TxDirection.IN) }, onSlate = true, showInReplay = true)
-                KashChip("Out", filter.direction == TxDirection.OUT, { focus.clearFocus(); vm.setDirection(TxDirection.OUT) }, onSlate = true, showInReplay = true)
-                KashChip(
-                    periodChipLabel(filter, cal), false, { focus.clearFocus(); periodOpen = true },
-                    onSlate = true, trailing = KashIcon.ChevronDown,
-                )
             }
         },
     ) { pad ->
-        when {
-            !loaded && groups.isEmpty() -> Column {
-                KashSkeleton(Modifier.padding(top = 14.dp, bottom = 6.dp), width = 64.dp, height = 10.dp)
-                repeat(4) { KashSkeletonRow() }
-                KashSkeleton(Modifier.padding(top = 14.dp, bottom = 6.dp), width = 80.dp, height = 10.dp)
-                repeat(2) { KashSkeletonRow() }
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                KashSearchField(filter.searchQuery, vm::setSearch, "Search name, amount or reference", Modifier.weight(1f))
+                FiltersButton(on = filter.sheetFilterCount > 0) { focus.clearFocus(); filtersOpen = true }
             }
-            groups.isEmpty() -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
-                KashEmptyState(KashIcon.Search, "Nothing matches", emptyText(filter, cal)) {
-                    KashButton("Clear filters", { vm.clearFilters() }, Modifier.width(200.dp), KashButtonVariant.Secondary)
+            Row(
+                Modifier.padding(top = 10.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DirectionWell(filter.direction) { focus.clearFocus(); vm.setDirection(it) }
+                KashChip(periodChipLabel(filter, cal), filter.range != HistoryRange.MONTH, { focus.clearFocus(); periodOpen = true }, trailing = KashIcon.ChevronDown, showInReplay = true)
+                KashChip(pickLabel("Account", filter.accounts.map { kashBank(it).shortName }), filter.accounts.isNotEmpty(), { focus.clearFocus(); filtersOpen = true }, trailing = KashIcon.ChevronDown)
+                KashChip(pickLabel("Category", filter.categories.toList()), filter.categories.isNotEmpty(), { focus.clearFocus(); filtersOpen = true }, trailing = KashIcon.ChevronDown)
+                KashChip(amountLabel(filter), filter.minAmount != null || filter.maxAmount != null, { focus.clearFocus(); filtersOpen = true }, trailing = KashIcon.ChevronDown)
+            }
+            when {
+                !loaded && groups.isEmpty() -> Column {
+                    KashSkeleton(Modifier.padding(top = 14.dp, bottom = 6.dp), width = 64.dp, height = 10.dp)
+                    repeat(4) { KashSkeletonRow() }
                 }
-            }
-            else -> LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = pad) {
-                groups.forEach { g ->
-                    val day = g.transactions.first().dateTime
-                    item(key = "h${g.dateKey}") { KashDayHeader(KashDates.dayHeader(day, cal), net = dayNet(g.transactions)) }
-                    items(g.transactions, key = { it.id }) { tx -> KashTxRow(tx, onClick = { onTxClick(tx.id) }) }
+                groups.isEmpty() -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+                    KashEmptyState(KashIcon.Search, "Nothing matches", emptyText(filter, cal)) {
+                        KashButton("Clear filters", { vm.clearFilters() }, Modifier.width(200.dp), KashButtonVariant.Secondary)
+                    }
+                }
+                else -> LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = pad) {
+                    groups.forEach { g ->
+                        val day = g.transactions.first().dateTime
+                        item(key = "h${g.dateKey}") { KashDayHeader(KashDates.dayHeader(day, cal), net = dayNet(g.transactions)) }
+                        items(g.transactions, key = { it.id }) { tx -> KashTxRow(tx, onClick = { onTxClick(tx.id) }) }
+                    }
                 }
             }
         }
@@ -130,7 +157,7 @@ fun HistoryScreen(
     if (periodOpen) {
         KashSheet("Show transactions from", onDismiss = { periodOpen = false }) {
             Column {
-                listOf(HistoryRange.WEEK, HistoryRange.MONTH, HistoryRange.LAST_MONTH, HistoryRange.YEAR, HistoryRange.ALL).forEach { r ->
+                listOf(HistoryRange.WEEK, HistoryRange.MONTH, HistoryRange.LAST_MONTH, HistoryRange.LAST_3, HistoryRange.YEAR, HistoryRange.ALL).forEach { r ->
                     KashRadioRow(r.label, filter.range == r, { vm.setRange(r); periodOpen = false })
                 }
                 KashListRow(
@@ -150,6 +177,185 @@ fun HistoryScreen(
             onApply = { from, to -> datesOpen = false; vm.setDateFilter(from, to) },
         )
     }
+    if (filtersOpen) {
+        FiltersSheet(
+            initial = filter,
+            banks = options.first,
+            categories = options.second,
+            count = vm::countFor,
+            onApply = { vm.setFilter(it); filtersOpen = false },
+            onDismiss = { filtersOpen = false },
+        )
+    }
+}
+
+/** The 46dp filters button beside the search box; a sand dot while any sheet filter is on. */
+@Composable
+private fun FiltersButton(on: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .kashClickable(onClickLabel = "All filters", onClick = onClick)
+            .size(46.dp)
+            .clip(KashShapes.Field)
+            .background(KashColors.Well),
+        contentAlignment = Alignment.Center,
+    ) {
+        KashIconView(KashIcon.Filters, size = 18.dp, tint = KashColors.Ink, contentDescription = "All filters")
+        if (on) Box(Modifier.align(Alignment.TopEnd).padding(9.dp).size(8.dp).clip(KashShapes.Pill).background(KashColors.Sand))
+    }
+}
+
+/** All / In / Out on the well (approved FD_AllTx). */
+@Composable
+private fun DirectionWell(direction: TxDirection?, onPick: (TxDirection?) -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(12.dp)).background(KashColors.Well).padding(3.dp).selectableGroup(),
+    ) {
+        listOf<Pair<String, TxDirection?>>("All" to null, "In" to TxDirection.IN, "Out" to TxDirection.OUT).forEach { (label, d) ->
+            val on = direction == d
+            Box(
+                Modifier
+                    .height(30.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(if (on) KashColors.SurfaceRaised else androidx.compose.ui.graphics.Color.Transparent)
+                    .selectable(selected = on, role = Role.Tab, onClick = { onPick(d) })
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    style = KashType.Caption.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium),
+                    color = if (on) KashColors.Ink else KashColors.InkMuted, maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/** "Account", "CBE", or "CBE +1". */
+internal fun pickLabel(none: String, picked: List<String>): String = when (picked.size) {
+    0 -> none
+    1 -> picked.first()
+    else -> "${picked.first()} +${picked.size - 1}"
+}
+
+/** "Amount", "100–500", "From 100", "Up to 500". */
+internal fun amountLabel(f: TransactionsFilter): String {
+    fun n(v: Double) = KashMoney.whole(v)
+    val lo = f.minAmount; val hi = f.maxAmount
+    return when {
+        lo != null && hi != null -> "${n(lo)}–${n(hi)}"
+        lo != null -> "From ${n(lo)}"
+        hi != null -> "Up to ${n(hi)}"
+        else -> "Amount"
+    }
+}
+
+/**
+ * All filters (approved FD_Filters): when, accounts, category, amount and
+ * "show only", applied together with "Show N transactions". Reset clears
+ * them back to this month.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FiltersSheet(
+    initial: TransactionsFilter,
+    banks: List<String>,
+    categories: List<String>,
+    count: suspend (TransactionsFilter) -> Int,
+    onApply: (TransactionsFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val cal = LocalCalendarSystem.current
+    var draft by remember { mutableStateOf(initial) }
+    var allCats by remember { mutableStateOf(false) }
+    var datesOpen by remember { mutableStateOf(false) }
+    var min by remember { mutableStateOf(initial.minAmount?.let { KashMoney.whole(it).replace(",", "") }.orEmpty()) }
+    var max by remember { mutableStateOf(initial.maxAmount?.let { KashMoney.whole(it).replace(",", "") }.orEmpty()) }
+    var shown by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(draft) { shown = count(draft) }
+    fun setAmounts(lo: String, hi: String) {
+        min = lo.filter { it.isDigit() || it == '.' }; max = hi.filter { it.isDigit() || it == '.' }
+        draft = draft.copy(minAmount = min.toDoubleOrNull(), maxAmount = max.toDoubleOrNull())
+    }
+
+    KashSheet("Filters", onDismiss = onDismiss) {
+        Column(
+            Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                "Reset", style = KashType.Label, color = KashColors.InkMuted,
+                modifier = Modifier.align(Alignment.End).kashClickable(onClickLabel = "Reset filters", onClick = {
+                    draft = TransactionsFilter(searchQuery = draft.searchQuery, direction = draft.direction); min = ""; max = ""
+                }).padding(vertical = 4.dp),
+            )
+            FilterLabel("When")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(HistoryRange.MONTH, HistoryRange.LAST_MONTH, HistoryRange.LAST_3).forEach { r ->
+                    KashChip(r.label, draft.range == r, { draft = draft.copy(range = r) }, showInReplay = true)
+                }
+                KashChip(
+                    if (draft.range == HistoryRange.CUSTOM) rangeLabel(draft.fromMs, draft.toMs - 1, cal) else "Pick dates",
+                    draft.range == HistoryRange.CUSTOM, { datesOpen = true }, leading = KashIcon.Calendar,
+                )
+            }
+            if (banks.size > 1) {
+                FilterLabel("Accounts")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    banks.forEach { b ->
+                        val on = b in draft.accounts
+                        KashChip(kashBank(b).shortName, on, { draft = draft.copy(accounts = if (on) draft.accounts - b else draft.accounts + b) }, checkWhenSelected = true)
+                    }
+                }
+            }
+            if (categories.isNotEmpty()) {
+                FilterLabel("Category")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val shownCats = if (allCats) categories else categories.take(5)
+                    shownCats.forEach { c ->
+                        val on = c in draft.categories
+                        KashChip(c, on, { draft = draft.copy(categories = if (on) draft.categories - c else draft.categories + c) }, checkWhenSelected = true)
+                    }
+                    if (!allCats && categories.size > 5) KashChip("All categories ›", false, { allCats = true }, showInReplay = true)
+                }
+            }
+            FilterLabel("Amount (ETB)")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                KashTextField(min, { setAmounts(it, max) }, "", Modifier.weight(1f), placeholder = "Min", keyboardType = KeyboardType.Decimal)
+                Text("–", color = KashColors.InkFaint)
+                KashTextField(max, { setAmounts(min, it) }, "", Modifier.weight(1f), placeholder = "Max", keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done)
+            }
+            FilterLabel("Show only")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ShowOnly.entries.forEach { o ->
+                    val on = o in draft.showOnly
+                    KashChip(o.label, on, { draft = draft.copy(showOnly = if (on) draft.showOnly - o else draft.showOnly + o) }, checkWhenSelected = true, showInReplay = true)
+                }
+            }
+        }
+        val n = shown
+        KashButton(
+            when (n) { null -> "Show transactions"; 1 -> "Show 1 transaction"; else -> "Show ${KashMoney.whole(n.toDouble())} transactions" },
+            { onApply(draft) }, Modifier.fillMaxWidth().padding(top = 10.dp), KashButtonVariant.Accent,
+            enabled = n != 0,
+        )
+    }
+    if (datesOpen) {
+        val custom = draft.range == HistoryRange.CUSTOM
+        DateRangeDialog(
+            calendarSystem = cal,
+            initialFrom = if (custom) draft.fromMs else null,
+            initialTo = if (custom) draft.toMs else null,
+            onDismiss = { datesOpen = false },
+            onApply = { from, to -> datesOpen = false; draft = draft.copy(fromMs = from, toMs = to, range = HistoryRange.CUSTOM) },
+        )
+    }
+}
+
+@Composable
+private fun FilterLabel(text: String) {
+    Text(text, style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = KashColors.InkMuted, modifier = Modifier.padding(top = 10.dp))
 }
 
 /** "This month" (Gregorian) / "Tikimt" (Ethiopian) / "20 – 26 Oct". */
@@ -171,6 +377,7 @@ private fun emptyText(f: TransactionsFilter, cal: String): String {
         HistoryRange.WEEK -> " this week"
         HistoryRange.MONTH -> " this month"
         HistoryRange.LAST_MONTH -> " last month"
+        HistoryRange.LAST_3 -> " in the last 3 months"
         HistoryRange.YEAR -> " this year"
         HistoryRange.ALL -> ""
         HistoryRange.CUSTOM -> " on these days"

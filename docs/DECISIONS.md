@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — All transactions as approved: search and filters live only here
+
+- "See all" opens All transactions (approved FD_AllTx / FD_Filters): back
+  and title on top, then the search box with a filters button, All / In /
+  Out, and month, account, category and amount chips, then the list by
+  day with each day's net.
+- The Filters sheet: When (this month, last month, last 3 months, pick
+  dates), Accounts, Category (most used five, then all), Amount min–max,
+  Show only (not sorted yet, fees, between my accounts, added by hand),
+  applied with "Show N transactions". Several "show only" picks widen
+  each other (any of them); everything else narrows.
+- Search also matches the amount as typed ("1,250"). Home keeps no search
+  or filters.
 ## 2026-11-16 — Home has no Review button or "All caught up" status
 
 - Home's hero is the balance and the account cards, nothing else (owner:
