@@ -187,6 +187,12 @@ object SmsParserEngine {
     fun isFinancialSms(sender: String): Boolean =
         financialSenders.any { it.equals(sender.trim(), ignoreCase = true) }
 
+    /** The bank a sender belongs to ("127" → Telebirr), from the sender alone; the sender itself when unknown. */
+    fun senderBankName(sender: String): String {
+        val s = sender.trim()
+        return senderBankNames.entries.firstOrNull { it.key.equals(s, ignoreCase = true) }?.value ?: s
+    }
+
     fun inferBankName(sms: SmsMessage): String {
         val parsed = parse(sms)
         if (parsed != null && parsed.type != TransactionType.UNKNOWN.name && !parsed.bankName.startsWith("Unknown")) {

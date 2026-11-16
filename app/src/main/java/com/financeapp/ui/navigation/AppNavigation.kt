@@ -204,6 +204,9 @@ fun AppNavigation(
 
         // A tapped in-app notice navigates like a notification would.
         var noticeRoute by remember { mutableStateOf<String?>(null) }
+        // New-user tips: screens mark what a tip points at; drawn over everything.
+        val tips = remember { com.financeapp.ui.kash.components.KashTipsState.of(appContext) }
+        CompositionLocalProvider(com.financeapp.ui.kash.components.LocalKashTips provides tips) {
         Box(Modifier.fillMaxSize()) {
             MainNavigation(
                 repo = repo,
@@ -215,6 +218,8 @@ fun AppNavigation(
                 onPendingRouteHandled = { noticeRoute = null; onPendingRouteHandled() }
             )
             InAppNoticeHost(onOpen = { noticeRoute = it })
+            com.financeapp.ui.kash.components.KashTipsHost(tips)
+        }
         }
     }
 }

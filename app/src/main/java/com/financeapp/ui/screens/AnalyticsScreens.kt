@@ -1,6 +1,8 @@
 package com.financeapp.ui.screens
 
 import androidx.compose.foundation.Canvas
+import com.financeapp.ui.kash.components.LocalKashTips
+import com.financeapp.ui.kash.components.tipAnchor
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -117,13 +119,18 @@ fun AnalyticsTabScreen(
     val lastWrapped by vm.lastMonthWrapped.collectAsState()
     val r by vm.report.collectAsState()
     var pickDates by remember { mutableStateOf(false) }
+    // First visit: the Analytics tips, once the numbers are in.
+    val tips = LocalKashTips.current
+    LaunchedEffect(o.isLoading) {
+        if (!o.isLoading) { kotlinx.coroutines.delay(700); tips?.offer(AppTips.analytics) }
+    }
 
     KashScreen(
         tabBar = tabBar,
         heroGap = 18.dp,
         hero = {
             Text("Analytics", style = KashType.TitleM, color = KashColors.OnSlate)
-            Column {
+            Column(Modifier.tipAnchor("daily")) {
                 Text("Spent today", style = KashType.Body, color = KashColors.OnSlateMuted)
                 if (o.isLoading) KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
                 else {
@@ -134,7 +141,7 @@ fun AnalyticsTabScreen(
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.tipAnchor("daily#2"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile(
                     "This week", if (o.isLoading) null else KashMoney.whole(o.weekSpent), Modifier.weight(1f),
                     change = o.weekChangePct, changeVs = "last week",
@@ -227,8 +234,8 @@ private fun StatTile(label: String, value: String?, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun Section(title: String, aside: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Column {
+private fun Section(title: String, aside: String? = null, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(title, style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f).semantics { heading() })
             if (aside != null) Text(aside, style = KashType.Caption.num(), color = KashColors.InkMuted)
@@ -246,7 +253,7 @@ private fun OverTime(o: SpendOverview, cal: String, onPick: (SpendPreset) -> Uni
         SpendPreset.LAST_30 -> "the 30 days before"
         SpendPreset.CUSTOM -> "the days before"
     }
-    Section("Spending over time") {
+    Section("Spending over time", modifier = Modifier.tipAnchor("chart")) {
         Row(
             Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

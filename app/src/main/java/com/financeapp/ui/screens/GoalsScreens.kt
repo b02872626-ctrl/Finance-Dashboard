@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.financeapp.ui.kash.components.LocalKashTips
+import com.financeapp.ui.kash.components.tipAnchor
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -128,6 +131,17 @@ fun GoalsScreen(
     val empty = !state.isLoading && active.isEmpty() && reached.isEmpty()
     var showReached by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val reachedOpen = showReached ?: active.isEmpty()
+    // First visit: the Goals tips (after the crossing wipe settles).
+    val tips = LocalKashTips.current
+    val first = active.firstOrNull()
+    LaunchedEffect(state.isLoading, empty, first?.goal?.id) {
+        if (state.isLoading) return@LaunchedEffect
+        kotlinx.coroutines.delay(900)
+        when {
+            empty -> tips?.offer(AppTips.goalsEmpty)
+            first != null -> tips?.offer(AppTips.goals(first.goal.name, state.accountLabel(first.goal.linkedAccountKey)))
+        }
+    }
 
     GoalsFrame(
         tabBar = tabBar,
@@ -135,7 +149,7 @@ fun GoalsScreen(
         hero = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Goals", style = KashType.TitleM, color = GoalsColors.HeroInk, modifier = Modifier.weight(1f).semantics { heading() })
-                if (!empty) GoalsIconButton(KashIcon.Plus, "New goal", onNewGoal)
+                if (!empty) GoalsIconButton(KashIcon.Plus, "New goal", onNewGoal, Modifier.tipAnchor("newgoal"))
             }
             when {
                 empty -> Column {
@@ -181,15 +195,17 @@ fun GoalsScreen(
             }
             empty -> Column(Modifier.padding(pad), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Pick one to start", style = KashType.Label, color = GoalsColors.InkMuted, modifier = Modifier.padding(top = 4.dp))
-                KindCards(selected = null, onPick = onStartKind)
+                Column(Modifier.tipAnchor("kinds")) { KindCards(selected = null, onPick = onStartKind) }
             }
             else -> LazyColumn(contentPadding = pad, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (active.size == 1 && reached.isEmpty()) {
                     val r = active.single()
-                    item(key = r.goal.id) { GoalCard(r, state.accountLabel(r.goal.linkedAccountKey), large = true) { onOpenGoal(r.goal.id) } }
+                    item(key = r.goal.id) { Box(Modifier.tipAnchor("goal")) { GoalCard(r, state.accountLabel(r.goal.linkedAccountKey), large = true) { onOpenGoal(r.goal.id) } } }
                 } else {
-                    items(active, key = { it.goal.id }) { r ->
-                        GoalCard(r, state.accountLabel(r.goal.linkedAccountKey)) { onOpenGoal(r.goal.id) }
+                    itemsIndexed(active, key = { _, it -> it.goal.id }) { i, r ->
+                        Box(if (i == 0) Modifier.tipAnchor("goal") else Modifier) {
+                            GoalCard(r, state.accountLabel(r.goal.linkedAccountKey)) { onOpenGoal(r.goal.id) }
+                        }
                     }
                 }
                 if (active.isEmpty()) item(key = "all-reached") { AllReached(onNewGoal) }
