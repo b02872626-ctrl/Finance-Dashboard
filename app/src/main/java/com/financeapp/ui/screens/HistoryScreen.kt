@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.financeapp.ui.kash.KashIconView
 import com.financeapp.ui.kash.KashShapes
 import com.financeapp.ui.kash.kashClickable
+import com.financeapp.ui.kash.kashSliderIndicator
 import com.financeapp.ui.kash.components.KashMoney
 import com.financeapp.ui.kash.components.KashTextField
 import com.financeapp.ui.kash.components.kashBank
@@ -208,16 +209,19 @@ private fun FiltersButton(on: Boolean, onClick: () -> Unit) {
 /** All / In / Out on the well (approved FD_AllTx). */
 @Composable
 private fun DirectionWell(direction: TxDirection?, onPick: (TxDirection?) -> Unit) {
+    val slider = com.financeapp.ui.kash.rememberKashSlider()
+    val options = listOf<Pair<String, TxDirection?>>("All" to null, "In" to TxDirection.IN, "Out" to TxDirection.OUT)
     Row(
-        Modifier.clip(RoundedCornerShape(12.dp)).background(KashColors.Well).padding(3.dp).selectableGroup(),
+        Modifier.clip(RoundedCornerShape(12.dp)).background(KashColors.Well).padding(3.dp)
+            .kashSliderIndicator(slider, options.indexOfFirst { it.second == direction }, KashColors.SurfaceRaised, 9.dp)
+            .selectableGroup(),
     ) {
-        listOf<Pair<String, TxDirection?>>("All" to null, "In" to TxDirection.IN, "Out" to TxDirection.OUT).forEach { (label, d) ->
+        options.forEachIndexed { i, (label, d) ->
             val on = direction == d
             Box(
-                Modifier
+                with(slider) { Modifier.slot(i) }
                     .height(30.dp)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(if (on) KashColors.SurfaceRaised else androidx.compose.ui.graphics.Color.Transparent)
                     .selectable(selected = on, role = Role.Tab, onClick = { onPick(d) })
                     .padding(horizontal = 14.dp),
                 contentAlignment = Alignment.Center,

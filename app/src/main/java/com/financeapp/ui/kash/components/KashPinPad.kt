@@ -72,7 +72,7 @@ fun KashPinDots(
     LaunchedEffect(success) {
         if (success && !reduced) {
             pulse.animateTo(1.25f, tween(120))
-            pulse.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+            pulse.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium))
         }
     }
     Row(
@@ -87,7 +87,7 @@ fun KashPinDots(
             LaunchedEffect(on) {
                 if (on && !success && !reduced) {
                     pop.snapTo(1.35f)
-                    pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium))
+                    pop.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium))
                 }
             }
             Box(

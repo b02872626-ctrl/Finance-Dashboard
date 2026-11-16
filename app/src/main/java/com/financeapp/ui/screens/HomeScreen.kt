@@ -252,9 +252,9 @@ fun HomeScreen(
                         }
                         LazyColumn(Modifier.fillMaxSize(), contentPadding = pad) {
                             groups.forEach { (day, rows) ->
-                                item(key = "h$day") { KashDayHeader(KashDates.dayHeader(day, cal), Modifier.animateItemPlacement()) }
+                                item(key = "h$day") { KashDayHeader(KashDates.dayHeader(day, cal), Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f))) }
                                 items(rows, key = { it.id }) { tx ->
-                                    FreshRow(fresh = known != null && tx.id !in known!!, modifier = Modifier.animateItemPlacement()) {
+                                    FreshRow(fresh = known != null && tx.id !in known!!, modifier = Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f))) {
                                         KashTxRow(tx, onClick = { onTxClick(tx.id) })
                                     }
                                 }

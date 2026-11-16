@@ -60,6 +60,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashType
 import com.financeapp.ui.kash.kashClickable
@@ -180,7 +181,34 @@ fun KashTipsHost(tips: KashTipsState) {
     LaunchedEffect(set.key, tips.index) { tips.requesters[tip.anchor]?.bringIntoView() }
 
     var origin by remember { mutableStateOf(Offset.Zero) }
-    val anchor = tips.rectOf(tip.anchor)?.translate(-origin)
+    val target = tips.rectOf(tip.anchor)?.translate(-origin)
+    // The spotlight glides from one item to the next on a no-bounce spring
+    // (it starts where it is, so a quick Next turns it smoothly); the card
+    // grows in from 96% each time it changes.
+    val reduced = com.financeapp.ui.kash.rememberReducedMotion()
+    val l = remember { androidx.compose.animation.core.Animatable(0f) }
+    val t = remember { androidx.compose.animation.core.Animatable(0f) }
+    val r = remember { androidx.compose.animation.core.Animatable(0f) }
+    val b = remember { androidx.compose.animation.core.Animatable(0f) }
+    var placed by remember { mutableStateOf(false) }
+    val cardIn = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(target) {
+        val to = target ?: return@LaunchedEffect
+        if (!placed || reduced) {
+            l.snapTo(to.left); t.snapTo(to.top); r.snapTo(to.right); b.snapTo(to.bottom); placed = true
+            return@LaunchedEffect
+        }
+        val spec = com.financeapp.ui.kash.KashSpring.settle<Float>(0.4f)
+        kotlinx.coroutines.coroutineScope {
+            launch { l.animateTo(to.left, spec) }; launch { t.animateTo(to.top, spec) }
+            launch { r.animateTo(to.right, spec) }; launch { b.animateTo(to.bottom, spec) }
+        }
+    }
+    LaunchedEffect(set.key, tips.index) {
+        if (reduced) { cardIn.snapTo(1f); return@LaunchedEffect }
+        cardIn.snapTo(0f); cardIn.animateTo(1f, com.financeapp.ui.kash.KashSpring.settle(0.35f))
+    }
+    val anchor = if (target != null && placed) Rect(l.value, t.value, r.value, b.value) else target
     Box(
         Modifier
             .fillMaxSize()
@@ -214,6 +242,11 @@ fun KashTipsHost(tips: KashTipsState) {
         // The card sits under the anchor, or above it when there's no room below.
         Layout(
             content = {
+                Box(Modifier.graphicsLayer {
+                    alpha = cardIn.value
+                    val k = 0.96f + 0.04f * cardIn.value
+                    scaleX = k; scaleY = k
+                }) {
                 TipCard(
                     count = if (set.tips.size > 1) "${set.label} · ${tips.index + 1} OF ${set.tips.size}" else set.label,
                     title = tip.title,
@@ -223,6 +256,7 @@ fun KashTipsHost(tips: KashTipsState) {
                     onNext = tips::next,
                     onSkip = tips::finish,
                 )
+                }
             },
             modifier = Modifier.fillMaxSize(),
         ) { measurables, constraints ->
