@@ -12,6 +12,7 @@ import com.financeapp.data.repository.ErrorLogRepository
 import com.financeapp.data.repository.SettingsRepository
 import com.financeapp.data.repository.TransactionRepository
 import com.financeapp.notifications.TransactionTriggers
+import com.financeapp.parsing.SmsParserEngine
 import com.financeapp.remote.SupabaseSyncScheduler
 import com.financeapp.remote.Telemetry
 
@@ -37,9 +38,23 @@ class SmsIngestWorker(
             // First run (empty ledger) and upgrade rescans replay history:
             // no transaction-level alerts from those.
             val firstRun = repo.countTransactions() == 0
-            progress.value = ScanProgress(0, messages.size)
-            val ingested = try {
-                repo.ingestAllReturningInserted(messages) { done -> progress.value = ScanProgress(done, messages.size) }
+            // One bank at a time, smallest first, so Home shows a bank done
+            // (with its balance) within seconds instead of every bank at the
+            // very end. Each bank's SMS stay oldest first.
+            val byBank = SmsBatches.byBank(messages) { SmsParserEngine.senderBankName(it.sender) }
+            // Home's "Reading your SMS" is for the first full read only; the
+            // quick scans after it (app opened, new SMS) stay out of sight.
+            val scanPrefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val showProgress = !scanPrefs.getBoolean(KEY_HISTORY_DONE, false)
+            val ingested = mutableListOf<com.financeapp.data.model.TransactionEntity>()
+            try {
+                if (showProgress) progress.value = ScanProgress.start(byBank)
+                byBank.forEachIndexed { b, (_, batch) ->
+                    ingested += repo.ingestAllReturningInserted(batch) { done ->
+                        if (showProgress) progress.value = progress.value?.withBank(b, done)
+                    }
+                }
+                scanPrefs.edit().putBoolean(KEY_HISTORY_DONE, true).apply()
             } finally {
                 progress.value = null
             }
@@ -76,24 +91,42 @@ class SmsIngestWorker(
         }
     }
 
-    /** How far the running scan is (Home's "Reading your SMS"); null when none runs. */
-    data class ScanProgress(val done: Int, val total: Int)
+    /** How far the first full read is (Home's "Reading your SMS"); null when none runs. */
+    data class ScanProgress(val banks: List<BankProgress>) {
+        val done: Int get() = banks.sumOf { it.done }
+        val total: Int get() = banks.sumOf { it.total }
+
+        fun withBank(index: Int, done: Int): ScanProgress =
+            copy(banks = banks.mapIndexed { i, b -> if (i == index) b.copy(done = done) else b })
+
+        companion object {
+            fun start(byBank: List<Pair<String, List<*>>>) =
+                ScanProgress(byBank.map { (bank, batch) -> BankProgress(bank, 0, batch.size) })
+        }
+    }
+
+    /** One bank's part of the read: Waiting (0 done), reading, or Done. */
+    data class BankProgress(val bankName: String, val done: Int, val total: Int) {
+        val finished: Boolean get() = done >= total
+    }
 
     companion object {
         private const val UNIQUE_WORK_NAME = "sms_ingest_now"
         val progress = kotlinx.coroutines.flow.MutableStateFlow<ScanProgress?>(null)
         private const val KEY_RESCAN = "rescan"
+        private const val PREFS = "kash_scan"
+        private const val KEY_HISTORY_DONE = "history_done"
 
-        /**
-         * Enqueue an immediate-ish background scan. Uses REPLACE so rapid
-         * back-to-back SMS (e.g. a transfer + its receipt) coalesce into a
-         * single scan instead of N redundant ones.
-         */
         /**
          * Scan from inside the app (opening it, pull to refresh, SMS access
          * just granted). Runs quietly in the background — no "Reading your
          * SMS" notification — and lets a scan already running finish.
          */
+        /** After a wipe: the next read is a first read again, with Home's progress. */
+        fun forgetHistory(context: Context) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_HISTORY_DONE).apply()
+        }
+
         fun scanNow(context: Context) {
             WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
                 UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP,
@@ -101,12 +134,18 @@ class SmsIngestWorker(
             )
         }
 
+        /**
+         * A new SMS arrived (or an upgrade rescan). Queued after a scan that
+         * is already running, never in its place: REPLACE cancelled the
+         * first read halfway every time an SMS came in, and it started over
+         * from zero (Home's count went backwards).
+         */
         fun enqueue(context: Context, rescan: Boolean = false) {
             val request = OneTimeWorkRequestBuilder<SmsIngestWorker>()
                 .setInputData(workDataOf(KEY_RESCAN to rescan))
                 .build()
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+                .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
         }
     }
 }

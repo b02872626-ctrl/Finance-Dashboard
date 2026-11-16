@@ -231,9 +231,9 @@ private fun WelcomeScreen(onGetStarted: () -> Unit, onHaveAccount: () -> Unit) {
                 style = KashType.BodyL, color = KashColors.OnSlateMuted,
             )
             Spacer(Modifier.weight(1f))
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 KashButton("Get started", onGetStarted, Modifier.fillMaxWidth(), KashButtonVariant.Accent)
-                KashButton("I already have an account", onHaveAccount, Modifier.fillMaxWidth(), KashButtonVariant.QuietOnSlate)
+                KashButton("I already have an account", onHaveAccount, Modifier.fillMaxWidth(), KashButtonVariant.OutlineOnSlate)
             }
         }
     }
@@ -431,14 +431,12 @@ private fun count(n: Int) = NumberFormat.getIntegerInstance(Locale.US).format(n)
 @Composable
 private fun SourcesScreen(
     sources: List<SmsSource>,
-    totalFound: Int,
+    @Suppress("UNUSED_PARAMETER") totalFound: Int,
     onBack: () -> Unit,
     onToggle: (String, Boolean) -> Unit,
     onImport: () -> Unit,
 ) {
     val importing = sources.filter { it.enabled }.sumOf { it.count }
-    // The same list feeds both numbers, so the headline and "Import N" never disagree mid-scan.
-    val found = if (sources.isEmpty()) totalFound else sources.sumOf { it.count }
     OnboardingPage(
         step = 2,
         onBack = onBack,
@@ -456,10 +454,9 @@ private fun SourcesScreen(
                                 KashBankBadge(src.bankName)
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(bank.fullName, style = KashType.BodyStrong, color = KashColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(
-                                        listOfNotNull(src.last4?.let { "•••• $it" }, "${count(src.count)} found").joinToString(" · "),
-                                        style = KashType.Caption.num(), color = KashColors.InkMuted,
-                                    )
+                                    src.last4?.let {
+                                        Text("•••• $it", style = KashType.Caption.num(), color = KashColors.InkMuted)
+                                    }
                                 }
                                 KashSwitch(src.enabled, { onToggle(src.sender, it) }, "Follow ${bank.fullName}")
                             }
@@ -483,21 +480,14 @@ private fun SourcesScreen(
         Column {
             Text("Found on this phone", style = KashType.Label, color = KashColors.InkMuted)
             Text(
-                buildFoundLine(found),
-                style = KashType.FigureXl, color = KashColors.Ink, modifier = Modifier.padding(top = 6.dp),
+                "Pick the accounts Kash should follow.",
+                style = KashType.TitleL, color = KashColors.Ink, modifier = Modifier.padding(top = 6.dp),
             )
-            Text(
-                if (sources.isEmpty()) "Kash is reading your SMS. Banks show up here as it finds them."
-                else "Pick the accounts Kash should follow.",
+            if (sources.isEmpty()) Text(
+                "Kash is reading your SMS. Banks show up here as it finds them.",
                 style = KashType.BodyL, color = KashColors.InkMuted, modifier = Modifier.padding(top = 12.dp),
             )
         }
     }
 }
 
-private fun buildFoundLine(n: Int) = androidx.compose.ui.text.buildAnnotatedString {
-    append(count(n))
-    pushStyle(KashType.FigureUnit.toSpanStyle().copy(color = KashColors.InkMuted))
-    append(if (n == 1) " transaction" else " transactions")
-    pop()
-}

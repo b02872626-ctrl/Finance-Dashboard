@@ -84,6 +84,11 @@ import com.financeapp.util.KashDates
 import com.financeapp.util.LocalCalendarSystem
 import com.financeapp.viewmodel.DashboardState
 import com.financeapp.viewmodel.DashboardViewModel
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
+import com.financeapp.ui.kash.components.KashSpinner
+import com.financeapp.ui.kash.components.LocalKashTips
+import com.financeapp.ui.kash.components.tipAnchor
 
 /**
  * Home (AppHome, AppHomeEmpty, AppHomeCaughtUp, AppHomeOlder). The slate hero
@@ -135,6 +140,17 @@ fun HomeScreen(
         }
     }
 
+    // The first full read of the inbox (Home, still reading); null otherwise.
+    val scan by SmsIngestWorker.progress.collectAsState()
+    val reading = scan != null
+
+    // First visit, once the read is done: the Home tips (approved "Tip ·" screens).
+    val tips = LocalKashTips.current
+    val readyForTips = !state.isLoading && !reading && state.recentTransactions.isNotEmpty() && popup == null
+    LaunchedEffect(readyForTips) {
+        if (readyForTips) { delay(700); tips?.offer(AppTips.home) }
+    }
+
     val hasAny = state.recentTransactions.isNotEmpty()
     // Ids already on screen. A row that shows up later (a new SMS) slides in
     // with a sand wash; the first load doesn't count.
@@ -155,19 +171,23 @@ fun HomeScreen(
                         KashIconButton(KashIcon.Settings, "Settings", onSettings, onSlate = true)
                     }
                 }
-                BalanceBlock(state, hasAny, balanceVisible) { balanceVisible = !balanceVisible }
-                // Home, still reading: the first scan's progress, on the hero.
-                val scan by SmsIngestWorker.progress.collectAsState()
-                scan?.let { ReadingSmsBlock(it) }
-                if (!state.isLoading && state.accountBalances.isNotEmpty()) {
-                    AccountStrip(state.accountBalances, hidden = !balanceVisible, onOpen = onOpenAccount)
-                }
-                if (!state.isLoading) {
-                    ReviewBlock(state, hasAny, onReviewToday, onReviewOlder)
+                BalanceBlock(state, hasAny, balanceVisible, counting = reading, modifier = Modifier.tipAnchor("balance")) { balanceVisible = !balanceVisible }
+                // Home, still reading: one card per bank, done / reading / waiting.
+                val p = scan
+                if (p != null) {
+                    ReadingSmsBlock(p, state.accountBalances, hidden = !balanceVisible)
+                } else {
+                    if (!state.isLoading && state.accountBalances.isNotEmpty()) {
+                        AccountStrip(state.accountBalances, hidden = !balanceVisible, onOpen = onOpenAccount, modifier = Modifier.tipAnchor("accounts"))
+                    }
+                    if (!state.isLoading) {
+                        ReviewBlock(state, hasAny, onReviewToday, onReviewOlder)
+                    }
                 }
             },
         ) { pad ->
             val phase = when {
+                reading -> 3
                 state.isLoading -> 0
                 !hasAny -> 1
                 else -> 2
@@ -204,21 +224,8 @@ fun HomeScreen(
                         modifier = Modifier.padding(bottom = 14.dp),
                     )
                 }
-                // Kash Wrapped: last month's story, for the first week of a new month.
-                val wrappedPrefs = remember { context.getSharedPreferences("kash_wrapped", android.content.Context.MODE_PRIVATE) }
-                var wrappedHidden by remember(wrappedMonth) {
-                    mutableStateOf(wrappedMonth != null && wrappedPrefs.getLong("dismissed", 0L) == wrappedMonth)
-                }
-                AnimatedVisibility(wrappedMonth != null && !wrappedHidden, enter = fadeIn() + expandVertically()) {
-                    val month = wrappedMonth ?: return@AnimatedVisibility
-                    WrappedCard(
-                        monthName = com.financeapp.util.KashDates.monthName(month + 86_400_000L, cal),
-                        onOpen = { onOpenWrapped(month) },
-                        onLater = { wrappedPrefs.edit().putLong("dismissed", month).apply(); wrappedHidden = true },
-                        modifier = Modifier.padding(bottom = 14.dp),
-                    )
-                }
                 Crossfade(phase, label = "home") { p -> Column { when (p) {
+                    3 -> GettingReady(scan)
                     0 -> Column {
                         KashSkeleton(width = 120.dp, height = 16.dp)
                         repeat(5) { KashSkeletonRow() }
@@ -261,36 +268,120 @@ fun HomeScreen(
             contentColor = KashColors.Slate,
         )
     }
+
+    // Kash Wrapped: last month's story, a pop-up once per month in the first
+    // week of a new one. Waits for the read, the update pop-up and the Home tips.
+    val wrappedPrefs = remember { context.getSharedPreferences("kash_wrapped", android.content.Context.MODE_PRIVATE) }
+    var wrappedSeen by remember(wrappedMonth) {
+        mutableStateOf(wrappedMonth != null && wrappedPrefs.getLong("popup_seen", 0L) == wrappedMonth)
+    }
+    val tipsBusy = tips != null && (tips.active != null || !tips.seen(AppTips.home.key))
+    val month = wrappedMonth
+    if (month != null && !wrappedSeen && !reading && !state.isLoading && popup == null && !tipsBusy) {
+        fun seen() { wrappedPrefs.edit().putLong("popup_seen", month).apply(); wrappedSeen = true }
+        WrappedPopup(onWatch = { seen(); onOpenWrapped(month) }, onLater = ::seen)
+    }
 }
 
-/** "Reading your SMS · 1,240 of 2,039" with a sand bar, while the scan runs. */
+/** Home, still reading: the sheet waits with one loading bar instead of rows trickling in. */
 @Composable
-private fun ReadingSmsBlock(p: SmsIngestWorker.ScanProgress) {
-    val fmt = remember { java.text.NumberFormat.getIntegerInstance(java.util.Locale.US) }
-    Column(
-        Modifier.fillMaxWidth().semantics { contentDescription = "Reading your SMS, ${p.done} of ${p.total}" },
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+private fun GettingReady(p: SmsIngestWorker.ScanProgress?) {
+    val fraction = if (p == null || p.total == 0) 0f else (p.done.toFloat() / p.total).coerceIn(0f, 1f)
+    val pct = (fraction * 100).toInt()
+    Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                KashIconView(KashIcon.Sms, size = 18.dp, tint = KashColors.OnSlate)
-                Text("Reading your SMS", style = KashType.BodyStrong, color = KashColors.OnSlate)
-            }
-            Text(
-                buildAnnotatedString {
-                    append(fmt.format(p.done))
-                    withStyle(SpanStyle(color = KashColors.OnSlateMuted, fontWeight = FontWeight.Medium)) { append(" of ${fmt.format(p.total)}") }
-                },
-                style = KashType.Label.num(), color = KashColors.OnSlate,
-            )
+            Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
         }
-        Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
-            Box(
-                Modifier
-                    .fillMaxWidth(if (p.total == 0) 0f else (p.done.toFloat() / p.total).coerceIn(0f, 1f))
-                    .fillMaxHeight()
-                    .background(KashColors.Sand),
-            )
+        Column(
+            Modifier
+                .padding(top = 20.dp)
+                .fillMaxWidth()
+                .clip(KashShapes.Card)
+                .background(KashColors.SurfaceRaised)
+                .border(1.dp, KashColors.Line, KashShapes.Card)
+                .padding(16.dp)
+                .semantics { contentDescription = "Getting your transactions ready, $pct percent" },
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Getting your transactions ready", style = KashType.BodyStrong, color = KashColors.Ink, modifier = Modifier.weight(1f))
+                Text("$pct%", style = KashType.Caption.num(), color = KashColors.InkMuted)
+            }
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.Well)) {
+                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(KashShapes.Pill).background(KashColors.Accent))
+            }
+            Text("They show up here all at once when Kash has read your SMS.", style = KashType.Caption, color = KashColors.InkMuted)
+        }
+        Column(Modifier.padding(top = 12.dp).alpha(0.6f)) { repeat(3) { KashSkeletonRow() } }
+    }
+}
+
+/**
+ * "Reading your SMS" with a card per bank, one bank at a time: Done shows
+ * its balance (hidden like the total), the bank being read its own small
+ * bar, the rest "Waiting".
+ */
+@Composable
+private fun ReadingSmsBlock(p: SmsIngestWorker.ScanProgress, accounts: List<AccountSummary>, hidden: Boolean) {
+    Column(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = false) { contentDescription = "Reading your SMS" },
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            KashSpinner(size = 18.dp, color = KashColors.OnSlate)
+            Text("Reading your SMS", style = KashType.BodyStrong, color = KashColors.OnSlate)
+        }
+        LazyRow(
+            Modifier.layout { m, c ->
+                val extra = KashSpace.InsetApp.roundToPx()
+                val pl = m.measure(c.copy(minWidth = c.maxWidth + extra, maxWidth = c.maxWidth + extra))
+                layout(c.maxWidth, pl.height) { pl.place(0, 0) }
+            },
+            contentPadding = PaddingValues(end = KashSpace.InsetApp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(p.banks, key = { it.bankName }) { b ->
+                ReadingBankCard(b, accounts, hidden)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadingBankCard(b: SmsIngestWorker.BankProgress, accounts: List<AccountSummary>, hidden: Boolean) {
+    val fmt = remember { java.text.NumberFormat.getIntegerInstance(java.util.Locale.US) }
+    val bank = kashBank(b.bankName)
+    val waiting = b.done == 0 && !b.finished
+    Column(
+        Modifier
+            .width(148.dp)
+            .alpha(if (waiting) 0.6f else 1f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(KashColors.GhostFill)
+            .border(1.dp, KashColors.GhostLine, RoundedCornerShape(16.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KashBankBadge(b.bankName, size = 24.dp)
+            Text(bank.shortName, style = KashType.Label, color = KashColors.OnSlate, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        when {
+            b.finished -> {
+                val mine = accounts.filter { kashBank(it.bankName).shortName == bank.shortName }
+                if (mine.isEmpty()) Text("Done", style = KashType.Caption, color = KashColors.OnSlateMuted)
+                else KashFigure(mine.sumOf { it.balance }, style = KashType.FigureS, showDecimals = false, hidden = hidden)
+            }
+            waiting -> Text("Waiting", style = KashType.Caption, color = KashColors.OnSlateMuted)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
+                    Box(
+                        Modifier.fillMaxWidth((b.done.toFloat() / b.total).coerceIn(0f, 1f)).fillMaxHeight()
+                            .clip(KashShapes.Pill).background(KashColors.Sand),
+                    )
+                }
+                Text("${fmt.format(b.done)} of ${fmt.format(b.total)}", style = KashType.Micro.num(), color = KashColors.OnSlateMuted)
+            }
         }
     }
 }
@@ -308,13 +399,20 @@ private fun FreshRow(fresh: Boolean, modifier: Modifier = Modifier, content: @Co
 }
 
 @Composable
-private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolean, onToggle: () -> Unit) {
+private fun BalanceBlock(
+    state: DashboardState,
+    hasAny: Boolean,
+    visible: Boolean,
+    counting: Boolean = false,
+    modifier: Modifier = Modifier,
+    onToggle: () -> Unit,
+) {
     // Accounts with no SMS for 3 months keep an old balance: left out.
     val total = state.accountBalances.filter { it.inTotal }.sumOf { it.balance }
-    Column {
+    Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Total balance", style = KashType.Body, color = KashColors.OnSlateMuted)
-            if (hasAny) {
+            if (hasAny && !counting) {
                 Box(
                     Modifier
                         .size(28.dp)
@@ -324,7 +422,7 @@ private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolea
                 ) { KashIconView(KashIcon.Eye, size = 18.dp, tint = KashColors.OnSlateMuted) }
             }
         }
-        Crossfade(state.isLoading, label = "balance") { loading ->
+        Crossfade(state.isLoading || counting, label = "balance") { loading ->
             if (loading) {
                 Row(Modifier.padding(top = 10.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     KashSkeleton(width = 170.dp, height = 34.dp, radius = 10.dp, onSlate = true)
@@ -344,9 +442,9 @@ private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolea
  * padding so the next card peeks in at the edge. Amounts hide with the total.
  */
 @Composable
-private fun AccountStrip(accounts: List<AccountSummary>, hidden: Boolean, onOpen: (String, String?) -> Unit) {
+private fun AccountStrip(accounts: List<AccountSummary>, hidden: Boolean, onOpen: (String, String?) -> Unit, modifier: Modifier = Modifier) {
     LazyRow(
-        Modifier.layout { m, c ->
+        modifier.layout { m, c ->
             val extra = KashSpace.InsetApp.roundToPx()
             val p = m.measure(c.copy(minWidth = c.maxWidth + extra, maxWidth = c.maxWidth + extra))
             layout(c.maxWidth, p.height) { p.place(0, 0) }

@@ -169,6 +169,7 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
     fun clearAndReimport(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             repo.clearAllData()
+            SmsIngestWorker.forgetHistory(context)
             SmsIngestWorker.enqueue(context)  // fresh full import after a wipe
         }
     }

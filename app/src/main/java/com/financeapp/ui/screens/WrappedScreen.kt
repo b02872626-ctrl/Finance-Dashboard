@@ -36,6 +36,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.financeapp.notifications.NotifyText
 import com.financeapp.ui.kash.KashColors
@@ -252,21 +258,56 @@ private fun shareWrapped(context: Context, w: Wrapped, cal: String) {
     }.onFailure { Toast.makeText(context, "Couldn't make the picture. Try again.", Toast.LENGTH_SHORT).show() }
 }
 
-/** Home card in the first week of a month: "Your October, wrapped". */
+/**
+ * The pop-up over Home in the first week of a month (approved "Your month,
+ * wrapped (card)"): the story's dashes, a small bar chart, Watch now / Later.
+ */
 @Composable
-fun WrappedCard(monthName: String, onOpen: () -> Unit, onLater: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier.fillMaxWidth().clip(com.financeapp.ui.kash.KashShapes.Card).background(KashColors.Slate).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+fun WrappedPopup(onWatch: () -> Unit, onLater: () -> Unit) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onLater,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("KASH WRAPPED", style = KashType.Label, color = KashColors.Sand)
-            Text("Your $monthName, wrapped", style = KashType.BodyStrong, color = KashColors.OnSlate)
-            Text("Where it went, who you paid most, and one tip for this month.", style = KashType.Caption, color = KashColors.OnSlateMuted)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KashButton("See it", onOpen, Modifier.weight(1f), KashButtonVariant.Accent, compact = true)
-            KashButton("Later", onLater, Modifier.weight(1f), KashButtonVariant.QuietOnSlate, compact = true)
+        Column(
+            Modifier
+                .padding(horizontal = 22.dp)
+                .fillMaxWidth()
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
+                .background(KashColors.SlateInk)
+                .padding(22.dp)
+                .semantics { paneTitle = "Your month, wrapped" },
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(8) { i ->
+                    Box(
+                        Modifier.weight(1f).height(3.dp).clip(com.financeapp.ui.kash.KashShapes.Pill)
+                            .background(if (i == 0) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.25f)),
+                    )
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().height(120.dp).padding(horizontal = 6.dp).clearAndSetSemantics { },
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                listOf(0.45f, 0.7f, 0.55f, 0.85f, 1f).forEachIndexed { i, h ->
+                    Box(
+                        Modifier.weight(1f).fillMaxHeight(h)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                            .background(if (i == 4) KashColors.Sand else Color.White.copy(alpha = 0.18f)),
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("JUST IN", style = KashType.Micro.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp), color = KashColors.Sand)
+                Text("Your month, wrapped", style = KashType.TitleL.copy(fontSize = 26.sp), color = Color.White)
+                Text("Where your money went, in a few quick cards. About a minute.", style = KashType.Body.copy(fontWeight = FontWeight.Normal, fontSize = 14.sp), color = KashColors.OnSlateMuted)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                KashButton("Watch now", onWatch, Modifier.fillMaxWidth(), KashButtonVariant.Accent, compact = true)
+                KashButton("Later", onLater, Modifier.fillMaxWidth(), KashButtonVariant.QuietOnSlate)
+            }
         }
     }
 }
