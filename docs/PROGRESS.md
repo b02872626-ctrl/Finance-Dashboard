@@ -10,9 +10,10 @@ items to Done with the date, add what is next or blocked.
   see Done, PR #73 waiting for the owner's merge; (2) the sort card,
   Transaction details and Add transaction, done, PR #74 stacked on #73;
   (3) Review as the approved list with a Review tab replacing History,
-  done; #73 and #76 are on main, the Review list waits as its own PR
-  against main. Then on a phone: both themes, the sort card, Save on
-  Add, the Review tab badge.
+  done, PR #78 against main; (4) onboarding as approved (sections 1 and
+  2), done, PR #77 stacked on #78. #73 and #76 are on main. Merge #78,
+  then #77. Then on a phone: both themes, the sort card, Save on Add, the
+  Review tab badge, the sign-in tabs and forgot password.
   Linear issues still to be made. Follow-ups, one branch each: the
   approved "All transactions" screen (search and filters on the sheet,
   canvas FD_AllTx / FD_Filters); re-record the Paparazzi goldens.
@@ -93,6 +94,14 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-14 Onboarding as approved (canvas sections 1 and 2): the sign-in
+  sheet with New to Kash / I have an account tabs, eye toggle, Forgot
+  password → Link sent (Supabase recover, the web handles the link), Google
+  at the bottom; no summary step; Forgot PIN as a page; Home shows "Reading
+  your SMS · n of m" while the first scan runs; Choose sources counts the
+  headline from the list and shows digits-only account endings
+  (`AuthRulesTest`). See DECISIONS 2026-11-14 (onboarding). Not yet on a
+  phone.
 - 2026-11-14 Review as the approved list (canvas section 6): Today / This
   month tabs, day headers and Home-aligned rows with a 44dp Sort button
   opening the sort card, "Check this one" on a row's tap, snackbar with

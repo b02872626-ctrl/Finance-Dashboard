@@ -51,6 +51,11 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.financeapp.notifications.UpdateChecker
 import com.financeapp.sms.SmsIngestWorker
@@ -62,6 +67,7 @@ import com.financeapp.ui.kash.KashSize
 import com.financeapp.ui.kash.KashSystemBars
 import com.financeapp.ui.kash.KashTxRow
 import com.financeapp.ui.kash.KashType
+import com.financeapp.ui.kash.num
 import com.financeapp.ui.kash.components.KashButton
 import com.financeapp.ui.kash.components.KashButtonVariant
 import com.financeapp.ui.kash.components.KashDayHeader
@@ -150,6 +156,9 @@ fun HomeScreen(
                     }
                 }
                 BalanceBlock(state, hasAny, balanceVisible) { balanceVisible = !balanceVisible }
+                // Home, still reading: the first scan's progress, on the hero.
+                val scan by SmsIngestWorker.progress.collectAsState()
+                scan?.let { ReadingSmsBlock(it) }
                 if (!state.isLoading && state.accountBalances.isNotEmpty()) {
                     AccountStrip(state.accountBalances, hidden = !balanceVisible, onOpen = onOpenAccount)
                 }
@@ -254,6 +263,38 @@ fun HomeScreen(
     }
 }
 
+/** "Reading your SMS · 1,240 of 2,039" with a sand bar, while the scan runs. */
+@Composable
+private fun ReadingSmsBlock(p: SmsIngestWorker.ScanProgress) {
+    val fmt = remember { java.text.NumberFormat.getIntegerInstance(java.util.Locale.US) }
+    Column(
+        Modifier.fillMaxWidth().semantics { contentDescription = "Reading your SMS, ${p.done} of ${p.total}" },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                KashIconView(KashIcon.Sms, size = 18.dp, tint = KashColors.OnSlate)
+                Text("Reading your SMS", style = KashType.BodyStrong, color = KashColors.OnSlate)
+            }
+            Text(
+                buildAnnotatedString {
+                    append(fmt.format(p.done))
+                    withStyle(SpanStyle(color = KashColors.OnSlateMuted, fontWeight = FontWeight.Medium)) { append(" of ${fmt.format(p.total)}") }
+                },
+                style = KashType.Label.num(), color = KashColors.OnSlate,
+            )
+        }
+        Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
+            Box(
+                Modifier
+                    .fillMaxWidth(if (p.total == 0) 0f else (p.done.toFloat() / p.total).coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(KashColors.Sand),
+            )
+        }
+    }
+}
+
 /** A newly arrived row: expands into place, then its sand wash fades. */
 @Composable
 private fun FreshRow(fresh: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
@@ -285,7 +326,10 @@ private fun BalanceBlock(state: DashboardState, hasAny: Boolean, visible: Boolea
         }
         Crossfade(state.isLoading, label = "balance") { loading ->
             if (loading) {
-                KashSkeleton(Modifier.padding(top = 8.dp), width = 210.dp, height = 44.dp, radius = 10.dp, onSlate = true)
+                Row(Modifier.padding(top = 10.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    KashSkeleton(width = 170.dp, height = 34.dp, radius = 10.dp, onSlate = true)
+                    Text("Counting…", style = KashType.Body, color = KashColors.OnSlateMuted)
+                }
             } else {
                 Column {
                     KashFigure(total, Modifier.padding(top = 4.dp), hidden = hasAny && !visible, countUp = true)

@@ -3,6 +3,7 @@ package com.financeapp.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.financeapp.data.accounts.AccountGrouping
 import com.financeapp.data.model.TransactionEntity
 import com.financeapp.data.model.isIncome
 import com.financeapp.data.model.isSpending
@@ -56,7 +57,8 @@ class OnboardingViewModel(
                 SmsSource(
                     sender = sender,
                     bankName = rows.first().bankName,
-                    last4 = rows.firstNotNullOfOrNull { it.accountNumber?.takeLast(4)?.takeIf { d -> d.any(Char::isDigit) } },
+                    // Digits only: "1****24" reads "•••• 24", never "•••• **24".
+                    last4 = rows.firstNotNullOfOrNull { AccountGrouping.accountSuffix(it.accountNumber) },
                     count = rows.size,
                     enabled = sender !in off,
                 )

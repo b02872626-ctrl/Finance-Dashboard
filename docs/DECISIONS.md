@@ -6,6 +6,32 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-14 — Onboarding as approved: sign-in tabs, forgot password, no summary (canvas sections 1 and 2)
+
+- Sign in (step 3 and "sign in again") is the approved sheet on a slate top:
+  New to Kash / I have an account tabs, email, password with an eye, the
+  main button, then Google. A new password needs 8 characters (the approved
+  hint); existing accounts keep signing in with 6. Every message sits on its
+  own line, so a Google failure never paints the password field red.
+- Forgot password is two pages (Reset your password → Link sent). The email
+  comes from Supabase's recover endpoint and the link opens the web
+  dashboard, which already handles `type=recovery`.
+- The footer reads "Your bank messages and transactions are synced. Never
+  your personal chats.", not the canvas's "Never your SMS": Kash does upload
+  bank SMS (the raw-message copy), and the Play disclosure says so. The
+  canvas copy should change.
+- The "Your money at a glance" summary step is gone: Sign in → Create a PIN
+  → Home, which shows "Reading your SMS · n of m" on the hero while the
+  first scan runs.
+- Forgot PIN is a page, not a dialog. Choose sources shows digits-only
+  account endings and counts the headline from the same list as "Import N".
+- Allow SMS keeps its four facts and the privacy-policy link: it is Google
+  Play's prominent disclosure and must say what is uploaded. The approved
+  three-row card drops the sync row; the disclosure wins until Play policy
+  says otherwise.
+- The canvas's "Home, still reading" account cards and the first-run tips
+  are not built.
+
 ## 2026-11-14 — Review is a list and a tab; History is reached from Home (canvas section 6)
 
 Reverses NAH-36 (swipe to categorise) and NAH-42 (tap the card for details)
