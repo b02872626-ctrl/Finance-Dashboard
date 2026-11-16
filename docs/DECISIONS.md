@@ -6,6 +6,14 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Dark mode: chart marks and slate icons use the approved greys
+
+- Slate is the dark theme's background, so marks drawn in Slate vanished
+  on the dark sheet. They now use theme-aware colours: the Analytics spend
+  line #A9B4C4 (ChartLine), the Money in and out "Out" bars and legend
+  #4A5566 (ChartOut), and the Welcome Bills / Trends icons and the
+  pull-to-refresh spinner ink (Strong). Light theme is unchanged (slate).
+
 ## 2026-11-16 — All transactions as approved: search and filters live only here
 
 - "See all" opens All transactions (approved FD_AllTx / FD_Filters): back

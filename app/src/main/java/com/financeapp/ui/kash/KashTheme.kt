@@ -138,6 +138,15 @@ object KashColors {
     internal fun use(p: KashPalette) { if (paletteState !== p) paletteState = p }
 
     val Slate: Color get() = paletteState.slate
+    /**
+     * Dark-on-light marks drawn on the sheet (chart lines and bars, icons
+     * that are slate on light). Slate itself is the dark theme's background,
+     * so on a dark sheet these use the approved greys instead.
+     */
+    val ChartLine: Color get() = if (paletteState.dark) Color(0xFFA9B4C4) else paletteState.slate
+    val ChartOut: Color get() = if (paletteState.dark) Color(0xFF4A5566) else paletteState.slate
+    /** Slate on light, ink on dark: a strong mark on the sheet in both themes. */
+    val Strong: Color get() = if (paletteState.dark) paletteState.ink else paletteState.slate
     val Surface: Color get() = paletteState.surface
     val SurfaceRaised: Color get() = paletteState.surfaceRaised
     val Well: Color get() = paletteState.well

@@ -190,8 +190,8 @@ private val WHEEL = listOf(
     WheelWord("Spending", KashIcon.Out, KashColors.MoneyOut, true),
     WheelWord("Income", KashIcon.In, KashColors.MoneyIn, true),
     WheelWord("Transfers", KashIcon.Transfer, KashColors.InkMuted, true),
-    WheelWord("Bills", KashIcon.Calendar, KashColors.Slate, false),
-    WheelWord("Trends", KashIcon.Chart, KashColors.Slate, false),
+    WheelWord("Bills", KashIcon.Calendar, KashColors.Strong, false),
+    WheelWord("Trends", KashIcon.Chart, KashColors.Strong, false),
 )
 
 /** AppWelcome: light top with the rolling words, slate panel rising from the bottom. */
