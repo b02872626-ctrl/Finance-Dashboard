@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Transient snackbar payload: gone after a few seconds or on Undo. */
-data class ReviewSnackbar(val text: String, val undoId: Long)
+data class ReviewSnackbar(val text: String, val undoId: Long, val bold: String? = null)
 
 /**
  * "Put all N in X?": the user sorted a transaction whose sender has other
@@ -138,7 +138,7 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
             val rule = applyToSimilar && !key.isNullOrBlank()
             repo.applyReviewedCategory(tx.id, category, applyToSimilar = rule)
             _state.value = _state.value.copy(sorting = null, detail = null)
-            showSnackbar(ReviewList.sortedText(tx.counterparty?.trim()?.takeIf { it.isNotBlank() } ?: tx.bankName, category, rule), tx.id)
+            showSnackbar(ReviewList.sortedText(tx.counterparty?.trim()?.takeIf { it.isNotBlank() } ?: tx.bankName, category, rule), tx.id, bold = category)
         }
     }
 
@@ -147,7 +147,7 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
         viewModelScope.launch {
             repo.applyReviewedCategory(d.txId, d.category, applyToSimilar = true)
             _state.value = _state.value.copy(confirmApplyAll = null)
-            showSnackbar("${d.totalCount} from ${d.counterparty} are ${d.category}. New ones will be too.", d.txId, long = true)
+            showSnackbar("${d.totalCount} from ${d.counterparty} are ${d.category}. New ones will be too.", d.txId, long = true, bold = d.category)
         }
     }
 
@@ -156,7 +156,7 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
         viewModelScope.launch {
             repo.applyReviewedCategory(d.txId, d.category, applyToSimilar = false)
             _state.value = _state.value.copy(confirmApplyAll = null)
-            showSnackbar(ReviewList.sortedText(d.counterparty, d.category, rule = false), d.txId)
+            showSnackbar(ReviewList.sortedText(d.counterparty, d.category, rule = false), d.txId, bold = d.category)
         }
     }
 
@@ -178,8 +178,8 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
         }
     }
 
-    private fun showSnackbar(text: String, undoId: Long, long: Boolean = false) {
-        _state.value = _state.value.copy(snackbar = ReviewSnackbar(text, undoId))
+    private fun showSnackbar(text: String, undoId: Long, long: Boolean = false, bold: String? = null) {
+        _state.value = _state.value.copy(snackbar = ReviewSnackbar(text, undoId, bold))
         snackbarJob?.cancel()
         snackbarJob = viewModelScope.launch {
             kotlinx.coroutines.delay(if (long) 6500L else 3200L)

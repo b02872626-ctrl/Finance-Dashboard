@@ -1,5 +1,6 @@
 package com.financeapp.ui.screens
 
+import com.financeapp.ui.kash.components.dashedBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
@@ -85,6 +86,8 @@ fun SortCardSheet(
     }
     val search = remember(query, yours) { SortCard.search(query, yours) }
     val name = tx?.counterparty?.trim()?.takeIf { it.isNotBlank() && !tx.merchantKey.isNullOrBlank() }
+    // Money you sent goes "to" someone; money in comes "from" them.
+    val similarLabel = if (tx?.kashDirection() == com.financeapp.ui.kash.components.KashDirection.In) "New payments from $name too" else "New payments to $name too"
 
     val lead: (@Composable ColumnScope.() -> Unit)? = if (tx == null) null else {
         {
@@ -130,20 +133,24 @@ fun SortCardSheet(
             Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                when {
-                    query.isNotBlank() -> "Matches"
-                    yours.isEmpty() -> "Your categories"
-                    else -> "Your categories · most used first"
-                },
+            if (yours.isEmpty() && query.isBlank()) {
+                // First time (approved FD_RvSortFirst): a dashed box, no list label.
+                Text(
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        append("No categories yet. Type one, like ")
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = KashColors.Ink, fontWeight = FontWeight.SemiBold)); append("Rent"); pop()
+                        append(" or ")
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = KashColors.Ink, fontWeight = FontWeight.SemiBold)); append("Food"); pop()
+                        append(".")
+                    },
+                    style = KashType.Label, color = KashColors.InkMuted,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                        .dashedBorder(KashColors.LineStrong, RoundedCornerShape(16.dp)).padding(16.dp),
+                )
+            } else Text(
+                if (query.isNotBlank()) "Matches" else "Your categories · most used first",
                 style = KashType.Label, color = KashColors.InkMuted,
             )
-            if (yours.isEmpty() && query.isBlank()) {
-                Text(
-                    "No categories yet. Type one, like Rent or Food.",
-                    style = KashType.Caption, color = KashColors.InkMuted,
-                )
-            }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 search.matches.forEach { c ->
                     KashChip(c, c.equals(current, true), { onPick(c) }, checkWhenSelected = true)
@@ -160,12 +167,12 @@ fun SortCardSheet(
                 ) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            "New payments from $name too", style = KashType.BodyStrong, color = KashColors.Ink,
+                            similarLabel, style = KashType.BodyStrong, color = KashColors.Ink,
                             maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                         Text("Sorts them as they come in", style = KashType.Caption, color = KashColors.InkMuted)
                     }
-                    KashSwitch(applyToSimilar, { onToggleApplyToSimilar() }, "New payments from $name too")
+                    KashSwitch(applyToSimilar, { onToggleApplyToSimilar() }, similarLabel)
                 }
             }
         }

@@ -24,14 +24,16 @@ class ReviewListTest {
         val rows = listOf(tx(1, monthStart - day), tx(2, todayStart + 1), tx(3, monthStart + day), tx(4, todayStart + 5))
         val split = ReviewList.split(rows, todayStart, monthStart)
         assertEquals(listOf(4L, 2L), split.today.map { it.id })
-        assertEquals(listOf(4L, 2L, 3L), split.month.map { it.id })
+        // This month is earlier this month: today's rows are under Today.
+        assertEquals(listOf(3L), split.month.map { it.id })
         assertEquals(listOf(1L), split.older.map { it.id })
     }
 
     @Test
     fun `the top of the screen counts, then says it is done`() {
         assertEquals("5" to " to sort today", ReviewList.headline(ReviewTab.TODAY, 5))
-        assertEquals("7" to " to sort this month", ReviewList.headline(ReviewTab.MONTH, 7))
+        assertEquals("7" to " left this month", ReviewList.headline(ReviewTab.MONTH, 7))
+        assertEquals("Today’s are done. These are from earlier this month.", ReviewList.subtitle(ReviewTab.MONTH, 7, todayLeft = 0))
         assertEquals("All" to " sorted", ReviewList.headline(ReviewTab.MONTH, 0))
         assertEquals("This month is done. Nice.", ReviewList.subtitle(ReviewTab.MONTH, 0))
         assertEquals("Newest first. Tap Sort and say what it was.", ReviewList.subtitle(ReviewTab.TODAY, 2))

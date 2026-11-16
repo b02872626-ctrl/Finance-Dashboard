@@ -190,6 +190,15 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
         return repo.getFiltered(draft.sender, draft.type, from, to - 1).first().count { TxFilterRules.matches(it, draft) }
     }
 
+    /**
+     * A category picked on a transaction's page. With [applyToSimilar], every
+     * row from the same person takes it and new ones sort themselves (as in
+     * Review); without, only this one changes.
+     */
+    fun sortTransaction(id: Long, category: String, applyToSimilar: Boolean) {
+        viewModelScope.launch { repo.applyReviewedCategory(id, category, applyToSimilar) }
+    }
+
     fun updateCategory(id: Long, category: String?, allowBulkSuggestion: Boolean = false) {
         viewModelScope.launch {
             repo.updateCategory(id, category)

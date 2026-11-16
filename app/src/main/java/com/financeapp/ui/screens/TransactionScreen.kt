@@ -73,7 +73,8 @@ fun TransactionScreen(
     customCategories: List<String>,
     recentCategories: List<String>,
     categoryUsage: List<SortCard.Use>,
-    onCategorySelected: (String) -> Unit,
+    /** The category and whether new payments from the same person sort the same way. */
+    onCategorySelected: (String, Boolean) -> Unit,
     onAddCategory: (String) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -82,6 +83,7 @@ fun TransactionScreen(
     val cal = LocalCalendarSystem.current
     val dir = tx.kashDirection()
     var pickerOpen by remember { mutableStateOf(false) }
+    var applyToSimilar by remember(tx.id) { mutableStateOf(true) }
     var moreOpen by rememberSaveable(tx.id) { mutableStateOf(false) }
 
     KashScreen(
@@ -152,11 +154,11 @@ fun TransactionScreen(
             usage = categoryUsage,
             recent = recentCategories,
             offerOwnAccounts = looksOwnAccount(tx, userName),
-            applyToSimilar = false,
-            onToggleApplyToSimilar = null,
+            applyToSimilar = applyToSimilar,
+            onToggleApplyToSimilar = { applyToSimilar = !applyToSimilar },
             onClose = { pickerOpen = false },
-            onPick = { pickerOpen = false; onCategorySelected(it) },
-            onCreate = { name -> pickerOpen = false; onAddCategory(name); onCategorySelected(name) },
+            onPick = { pickerOpen = false; onCategorySelected(it, applyToSimilar) },
+            onCreate = { name -> pickerOpen = false; onAddCategory(name); onCategorySelected(name, applyToSimilar) },
         )
     }
 }

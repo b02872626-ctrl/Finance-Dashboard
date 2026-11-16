@@ -6,6 +6,22 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Review and the sort card: approved wording and the same-person switch everywhere
+
+- The sort card in Review is titled "What was this?". With no categories
+  yet it shows a dashed box ("No categories yet. Type one, like **Rent** or
+  **Food**."); "Create and sort" stays (owner).
+- The switch reads "New payments to X too" for money sent, "from" for money
+  in.
+- Review's This month holds only earlier days of the month (today's rows
+  are under Today): "N left this month", and "Today’s are done. These are
+  from earlier this month." once today is sorted.
+- The snackbar is inverted (ink background, sheet-coloured text) and puts
+  the category in bold.
+- Changing a category on a transaction's page has the same switch (on by
+  default): every row from that person takes it, and new ones sort
+  themselves.
+
 ## 2026-11-16 — Shared styles match the approved flow
 
 - Text fields and search boxes use the well colour with no border and
