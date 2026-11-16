@@ -1,12 +1,15 @@
 {
-  "versionCode": 54,
-  "versionName": "1.0.34",
+  "versionCode": 55,
+  "versionName": "1.0.35",
   "url": "https://kash-140.pages.dev/download",
-  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.34.apk",
-  "sha256": "553c572e08a439d6dad1760aaae3efe0f24e6ca2c2712796501609bdae2df4c3",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.35.apk",
+  "sha256": "8463b1253e5a74ab60b873894471558eb267ab4465d11848c5689f00ae22cab8",
   "notes": [
-    "Home is cleaner: no Cash card, and banks you switch off leave Home and your total",
-    "The quiet-accounts line and the weekly bars are gone from Home",
-    "To help fix problems, Kash can record how screens are used, with every word, number and picture hidden"
+    "New sign-in: tabs for Sign in and Create account, plus Forgot password",
+    "Goals: save toward something and see how close you are",
+    "Dark theme: pick Light, Dark or Match phone in Settings → Appearance",
+    "Review is now the list of your transactions and replaces History",
+    "Make a new category in one tap while sorting, and see the transaction as you do",
+    "Your categories stay after you reinstall and sign in again"
   ]
 }
