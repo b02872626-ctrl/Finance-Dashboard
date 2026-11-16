@@ -13,7 +13,7 @@ enum class ReviewTab(val label: String) { TODAY("Today"), MONTH("This month"), E
 object ReviewList {
     data class Split(
         val today: List<TransactionEntity>,
-        /** This month, today included. */
+        /** Earlier this month: today's rows are under Today (approved FD_RvMonth). */
         val month: List<TransactionEntity>,
         val older: List<TransactionEntity>,
     )
@@ -23,7 +23,7 @@ object ReviewList {
         val sorted = pending.sortedByDescending { it.dateTime }
         return Split(
             today = sorted.filter { it.dateTime >= todayStart },
-            month = sorted.filter { it.dateTime >= monthStart },
+            month = sorted.filter { it.dateTime >= monthStart && it.dateTime < todayStart },
             older = sorted.filter { it.dateTime < monthStart },
         )
     }
@@ -32,12 +32,13 @@ object ReviewList {
     fun headline(tab: ReviewTab, count: Int): Pair<String, String> = when {
         count == 0 -> "All" to " sorted"
         tab == ReviewTab.TODAY -> count.toString() to " to sort today"
-        tab == ReviewTab.MONTH -> count.toString() to " to sort this month"
+        tab == ReviewTab.MONTH -> count.toString() to " left this month"
         else -> count.toString() to " from before"
     }
 
-    fun subtitle(tab: ReviewTab, count: Int): String = when {
+    fun subtitle(tab: ReviewTab, count: Int, todayLeft: Int = 0): String = when {
         count > 0 && tab == ReviewTab.EARLIER -> "Older months, newest first. Sort what you remember."
+        count > 0 && tab == ReviewTab.MONTH && todayLeft == 0 -> "Today’s are done. These are from earlier this month."
         count > 0 -> "Newest first. Tap Sort and say what it was."
         tab == ReviewTab.TODAY -> "Today is done. Nice."
         tab == ReviewTab.MONTH -> "This month is done. Nice."

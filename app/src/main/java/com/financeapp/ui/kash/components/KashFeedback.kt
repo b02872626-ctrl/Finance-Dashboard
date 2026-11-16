@@ -139,19 +139,28 @@ fun KashSnackbar(
     modifier: Modifier = Modifier,
     action: String? = null,
     onAction: () -> Unit = {},
+    /** A word in [message] set in bold ("Yonas Girma is **Rent**."). */
+    bold: String? = null,
 ) {
+    // Inverted, as approved: ink background, the sheet's colour for text.
     Row(
         modifier
             .heightIn(min = 52.dp)
             .clip(KashShapes.Control)
-            .background(KashColors.SlateInk)
+            .background(KashColors.Ink)
             .padding(start = 16.dp, end = if (action != null) 8.dp else 16.dp, top = 6.dp, bottom = 6.dp)
             .semantics { liveRegion = LiveRegionMode.Polite },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        val i = if (bold.isNullOrEmpty()) -1 else message.indexOf(bold)
         Text(
-            message, style = KashType.Body, color = KashColors.OnSlate, maxLines = 2,
+            if (i < 0) androidx.compose.ui.text.AnnotatedString(message) else androidx.compose.ui.text.buildAnnotatedString {
+                append(message.substring(0, i))
+                pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)); append(bold!!); pop()
+                append(message.substring(i + bold.length))
+            },
+            style = KashType.Body, color = KashColors.Surface, maxLines = 2,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = action != null),
         )
         if (action != null) {
@@ -163,7 +172,7 @@ fun KashSnackbar(
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(action, style = KashType.LabelL, color = KashColors.Sand, maxLines = 1, softWrap = false)
+                Text(action, style = KashType.LabelL, color = if (KashColors.isDark) KashColors.Slate else KashColors.Sand, maxLines = 1, softWrap = false)
             }
         }
     }

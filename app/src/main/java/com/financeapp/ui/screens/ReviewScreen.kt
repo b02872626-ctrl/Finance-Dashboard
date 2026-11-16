@@ -151,7 +151,7 @@ fun ReviewScreen(
                     Text(figure, style = KashType.FigureXl, color = KashColors.OnSlate, maxLines = 1)
                     Text(unit, style = KashType.FigureUnit, color = KashColors.OnSlateMuted, maxLines = 1, modifier = Modifier.padding(bottom = 6.dp))
                 }
-                Text(ReviewList.subtitle(state.tab, state.count), style = KashType.Body, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 6.dp))
+                Text(ReviewList.subtitle(state.tab, state.count, state.today.size), style = KashType.Body, color = KashColors.OnSlateMuted, modifier = Modifier.padding(top = 6.dp))
             }
         },
     ) { pad ->
@@ -242,9 +242,9 @@ fun ReviewScreen(
                 enter = fadeIn() + slideInVertically { it / 2 },
                 exit = fadeOut(),
             ) {
-                var last by remember { mutableStateOf("") }
-                state.snackbar?.let { last = it.text }
-                KashSnackbar(last, Modifier.fillMaxWidth(), action = "Undo", onAction = vm::undo)
+                var last by remember { mutableStateOf<com.financeapp.viewmodel.ReviewSnackbar?>(null) }
+                state.snackbar?.let { last = it }
+                KashSnackbar(last?.text.orEmpty(), Modifier.fillMaxWidth(), action = "Undo", onAction = vm::undo, bold = last?.bold)
             }
         }
     }
@@ -273,6 +273,7 @@ fun ReviewScreen(
             onClose = vm::closeSheets,
             onPick = sort,
             onCreate = { name -> onAddCustomCategory(name); sort(TransactionCategoryCatalog.normalize(name)) },
+            title = "What was this?",
         )
     }
     state.confirmApplyAll?.let { dialog ->

@@ -597,9 +597,9 @@ private fun MainNavigation(
                         customCategories = categories,
                         recentCategories = recentCategories,
                         categoryUsage = categoryUses,
-                        onCategorySelected = {
-                            txVm.updateCategory(txId, it)
-                            tx = transaction.copy(category = it)
+                        onCategorySelected = { cat, similar ->
+                            txVm.sortTransaction(txId, cat, similar)
+                            tx = transaction.copy(category = cat)
                         },
                         onAddCategory = { setVm.addCustomCategory(it) },
                         onBack = ::back
