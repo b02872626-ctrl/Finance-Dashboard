@@ -6,6 +6,28 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Goals follow the approved flow (sections 9 to 12); pace per day, week or month
+
+- Goals screens are rebuilt from the canvas instead of the older
+  design/goals-handoff: flat divided rows (no cards or pace pills), the
+  status as coloured text ("On track", "Behind", "Date passed", "Reached",
+  "Just started", "Waiting for a full month"), a 32dp bar with the % inside
+  on the goal page, one status card with one footer row ("Counts money
+  into CBE 2 ›" opens the new "How it's counted" sheet; "Set a new date ›"
+  in sand when the date passed). History groups by day.
+- "Add a save" leaves the goal page's top; it is "Add cash by hand" in the
+  More menu (with "Pick a day"). A reached goal shows "Archive goal".
+- New goal: kind rows ("By a date / Every month / A safety net"), the icon
+  inside the Name field, 6 months / 1 year / 2 years, "Which account do you
+  save in?", taken accounts dimmed with "Used by …" (tapping one explains
+  and holds Save). Edit goal is one page with "Save changes"; the date
+  picker is a bottom sheet. Delete offers "Archive it instead".
+- Save daily (owner's request): a dated goal's pace can show per day, week
+  or month ("About 246 ETB a day, done by June 2027"); the choice is kept
+  on the phone (`kash_goals/pace_unit`) for every goal, not synced, so no
+  Supabase change.
+- New tip: "Where the money comes from" the first time on a goal.
+
 ## 2026-11-16 — Motion follows Apple's fluid-interface rules (springs, no wobble)
 
 - One set of springs (`KashSpring`), described in Apple's terms: damping

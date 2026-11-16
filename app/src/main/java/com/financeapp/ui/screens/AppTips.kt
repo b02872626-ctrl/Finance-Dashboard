@@ -50,6 +50,18 @@ object AppTips {
         ),
     )
 
+    /** A goal's page, first time: where its money comes from (approved FD_GoalTip). */
+    fun goalSource(accountLabel: String?) = KashTipSet(
+        "tips_goal_source", "FIRST TIME ON A GOAL",
+        listOf(
+            KashTip(
+                "source", "Where the money comes from",
+                if (accountLabel != null) "This goal counts what lands in $accountLabel. Tap here to see how it’s counted, or switch to another account."
+                else "This goal counts the saves you add. Tap here to see how it’s counted, or link an account.",
+            ),
+        ),
+    )
+
     /** Goals with a goal: how it fills, and where to start another. */
     fun goals(goalName: String, accountLabel: String?) = KashTipSet(
         "tips_goals", "GOALS",

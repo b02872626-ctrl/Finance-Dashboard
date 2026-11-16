@@ -22,7 +22,14 @@ object GoalForm {
     private const val MONTH_MS = 30.44 * 86_400_000L
 
     /** The quick date choices, in months from today. */
-    val QUICK_MONTHS = listOf(3, 6, 12)
+    val QUICK_MONTHS = listOf(6, 12, 24)
+
+    /** "6 months", "1 year", "2 years". */
+    fun quickLabel(m: Int): String = when {
+        m % 12 == 0 && m / 12 == 1 -> "1 year"
+        m % 12 == 0 -> "${m / 12} years"
+        else -> "$m months"
+    }
 
     /** The quick safety-net sizes, in months of spending. */
     val NET_MONTHS = listOf(1, 3, 6)
@@ -57,7 +64,7 @@ object GoalForm {
         months = if (f.type == GoalType.OPEN_ENDED && monthsOf(f.months) == null) "Pick between 1 and 60 months" else null,
         date = when {
             f.type != GoalType.DATE_BOUND -> null
-            f.deadlineDay == null -> "Pick a date"
+            f.deadlineDay == null -> "Pick when you want to have it"
             f.deadlineDay < today -> "Pick a day from today on"
             else -> null
         },
@@ -102,26 +109,35 @@ object GoalForm {
         val target = GoalProgress.targetOf(
             GoalEntity(name = "", type = GoalType.OPEN_ENDED, targetMonths = months), averageMonthlySpend,
         ) ?: return NetPreview(
-            "Kash works out the amount once it has a full month of your spending. You can start saving now.", null, false,
+            "Kash works out the amount after a full month of your spending. You can start saving now.", null, false,
         )
         val amount = "${KashMoney.whole(target)} ETB"
-        return NetPreview("That’s about $amount at your spending of about ${KashMoney.whole(averageMonthlySpend)} ETB a month", amount, true)
+        return NetPreview("That’s about $amount, at the ${KashMoney.whole(averageMonthlySpend)} ETB you spend a month.", amount, true)
     }
 
     /**
-     * Under the date chips: "Save it by 15 June 2027 · about 3,629 ETB a month".
-     * The monthly figure is what's left ([saved] comes off when editing) over the
-     * months left, counted the way the goal page counts them. Null without a date.
+     * Under the date chips (approved FD_New2): "About **5,000 ETB a month**,
+     * done by November 2027"; Edit says "… a month** from here". [bold] is
+     * the strong part. The figure is what's left ([saved] comes off when
+     * editing) over the time left, per [unit] (Goals "save daily").
      */
-    fun datedHelper(amountText: String, deadlineDay: Long?, saved: Double, now: Long, cal: String): String? {
+    data class Helper(val before: String, val bold: String, val after: String) {
+        val text get() = before + bold + after
+    }
+
+    fun datedHelper(
+        amountText: String, deadlineDay: Long?, saved: Double, now: Long, cal: String,
+        unit: GoalCopy.PaceUnit = GoalCopy.PaceUnit.MONTH, editing: Boolean = false,
+    ): Helper? {
         val day = deadlineDay ?: return null
-        val by = "Save it by ${dateLabel(day, cal)}"
-        val amount = amountOf(amountText) ?: return by
+        val amount = amountOf(amountText) ?: return null
         val left = amount - saved
         val end = day + DAY - 1
-        if (left <= 0.5 || end < now) return by
+        if (left <= 0.5 || end < now) return null
         val months = kotlin.math.max(1, kotlin.math.ceil((end - now) / MONTH_MS).toInt())
-        return "$by · about ${KashMoney.whole(left / months)} ETB a month"
+        val bold = GoalCopy.perUnit(left / months, unit)
+        return if (editing) Helper("About ", bold, " from here")
+        else Helper("About ", bold, ", done by ${KashDates.monthYear(day, cal)}")
     }
 
     /** The amount as typed, grouped as you go: "60000" → "60,000". Keeps one decimal point, two places. */

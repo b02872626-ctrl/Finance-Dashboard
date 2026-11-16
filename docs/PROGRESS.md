@@ -94,6 +94,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-16 Goals rebuilt to the approved flow + pace per day/week/month (PR open). Also merged today: dark-mode contrast (#87), Apple-style motion (#88). Next from the audit: shared styles, Review/sort-card fixes (keep Create and sort), Home Show all transactions button + new-account card, Add keypad, missing tips/Settings details; then release 1.0.36.
 - 2026-11-16 All transactions as approved (PR open): search with a filters button, All/In/Out and month/account/category/amount chips, the Filters sheet with Show N transactions. Home: no Review / All caught up block (#85). Next: Goals "save daily", then release 1.0.36.
 - 2026-11-16 Review (PR open, stacked on the onboarding PR): Review older ones off Home, Earlier tab grouped by month, lands on the first tab with something to sort and moves on, sort card hides unused built-in names, Create and sort next to the box, Review and sorting tips. Next: Goals "save daily" and Goals tips check, then release 1.0.36.
 - 2026-11-16 Onboarding from the updated canvas (PR open): first SMS read bank by bank, no restart on new SMS, Home "Getting your transactions ready" bar, no counts on Choose sources, outlined "I already have an account", new-user tips on Home, Analytics and Goals, Wrapped as a pop-up. Next: the Review changes (Review older ones off Home, land on This month, older months grouped, only your own categories, Create and sort), then Goals "save daily", then release 1.0.36.

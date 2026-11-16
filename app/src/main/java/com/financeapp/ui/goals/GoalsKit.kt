@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -90,7 +91,7 @@ import com.financeapp.ui.kash.rememberReducedMotion
 object GoalsColors {
     val Hero = Color(0xFF161B22)
     val HeroInk = Color(0xFFF1F3F6)
-    val HeroInkMuted = Color(0xFFAAB3BF)
+    val HeroInkMuted = Color(0xFFC6CDD8)
     /** Pills and icon wells on the top ("+21,500 ETB this month"). */
     val HeroRaised = Color(0xFF29313C)
     val HeroGhostFill = Color(0x0FFFFFFF)  // white @ 6%
@@ -100,17 +101,19 @@ object GoalsColors {
 
     val Sheet = Color(0xFF1F252E)
     val Raised = Color(0xFF29313C)
-    val Well = Color(0xFF343D49)
-    val Line = Color(0xFF39424F)
-    val LineStrong = Color(0xFF4A5361)
+    val Well = Color(0xFF262D37)
+    val Line = Color(0xFF262D37)
+    val LineStrong = Color(0xFF343D49)
     val Handle = Color(0xFF4A5361)
     val Ink = Color(0xFFF1F3F6)
-    val InkMuted = Color(0xFFAEB6C2)
-    val InkFaint = Color(0xFF8A939F)
+    // 9AA3AF rather than the canvas's 8A939F: the app's dark palette lift for 5:1 on raised cards.
+    val InkMuted = Color(0xFF9AA3AF)
+    val InkFaint = Color(0xFF6F7885)
     val MoneyIn = Color(0xFF7CC48B)
     val MoneyOut = Color(0xFFF2907A)
-    val Reached = Color(0xFF5AA36A)
-    val Track = Color(0x24FFFFFF)          // white @ 14%
+    /** Reached bars, checks and status text: money-in (approved flow). */
+    val Reached = Color(0xFF7CC48B)
+    val Track = Color(0x1AFFFFFF)          // white @ 10%: the hero bar's track
     val GhostLine = Color(0x3DFFFFFF)      // white @ 24%: the dashed "no target" bar
 
     val Accent = KashColors.Sand
@@ -136,18 +139,18 @@ fun GoalsButton(
 ) {
     val (bg, fg) = when (variant) {
         GoalsButtonVariant.Accent -> GoalsColors.Accent to GoalsColors.OnAccent
-        GoalsButtonVariant.Secondary -> GoalsColors.Raised to GoalsColors.Ink
-        GoalsButtonVariant.Danger -> GoalsColors.MoneyOut to GoalsColors.OnAccent
+        GoalsButtonVariant.Secondary -> Color.Transparent to GoalsColors.Ink
+        GoalsButtonVariant.Danger -> GoalsColors.MoneyOut to Color(0xFF2B1A16)
         GoalsButtonVariant.Quiet -> Color.Transparent to GoalsColors.InkMuted
     }
     val quiet = variant == GoalsButtonVariant.Quiet
     Row(
         modifier
             .kashClickable(enabled = enabled, onClick = { if (!busy) onClick() })
-            .height(if (quiet) 44.dp else if (compact) KashSize.ButtonHCompact else KashSize.ButtonH)
+            .height(if (quiet) 48.dp else if (compact) KashSize.ButtonHCompact else KashSize.ButtonH)
             .clip(KashShapes.Control)
             .background(bg)
-            .then(if (variant == GoalsButtonVariant.Secondary) Modifier.border(1.dp, GoalsColors.Line, KashShapes.Control) else Modifier)
+            .then(if (variant == GoalsButtonVariant.Secondary) Modifier.border(1.dp, GoalsColors.LineStrong, KashShapes.Control) else Modifier)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -155,7 +158,7 @@ fun GoalsButton(
         if (busy) KashSpinner(size = 18.dp, color = fg)
         else if (icon != null) KashIconView(icon, size = 18.dp, tint = fg)
         Text(
-            text, style = if (quiet) KashType.Body else KashType.LabelL, color = fg,
+            text, style = KashType.LabelL, color = fg,
             maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
         )
     }
@@ -376,7 +379,8 @@ fun GoalsTxRow(
     amount: Double,
     direction: KashDirection,
     time: String,
-    category: String,
+    /** A pill after [time]; null: [time] alone is the sub line ("CBE 2 · 9:10"). */
+    category: String?,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     showDivider: Boolean = true,
@@ -398,7 +402,7 @@ fun GoalsTxRow(
                 Text(name, style = KashType.Body, color = GoalsColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(time, style = KashType.Caption.num(), color = GoalsColors.InkMuted, maxLines = 1, softWrap = false)
-                    Box(
+                    if (category != null) Box(
                         Modifier.weight(1f, fill = false).height(20.dp).clip(KashShapes.Pill).background(GoalsColors.Well).padding(horizontal = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -464,7 +468,7 @@ fun GoalsListRow(
 @Composable
 fun GoalsChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, leading: KashIcon? = null) {
     val (bg, fg, line) = if (selected) Triple(GoalsColors.Accent, GoalsColors.OnAccent, GoalsColors.Accent)
-    else Triple(GoalsColors.Raised, GoalsColors.Ink, GoalsColors.Line)
+    else Triple(Color.Transparent, GoalsColors.InkMuted, GoalsColors.LineStrong)
     Row(
         modifier
             .kashClickable(onClick = onClick)
@@ -478,7 +482,7 @@ fun GoalsChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Mo
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (leading != null) KashIconView(leading, size = 16.dp, tint = fg)
-        Text(text, style = KashType.Label, color = fg, maxLines = 1, softWrap = false)
+        Text(text, style = KashType.Label.copy(fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium), color = fg, maxLines = 1, softWrap = false)
     }
 }
 
@@ -502,24 +506,28 @@ fun GoalsTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     trailingLabel: String? = null,
     visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+    /** Inside the field on the left: the goal icon button in the Name field. */
+    leading: (@Composable () -> Unit)? = null,
 ) {
-    val style = if (big) KashType.TitleM.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold).num() else KashType.BodyL
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row {
-            Text(label, style = KashType.Label, color = GoalsColors.InkMuted, modifier = Modifier.weight(1f))
+    val style = if (big) KashType.TitleM.copy(fontSize = 24.sp, fontWeight = FontWeight.SemiBold).num() else KashType.BodyL.copy(fontWeight = FontWeight.Medium)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (label.isNotEmpty()) Row {
+            Text(label, style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = GoalsColors.InkMuted, modifier = Modifier.weight(1f))
             if (trailingLabel != null) Text(trailingLabel, style = KashType.Caption.num(), color = GoalsColors.InkFaint)
         }
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(KashSize.FieldH + if (big) 4.dp else 0.dp)
+                .height(if (big) 60.dp else 52.dp)
                 .clip(KashShapes.Field)
-                .background(GoalsColors.Raised)
-                .border(1.dp, if (error != null) GoalsColors.MoneyOut else GoalsColors.Line, KashShapes.Field)
+                .background(GoalsColors.Well)
+                .then(if (error != null) Modifier.border(1.5.dp, GoalsColors.MoneyOut, KashShapes.Field) else Modifier)
                 .padding(horizontal = 14.dp)
                 .then(if (error != null) Modifier.semantics { this.error(error) } else Modifier),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            if (leading != null) Box(Modifier.padding(start = 0.dp).offset(x = (-6).dp)) { leading() }
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty() && placeholder.isNotEmpty()) Text(placeholder, style = style, color = GoalsColors.InkFaint, maxLines = 1)
                 BasicTextField(
@@ -534,7 +542,7 @@ fun GoalsTextField(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            if (unit != null) Text(unit, style = KashType.Body, color = GoalsColors.InkMuted)
+            if (unit != null) Text(unit, style = KashType.Body.copy(fontWeight = FontWeight.Medium), color = GoalsColors.InkMuted)
         }
         val line = error ?: hint
         if (line != null) Text(line, style = KashType.Caption, color = if (error != null) GoalsColors.MoneyOut else GoalsColors.InkMuted)
@@ -577,15 +585,15 @@ fun GoalsSheet(
         ) {
             if (title != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    title, style = KashType.TitleM, color = GoalsColors.Ink, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    title, style = KashType.TitleS.copy(fontSize = 20.sp), color = GoalsColors.Ink, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
                 Box(
-                    Modifier.kashClickable(onClickLabel = "Close", onClick = onDismiss).size(KashSize.IconButton)
-                        .clip(KashShapes.Control).background(GoalsColors.Raised).border(1.dp, GoalsColors.Line, KashShapes.Control)
+                    Modifier.kashClickable(onClickLabel = "Close", onClick = onDismiss).size(36.dp)
+                        .clip(KashShapes.Chip).background(GoalsColors.Well)
                         .semantics { contentDescription = "Close" },
                     contentAlignment = Alignment.Center,
-                ) { KashIconView(KashIcon.ChevronDown, size = 20.dp, tint = GoalsColors.Ink) }
+                ) { KashIconView(KashIcon.ChevronDown, size = 18.dp, tint = GoalsColors.InkMuted) }
             }
             content()
         }
@@ -616,14 +624,14 @@ fun GoalsDialog(
                 .background(GoalsColors.Backdrop)
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
                 .systemBarsPadding()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(
                 Modifier
                     .fillMaxWidth()
                     .widthIn(max = 420.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(GoalsColors.Sheet)
                     .clickable(remember { MutableInteractionSource() }, indication = null, onClick = {}),
             ) {
@@ -633,13 +641,13 @@ fun GoalsDialog(
                     content = header,
                 )
                 Column(
-                    Modifier.padding(start = 22.dp, end = 22.dp, top = if (header != null) 20.dp else 24.dp, bottom = 18.dp),
+                    Modifier.padding(start = 22.dp, end = 22.dp, top = if (header != null) 20.dp else 22.dp, bottom = 22.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     if (title != null || description != null) Column {
-                        if (title != null) Text(title, style = KashType.TitleM, color = GoalsColors.Ink, modifier = Modifier.semantics { heading() })
+                        if (title != null) Text(title, style = KashType.TitleM.copy(fontSize = 22.sp, lineHeight = 28.sp), color = GoalsColors.Ink, modifier = Modifier.semantics { heading() })
                         if (description != null) {
-                            Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(6.dp))
                             Text(description, style = KashType.Body.copy(fontWeight = FontWeight.Normal), color = GoalsColors.InkMuted)
                         }
                     }
