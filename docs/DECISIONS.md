@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — The Google button opens Google's full account picker
+
+- "Continue with Google" now asks Credential Manager for
+  `GetSignInWithGoogleOption` (the button flow) instead of
+  `GetGoogleIdOption` (the one-tap bottom sheet). On the owner's Galaxy
+  S22 the sheet answered `[28433] No matching credentials` with eight
+  Google accounts on the phone and the Google Cloud setup checked: the
+  `et.kash.app` Android client with the release SHA-1, Web client 1 in the
+  same project, consent screen in production. Google recommends the button
+  flow for a sign-in button anyway; it still returns a Google ID token, so
+  the Supabase side is unchanged.
+- The `NoCredentialException` message no longer says there is no Google
+  account on the phone (it was wrong here); it says Google sign-in isn't
+  working right now and points to email.
+
 ## 2026-11-14 — Onboarding as approved: sign-in tabs, forgot password, no summary (canvas sections 1 and 2)
 
 - Sign in (step 3 and "sign in again") is the approved sheet on a slate top:
