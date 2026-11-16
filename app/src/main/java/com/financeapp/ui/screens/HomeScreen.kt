@@ -57,6 +57,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import com.financeapp.notifications.UpdateChecker
 import com.financeapp.sms.SmsIngestWorker
 import com.financeapp.ui.kash.KashColors
@@ -213,22 +215,24 @@ fun HomeScreen(
                 // drawing the last accounts it showed (an empty list crashed 1.0.31).
                 var shownOthers by remember { mutableStateOf(others) }
                 if (others.isNotEmpty()) shownOthers = others
+                // One at a time, as approved (FD_NewAccount): "Is this account yours?"
                 AnimatedVisibility(others.isNotEmpty(), enter = fadeIn() + expandVertically()) {
-                    NotYoursCard(
-                        shownOthers,
-                        onHide = { others.forEach { a ->
-                            val suffix = a.accountSuffix ?: com.financeapp.data.accounts.AccountGrouping.accountSuffix(a.accountNumber)
-                            if (suffix != null) vm.setAccountHidden(a.bankName, suffix, true)
-                        } },
-                        onKeep = {
-                            kept = kept + others.map { "${it.bankName}#${it.accountNumber}" }
+                    val a = shownOthers.firstOrNull() ?: return@AnimatedVisibility
+                    ConfirmAccountCard(
+                        a,
+                        onMine = {
+                            kept = kept + "${a.bankName}#${a.accountNumber}"
                             minePrefs.edit().putStringSet("kept", kept).apply()
                         },
-                        modifier = Modifier.padding(bottom = 14.dp),
+                        onNotMine = {
+                            val suffix = a.accountSuffix ?: com.financeapp.data.accounts.AccountGrouping.accountSuffix(a.accountNumber)
+                            if (suffix != null) vm.setAccountHidden(a.bankName, suffix, true)
+                        },
+                        modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
                     )
                 }
                 Crossfade(phase, label = "home") { p -> Column { when (p) {
-                    3 -> GettingReady(scan)
+                    3 -> GettingReady(onSeeAll)
                     0 -> Column {
                         KashSkeleton(width = 120.dp, height = 16.dp)
                         repeat(5) { KashSkeletonRow() }
@@ -242,15 +246,10 @@ fun HomeScreen(
                             KashButton("Add a transaction", onAdd, Modifier.width(220.dp), KashButtonVariant.Secondary, icon = KashIcon.Plus)
                         }
                     }
-                    else -> {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
-                            Text(
-                                "See all", style = KashType.Label, color = KashColors.InkMuted,
-                                modifier = Modifier.kashClickable(onClick = onSeeAll).padding(vertical = 6.dp, horizontal = 2.dp),
-                            )
-                        }
-                        LazyColumn(Modifier.fillMaxSize(), contentPadding = pad) {
+                    else -> Box(Modifier.fillMaxSize()) { Column {
+                        Text("Transactions", style = KashType.TitleS, color = KashColors.Ink)
+                        // Room at the end so the last row clears the pinned button.
+                        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = pad.calculateBottomPadding() + 84.dp)) {
                             groups.forEach { (day, rows) ->
                                 item(key = "h$day") { KashDayHeader(KashDates.dayHeader(day, cal), Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f))) }
                                 items(rows, key = { it.id }) { tx ->
@@ -258,6 +257,27 @@ fun HomeScreen(
                                         KashTxRow(tx, onClick = { onTxClick(tx.id) })
                                     }
                                 }
+                            }
+                        }
+                        }
+                        // "Show all transactions", pinned at the bottom over a fade (approved FD_HomeSearch).
+                        Box(
+                            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                                .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    0f to androidx.compose.ui.graphics.Color.Transparent, 0.45f to KashColors.Surface,
+                                ))
+                                .padding(top = 36.dp, bottom = pad.calculateBottomPadding() + 14.dp),
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().kashClickable(onClick = onSeeAll).height(48.dp)
+                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                    .background(KashColors.SurfaceRaised)
+                                    .border(1.dp, KashColors.LineStrong, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                            ) {
+                                Text("Show all transactions", style = KashType.BodyStrong, color = KashColors.Ink)
+                                KashIconView(KashIcon.ChevronRight, size = 16.dp, tint = KashColors.Ink, strokeWidth = 2.2f)
                             }
                         }
                     }
@@ -288,10 +308,14 @@ fun HomeScreen(
 
 /** Home, still reading: the sheet waits with faded rows instead of rows trickling in; the bar is under the balance. */
 @Composable
-private fun GettingReady(@Suppress("UNUSED_PARAMETER") p: SmsIngestWorker.ScanProgress?) {
+private fun GettingReady(onSeeAll: () -> Unit) {
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
+            Text(
+                "See all", style = KashType.Label, color = KashColors.Accent,
+                modifier = Modifier.kashClickable(onClick = onSeeAll).padding(vertical = 6.dp, horizontal = 2.dp),
+            )
         }
         Column(Modifier.padding(top = 8.dp).alpha(0.6f)) { repeat(3) { KashSkeletonRow() } }
     }
@@ -472,18 +496,18 @@ private fun AccountChip(a: AccountSummary, hidden: Boolean, onClick: () -> Unit)
     Column(
         Modifier
             .widthIn(min = 124.dp, max = 168.dp)
-            .clip(KashShapes.Chip)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
             .background(KashColors.GhostFill)
-            .border(1.dp, KashColors.GhostLine, KashShapes.Chip)
+            .border(1.dp, KashColors.GhostLine, androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
             .kashClickable(onClickLabel = "Open $name history", onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             KashBankBadge(a.bankName, size = 22.dp)
-            Text(name, style = KashType.Label, color = KashColors.OnSlateMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name, style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = KashColors.OnSlate, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        KashFigure(a.balance, style = KashType.FigureS, showDecimals = false, hidden = hidden,
+        KashFigure(a.balance, style = KashType.FigureS.copy(fontSize = 14.sp), showDecimals = false, hidden = hidden,
             color = if (a.stale) KashColors.OnSlateMuted else KashColors.OnSlate)
         val cal = LocalCalendarSystem.current
         when {
@@ -497,31 +521,43 @@ private fun AccountChip(a: AccountSummary, hidden: Boolean, onClick: () -> Unit)
 }
 
 /**
- * "2 accounts get SMS for Hana and Tsion": their SMS greet someone else, so
- * they're probably not the user's. Hide (Settings can show them again) or keep.
+ * "Is this account yours?" (approved FD_NewAccount): one account at a time,
+ * on sand: the bank, the masked number, "Yes, it’s mine" and "Not mine".
+ * Shown for accounts whose SMS greet someone else; Not mine hides it
+ * (Settings can show it again).
  */
 @Composable
-private fun NotYoursCard(accounts: List<AccountSummary>, onHide: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
-    val names = accounts.mapNotNull { it.otherHolder }.distinct()
-    val who = when (names.size) { 0 -> "someone else"; 1 -> names[0]; 2 -> "${names[0]} and ${names[1]}"; else -> names.dropLast(1).joinToString(", ") + " and " + names.last() }
+private fun ConfirmAccountCard(a: AccountSummary, onMine: () -> Unit, onNotMine: () -> Unit, modifier: Modifier = Modifier) {
+    val ink = KashColors.SlateInk
     Column(
-        modifier.fillMaxWidth().clip(KashShapes.Card).background(KashColors.SurfaceRaised)
-            .border(1.dp, KashColors.Line, KashShapes.Card).padding(16.dp),
+        modifier.fillMaxWidth().clip(KashShapes.Card).background(KashColors.Sand).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Is this account yours?", style = KashType.Caption.copy(fontWeight = FontWeight.SemiBold), color = ink.copy(alpha = 0.75f))
+            Text(kashBank(a.bankName).fullName, style = KashType.TitleS.copy(fontWeight = FontWeight.Bold), color = ink, textAlign = TextAlign.Center)
             Text(
-                if (accounts.size == 1) "1 account gets SMS for $who" else "${accounts.size} accounts get SMS for $who",
-                style = KashType.BodyStrong, color = KashColors.Ink,
-            )
-            Text(
-                "They don't look like yours. Hide them from Kash and your total? You can show them again in Settings.",
-                style = KashType.Caption, color = KashColors.InkMuted,
+                maskAccount(a.accountNumber), style = KashType.TitleM.copy(letterSpacing = 1.5.sp).num(), color = ink,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KashButton("Hide them", onHide, Modifier.weight(1f), KashButtonVariant.Primary, compact = true)
-            KashButton("They're mine", onKeep, Modifier.weight(1f), KashButtonVariant.Quiet, compact = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                Modifier.weight(1f).kashClickable(onClick = onMine).height(44.dp).clip(RoundedCornerShape(14.dp)).background(ink),
+                contentAlignment = Alignment.Center,
+            ) { Text("Yes, it’s mine", style = KashType.Label.copy(fontWeight = FontWeight.SemiBold), color = androidx.compose.ui.graphics.Color.White) }
+            Box(
+                Modifier.weight(1f).kashClickable(onClick = onNotMine).height(44.dp).clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, ink.copy(alpha = 0.25f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) { Text("Not mine", style = KashType.Label.copy(fontWeight = FontWeight.SemiBold), color = ink) }
         }
     }
+}
+
+/** "1000123453333" → "1•••••3333"; already masked or short: as is. */
+internal fun maskAccount(number: String): String {
+    val n = number.trim()
+    val digits = n.filter(Char::isDigit)
+    if (digits.length < 6) return n
+    return digits.take(1) + "•••••" + digits.takeLast(4)
 }
