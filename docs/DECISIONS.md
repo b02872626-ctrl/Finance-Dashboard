@@ -19,6 +19,12 @@ Entries before 2026-11-05 were reconstructed from the git history.
   each other (any of them); everything else narrows.
 - Search also matches the amount as typed ("1,250"). Home keeps no search
   or filters.
+## 2026-11-16 — Home has no Review button or "All caught up" status
+
+- Home's hero is the balance and the account cards, nothing else (owner:
+  "add nothing on the home screen"). The Review / All caught up /
+  Listening for bank SMS block is gone; sorting lives in the Review tab
+  and its badge.
 
 ## 2026-11-16 — Review holds the whole backlog; the sort card shows only your categories
 
