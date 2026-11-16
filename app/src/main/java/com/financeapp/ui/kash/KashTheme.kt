@@ -145,6 +145,11 @@ object KashColors {
      */
     val ChartLine: Color get() = if (paletteState.dark) Color(0xFFA9B4C4) else paletteState.slate
     val ChartOut: Color get() = if (paletteState.dark) Color(0xFF4A5566) else paletteState.slate
+    /** A selected chip (approved flow): grey with white text on dark; the accent on light. */
+    val ChipOn: Color get() = if (paletteState.dark) Color(0xFF4A5566) else paletteState.accent
+    val OnChipOn: Color get() = if (paletteState.dark) Color(0xFFFFFFFF) else paletteState.onAccent
+    /** A disabled filled button: a quiet grey fill, not an outline. */
+    val DisabledFill: Color get() = if (paletteState.dark) Color(0xFF39424F) else paletteState.well
     /** Slate on light, ink on dark: a strong mark on the sheet in both themes. */
     val Strong: Color get() = if (paletteState.dark) paletteState.ink else paletteState.slate
     val Surface: Color get() = paletteState.surface

@@ -161,8 +161,9 @@ fun KashPinKeys(
                         else -> Box(
                             keyModifier
                                 .then(if (disabled) Modifier else Modifier.kashClickable(press = KashPress.Dip) { onDigit(k) })
-                                .clip(KashShapes.Control)
-                                .background(KashColors.GhostFill),
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
+                                // Solid keys, as approved (PIN lock, Change PIN).
+                                .background(androidx.compose.ui.graphics.Color(0xFF4A5566)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(

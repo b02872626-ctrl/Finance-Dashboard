@@ -6,6 +6,18 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Shared styles match the approved flow
+
+- Text fields and search boxes use the well colour with no border and
+  radius 14; a 1.5dp ring shows only while typing (red on error).
+- Chips: off is outlined (transparent, strong line, muted text). On is the
+  accent on light and grey #4A5566 with white text on dark (`ChipOn`),
+  as in the dark screens; sand stays for primary buttons and Goals.
+- Disabled filled buttons are a quiet grey fill (`DisabledFill`), not an
+  outline.
+- Settings list groups: radius 18, no border. PIN keys: solid #4A5566,
+  radius 13. Analytics progress fills: grey (`ChartOut`) on dark.
+
 ## 2026-11-16 — Goals follow the approved flow (sections 9 to 12); pace per day, week or month
 
 - Goals screens are rebuilt from the canvas instead of the older

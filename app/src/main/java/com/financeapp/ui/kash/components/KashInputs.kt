@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -54,12 +55,13 @@ fun KashSearchField(
 ) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
-    val bg = if (onSlate) KashColors.GhostFill else KashColors.SurfaceRaised
+    // The approved field: the well colour, no border; a thin ring only while typing.
+    val bg = if (onSlate) KashColors.GhostFill else KashColors.Well
     val line = when {
         focused && onSlate -> KashColors.FocusOnSlate
         focused -> KashColors.Focus
         onSlate -> KashColors.GhostLine
-        else -> KashColors.Line
+        else -> Color.Transparent
     }
     val muted = if (onSlate) KashColors.OnSlateMuted else KashColors.InkMuted
     val text = if (onSlate) KashColors.OnSlate else KashColors.Ink
@@ -67,9 +69,9 @@ fun KashSearchField(
         modifier
             .fillMaxWidth()
             .height(KashSize.SearchH)
-            .clip(KashShapes.Control)
+            .clip(KashShapes.Field)
             .background(bg)
-            .border(if (focused) 2.dp else 1.dp, line, KashShapes.Control)
+            .border(if (focused) 1.5.dp else 1.dp, line, KashShapes.Field)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -122,7 +124,7 @@ fun KashTextField(
     val line = when {
         error != null -> KashColors.MoneyOut
         focused -> KashColors.Focus
-        else -> KashColors.Line
+        else -> Color.Transparent
     }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = KashType.Label, color = KashColors.InkMuted)
@@ -131,8 +133,8 @@ fun KashTextField(
                 .fillMaxWidth()
                 .height(KashSize.FieldH)
                 .clip(KashShapes.Field)
-                .background(if (locked) KashColors.Well else KashColors.SurfaceRaised)
-                .border(if (focused && error == null) 2.dp else 1.dp, line, KashShapes.Field)
+                .background(KashColors.Well)
+                .border(1.5.dp, line, KashShapes.Field)
                 .padding(start = 14.dp, end = if (trailing != null) 6.dp else 14.dp)
                 .then(if (error != null) Modifier.semantics { this.error(error) } else Modifier),
             contentAlignment = Alignment.CenterStart,
