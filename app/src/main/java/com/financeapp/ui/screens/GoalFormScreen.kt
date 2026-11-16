@@ -94,6 +94,8 @@ import com.financeapp.util.KashDates
 import com.financeapp.util.LocalCalendarSystem
 import com.financeapp.viewmodel.GoalAccountOption
 import com.financeapp.viewmodel.GoalDraft
+import com.financeapp.ui.goals.GoalsSheet
+import androidx.compose.ui.unit.sp
 import java.util.Calendar
 
 /** Which part of the form to open on. */
@@ -126,7 +128,9 @@ fun GoalFormScreen(
     val changeAccountOnly = editing != null && startAt == GoalFormStep.Account
     val steps = when {
         changeAccountOnly -> listOf(GoalFormStep.Account)
-        editing == null && initialType == null -> GoalFormStep.entries
+        // Edit goal is one page with "Save changes" (approved FD_GoalEdit); the account has its own page.
+        editing != null -> listOf(GoalFormStep.Details)
+        initialType == null -> GoalFormStep.entries
         else -> listOf(GoalFormStep.Details, GoalFormStep.Account)
     }
 
@@ -144,6 +148,9 @@ fun GoalFormScreen(
     var datePickerOpen by rememberSaveable { mutableStateOf(false) }
     var saveError by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
+    var iconPickerOpen by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var unit by remember { mutableStateOf(GoalPacePref.get(context)) }
 
     val fields = GoalForm.Fields(type, name, icon, amount, months, deadline, account)
     val errors = GoalForm.check(fields, today)
@@ -180,27 +187,31 @@ fun GoalFormScreen(
                     GoalsIconButton(KashIcon.Back, "Back", ::back)
                     Text(
                         if (changeAccountOnly) "Change account" else "Edit goal",
-                        style = KashType.TitleXs, color = GoalsColors.HeroInk,
+                        style = KashType.TitleS.copy(fontSize = 20.sp), color = GoalsColors.HeroInk,
                         modifier = Modifier.semantics { heading() },
                     )
                 }
             }
-            if (editing == null || changeAccountOnly) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (changeAccountOnly) Text(
+                "The account you pick counts from today. Saves already on the goal stay.",
+                style = KashType.Body, color = GoalsColors.HeroInkMuted,
+            )
+            if (editing == null) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     when (step) {
-                        GoalFormStep.Kind -> "What are you\nsaving for?"
+                        GoalFormStep.Kind -> "What are you saving for?"
                         GoalFormStep.Details -> when (type) {
                             GoalType.OPEN_ENDED -> "How big a safety net?"
                             GoalType.RECURRING -> "How much each month?"
                             else -> "How much, and by when?"
                         }
-                        GoalFormStep.Account -> "Where does the money go?"
+                        GoalFormStep.Account -> "Which account do you save in?"
                     },
                     style = KashType.TitleM, color = GoalsColors.HeroInk, modifier = Modifier.semantics { heading() },
                 )
-                if (changeAccountOnly) Text(
-                    "Money that lands in the account you pick counts from today on. Saves already on the goal stay.",
-                    style = KashType.Body.copy(fontWeight = FontWeight.Normal), color = GoalsColors.HeroInkMuted,
+                if (step == GoalFormStep.Account) Text(
+                    "Money into it counts as saved. Money out comes off.",
+                    style = KashType.Body, color = GoalsColors.HeroInkMuted,
                 )
             }
         },
@@ -228,24 +239,30 @@ fun GoalFormScreen(
 
                     GoalFormStep.Details -> DetailsStep(
                         editing = editing, type = type, cal = cal, now = now,
-                        icon = icon, onIcon = { icon = it; iconPicked = true },
+                        icon = icon, onPickIcon = { iconPickerOpen = true },
+                        unit = unit, onUnit = { unit = it; GoalPacePref.set(context, it) },
                         name = name, onName = { name = it.take(GoalForm.NAME_MAX) },
                         amount = amount, onAmount = { t -> amount = t.filter { it.isDigit() || it == '.' }.take(12) },
                         months = months, onMonths = { months = it },
                         deadline = deadline, onDeadline = { deadline = it }, onPickDate = { datePickerOpen = true },
                         savedSoFar = savedSoFar, averageMonthlySpend = averageMonthlySpend, errors = shown,
-                        onNext = { if (errors.none) step = GoalFormStep.Account else tried = true },
+                        nextLabel = if (editing != null) "Save changes" else "Next",
+                        onNext = { if (!errors.none) tried = true else if (editing != null) save() else step = GoalFormStep.Account },
                     )
 
                     GoalFormStep.Account -> AccountStep(
                         accounts = accounts, editing = editing, selected = account,
-                        showExplainer = !changeAccountOnly, error = saveError, saving = saving,
+                        error = saveError, saving = saving,
                         saveLabel = if (editing == null) "Save goal" else "Save changes",
                         onPick = { account = it; saveError = null }, onSave = ::save,
                     )
                 }
             }
         }
+    }
+
+    if (iconPickerOpen) GoalsSheet(title = "Pick an icon", onDismiss = { iconPickerOpen = false }) {
+        GoalIconPicker(icon, GoalIcons.defaultKey(editing?.type ?: type)) { icon = it; iconPicked = true; iconPickerOpen = false }
     }
 
     if (datePickerOpen) GoalsDatePicker(
@@ -286,9 +303,7 @@ private fun Modifier.bleed(by: androidx.compose.ui.unit.Dp) = layout { measurabl
 
 @Composable
 private fun ColumnScope.KindStep(onPick: (String) -> Unit) {
-    KindCards(selected = null, onPick = onPick)
-    Spacer(Modifier.weight(1f))
-    GoalsNotice(KashIcon.Sms, "Whichever you pick, you can link one account next and Kash counts the money for you.")
+    KindRows(onPick = onPick)
 }
 
 // ─── Step 2: details ─────────────────────────────────────────────────────
@@ -301,7 +316,9 @@ private fun ColumnScope.DetailsStep(
     cal: String,
     now: Long,
     icon: String,
-    onIcon: (String) -> Unit,
+    onPickIcon: () -> Unit,
+    unit: GoalCopy.PaceUnit,
+    onUnit: (GoalCopy.PaceUnit) -> Unit,
     name: String,
     onName: (String) -> Unit,
     amount: String,
@@ -314,43 +331,51 @@ private fun ColumnScope.DetailsStep(
     savedSoFar: Double,
     averageMonthlySpend: Double,
     errors: GoalForm.Errors,
+    nextLabel: String,
     onNext: () -> Unit,
 ) {
-    if (editing != null) EditStrip(editing, cal)
+    if (editing != null) Text(
+        GoalCopy.startedLine(editing.type, editing.createdAt, cal),
+        style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = GoalsColors.InkMuted,
+    )
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FieldLabel("Icon")
-        GoalIconPicker(icon, GoalIcons.defaultKey(editing?.type ?: type), onIcon)
-    }
-
+    // The goal's icon sits in the Name field (approved FD_New2); tapping it picks another.
     GoalsTextField(
         name, onName, "Name",
         placeholder = when (type) {
-            GoalType.OPEN_ENDED -> "Safety net"
-            GoalType.RECURRING -> "Monthly savings"
-            else -> "Laptop"
+            GoalType.OPEN_ENDED -> "e.g. Safety net"
+            GoalType.RECURRING -> "e.g. Monthly savings"
+            else -> "e.g. Laptop"
         },
         error = errors.name,
-        trailingLabel = GoalForm.nameCount(name),
+        leading = {
+            Box(
+                Modifier.kashClickable(onClickLabel = "Change icon", onClick = onPickIcon).size(32.dp)
+                    .clip(RoundedCornerShape(9.dp)).background(GoalsColors.Raised),
+                contentAlignment = Alignment.Center,
+            ) { KashIconView(GoalIcons.icon(icon), size = 18.dp, tint = GoalsColors.Ink) }
+        },
     )
 
     when (type) {
         GoalType.OPEN_ENDED -> {
+            val other = GoalForm.NET_MONTHS.none { "$it" == months }
+            var otherOpen by rememberSaveable { mutableStateOf(other) }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FieldLabel("Months of spending")
+                FieldLabel("Months of your spending")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     GoalForm.NET_MONTHS.forEach { m ->
-                        GoalsChip("$m ${if (m == 1) "month" else "months"}", months == "$m", { onMonths("$m") })
+                        GoalsChip("$m ${if (m == 1) "month" else "months"}", months == "$m" && !otherOpen, { otherOpen = false; onMonths("$m") })
                     }
+                    GoalsChip("Other", otherOpen, { otherOpen = true })
                 }
             }
-            val typed = months.takeUnless { m -> GoalForm.NET_MONTHS.any { "$it" == m } }.orEmpty()
-            GoalsTextField(
-                typed, { onMonths(it.filter(Char::isDigit).take(2)) }, "Or type a number",
+            if (otherOpen) GoalsTextField(
+                months.takeIf { other }.orEmpty(), { onMonths(it.filter(Char::isDigit).take(2)) }, "",
                 placeholder = "1 to 60", unit = "months", keyboardType = KeyboardType.Number, error = errors.months,
             )
             GoalForm.safetyNetPreview(months, averageMonthlySpend)?.let { p ->
-                GoalsNotice(if (p.known) KashIcon.Chart else KashIcon.Info, p.text, bold = p.bold)
+                StrongLine(p.text, p.bold)
             }
         }
 
@@ -359,7 +384,7 @@ private fun ColumnScope.DetailsStep(
                 amount, onAmount, "Amount a month", placeholder = "0", unit = "ETB", big = true, visualTransformation = AmountGrouping,
                 keyboardType = KeyboardType.Decimal, error = errors.amount,
             )
-            HelperLine(KashIcon.Repeat, "Starts this month. On the 1st, a new month begins at 0.")
+            Text("Starts this month. Each month begins at 0 on the 1st.", style = KashType.Label, color = GoalsColors.InkMuted)
         }
 
         else -> {
@@ -373,21 +398,55 @@ private fun ColumnScope.DetailsStep(
                 val custom = deadline != null && quick.values.none { it == deadline }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     quick.forEach { (m, day) ->
-                        GoalsChip(if (m == 12) "1 year" else "$m months", deadline == day, { onDeadline(day) })
+                        GoalsChip(GoalForm.quickLabel(m), deadline == day, { onDeadline(day) })
                     }
-                    GoalsChip("Pick a date", custom, onPickDate, leading = KashIcon.Calendar)
+                    GoalsChip(
+                        if (custom && deadline != null) GoalForm.dateLabel(deadline, cal) else "Pick a date",
+                        custom, onPickDate, leading = KashIcon.Calendar,
+                    )
                 }
             }
-            val helper = GoalForm.datedHelper(amount, deadline, savedSoFar, now, cal)
+            val helper = GoalForm.datedHelper(amount, deadline, savedSoFar, now, cal, unit, editing = editing != null)
             when {
                 errors.date != null -> ErrorLine(errors.date)
-                helper != null -> HelperLine(KashIcon.Calendar, helper)
+                helper != null -> {
+                    StrongLine(helper.text, helper.bold)
+                    // Save daily: see the pace per day, week or month (kept for every goal).
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Show it per", style = KashType.Caption, color = GoalsColors.InkFaint)
+                        GoalCopy.PaceUnit.entries.forEach { u ->
+                            Text(
+                                u.word, style = KashType.Caption.copy(fontWeight = if (u == unit) FontWeight.SemiBold else FontWeight.Medium),
+                                color = if (u == unit) GoalsColors.OnAccent else GoalsColors.InkMuted,
+                                modifier = Modifier.clip(KashShapes.Pill).background(if (u == unit) GoalsColors.Accent else GoalsColors.Well)
+                                    .kashClickable(onClickLabel = "Show the pace per ${u.word}") { onUnit(u) }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 
     Spacer(Modifier.weight(1f))
-    GoalsButton("Next", onNext, Modifier.fillMaxWidth().padding(top = 4.dp))
+    GoalsButton(nextLabel, onNext, Modifier.fillMaxWidth().padding(top = 4.dp))
+}
+
+/** A helper line with its key figure in ink, semi-bold: "About **5,000 ETB a month**, done by …". */
+@Composable
+private fun StrongLine(text: String, bold: String?) {
+    val annotated = androidx.compose.ui.text.buildAnnotatedString {
+        val i = if (bold != null) text.indexOf(bold) else -1
+        if (i < 0) append(text) else {
+            append(text.substring(0, i))
+            pushStyle(androidx.compose.ui.text.SpanStyle(color = GoalsColors.Ink, fontWeight = FontWeight.SemiBold))
+            append(bold!!)
+            pop()
+            append(text.substring(i + bold.length))
+        }
+    }
+    Text(annotated, style = KashType.Label.num(), color = GoalsColors.InkMuted)
 }
 
 /** Edit goal: the kind and start date, which can't change. */
@@ -452,48 +511,43 @@ private fun ColumnScope.AccountStep(
     accounts: List<GoalAccountOption>,
     editing: GoalEntity?,
     selected: String?,
-    showExplainer: Boolean,
     error: String?,
     saving: Boolean,
     saveLabel: String,
     onPick: (String?) -> Unit,
     onSave: () -> Unit,
 ) {
-    if (showExplainer) CountsCard()
-    Column {
-        FieldLabel(if (showExplainer) "Pick the account" else "Account")
-        Column(Modifier.selectableGroup()) {
-            accounts.forEach { a ->
-                val usedElsewhere = a.usedBy != null && a.usedBy.id != editing?.id
-                AccountOption(
-                    label = a.label,
-                    detail = GoalForm.maskNumber(a.accountNumber),
-                    bankName = a.bankName,
-                    checked = selected == a.key,
-                    disabled = usedElsewhere,
-                    note = if (usedElsewhere) "Used by ${a.usedBy!!.name}" else null,
-                ) { onPick(a.key) }
-                GoalsRowLine()
-            }
+    // Tapping an account another goal counts says so, and Save waits (approved FD_NewTaken).
+    var takenTapped by remember { mutableStateOf<String?>(null) }
+    Column(Modifier.selectableGroup()) {
+        accounts.forEach { a ->
+            val usedElsewhere = a.usedBy != null && a.usedBy.id != editing?.id
             AccountOption(
-                label = "None, I’ll add saves myself",
-                detail = "For cash or an account Kash can’t read",
-                bankName = null,
-                checked = selected == null,
-                disabled = false,
-                note = null,
-            ) { onPick(null) }
+                label = a.label,
+                detail = GoalForm.maskNumber(a.accountNumber),
+                bankName = a.bankName,
+                checked = selected == a.key && takenTapped == null,
+                dimmed = (usedElsewhere && takenTapped != a.key) || saving,
+                usedBy = if (usedElsewhere && takenTapped != a.key) "Used by ${a.usedBy!!.name}" else null,
+                error = if (takenTapped == a.key) "${a.usedBy?.name} already counts this one. Pick another." else null,
+            ) { if (usedElsewhere) takenTapped = a.key else { takenTapped = null; onPick(a.key) } }
+            GoalsRowLine()
         }
+        AccountOption(
+            label = "None, I’ll add saves myself",
+            detail = "For cash, or an account Kash can’t read",
+            bankName = null,
+            checked = selected == null && takenTapped == null,
+            dimmed = saving,
+            usedBy = null,
+            error = null,
+        ) { takenTapped = null; onPick(null) }
     }
     if (error != null) ErrorLine(error)
-    Text(
-        "One account feeds one goal. When a goal is reached or archived, its account is free again.",
-        style = KashType.Micro, color = GoalsColors.InkMuted,
-    )
     Spacer(Modifier.weight(1f))
     GoalsButton(
         if (saving && editing == null) "Saving goal…" else if (saving) "Saving…" else saveLabel,
-        onSave, Modifier.fillMaxWidth().padding(top = 4.dp), busy = saving,
+        onSave, Modifier.fillMaxWidth().padding(top = 4.dp), busy = saving, enabled = takenTapped == null,
     )
 }
 
@@ -531,9 +585,9 @@ private fun CountsRow(icon: KashIcon, text: String, value: String, tone: Color) 
 }
 
 /**
- * AccountOption: radio, 32dp bank badge (an edit well for None), label and
- * detail, an optional note pill. Disabled rows drop to 40%; the pill stays
- * readable so the reason shows.
+ * An account row (approved FD_New3): 36dp round bank badge, name and the
+ * masked number, the radio on the right. Another goal's account is dimmed
+ * with "Used by Monthly savings" where the radio would be.
  */
 @Composable
 private fun AccountOption(
@@ -541,41 +595,38 @@ private fun AccountOption(
     detail: String?,
     bankName: String?,
     checked: Boolean,
-    disabled: Boolean,
-    note: String?,
+    dimmed: Boolean,
+    usedBy: String?,
+    error: String?,
     onClick: () -> Unit,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
-            .kashClickable(enabled = !disabled, role = Role.RadioButton, onClick = onClick)
-            .padding(vertical = 12.dp)
+            .kashClickable(role = Role.RadioButton, onClick = onClick)
+            .alpha(if (dimmed) 0.45f else 1f)
+            .padding(vertical = 14.dp)
             .semantics {
                 selected = checked
-                if (disabled) disabled()
-                if (note != null) contentDescription = "$label, $note"
+                if (usedBy != null) contentDescription = "$label, $usedBy"
             },
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = if (error != null) Alignment.Top else Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val fade = if (disabled) Modifier.alpha(0.4f) else Modifier
-        Radio(checked, fade)
-        if (bankName != null) KashBankBadge(bankName, fade, size = 32.dp)
-        else Box(fade.size(32.dp).clip(KashShapes.Chip).background(GoalsColors.Well), contentAlignment = Alignment.Center) {
-            KashIconView(KashIcon.Edit, size = 16.dp, tint = GoalsColors.Ink)
+        if (bankName != null) KashBankBadge(bankName, size = 36.dp)
+        else Box(Modifier.size(36.dp).clip(CircleShape).background(GoalsColors.Well), contentAlignment = Alignment.Center) {
+            KashIconView(KashIcon.Edit, size = 18.dp, tint = GoalsColors.Ink)
         }
-        Column(fade.weight(1f)) {
-            Text(label, style = KashType.BodyStrong, color = GoalsColors.Ink, maxLines = 1)
-            if (!detail.isNullOrBlank()) Text(detail, style = KashType.Caption.num(), color = GoalsColors.InkMuted, maxLines = 1)
+        Column(Modifier.weight(1f)) {
+            Text(label, style = KashType.BodyStrong.copy(fontSize = 16.sp, lineHeight = 22.sp), color = GoalsColors.Ink, maxLines = 1)
+            if (!detail.isNullOrBlank()) Text(detail, style = KashType.Caption.copy(fontWeight = FontWeight.Medium).num(), color = GoalsColors.InkMuted, maxLines = 1)
+            if (error != null) Text(error, style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = GoalsColors.MoneyOut, modifier = Modifier.padding(top = 2.dp))
         }
-        if (note != null) Text(
-            note, style = KashType.Micro, color = GoalsColors.Ink, maxLines = 1,
-            modifier = Modifier
-                .widthIn(max = 150.dp)
-                .clip(KashShapes.Chip)
-                .background(GoalsColors.Well)
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        )
+        when {
+            error != null -> {}
+            usedBy != null -> Text(usedBy, style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = GoalsColors.InkMuted, maxLines = 1)
+            else -> Radio(checked, Modifier)
+        }
     }
 }
 
@@ -594,13 +645,23 @@ private fun Radio(checked: Boolean, modifier: Modifier) {
 
 /** "Save it by": one day from today on, in the calendar setting. [onPick] gets the start of that day. */
 @Composable
-private fun GoalsDatePicker(calendarSystem: String, initial: Long?, onDismiss: () -> Unit, onPick: (Long) -> Unit) {
+internal fun GoalsDatePicker(
+    calendarSystem: String,
+    initial: Long?,
+    onDismiss: () -> Unit,
+    /** "Save it by" for a goal's date; "When" for a save added by hand. */
+    title: String = "Save it by",
+    /** True: only today and earlier can be picked (a save that already happened). */
+    pastOnly: Boolean = false,
+    onPick: (Long) -> Unit,
+) {
     val today = KashDates.startOfDay(System.currentTimeMillis())
     var monthStart by remember { mutableLongStateOf(KashDates.monthBounds(initial ?: today, calendarSystem).first) }
     var day by remember { mutableStateOf(initial?.let(KashDates::startOfDay)) }
-    GoalsDialog(onDismiss = onDismiss) {
+    // A bottom sheet, as approved (FD_NewDate), not a centred dialog.
+    GoalsSheet(title = null, onDismiss = onDismiss) {
         Column(Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
-            Text("Save it by", style = KashType.Label, color = GoalsColors.InkMuted)
+            Text(title, style = KashType.Caption.copy(fontWeight = FontWeight.Medium), color = GoalsColors.InkMuted)
             Text(
                 day?.let { GoalForm.dateLabel(it, calendarSystem) } ?: "Pick a day",
                 style = KashType.TitleM.num(), color = GoalsColors.Ink, modifier = Modifier.padding(top = 2.dp),
@@ -609,27 +670,36 @@ private fun GoalsDatePicker(calendarSystem: String, initial: Long?, onDismiss: (
         Row(verticalAlignment = Alignment.CenterVertically) {
             val prev = KashDates.monthBounds(monthStart - DAY, calendarSystem).first
             val next = KashDates.monthBounds(monthStart, calendarSystem).second
-            GoalsIconButton(KashIcon.Back, KashDates.monthYear(prev + DAY, calendarSystem), { monthStart = prev })
+            MonthNavButton(KashIcon.Back, KashDates.monthYear(prev + DAY, calendarSystem)) { monthStart = prev }
             Text(
                 KashDates.monthYear(monthStart + DAY, calendarSystem),
                 style = KashType.BodyStrong, color = GoalsColors.Ink,
                 modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
             )
-            GoalsIconButton(KashIcon.ChevronRight, KashDates.monthYear(next + DAY, calendarSystem), { monthStart = next })
+            MonthNavButton(KashIcon.ChevronRight, KashDates.monthYear(next + DAY, calendarSystem)) { monthStart = next }
         }
-        DayGrid(monthStart, calendarSystem, today, day) { day = it }
-        Row(horizontalArrangement = Arrangement.spacedBy(KashSpace.GapM), modifier = Modifier.padding(top = 4.dp)) {
-            GoalsButton("Cancel", onDismiss, Modifier.widthIn(min = 104.dp), GoalsButtonVariant.Secondary)
-            GoalsButton("Use this date", { day?.let(onPick) }, Modifier.weight(1f), enabled = day != null)
+        DayGrid(monthStart, calendarSystem, today, day, pastOnly) { day = it }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp)) {
+            GoalsButton("Cancel", onDismiss, Modifier.weight(1f), GoalsButtonVariant.Secondary)
+            GoalsButton("Use this date", { day?.let(onPick) }, Modifier.weight(1.6f), enabled = day != null)
         }
     }
+}
+
+/** 36dp month arrows on the well (approved FD_NewDate). */
+@Composable
+private fun MonthNavButton(icon: KashIcon, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.kashClickable(onClickLabel = label, onClick = onClick).size(36.dp).clip(KashShapes.Control).background(GoalsColors.Well),
+        contentAlignment = Alignment.Center,
+    ) { KashIconView(icon, size = 18.dp, tint = GoalsColors.Ink) }
 }
 
 private const val DAY = 86_400_000L
 
 /** A month of days, Monday first. Past days are faint and can't be picked. */
 @Composable
-private fun DayGrid(monthStart: Long, calendarSystem: String, today: Long, picked: Long?, onPick: (Long) -> Unit) {
+private fun DayGrid(monthStart: Long, calendarSystem: String, today: Long, picked: Long?, pastOnly: Boolean = false, onPick: (Long) -> Unit) {
     val monthEnd = KashDates.monthBounds(monthStart, calendarSystem).second
     val days = ((monthEnd - monthStart + DAY / 2) / DAY).toInt()
     val dow = Calendar.getInstance().apply { timeInMillis = monthStart }.get(Calendar.DAY_OF_WEEK)
@@ -649,8 +719,8 @@ private fun DayGrid(monthStart: Long, calendarSystem: String, today: Long, picke
                     else {
                         val d = KashDates.startOfDay(monthStart + (i - 1) * DAY + DAY / 2)
                         val on = d == picked
-                        val past = d < today
-                        val shape = RoundedCornerShape(10.dp)
+                        val past = if (pastOnly) d > today else d < today
+                        val shape = RoundedCornerShape(12.dp)
                         Box(
                             Modifier
                                 .weight(1f)
