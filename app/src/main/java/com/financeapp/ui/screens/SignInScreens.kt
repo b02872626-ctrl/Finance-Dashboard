@@ -82,7 +82,7 @@ import com.financeapp.ui.kash.components.KashButtonVariant
 import com.financeapp.ui.kash.components.KashSpinner
 import com.financeapp.ui.kash.components.KashTextField
 import com.financeapp.ui.kash.kashClickable
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -215,14 +215,11 @@ class AuthFormState(
             error = "Google sign-in isn't available right now. Please use email instead."
             return
         }
+        // The button flow (full Google account picker), not the one-tap sheet:
+        // on some Samsung phones the sheet answers "no matching credentials"
+        // even with Google accounts on the phone and the OAuth client set up.
         val request = GetCredentialRequest.Builder()
-            .addCredentialOption(
-                GetGoogleIdOption.Builder()
-                    .setFilterByAuthorizedAccounts(false)
-                    .setServerClientId(webClientId)
-                    .setAutoSelectEnabled(false)
-                    .build()
-            )
+            .addCredentialOption(GetSignInWithGoogleOption.Builder(webClientId).build())
             .build()
         busy = AuthBusy.Google
         scope.launch {
@@ -251,7 +248,7 @@ class AuthFormState(
                 error = when (e) {
                     is androidx.credentials.exceptions.GetCredentialCancellationException -> "Sign-in cancelled"
                     is androidx.credentials.exceptions.NoCredentialException ->
-                        "No Google account found on this phone. Add one in Settings → Accounts, or sign in with email."
+                        "Google sign-in isn't working on this phone right now. Please sign in with email."
                     else -> friendlyAuthError(e, "Google sign-in failed. Please try again.")
                 }
                 launch(Dispatchers.IO) { errorRepo.log("Google sign-in failed: ${e.javaClass.simpleName}", e) }
