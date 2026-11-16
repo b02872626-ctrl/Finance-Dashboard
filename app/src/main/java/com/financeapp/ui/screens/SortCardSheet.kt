@@ -1,6 +1,17 @@
 package com.financeapp.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.financeapp.ui.kash.kashClickable
+import com.financeapp.ui.kash.components.KashButton
+import com.financeapp.ui.kash.components.KashButtonVariant
+import com.financeapp.ui.kash.components.LocalKashTips
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -87,8 +98,34 @@ fun SortCardSheet(
             )
         }
     }
+    // First time on the sort card: two tips, drawn here (the sheet is its own window).
+    val tips = LocalKashTips.current
+    var tipStep by remember { mutableStateOf(if (tips != null && !tips.seen(AppTips.SORTING_KEY)) 0 else -1) }
+    val showSwitch = name != null && onToggleApplyToSimilar != null
+    val tipCount = if (showSwitch) 2 else 1
+    fun endTips() { tips?.markSeen(AppTips.SORTING_KEY); tipStep = -1 }
+
     KashSheet(title, onDismiss = onClose, compact = true, lead = lead) {
-        KashSearchField(query, { query = it }, "Find or add a category")
+        if (tipStep >= 0) {
+            val last = tipStep >= tipCount - 1
+            InlineTip(
+                count = if (tipCount > 1) "SORTING · ${tipStep + 1} OF $tipCount" else "SORTING",
+                title = if (tipStep == 0) "Your own categories" else "Same person next time",
+                body = if (tipStep == 0) "Type any name. If it’s new, Kash adds it."
+                else "Leave this on and new payments to $name sort themselves.",
+                next = if (last) "Got it" else "Next",
+                onNext = { if (last) endTips() else tipStep++ },
+                onSkip = if (tipCount > 1) ::endTips else null,
+            )
+        }
+        // Typed a name that isn't one yet: make it and sort in one tap, right by the box.
+        val create: (() -> Unit)? = search.addName?.let { add -> { onCreate(add) } }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KashSearchField(query, { query = it }, "Find or add a category", Modifier.weight(1f))
+            if (create != null) {
+                KashButton("Create and sort", create, variant = KashButtonVariant.Accent, compact = true)
+            }
+        }
         Column(
             Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -103,16 +140,13 @@ fun SortCardSheet(
             )
             if (yours.isEmpty() && query.isBlank()) {
                 Text(
-                    "None yet. Type a name above and Kash makes it.",
+                    "No categories yet. Type one, like Rent or Food.",
                     style = KashType.Caption, color = KashColors.InkMuted,
                 )
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 search.matches.forEach { c ->
                     KashChip(c, c.equals(current, true), { onPick(c) }, checkWhenSelected = true)
-                }
-                search.addName?.let { add ->
-                    KashChip("Add “$add”", false, { onCreate(add) }, leading = KashIcon.Plus, dashed = true)
                 }
             }
         }
@@ -134,6 +168,33 @@ fun SortCardSheet(
                     KashSwitch(applyToSimilar, { onToggleApplyToSimilar() }, "New payments from $name too")
                 }
             }
+        }
+    }
+}
+
+/** A tip drawn inside a sheet: the sand card with Skip / Next, then Got it. */
+@Composable
+private fun InlineTip(count: String, title: String, body: String, next: String, onNext: () -> Unit, onSkip: (() -> Unit)?) {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(KashColors.Sand).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(count, style = KashType.Micro.copy(fontWeight = FontWeight.SemiBold), color = KashColors.SlateInk.copy(alpha = 0.7f))
+        Text(title, style = KashType.BodyStrong.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold), color = KashColors.SlateInk)
+        Text(body, style = KashType.Body.copy(fontWeight = FontWeight.Normal, fontSize = 14.sp), color = KashColors.SlateInk.copy(alpha = 0.85f))
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (onSkip != null) {
+                Text(
+                    "Skip", style = KashType.Label, color = KashColors.SlateInk.copy(alpha = 0.7f),
+                    modifier = Modifier.kashClickable(onClickLabel = "Skip the tips", onClick = onSkip).padding(vertical = 10.dp, horizontal = 4.dp),
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                next, style = KashType.Label.copy(fontWeight = FontWeight.SemiBold), color = Color.White,
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(KashColors.SlateInk)
+                    .kashClickable(onClick = onNext).padding(horizontal = 20.dp, vertical = 10.dp),
+            )
         }
     }
 }

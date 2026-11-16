@@ -40,6 +40,14 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInRoot
@@ -104,6 +112,9 @@ class KashTipsState internal constructor(private val prefs: SharedPreferences?) 
         if (index < set.tips.lastIndex) index++ else finish()
     }
 
+    /** For tips drawn inline (inside a sheet): mark [key] done without showing it here. */
+    fun markSeen(key: String) { prefs?.edit()?.putBoolean(key, true)?.apply() }
+
     /** Got it or Skip: this set never shows again. */
     fun finish() {
         active?.let { prefs?.edit()?.putBoolean(it.key, true)?.apply() }
@@ -141,6 +152,24 @@ fun Modifier.tipAnchor(id: String): Modifier = composed {
 
 private val Dim = Color(0x99000000)
 
+/**
+ * A 4dp checker tile ([cell] px per quarter) with [quarters] of its four
+ * quarters dimmed, clockwise from the top right, like the design's
+ * repeating conic gradient.
+ */
+private fun ditherBrush(quarters: Int, cell: Int): ShaderBrush {
+    val c = cell.coerceAtLeast(1)
+    val bmp = ImageBitmap(2 * c, 2 * c)
+    val canvas = androidx.compose.ui.graphics.Canvas(bmp)
+    val paint = androidx.compose.ui.graphics.Paint().apply { color = Dim }
+    // Top right, bottom right, bottom left, top left.
+    val spots = listOf(c to 0, c to c, 0 to c, 0 to 0)
+    spots.take(quarters).forEach { (x, y) ->
+        canvas.drawRect(x.toFloat(), y.toFloat(), (x + c).toFloat(), (y + c).toFloat(), paint)
+    }
+    return ShaderBrush(ImageShader(bmp, TileMode.Repeated, TileMode.Repeated))
+}
+
 /** Draws the active tip over the whole app. Put it last in a full-screen Box. */
 @Composable
 fun KashTipsHost(tips: KashTipsState) {
@@ -159,15 +188,27 @@ fun KashTipsHost(tips: KashTipsState) {
             // Taps outside the card do nothing: the tip is read, then closed.
             .pointerInput(Unit) { detectTapGestures { } },
     ) {
+        val density = LocalDensity.current
+        // The approved tip's dither: three 8dp bands around the hole, 25%,
+        // 50% and 75% of a 4dp checker, then the solid dim.
+        val dithers = remember(density) { listOf(1, 2, 3).map { ditherBrush(it, with(density) { 2.dp.roundToPx() }) } }
         Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
             drawRect(Dim)
             if (anchor != null) {
-                val pad = 10.dp.toPx()
-                val hole = anchor.inflate(pad)
-                drawRoundRect(
-                    Color.Black, topLeft = hole.topLeft, size = hole.size,
-                    cornerRadius = CornerRadius(18.dp.toPx()), blendMode = BlendMode.Clear,
-                )
+                val hole = anchor.inflate(6.dp.toPx())
+                val band = 8.dp.toPx()
+                val radius = minOf(16.dp.toPx(), minOf(hole.width, hole.height) / 2)
+                fun ring(e: Float) = RoundRect(hole.inflate(e), CornerRadius(radius + e))
+                // Clear the hole and the three bands, then dither the bands back in.
+                drawPath(Path().apply { addRoundRect(ring(3 * band)) }, Color.Black, blendMode = BlendMode.Clear)
+                for (k in 1..3) {
+                    val path = Path().apply {
+                        fillType = PathFillType.EvenOdd
+                        addRoundRect(ring(k * band))
+                        addRoundRect(ring((k - 1) * band))
+                    }
+                    drawPath(path, dithers[k - 1])
+                }
             }
         }
         // The card sits under the anchor, or above it when there's no room below.

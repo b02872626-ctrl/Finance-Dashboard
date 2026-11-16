@@ -148,7 +148,11 @@ fun HomeScreen(
     val tips = LocalKashTips.current
     val readyForTips = !state.isLoading && !reading && state.recentTransactions.isNotEmpty() && popup == null
     LaunchedEffect(readyForTips) {
-        if (readyForTips) { delay(700); tips?.offer(AppTips.home) }
+        if (readyForTips) {
+            delay(700)
+            // The visit after the Home tips: where sorting lives.
+            if (tips?.seen(AppTips.home.key) == true) tips.offer(AppTips.reviewTab) else tips?.offer(AppTips.home)
+        }
     }
 
     val hasAny = state.recentTransactions.isNotEmpty()
@@ -171,7 +175,7 @@ fun HomeScreen(
                         KashIconButton(KashIcon.Settings, "Settings", onSettings, onSlate = true)
                     }
                 }
-                BalanceBlock(state, hasAny, balanceVisible, counting = reading, modifier = Modifier.tipAnchor("balance")) { balanceVisible = !balanceVisible }
+                BalanceBlock(state, hasAny, balanceVisible, counting = reading, progress = scan, modifier = Modifier.tipAnchor("balance")) { balanceVisible = !balanceVisible }
                 // Home, still reading: one card per bank, done / reading / waiting.
                 val p = scan
                 if (p != null) {
@@ -283,36 +287,14 @@ fun HomeScreen(
     }
 }
 
-/** Home, still reading: the sheet waits with one loading bar instead of rows trickling in. */
+/** Home, still reading: the sheet waits with faded rows instead of rows trickling in; the bar is under the balance. */
 @Composable
-private fun GettingReady(p: SmsIngestWorker.ScanProgress?) {
-    val fraction = if (p == null || p.total == 0) 0f else (p.done.toFloat() / p.total).coerceIn(0f, 1f)
-    val pct = (fraction * 100).toInt()
+private fun GettingReady(@Suppress("UNUSED_PARAMETER") p: SmsIngestWorker.ScanProgress?) {
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
         }
-        Column(
-            Modifier
-                .padding(top = 20.dp)
-                .fillMaxWidth()
-                .clip(KashShapes.Card)
-                .background(KashColors.SurfaceRaised)
-                .border(1.dp, KashColors.Line, KashShapes.Card)
-                .padding(16.dp)
-                .semantics { contentDescription = "Getting your transactions ready, $pct percent" },
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Getting your transactions ready", style = KashType.BodyStrong, color = KashColors.Ink, modifier = Modifier.weight(1f))
-                Text("$pct%", style = KashType.Caption.num(), color = KashColors.InkMuted)
-            }
-            Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.Well)) {
-                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(KashShapes.Pill).background(KashColors.Accent))
-            }
-            Text("They show up here all at once when Kash has read your SMS.", style = KashType.Caption, color = KashColors.InkMuted)
-        }
-        Column(Modifier.padding(top = 12.dp).alpha(0.6f)) { repeat(3) { KashSkeletonRow() } }
+        Column(Modifier.padding(top = 8.dp).alpha(0.6f)) { repeat(3) { KashSkeletonRow() } }
     }
 }
 
@@ -373,15 +355,15 @@ private fun ReadingBankCard(b: SmsIngestWorker.BankProgress, accounts: List<Acco
                 else KashFigure(mine.sumOf { it.balance }, style = KashType.FigureS, showDecimals = false, hidden = hidden)
             }
             waiting -> Text("Waiting", style = KashType.Caption, color = KashColors.OnSlateMuted)
-            else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.fillMaxWidth().height(4.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
-                    Box(
-                        Modifier.fillMaxWidth((b.done.toFloat() / b.total).coerceIn(0f, 1f)).fillMaxHeight()
-                            .clip(KashShapes.Pill).background(KashColors.Sand),
-                    )
-                }
-                Text("${fmt.format(b.done)} of ${fmt.format(b.total)}", style = KashType.Micro.num(), color = KashColors.OnSlateMuted)
-            }
+            else -> Text(
+                buildAnnotatedString {
+                    append(fmt.format(b.done))
+                    withStyle(SpanStyle(color = KashColors.OnSlateMuted, fontWeight = FontWeight.Medium, fontSize = KashType.Micro.fontSize)) {
+                        append(" of ${fmt.format(b.total)}")
+                    }
+                },
+                style = KashType.FigureS, color = KashColors.OnSlate, maxLines = 1,
+            )
         }
     }
 }
@@ -404,6 +386,8 @@ private fun BalanceBlock(
     hasAny: Boolean,
     visible: Boolean,
     counting: Boolean = false,
+    /** The first read's progress: messages read so far over a bar, instead of the figure. */
+    progress: SmsIngestWorker.ScanProgress? = null,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit,
 ) {
@@ -423,7 +407,27 @@ private fun BalanceBlock(
             }
         }
         Crossfade(state.isLoading || counting, label = "balance") { loading ->
-            if (loading) {
+            if (loading && progress != null) {
+                // Home, still reading: "1,240 of 2,039 messages" over a bar that fills as Kash reads.
+                val fmt = remember { java.text.NumberFormat.getIntegerInstance(java.util.Locale.US) }
+                val fraction = if (progress.total == 0) 0f else (progress.done.toFloat() / progress.total).coerceIn(0f, 1f)
+                Column(
+                    Modifier.padding(top = 10.dp).height(44.dp).fillMaxWidth()
+                        .semantics { contentDescription = "Reading messages, ${progress.done} of ${progress.total}" },
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                ) {
+                    Text(
+                        buildAnnotatedString {
+                            append(fmt.format(progress.done))
+                            withStyle(SpanStyle(color = KashColors.OnSlateMuted)) { append(" of ${fmt.format(progress.total)} messages") }
+                        },
+                        style = KashType.Body.num(), color = KashColors.OnSlate,
+                    )
+                    Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
+                        Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(KashShapes.Pill).background(KashColors.Sand))
+                    }
+                }
+            } else if (loading) {
                 Row(Modifier.padding(top = 10.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     KashSkeleton(width = 170.dp, height = 34.dp, radius = 10.dp, onSlate = true)
                     Text("Counting…", style = KashType.Body, color = KashColors.OnSlateMuted)
@@ -501,10 +505,6 @@ private fun ReviewBlock(state: DashboardState, hasAny: Boolean, onToday: () -> U
         today.pending > 0 -> KashButton(
             "Review", onToday, Modifier.fillMaxWidth(), KashButtonVariant.Accent,
             badge = today.pending.toString(), compact = true,
-        )
-        state.olderPendingCount > 0 -> KashButton(
-            "Review older ones", onOlder, Modifier.fillMaxWidth(), KashButtonVariant.Accent,
-            badge = state.olderPendingCount.toString(), compact = true,
         )
         today.total > 0 -> GhostStatus(
             icon = KashIcon.Check,

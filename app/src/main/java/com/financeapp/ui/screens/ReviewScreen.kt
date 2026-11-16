@@ -23,6 +23,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.horizontalScroll
+import com.financeapp.ui.kash.components.LocalKashTips
+import com.financeapp.ui.kash.components.tipAnchor
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -127,6 +131,12 @@ fun ReviewScreen(
 
     val (figure, unit) = ReviewList.headline(state.tab, state.count)
     val groups = remember(state.shown) { groupByDay(state.shown) }
+    val months = remember(state.older, cal) { ReviewList.byMonth(state.older) { KashDates.monthBounds(it, cal).first } }
+
+    // First visit with something to sort: the Review tips.
+    val tips = LocalKashTips.current
+    val tipsReady = !state.isLoading && state.shown.isNotEmpty()
+    LaunchedEffect(tipsReady) { if (tipsReady) { kotlinx.coroutines.delay(600); tips?.offer(AppTips.review) } }
 
     KashScreen(
         tabBar = tabBar,
@@ -148,7 +158,7 @@ fun ReviewScreen(
         Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
                 ReviewTabs(
-                    tab = state.tab, today = state.today.size, month = state.month.size,
+                    tab = state.tab, today = state.today.size, month = state.month.size, earlier = state.older.size,
                     onSelect = { haptic(Haptic.TAP); vm.setTab(it) },
                     modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 )
@@ -158,16 +168,45 @@ fun ReviewScreen(
                         repeat(5) { KashSkeletonRow() }
                     }
                     state.shown.isEmpty() -> NothingToSort(
-                        older = if (state.tab == ReviewTab.MONTH) state.older.size else 0,
-                        onShowOlder = vm::showOlder,
+                        older = if (state.tab != ReviewTab.EARLIER) state.older.size else 0,
+                        onShowOlder = { vm.setTab(ReviewTab.EARLIER) },
                         modifier = Modifier.fillMaxSize().padding(bottom = bottom),
                     )
+                    state.tab == ReviewTab.EARLIER -> LazyColumn(
+                        Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = bottom + 76.dp),
+                    ) {
+                        months.forEachIndexed { m, (monthStart, rows) ->
+                            item(key = "m$monthStart") {
+                                KashDayHeader(
+                                    "${KashDates.monthYear(monthStart + 86_400_000L, cal)} · ${rows.size}",
+                                    Modifier.animateItemPlacement(),
+                                )
+                            }
+                            itemsIndexed(rows, key = { _, it -> it.id }) { i, tx ->
+                                KashTransactionRow(
+                                    name = tx.displayName(),
+                                    amount = tx.amount,
+                                    direction = tx.kashDirection(),
+                                    modifier = Modifier.animateItemPlacement(),
+                                    account = tx.accountShort(),
+                                    time = KashDates.whenShort(tx.dateTime, cal),
+                                    onClick = { vm.openDetail(tx) },
+                                    trailing = {
+                                        SortButton(tx.displayName(), if (m == 0 && i == 0) Modifier.tipAnchor("sortbtn") else Modifier) {
+                                            haptic(Haptic.TAP); vm.openSort(tx)
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
                     else -> LazyColumn(
                         Modifier.fillMaxSize(),
                         // Room under the last row for the snackbar, so it never covers a Sort button.
                         contentPadding = PaddingValues(bottom = bottom + 76.dp),
                     ) {
-                        groups.forEach { (day, rows) ->
+                        groups.forEachIndexed { g, (day, rows) ->
                             item(key = "h$day") {
                                 KashDayHeader(
                                     KashDates.dayHeader(day, cal),
@@ -175,7 +214,7 @@ fun ReviewScreen(
                                     net = if (state.tab == ReviewTab.MONTH) dayNet(rows) else null,
                                 )
                             }
-                            items(rows, key = { it.id }) { tx ->
+                            itemsIndexed(rows, key = { _, it -> it.id }) { i, tx ->
                                 KashTransactionRow(
                                     name = tx.displayName(),
                                     amount = tx.amount,
@@ -184,12 +223,13 @@ fun ReviewScreen(
                                     account = tx.accountShort(),
                                     time = KashDates.time(tx.dateTime),
                                     onClick = { vm.openDetail(tx) },
-                                    trailing = { SortButton(tx.displayName()) { haptic(Haptic.TAP); vm.openSort(tx) } },
+                                    trailing = {
+                                        SortButton(tx.displayName(), if (g == 0 && i == 0) Modifier.tipAnchor("sortbtn") else Modifier) {
+                                            haptic(Haptic.TAP); vm.openSort(tx)
+                                        }
+                                    },
                                 )
                             }
-                        }
-                        if (state.tab == ReviewTab.MONTH && state.older.isNotEmpty() && !state.showOlder) {
-                            item(key = "older") { OlderRow(state.older.size, vm::showOlder) }
                         }
                     }
                 }
@@ -265,9 +305,11 @@ internal fun looksOwnAccount(tx: TransactionEntity, userName: String): Boolean {
 
 /** Today N / This month N on the well; a check instead of a count once a slice is done. 44dp tall. */
 @Composable
-private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, onSelect: (ReviewTab) -> Unit, modifier: Modifier = Modifier) {
+private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, earlier: Int, onSelect: (ReviewTab) -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier
+            .tipAnchor("tabs")
+            .horizontalScroll(rememberScrollState())
             .height(44.dp)
             .clip(RoundedCornerShape(13.dp))
             .background(KashColors.Well)
@@ -276,7 +318,9 @@ private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, onSelect: (Review
     ) {
         ReviewTab.entries.forEach { t ->
             val on = t == tab
-            val count = if (t == ReviewTab.TODAY) today else month
+            val count = when (t) { ReviewTab.TODAY -> today; ReviewTab.MONTH -> month; ReviewTab.EARLIER -> earlier }
+            // Earlier shows only when there is a backlog.
+            if (t == ReviewTab.EARLIER && count == 0 && !on) return@forEach
             Row(
                 Modifier
                     .fillMaxHeight()
@@ -284,7 +328,7 @@ private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, onSelect: (Review
                     .background(if (on) KashColors.SurfaceRaised else androidx.compose.ui.graphics.Color.Transparent)
                     .selectable(selected = on, role = Role.Tab, onClick = { onSelect(t) })
                     .semantics { contentDescription = if (count == 0) "${t.label}, all sorted" else "${t.label}, $count to sort" }
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -294,7 +338,7 @@ private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, onSelect: (Review
                     color = if (on) KashColors.Ink else KashColors.InkMuted,
                     maxLines = 1, softWrap = false,
                 )
-                if (count > 0) Text(count.toString(), style = KashType.Label.num(), color = KashColors.InkMuted, maxLines = 1)
+                if (count > 0) Text(ReviewList.tabCount(count), style = KashType.Label.num(), color = KashColors.InkMuted, maxLines = 1)
                 else KashIconView(KashIcon.Check, size = 14.dp, tint = KashColors.InkMuted, strokeWidth = 2.4f)
             }
         }
@@ -303,9 +347,9 @@ private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, onSelect: (Review
 
 /** The row's 44dp Sort button: on the well, ink. */
 @Composable
-private fun SortButton(name: String, onClick: () -> Unit) {
+private fun SortButton(name: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        Modifier
+        modifier
             .padding(start = 4.dp)
             .kashClickable(onClickLabel = "Sort $name", onClick = onClick)
             .height(44.dp)
@@ -316,15 +360,6 @@ private fun SortButton(name: String, onClick: () -> Unit) {
     ) {
         Text("Sort", style = KashType.Caption.copy(fontWeight = FontWeight.SemiBold), color = KashColors.Ink, maxLines = 1, softWrap = false)
     }
-}
-
-/** Under This month: the backlog from before, on request. */
-@Composable
-private fun OlderRow(count: Int, onShow: () -> Unit) {
-    KashButton(
-        if (count == 1) "Show 1 from before this month" else "Show $count from before this month",
-        onShow, Modifier.fillMaxWidth().padding(top = 14.dp), KashButtonVariant.Secondary, compact = true,
-    )
 }
 
 /** The list is empty: a check in a well, "Nothing to sort". */
@@ -344,7 +379,7 @@ private fun NothingToSort(older: Int, onShowOlder: () -> Unit, modifier: Modifie
         )
         if (older > 0) {
             KashButton(
-                if (older == 1) "Show 1 from before this month" else "Show $older from before this month",
+                if (older == 1) "Sort 1 from before" else "Sort ${ReviewList.tabCount(older)} from before",
                 onShowOlder, Modifier.padding(top = 22.dp).widthIn(max = 300.dp), KashButtonVariant.Secondary, compact = true,
             )
         }

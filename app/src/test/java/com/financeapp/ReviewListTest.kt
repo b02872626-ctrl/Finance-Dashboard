@@ -49,4 +49,26 @@ class ReviewListTest {
         assertEquals("Yonas Girma is Rent. New ones will be too.", ReviewList.sortedText("Yonas Girma", "Rent", rule = true))
         assertEquals("Ride is Taxi.", ReviewList.sortedText("Ride", "Taxi", rule = false))
     }
+
+    @Test
+    fun `review opens on the first tab with something to sort and moves on when it empties`() {
+        val todayDone = ReviewList.split(listOf(tx(1, monthStart + day), tx(2, monthStart - day)), todayStart, monthStart)
+        assertEquals(ReviewTab.MONTH, ReviewList.landing(todayDone))
+        val onlyOlder = ReviewList.split(listOf(tx(2, monthStart - day)), todayStart, monthStart)
+        assertEquals(ReviewTab.EARLIER, ReviewList.landing(onlyOlder))
+        assertEquals(ReviewTab.EARLIER, ReviewList.landing(onlyOlder, from = ReviewTab.MONTH))
+        val nothing = ReviewList.split(emptyList(), todayStart, monthStart)
+        assertEquals(ReviewTab.TODAY, ReviewList.landing(nothing))
+        assertEquals(ReviewTab.MONTH, ReviewList.landing(nothing, from = ReviewTab.MONTH))
+    }
+
+    @Test
+    fun `earlier rows group by month, newest month first`() {
+        val rows = listOf(tx(1, monthStart - 40 * day), tx(2, monthStart - day), tx(3, monthStart - 2 * day))
+        val months = ReviewList.byMonth(rows) { it - it % (30 * day) }
+        assertEquals(2, months.size)
+        assertEquals(listOf(2L, 3L), months.first().second.map { it.id })
+        assertEquals("99+", ReviewList.tabCount(1885))
+        assertEquals("12", ReviewList.tabCount(12))
+    }
 }

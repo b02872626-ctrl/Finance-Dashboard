@@ -6,6 +6,30 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Review holds the whole backlog; the sort card shows only your categories
+
+- Home no longer has "Review older ones"; everything to sort lives in the
+  Review tab.
+- Review gets a third tab, Earlier (shown when there is a backlog): rows
+  from before this month, under a header per month and year ("Tikimt 2019
+  · 212"). Tab counts cap at 99+.
+- Review opens on the first tab with something to sort (Today, then This
+  month, then Earlier), and when the tab you are on runs out it moves on
+  to the next one. It never moves back on its own.
+- The sort card leaves out built-in names (Bills, Health, Transport, …)
+  that none of the user's transactions carry. Older versions had saved them
+  to the user's list without being asked. A built-in name shows again once
+  the user puts it on a transaction.
+- Typing a name that isn't a category yet shows a small "Create and sort"
+  button next to the box: one tap makes it and sorts. It replaces the
+  dashed "Add" chip.
+- Review tips as approved: "Sort your transactions here" on the Review tab
+  (Home, the visit after the Home tips), "Sort the newest first" and
+  "Today, then this month" inside Review. The sort card's two tips ("Your
+  own categories", "Same person next time") are drawn as a sand card
+  inside the sheet, because the sheet is its own window and the
+  darkened-screen tip can't reach it.
+
 ## 2026-11-16 — The first SMS read goes bank by bank; new-user tips; Wrapped is a pop-up
 
 - The first read of the inbox goes one bank at a time, smallest bank
@@ -14,6 +38,11 @@ Entries before 2026-11-05 were reconstructed from the git history.
   own small bar, the rest "Waiting". The Transactions sheet shows one
   "Getting your transactions ready" bar instead of rows trickling in, and
   there is no overall bar or count on the hero (owner's canvas comments).
+  Revised the same day (owner's comments): the one bar is a counting bar
+  under Total balance with the message count over it ("1,240 of 2,039
+  messages"), the bank being read shows only "412 of 1,439", and
+  the sheet shows faded rows with no card. Home keeps no search or
+  filters; those belong to All transactions.
   Trade-off: a reference number seen at two banks now keeps the first
   bank read, not the oldest SMS; such duplicates are rare.
 - A new SMS no longer cancels a running read (`ExistingWorkPolicy.REPLACE`

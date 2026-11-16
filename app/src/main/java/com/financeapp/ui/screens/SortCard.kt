@@ -9,7 +9,8 @@ import com.financeapp.data.model.TransactionCategoryCatalog
  *
  * Only the user's own categories: every name they made ([yours]'s `custom`)
  * or put on a transaction (`usage`), most used first, then the most recently
- * picked, then A–Z. No built-in catalog (owner's call, 14 Nov 2026).
+ * picked, then A–Z. No built-in catalog (owner's call, 14 Nov 2026): a
+ * built-in name shows only once a transaction of the user's carries it.
  * "Own accounts" joins the end only when the transaction looks like a move
  * between the user's accounts, so transfers can still be kept out of
  * spending.
@@ -40,7 +41,12 @@ object SortCard {
             counts[key] = (counts[key] ?: 0) + count
         }
         usage.forEach { add(it.category, it.count) }
-        custom.forEach { add(it, 0) }
+        // Built-in names the user never put on a transaction stay out
+        // (older versions saved them to the list without being asked).
+        custom.filterNot { c ->
+            TransactionCategoryCatalog.defaultCategories.any { it.equals(TransactionCategoryCatalog.normalize(c), true) } &&
+                usage.none { it.count > 0 && it.category.trim().equals(c.trim(), true) }
+        }.forEach { add(it, 0) }
         val recentRank = recent.map { it.lowercase() }.withIndex().associate { (i, n) -> n to i }
         val sorted = names.keys
             .sortedWith(compareBy({ -(counts[it] ?: 0) }, { recentRank[it] ?: Int.MAX_VALUE }, { it }))

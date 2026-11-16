@@ -38,9 +38,8 @@ data class ReviewListState(
     val today: List<TransactionEntity> = emptyList(),
     /** This month's pending rows, today's included, newest first. */
     val month: List<TransactionEntity> = emptyList(),
-    /** Pending rows from before this month; listed under This month on request. */
+    /** Pending rows from before this month: the Earlier tab, by month. */
     val older: List<TransactionEntity> = emptyList(),
-    val showOlder: Boolean = false,
     /** The row whose sort card is open. */
     val sorting: TransactionEntity? = null,
     /** The row whose "Check this one" sheet is open. */
@@ -53,9 +52,10 @@ data class ReviewListState(
     val shown: List<TransactionEntity>
         get() = when (tab) {
             ReviewTab.TODAY -> today
-            ReviewTab.MONTH -> if (showOlder) month + older else month
+            ReviewTab.MONTH -> month
+            ReviewTab.EARLIER -> older
         }
-    val count: Int get() = if (tab == ReviewTab.TODAY) today.size else month.size
+    val count: Int get() = shown.size
 }
 
 /**
@@ -71,6 +71,9 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
     /** The calendar in use (Gregorian or Ethiopian) decides where the month starts. */
     private val calendar = MutableStateFlow("GREGORIAN")
     private var snackbarJob: Job? = null
+    /** A tab asked for before the list loaded (Home's or Analytics' "older ones"). */
+    private var pinned: ReviewTab? = null
+
 
     init {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { repo.backfillMissingMerchantKeys() } }
@@ -79,7 +82,17 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
                 val now = System.currentTimeMillis()
                 ReviewList.split(pending, KashDates.startOfDay(now), KashDates.monthBounds(now, cal).first)
             }.collect { split ->
+                val was = _state.value
+                // Opening lands on the first tab with something to sort; when
+                // the tab being looked at runs out, Review moves on to the next.
+                val tab = when {
+                    was.isLoading && pinned == null -> ReviewList.landing(split)
+                    was.isLoading -> pinned!!
+                    was.count > 0 && ReviewList.count(was.tab, split) == 0 -> ReviewList.landing(split, from = was.tab)
+                    else -> was.tab
+                }
                 _state.value = _state.value.copy(
+                    tab = tab,
                     today = split.today, month = split.month, older = split.older, isLoading = false,
                     // A row that left the list closes its sheets.
                     sorting = _state.value.sorting?.takeIf { s -> split.month.any { it.id == s.id } || split.older.any { it.id == s.id } },
@@ -91,7 +104,10 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
 
     fun setCalendar(cal: String) { calendar.value = cal }
     fun setTab(tab: ReviewTab) { _state.value = _state.value.copy(tab = tab) }
-    fun showOlder() { _state.value = _state.value.copy(tab = ReviewTab.MONTH, showOlder = true) }
+    fun showOlder() {
+        if (_state.value.isLoading) pinned = ReviewTab.EARLIER
+        _state.value = _state.value.copy(tab = ReviewTab.EARLIER)
+    }
 
     fun openSort(tx: TransactionEntity) { _state.value = _state.value.copy(sorting = tx, detail = null) }
     fun openDetail(tx: TransactionEntity) { _state.value = _state.value.copy(detail = tx) }
