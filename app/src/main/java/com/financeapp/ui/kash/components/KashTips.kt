@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import androidx.lifecycle.withResumed
 import com.financeapp.ui.kash.KashColors
 import com.financeapp.ui.kash.KashType
 import com.financeapp.ui.kash.kashClickable
@@ -85,6 +86,25 @@ data class KashTipSet(val key: String, val label: String, val tips: List<KashTip
 class KashTipsState internal constructor(private val prefs: SharedPreferences?) {
     internal val rects = mutableStateMapOf<String, Rect>()
     internal val requesters = mutableMapOf<String, BringIntoViewRequester>()
+    /**
+     * Every place an anchor id is drawn, oldest first. During a cross-fade
+     * two screens draw the same id (the tab bar); the newest one wins, and
+     * the leaving one only removes its own entry.
+     */
+    private val owners = mutableMapOf<String, LinkedHashMap<Any, Rect>>()
+
+    internal fun place(id: String, owner: Any, rect: Rect) {
+        val all = owners.getOrPut(id) { LinkedHashMap() }
+        all[owner] = rect
+        val newest = all.values.last()
+        if (rects[id] != newest) rects[id] = newest
+    }
+
+    internal fun leave(id: String, owner: Any) {
+        val all = owners[id] ?: return
+        all.remove(owner)
+        if (all.isEmpty()) { owners.remove(id); rects.remove(id) } else rects[id] = all.values.last()
+    }
 
     var active by mutableStateOf<KashTipSet?>(null)
         private set
@@ -102,11 +122,16 @@ class KashTipsState internal constructor(private val prefs: SharedPreferences?) 
     /** Shows [set] if it was never finished and nothing else is showing. Tips whose anchor isn't on screen are left out. */
     fun offer(set: KashTipSet) {
         if (active != null || seen(set.key)) return
-        val tips = set.tips.filter { rectOf(it.anchor) != null }
+        val tips = set.tips.filter { rectOf(it.anchor) != null && !seen(partKey(set.key, it.anchor)) }
         if (tips.isEmpty()) return
         index = 0
+        full = set
         active = set.copy(tips = tips)
     }
+
+    /** The set as offered, before tips without an anchor were left out. */
+    private var full: KashTipSet? = null
+    private fun partKey(key: String, anchor: String) = "$key/$anchor"
 
     fun next() {
         val set = active ?: return
@@ -116,9 +141,27 @@ class KashTipsState internal constructor(private val prefs: SharedPreferences?) 
     /** For tips drawn inline (inside a sheet): mark [key] done without showing it here. */
     fun markSeen(key: String) { prefs?.edit()?.putBoolean(key, true)?.apply() }
 
+    /**
+     * [offer], but only once this screen is the one in front: a screen
+     * sliding out (Back pressed during its delay) never shows its tips.
+     */
+    suspend fun offerOn(life: androidx.lifecycle.Lifecycle, set: KashTipSet) {
+        if (life.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED) return
+        try { life.withResumed { offer(set) } } catch (_: androidx.lifecycle.LifecycleDestroyedException) {}
+    }
+
     /** Got it or Skip: this set never shows again. */
     fun finish() {
-        active?.let { prefs?.edit()?.putBoolean(it.key, true)?.apply() }
+        // A tip left out (its anchor wasn't on screen) still shows another
+        // time: only the tips seen are remembered until the set is complete.
+        active?.let { set ->
+            val e = prefs?.edit() ?: return@let
+            set.tips.forEach { e.putBoolean(partKey(set.key, it.anchor), true) }
+            val all = full?.tips.orEmpty().all { t -> set.tips.any { it.anchor == t.anchor } || seen(partKey(set.key, t.anchor)) }
+            if (all) e.putBoolean(set.key, true)
+            e.apply()
+        }
+        full = null
         active = null
         index = 0
     }
@@ -143,12 +186,12 @@ fun Modifier.tipAnchor(id: String): Modifier = composed {
         tips.requesters[id] = requester
         onDispose {
             if (tips.requesters[id] === requester) tips.requesters.remove(id)
-            tips.rects.remove(id)
+            tips.leave(id, requester)
         }
     }
     this
         .bringIntoViewRequester(requester)
-        .onGloballyPositioned { tips.rects[id] = it.boundsInRoot() }
+        .onGloballyPositioned { tips.place(id, requester, it.boundsInRoot()) }
 }
 
 private val Dim = Color(0x99000000)
@@ -270,7 +313,7 @@ fun KashTipsHost(tips: KashTipsState) {
                 anchor == null -> (h - card.height) / 2
                 anchor.bottom + gap + card.height <= h - 80.dp.roundToPx() -> anchor.bottom.toInt() + gap
                 else -> (anchor.top.toInt() - gap - card.height).coerceAtLeast(gap)
-            }
+            }.coerceIn(gap, (h - card.height - gap).coerceAtLeast(gap))
             layout(constraints.maxWidth, h) { card.place(side, y) }
         }
     }

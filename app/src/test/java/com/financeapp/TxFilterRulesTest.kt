@@ -35,6 +35,14 @@ class TxFilterRulesTest {
     }
 
     @Test
+    fun `amount search reads decimals as typed and ignores a lone point`() {
+        assertTrue(TxFilterRules.matchesSearch(tx(amount = 1250.1, who = "x"), "1250.1"))
+        assertTrue(TxFilterRules.matchesSearch(tx(amount = 1250.5, who = "x"), "1,250.50"))
+        assertFalse(TxFilterRules.matchesSearch(tx(amount = 560.0, who = "x"), "."))
+        assertFalse(TxFilterRules.matchesSearch(tx(amount = Double.NaN, who = "x"), "5"))
+    }
+
+    @Test
     fun `accounts, categories and amount narrow it down`() {
         val f = TransactionsFilter(accounts = setOf("Telebirr"))
         assertFalse(TxFilterRules.matches(tx(), f))

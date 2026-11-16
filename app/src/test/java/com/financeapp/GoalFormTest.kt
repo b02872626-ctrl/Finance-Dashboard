@@ -23,6 +23,8 @@ class GoalFormTest {
 
         val past = GoalForm.Fields(GoalType.DATE_BOUND, name = "Laptop", amount = "60,000", deadlineDay = today - day)
         assertEquals("Pick a day from today on", GoalForm.check(past, today).date)
+        // An edited goal may keep its own date after it has passed.
+        assertNull(GoalForm.check(past, today, keepDay = past.deadlineDay).date)
 
         val ok = past.copy(deadlineDay = today + 30 * day)
         assertTrue(GoalForm.check(ok, today).none)
@@ -89,8 +91,8 @@ class GoalFormTest {
         assertEquals("7,500 ETB a month", GoalForm.datedHelper("60,000", june, 0.0, now, "GREGORIAN")!!.bold)
         // Editing: what's saved already comes off, and it says "from here".
         assertEquals("About 5,000 ETB a month from here", GoalForm.datedHelper("60,000", june, 20_000.0, now, "GREGORIAN", editing = true)!!.text)
-        // Save daily: the same pace per day.
-        assertEquals("About 246 ETB a day, done by June 2027", GoalForm.datedHelper("60,000", june, 0.0, now, "GREGORIAN", GoalCopy.PaceUnit.DAY)!!.text)
+        // Save daily: what's left over the real days to go (215 of them).
+        assertEquals("About 279 ETB a day, done by June 2027", GoalForm.datedHelper("60,000", june, 0.0, now, "GREGORIAN", GoalCopy.PaceUnit.DAY)!!.text)
         assertNull(GoalForm.datedHelper("", june, 0.0, now, "GREGORIAN"))
         assertNull(GoalForm.datedHelper("60,000", null, 0.0, now, "GREGORIAN"))
         assertEquals("1 year", GoalForm.quickLabel(12))

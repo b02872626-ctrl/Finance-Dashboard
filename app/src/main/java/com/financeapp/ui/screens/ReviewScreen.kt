@@ -108,7 +108,7 @@ fun ReviewScreen(
     customCategories: List<String>,
     recentCategories: List<String>,
     categoryUsage: List<SortCard.Use>,
-    onAddCustomCategory: (String) -> Unit,
+    onAddCustomCategory: (String) -> String?,
 ) {
     KashSystemBars(darkIcons = false)
     val state by vm.state.collectAsState()
@@ -136,8 +136,9 @@ fun ReviewScreen(
 
     // First visit with something to sort: the Review tips.
     val tips = LocalKashTips.current
+    val tipsLife = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     val tipsReady = !state.isLoading && state.shown.isNotEmpty()
-    LaunchedEffect(tipsReady) { if (tipsReady) { kotlinx.coroutines.delay(600); tips?.offer(AppTips.review) } }
+    LaunchedEffect(tipsReady) { if (tipsReady) { kotlinx.coroutines.delay(600); tips?.offerOn(tipsLife, AppTips.review) } }
 
     KashScreen(
         tabBar = tabBar,
@@ -272,7 +273,7 @@ fun ReviewScreen(
             onToggleApplyToSimilar = vm::toggleApplyToSimilar,
             onClose = vm::closeSheets,
             onPick = sort,
-            onCreate = { name -> onAddCustomCategory(name); sort(TransactionCategoryCatalog.normalize(name)) },
+            onCreate = { name -> sort(onAddCustomCategory(name) ?: TransactionCategoryCatalog.normalize(name)) },
             title = "What was this?",
         )
     }

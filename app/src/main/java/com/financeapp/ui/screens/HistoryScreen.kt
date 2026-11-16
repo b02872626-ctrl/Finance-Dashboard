@@ -112,7 +112,8 @@ fun HistoryScreen(
     LaunchedEffect(nearEnd) { if (nearEnd) vm.loadMore() }
     // First visit: the All transactions tips (approved "Tip · search / filters").
     val tips = LocalKashTips.current
-    LaunchedEffect(loaded) { if (loaded) { kotlinx.coroutines.delay(600); tips?.offer(AppTips.allTransactions) } }
+    val tipsLife = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(loaded) { if (loaded) { kotlinx.coroutines.delay(600); tips?.offerOn(tipsLife, AppTips.allTransactions) } }
 
     KashScreen(
         heroGap = 16.dp,
@@ -282,7 +283,8 @@ private fun FiltersSheet(
     var min by remember { mutableStateOf(initial.minAmount?.let { KashMoney.whole(it).replace(",", "") }.orEmpty()) }
     var max by remember { mutableStateOf(initial.maxAmount?.let { KashMoney.whole(it).replace(",", "") }.orEmpty()) }
     var shown by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(draft) { shown = count(draft) }
+    // Waits for typing to pause before counting again.
+    LaunchedEffect(draft) { kotlinx.coroutines.delay(250); shown = count(draft) }
     fun setAmounts(lo: String, hi: String) {
         min = lo.filter { it.isDigit() || it == '.' }; max = hi.filter { it.isDigit() || it == '.' }
         draft = draft.copy(minAmount = min.toDoubleOrNull(), maxAmount = max.toDoubleOrNull())
@@ -296,7 +298,7 @@ private fun FiltersSheet(
             Text(
                 "Reset", style = KashType.Label, color = KashColors.InkMuted,
                 modifier = Modifier.align(Alignment.End).kashClickable(onClickLabel = "Reset filters", onClick = {
-                    draft = TransactionsFilter(searchQuery = draft.searchQuery, direction = draft.direction); min = ""; max = ""
+                    draft = TransactionsFilter(sender = draft.sender, type = draft.type, searchQuery = draft.searchQuery, direction = draft.direction); min = ""; max = ""
                 }).padding(vertical = 4.dp),
             )
             FilterLabel("When")

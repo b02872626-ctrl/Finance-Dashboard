@@ -168,9 +168,13 @@ class DashboardViewModel(private val repo: TransactionRepository) : ViewModel() 
 
     fun clearAndReimport(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Stop a scan in flight first: finishing after the wipe, it would
+            // re-add rows as new (alerts again) and mark the history read.
+            androidx.work.WorkManager.getInstance(context.applicationContext)
+                .cancelUniqueWork(SmsIngestWorker.UNIQUE_WORK_NAME).result.get()
             repo.clearAllData()
             SmsIngestWorker.forgetHistory(context)
-            SmsIngestWorker.enqueue(context)  // fresh full import after a wipe
+            SmsIngestWorker.restart(context)  // fresh full import after a wipe
         }
     }
 

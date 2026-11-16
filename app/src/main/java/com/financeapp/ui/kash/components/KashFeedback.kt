@@ -153,7 +153,7 @@ fun KashSnackbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val i = if (bold.isNullOrEmpty()) -1 else message.indexOf(bold)
+        val i = if (bold.isNullOrEmpty()) -1 else message.lastIndexOf(bold)
         Text(
             if (i < 0) androidx.compose.ui.text.AnnotatedString(message) else androidx.compose.ui.text.buildAnnotatedString {
                 append(message.substring(0, i))

@@ -153,7 +153,7 @@ fun GoalFormScreen(
     var unit by remember { mutableStateOf(GoalPacePref.get(context)) }
 
     val fields = GoalForm.Fields(type, name, icon, amount, months, deadline, account)
-    val errors = GoalForm.check(fields, today)
+    val errors = GoalForm.check(fields, today, keepDay = start?.deadlineDay)
     val shown = if (tried) errors else GoalForm.Errors()
 
     val index = steps.indexOf(step).coerceAtLeast(0)
@@ -167,6 +167,7 @@ fun GoalFormScreen(
     }
 
     fun save() {
+        if (saving) return
         if (!errors.none) { tried = true; if (!changeAccountOnly) step = GoalFormStep.Details; return }
         saving = true
         saveError = null
@@ -248,6 +249,7 @@ fun GoalFormScreen(
                         savedSoFar = savedSoFar, averageMonthlySpend = averageMonthlySpend, errors = shown,
                         nextLabel = if (editing != null) "Save changes" else "Next",
                         onNext = { if (!errors.none) tried = true else if (editing != null) save() else step = GoalFormStep.Account },
+                        busy = saving, error = if (editing != null) saveError else null,
                     )
 
                     GoalFormStep.Account -> AccountStep(
@@ -333,6 +335,8 @@ private fun ColumnScope.DetailsStep(
     errors: GoalForm.Errors,
     nextLabel: String,
     onNext: () -> Unit,
+    busy: Boolean = false,
+    error: String? = null,
 ) {
     if (editing != null) Text(
         GoalCopy.startedLine(editing.type, editing.createdAt, cal),
@@ -430,7 +434,8 @@ private fun ColumnScope.DetailsStep(
     }
 
     Spacer(Modifier.weight(1f))
-    GoalsButton(nextLabel, onNext, Modifier.fillMaxWidth().padding(top = 4.dp))
+    if (error != null) ErrorLine(error)
+    GoalsButton(if (busy) "Saving…" else nextLabel, onNext, Modifier.fillMaxWidth().padding(top = 4.dp), busy = busy)
 }
 
 /** A helper line with its key figure in ink, semi-bold: "About **5,000 ETB a month**, done by …". */

@@ -6,6 +6,25 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Bug review before 1.0.36
+
+- Changing a category on a transaction's page no longer applies it to
+  every row from that person by default: the "all from them" switch starts
+  off there, because that page has no "Put all N in X?" step like Review.
+- The Wrapped pop-up waits until both Home tip sets are done, so a tip
+  never starts underneath it.
+- Tip sets remember each tip seen. A tip left out because its item wasn't
+  on screen yet shows on a later visit instead of being lost.
+- Tips only start on the screen in front, never on one sliding out.
+- People updating from 1.0.35 with transactions already in Kash skip the
+  "Reading your SMS" first-read view.
+- Clear and reimport stops any scan in flight first. A burst of new SMS
+  during a scan queues one follow-up scan, not one per message.
+- An edited goal can keep its own date after it has passed (rename a
+  reached goal, change a goal's account). The per-day and per-week pace
+  split what's left over the real days to go. "Just started" only shows in
+  a goal's first week.
+
 ## 2026-11-16 — Last audit fixes; Add keeps the phone's keyboard
 
 - All transactions tips as approved: "Find anything" (search) and "Narrow

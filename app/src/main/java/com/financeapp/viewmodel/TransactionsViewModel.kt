@@ -97,9 +97,11 @@ object TxFilterRules {
 
     /** Name, reference, bank, category, or the amount as typed ("560", "1,250"). */
     fun matchesSearch(tx: TransactionEntity, q: String): Boolean {
-        val digits = q.replace(",", "")
-        val amountHit = digits.isNotEmpty() && digits.all { it.isDigit() || it == '.' } &&
-            (java.math.BigDecimal(tx.amount).stripTrailingZeros().toPlainString().startsWith(digits.trimEnd('.')))
+        // "1,250.50" looks for 1250.5; "." alone or a NaN amount matches nothing.
+        val digits = q.replace(",", "").let { d -> if ('.' in d) d.trimEnd('0').trimEnd('.') else d }
+        val amountHit = digits.any { it.isDigit() } && digits.all { it.isDigit() || it == '.' } &&
+            tx.amount.isFinite() &&
+            java.math.BigDecimal.valueOf(tx.amount).stripTrailingZeros().toPlainString().startsWith(digits)
         return amountHit ||
             tx.counterparty?.contains(q, ignoreCase = true) == true ||
             tx.refNumber?.contains(q, ignoreCase = true) == true ||
@@ -187,7 +189,8 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
     /** How many rows [draft] would show ("Show 214 transactions"). */
     suspend fun countFor(draft: TransactionsFilter): Int {
         val (from, to) = draft.bounds(_calendar.value)
-        return repo.getFiltered(draft.sender, draft.type, from, to - 1).first().count { TxFilterRules.matches(it, draft) }
+        val rows = repo.getFiltered(draft.sender, draft.type, from, to - 1).first()
+        return kotlinx.coroutines.withContext(Dispatchers.Default) { rows.count { TxFilterRules.matches(it, draft) } }
     }
 
     /**

@@ -107,7 +107,14 @@ class KashSlider {
     internal val bounds = androidx.compose.runtime.mutableStateMapOf<Int, Pair<Float, Float>>()
 
     fun Modifier.slot(index: Int): Modifier = this.then(
-        Modifier.onPlaced { c -> bounds[index] = c.positionInParent().x to c.size.width.toFloat() },
+        // A segment that leaves (Review's Earlier) forgets where it was.
+        Modifier.composed {
+            androidx.compose.runtime.DisposableEffect(index) { onDispose { bounds.remove(index) } }
+            Modifier
+        }.onPlaced { c ->
+            val v = c.positionInParent().x to c.size.width.toFloat()
+            if (bounds[index] != v) bounds[index] = v
+        },
     )
 }
 
@@ -135,11 +142,12 @@ fun Modifier.kashSliderIndicator(
         }
     }
     this.drawBehind {
-        if (!placed) return@drawBehind
+        // Before the first snap, draw straight at the segment: no blank frames on entry.
+        val (dx, dw) = if (placed) x.value to w.value else target ?: return@drawBehind
         drawRoundRect(
             color,
-            topLeft = androidx.compose.ui.geometry.Offset(x.value, 0f),
-            size = androidx.compose.ui.geometry.Size(w.value, size.height),
+            topLeft = androidx.compose.ui.geometry.Offset(dx, 0f),
+            size = androidx.compose.ui.geometry.Size(dw, size.height),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius.toPx()),
         )
     }
