@@ -268,7 +268,7 @@ fun HomeScreen(
             state = pull,
             modifier = Modifier.align(Alignment.TopCenter),
             containerColor = KashColors.SurfaceRaised,
-            contentColor = KashColors.Slate,
+            contentColor = KashColors.Strong,
         )
     }
 

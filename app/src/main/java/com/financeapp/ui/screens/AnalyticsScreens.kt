@@ -292,8 +292,8 @@ private fun SpendLine(o: SpendOverview, cal: String, modifier: Modifier = Modifi
     val lastIdx = days.indexOfLast { it != null }
     var picked by remember(o.fromMs, o.toMs) { mutableStateOf<Int?>(null) }
     val grow = rememberGrow(o.fromMs + o.toMs, durationMs = 600)
-    val lineColor = KashColors.Slate
-    val fill = KashColors.Slate.copy(alpha = 0.10f)
+    val lineColor = KashColors.ChartLine
+    val fill = KashColors.ChartLine.copy(alpha = 0.10f)
     val avgColor = KashColors.InkFaint
     val pointColor = KashColors.Ink
     fun dayMs(i: Int) = o.fromMs + i * 86_400_000L + 43_200_000L
@@ -377,7 +377,7 @@ private fun MoneyInOut(r: MonthReport, cal: String) {
     Section("Money in and out", "Last 6 months") {
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Legend(KashColors.MoneyIn, "In")
-            Legend(KashColors.Slate, "Out")
+            Legend(KashColors.ChartOut, "Out")
         }
         Column(
             Modifier
@@ -396,7 +396,7 @@ private fun MoneyInOut(r: MonthReport, cal: String) {
                         verticalAlignment = Alignment.Bottom,
                     ) {
                         Bar((m.moneyIn / max).toFloat(), KashColors.MoneyIn, grow)
-                        Bar((m.spent / max).toFloat(), KashColors.Slate, grow)
+                        Bar((m.spent / max).toFloat(), KashColors.ChartOut, grow)
                     }
                 }
             }
