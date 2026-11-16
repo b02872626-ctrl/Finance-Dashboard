@@ -95,6 +95,11 @@ items to Done with the date, add what is next or blocked.
 ## Done
 
 - 2026-11-16 1.0.35: New sign-in: tabs for Sign in and Create account, plus Forgot password; Goals: save toward something and see how close you are; Dark theme: pick Light, Dark or Match phone in Settings → Appearance; Review is now the list of your transactions and replaces History; Make a new category in one tap while sorting, and see the transaction as you do; Your categories stay after you reinstall and sign in again. Not yet installed on a real phone.
+- 2026-11-16 Session replay shows Kash's own fixed labels (screen
+  titles, buttons, fixed chips, Settings rows); money, names, accounts,
+  categories and typed text stay masked. Guarded by `ProductAnalyticsTest`.
+  Not yet checked on a phone: needs a release build with the PostHog key,
+  then one recording looked at in PostHog. Ships with the next release.
 - 2026-11-14 Onboarding as approved (canvas sections 1 and 2): the sign-in
   sheet with New to Kash / I have an account tabs, eye toggle, Forgot
   password → Link sent (Supabase recover, the web handles the link), Google

@@ -95,9 +95,9 @@ fun HistoryScreen(
                 Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                KashChip("All", filter.direction == null, { focus.clearFocus(); vm.setDirection(null) }, onSlate = true)
-                KashChip("In", filter.direction == TxDirection.IN, { focus.clearFocus(); vm.setDirection(TxDirection.IN) }, onSlate = true)
-                KashChip("Out", filter.direction == TxDirection.OUT, { focus.clearFocus(); vm.setDirection(TxDirection.OUT) }, onSlate = true)
+                KashChip("All", filter.direction == null, { focus.clearFocus(); vm.setDirection(null) }, onSlate = true, showInReplay = true)
+                KashChip("In", filter.direction == TxDirection.IN, { focus.clearFocus(); vm.setDirection(TxDirection.IN) }, onSlate = true, showInReplay = true)
+                KashChip("Out", filter.direction == TxDirection.OUT, { focus.clearFocus(); vm.setDirection(TxDirection.OUT) }, onSlate = true, showInReplay = true)
                 KashChip(
                     periodChipLabel(filter, cal), false, { focus.clearFocus(); periodOpen = true },
                     onSlate = true, trailing = KashIcon.ChevronDown,

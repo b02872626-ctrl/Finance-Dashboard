@@ -164,7 +164,7 @@ fun AccountDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                AccountPeriod.entries.forEach { p -> KashChip(p.label, p == period, { period = p }) }
+                AccountPeriod.entries.forEach { p -> KashChip(p.label, p == period, { period = p }, showInReplay = true) }
                 Spacer(Modifier.weight(1f))
                 Text(
                     "Net " + (if (net < 0) KashMoney.MINUS else "") + KashMoney.whole(net),

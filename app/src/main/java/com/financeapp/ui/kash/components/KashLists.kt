@@ -42,6 +42,7 @@ import com.financeapp.ui.kash.KashType
 import com.financeapp.ui.kash.KashPress
 import com.financeapp.ui.kash.kashClickable
 import com.financeapp.ui.kash.num
+import com.financeapp.ui.kash.replayLabel
 
 /** A hairline divider in `line`. */
 @Composable
@@ -230,6 +231,12 @@ fun KashListRow(
     inset: androidx.compose.ui.unit.Dp = 16.dp,
     trailing: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    /**
+     * True only when [label] and [hint] are Kash's own words ("Notifications"):
+     * they then show in session replay. [value] always stays hidden.
+     * Accounts, banks, categories, anything the user typed: false.
+     */
+    showInReplay: Boolean = false,
 ) {
     Column(modifier) {
         Row(
@@ -242,8 +249,10 @@ fun KashListRow(
         ) {
             if (icon != null) KashIconView(icon, size = 20.dp, tint = labelColor)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(label, style = KashType.Body, color = labelColor)
-                if (hint != null) Text(hint, style = KashType.Caption, color = KashColors.InkMuted)
+                Text(label, style = KashType.Body, color = labelColor, modifier = Modifier.replayLabel(showInReplay))
+                if (hint != null) {
+                    Text(hint, style = KashType.Caption, color = KashColors.InkMuted, modifier = Modifier.replayLabel(showInReplay))
+                }
             }
             if (trailing != null) {
                 trailing()
@@ -325,6 +334,8 @@ fun KashEmptyState(
     title: String,
     text: String?,
     modifier: Modifier = Modifier,
+    /** True only when [title] and [text] are Kash's own words: they then show in session replay. */
+    showInReplay: Boolean = false,
     action: (@Composable () -> Unit)? = null,
 ) {
     Column(
@@ -337,7 +348,10 @@ fun KashEmptyState(
             contentAlignment = Alignment.Center,
         ) { KashIconView(icon, size = 26.dp, tint = KashColors.InkMuted) }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(title, style = KashType.TitleS, color = KashColors.Ink, textAlign = TextAlign.Center)
+            Text(
+                title, style = KashType.TitleS, color = KashColors.Ink, textAlign = TextAlign.Center,
+                modifier = Modifier.replayLabel(showInReplay),
+            )
             if (text != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -345,6 +359,7 @@ fun KashEmptyState(
                     style = KashType.Body.copy(fontWeight = FontWeight.Normal),
                     color = KashColors.InkMuted,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.replayLabel(showInReplay),
                 )
             }
         }

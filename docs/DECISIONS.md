@@ -6,6 +6,29 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Session replay shows Kash's own fixed labels (changes 2026-11-12)
+
+Owner's call: fully masked recordings were all black boxes, so you could
+not tell which button or menu item someone tapped. Masks stay on; only
+Kash's own fixed words are let through with PostHog's unmask modifier,
+wrapped in `ui/kash/KashReplay.kt` (`Modifier.replayLabel()`).
+
+- Always visible: button text (`KashButton`; never put money or a name in
+  a button) and the Add screen's Expense / Income / Transfer segments.
+- Opt in per call with `showInReplay = true` (default false, so a new
+  screen stays hidden until someone checks it): fixed screen titles, fixed
+  filter chips ("All", "This month", "GC"), Settings rows and their hints,
+  fixed empty-state text.
+- Still hidden: amounts, balances, account cards, transaction rows, any
+  row's value column, text fields, PIN, images, and titles or chips that
+  can hold an account nickname, bank, category or search text.
+- Chosen over turning the masks off and hiding money by hand: a missed
+  label here costs a black box, a missed amount there leaks a balance.
+- `ProductAnalyticsTest` keeps it narrow: unmasking only through
+  `KashReplay.kt`, `replayLabel()` only in the Kash components,
+  `showInReplay = true` only on the approved screens and never on a line
+  that names money, a name, an account or a category.
+
 ## 2026-11-16 — The Google button opens Google's full account picker
 
 - "Continue with Google" now asks Credential Manager for

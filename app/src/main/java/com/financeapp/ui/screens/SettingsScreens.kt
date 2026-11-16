@@ -134,7 +134,7 @@ private fun SettingsPage(
     KashScreen(
         heroGap = 22.dp,
         hero = {
-            KashTopBar(title, onBack = onBack)
+            KashTopBar(title, onBack = onBack, showInReplay = true) // every SettingsPage title is a fixed string
             if (headline != null) Text(headline, style = KashType.TitleL, color = KashColors.OnSlate)
             heroExtra?.invoke()
         },
@@ -171,7 +171,7 @@ fun SettingsHomeScreen(
     KashScreen(
         heroGap = 22.dp,
         hero = {
-            KashTopBar("Settings", onBack = onBack)
+            KashTopBar("Settings", onBack = onBack, showInReplay = true)
             Row(
                 Modifier.fillMaxWidth().kashClickable(onClickLabel = "Edit your account", onClick = onEditAccount),
                 verticalAlignment = Alignment.CenterVertically,
@@ -197,14 +197,14 @@ fun SettingsHomeScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             KashListGroup {
-                KashListRow("Appearance", icon = KashIcon.Appearance, value = KashThemeMode.fromStored(themeMode).label, onClick = onAppearance)
-                KashListRow("Privacy and data", icon = KashIcon.Eye, onClick = onPrivacy)
-                KashListRow("Notifications", icon = KashIcon.Sms, value = notificationsRowValue(notifications, systemNotifications), onClick = onNotifications)
-                KashListRow("Change PIN", icon = KashIcon.Lock, onClick = onChangePin)
-                KashListRow("Banks Kash follows", icon = KashIcon.Card, value = followedBanks.toString(), onClick = onBanks)
-                KashListRow("Export transactions", icon = KashIcon.Export, onClick = onExport)
-                KashListRow("Updates", icon = KashIcon.Info, value = updatesRowValue(update), onClick = onUpdates)
-                KashListRow("Email support", icon = KashIcon.External, showDivider = false, onClick = onSupport)
+                KashListRow("Appearance", icon = KashIcon.Appearance, value = KashThemeMode.fromStored(themeMode).label, showInReplay = true, onClick = onAppearance)
+                KashListRow("Privacy and data", icon = KashIcon.Eye, showInReplay = true, onClick = onPrivacy)
+                KashListRow("Notifications", icon = KashIcon.Sms, value = notificationsRowValue(notifications, systemNotifications), showInReplay = true, onClick = onNotifications)
+                KashListRow("Change PIN", icon = KashIcon.Lock, showInReplay = true, onClick = onChangePin)
+                KashListRow("Banks Kash follows", icon = KashIcon.Card, value = followedBanks.toString(), showInReplay = true, onClick = onBanks)
+                KashListRow("Export transactions", icon = KashIcon.Export, showInReplay = true, onClick = onExport)
+                KashListRow("Updates", icon = KashIcon.Info, value = updatesRowValue(update), showInReplay = true, onClick = onUpdates)
+                KashListRow("Email support", icon = KashIcon.External, showDivider = false, showInReplay = true, onClick = onSupport)
             }
             Row(
                 Modifier
@@ -222,8 +222,8 @@ fun SettingsHomeScreen(
                     Text("Changes every date in the app", style = KashType.Caption, color = KashColors.InkMuted)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    KashChip("GC", cal != "ETHIOPIAN", { if (cal == "ETHIOPIAN") vm.toggleCalendarSystem() })
-                    KashChip("EC", cal == "ETHIOPIAN", { if (cal != "ETHIOPIAN") vm.toggleCalendarSystem() })
+                    KashChip("GC", cal != "ETHIOPIAN", { if (cal == "ETHIOPIAN") vm.toggleCalendarSystem() }, showInReplay = true)
+                    KashChip("EC", cal == "ETHIOPIAN", { if (cal != "ETHIOPIAN") vm.toggleCalendarSystem() }, showInReplay = true)
                 }
             }
             Spacer(Modifier.height(18.dp))
@@ -434,17 +434,18 @@ fun NotificationsPage(vm: SettingsViewModel, onBack: () -> Unit) {
                     GroupRow(prefs, NotifyGroup.REVIEW, "Review", "Transactions to sort, in the evening digest")
                     GroupRow(prefs, NotifyGroup.SUMMARIES, "Summaries", "Your week, your month, and a catch-up after a quiet week")
                     GroupRow(prefs, NotifyGroup.HEALTH, "Account health", "When Kash can't read your bank SMS")
-                    KashListRow("Security", hint = "Wrong PIN attempts", value = "Always on", showDivider = false)
+                    KashListRow("Security", hint = "Wrong PIN attempts", value = "Always on", showDivider = false, showInReplay = true)
                 }
 
                 SectionLabel("When")
                 KashListGroup {
-                    KashListRow("Evening digest", value = clock(prefs.digestMinute), onClick = { sheet = "digest" })
+                    KashListRow("Evening digest", value = clock(prefs.digestMinute), onClick = { sheet = "digest" }, showInReplay = true)
                     KashListRow(
                         "Quiet hours",
                         hint = "Alerts wait until the morning digest. Security still comes through.",
                         value = if (prefs.quietHoursOn) "${clock(prefs.quietStartMinute)}–${clock(prefs.quietEndMinute)}" else "Off",
                         showDivider = false,
+                        showInReplay = true,
                         onClick = { sheet = "quiet" },
                     )
                 }
@@ -455,6 +456,7 @@ fun NotificationsPage(vm: SettingsViewModel, onBack: () -> Unit) {
                         "Low balance",
                         value = prefs.balanceFloor?.let { "Below ${KashMoney.whole(it)} ETB" } ?: "Automatic",
                         hint = if (prefs.balanceFloor == null) "Twice what you spend on an average day" else null,
+                        showInReplay = true,
                         onClick = { sheet = "floor" },
                     )
                     KashListRow(
@@ -535,7 +537,7 @@ private fun SectionLabel(text: String) =
 @Composable
 private fun GroupRow(prefs: NotificationPrefs, group: NotifyGroup, label: String, hint: String) {
     var on by remember { mutableStateOf(prefs.isGroupOn(group)) }
-    KashListRow(label, hint = hint, trailing = {
+    KashListRow(label, hint = hint, showInReplay = true, trailing = {
         KashSwitch(on, { on = it; prefs.setGroupOn(group, it) }, label)
     })
 }
@@ -550,7 +552,8 @@ private fun ChipRow(label: String, options: List<Pair<Int, String>>, selected: I
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = KashType.Label, color = KashColors.InkMuted)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            options.forEach { (v, text) -> KashChip(text, v == selected, { onPick(v) }) }
+            // Fixed choices ("21:00", "5%", "100 ETB"), not the user's money.
+            options.forEach { (v, text) -> KashChip(text, v == selected, { onPick(v) }, showInReplay = true) }
         }
     }
 }
@@ -686,14 +689,14 @@ fun ExportSheet(all: List<TransactionEntity>, onClose: () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Period", style = KashType.Label, color = KashColors.InkMuted)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExportPeriod.entries.forEach { p -> KashChip(p.label, p == period, { period = p }) }
+                ExportPeriod.entries.forEach { p -> KashChip(p.label, p == period, { period = p }, showInReplay = true) }
             }
         }
         if (banks.size > 1) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Accounts", style = KashType.Label, color = KashColors.InkMuted)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KashChip("All", account == null, { account = null })
+                    KashChip("All", account == null, { account = null }, showInReplay = true)
                     banks.forEach { b -> KashChip(kashBank(b).shortName, account == b, { account = b }) }
                 }
             }

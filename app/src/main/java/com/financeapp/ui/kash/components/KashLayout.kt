@@ -81,6 +81,7 @@ import com.financeapp.ui.kash.KashSpace
 import com.financeapp.ui.kash.KashTheme
 import com.financeapp.ui.kash.KashType
 import com.financeapp.ui.kash.kashClickable
+import com.financeapp.ui.kash.replayLabel
 
 // ─── Screen ──────────────────────────────────────────────────────────────
 
@@ -216,6 +217,11 @@ fun KashTopBar(
     onSlate: Boolean = true,
     centerTitle: Boolean = false,
     leading: (@Composable () -> Unit)? = null,
+    /**
+     * True only when the title is Kash's own words ("Settings"): it then shows
+     * in session replay. Account nicknames, categories, anything the user typed: false.
+     */
+    showInReplay: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val color = if (onSlate) KashColors.OnSlate else KashColors.Ink
@@ -231,7 +237,8 @@ fun KashTopBar(
                 if (title != null) {
                     Text(
                         title, style = KashType.TitleXs, color = color, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() },
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).semantics { heading() }.replayLabel(showInReplay),
                     )
                 } else Spacer(Modifier.weight(1f))
             } else Spacer(Modifier.weight(1f))
@@ -246,7 +253,7 @@ fun KashTopBar(
                 if (leading != null) leading()
                 Text(
                     title, style = KashType.TitleXs, color = color, maxLines = 1, textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() },
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }.replayLabel(showInReplay),
                 )
             }
         }

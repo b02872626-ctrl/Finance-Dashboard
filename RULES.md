@@ -74,7 +74,10 @@ anything.
 - Product analytics go to PostHog (EU) through `remote/ProductAnalytics.kt`
   (app) and `Web/analytics.js` (site) only: named events, no autocapture,
   never money data. App session replay is allowed only fully masked (every
-  text, text field and image hidden, no logcat; `ProductAnalytics.replayConfig`);
+  text, text field and image hidden, no logcat; `ProductAnalytics.replayConfig`),
+  except Kash's own fixed labels (titles, buttons, fixed chips, Settings rows)
+  let through with `showInReplay = true` / `Modifier.replayLabel()`. Never on
+  money, names, accounts, categories or anything the user typed;
   no replay on the website or web dashboard. New app events go through
   `Telemetry.track`, which sends to both Supabase and PostHog;
   `ProductAnalyticsTest` must keep passing. Never load PostHog on `/admin/`.

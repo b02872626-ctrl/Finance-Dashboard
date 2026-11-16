@@ -198,7 +198,7 @@ fun PinSetupScreen(
             }
         },
         header = {
-            if (onBack != null) KashTopBar("Change PIN", onBack = onBack)
+            if (onBack != null) KashTopBar("Change PIN", onBack = onBack, showInReplay = true)
             else Box(Modifier.height(KashSize.IconButton))
         },
     )
@@ -391,6 +391,6 @@ fun ChangePinScreen(
                 }
             }
         },
-        header = { KashTopBar("Change PIN", onBack = onBack) },
+        header = { KashTopBar("Change PIN", onBack = onBack, showInReplay = true) },
     )
 }
