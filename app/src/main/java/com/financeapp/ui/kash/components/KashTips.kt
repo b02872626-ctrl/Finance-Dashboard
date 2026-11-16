@@ -104,6 +104,9 @@ class KashTipsState internal constructor(private val prefs: SharedPreferences?) 
         if (index < set.tips.lastIndex) index++ else finish()
     }
 
+    /** For tips drawn inline (inside a sheet): mark [key] done without showing it here. */
+    fun markSeen(key: String) { prefs?.edit()?.putBoolean(key, true)?.apply() }
+
     /** Got it or Skip: this set never shows again. */
     fun finish() {
         active?.let { prefs?.edit()?.putBoolean(it.key, true)?.apply() }

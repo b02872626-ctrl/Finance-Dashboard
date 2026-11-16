@@ -17,6 +17,23 @@ object AppTips {
         ),
     )
 
+    /** Home, the visit after the Home tips: where sorting lives. */
+    val reviewTab = KashTipSet(
+        "tips_review_tab", "NEW",
+        listOf(KashTip("reviewtab", "Sort your transactions here", "Say what your newest transactions were, today’s first. Once you sort someone, their new payments sort themselves.")),
+    )
+
+    val review = KashTipSet(
+        "tips_review", "REVIEW",
+        listOf(
+            KashTip("sortbtn", "Sort the newest first", "Today’s transactions come first. Tap Sort and say what each one was."),
+            KashTip("tabs", "Today, then this month", "When today’s are done, Review moves on to the rest of this month."),
+        ),
+    )
+
+    /** The sort card, first time: drawn inside the sheet (it is its own window). */
+    const val SORTING_KEY = "tips_sorting"
+
     val analytics = KashTipSet(
         "tips_analytics", "ANALYTICS",
         listOf(

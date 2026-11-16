@@ -148,7 +148,11 @@ fun HomeScreen(
     val tips = LocalKashTips.current
     val readyForTips = !state.isLoading && !reading && state.recentTransactions.isNotEmpty() && popup == null
     LaunchedEffect(readyForTips) {
-        if (readyForTips) { delay(700); tips?.offer(AppTips.home) }
+        if (readyForTips) {
+            delay(700)
+            // The visit after the Home tips: where sorting lives.
+            if (tips?.seen(AppTips.home.key) == true) tips.offer(AppTips.reviewTab) else tips?.offer(AppTips.home)
+        }
     }
 
     val hasAny = state.recentTransactions.isNotEmpty()
@@ -501,10 +505,6 @@ private fun ReviewBlock(state: DashboardState, hasAny: Boolean, onToday: () -> U
         today.pending > 0 -> KashButton(
             "Review", onToday, Modifier.fillMaxWidth(), KashButtonVariant.Accent,
             badge = today.pending.toString(), compact = true,
-        )
-        state.olderPendingCount > 0 -> KashButton(
-            "Review older ones", onOlder, Modifier.fillMaxWidth(), KashButtonVariant.Accent,
-            badge = state.olderPendingCount.toString(), compact = true,
         )
         today.total > 0 -> GhostStatus(
             icon = KashIcon.Check,
