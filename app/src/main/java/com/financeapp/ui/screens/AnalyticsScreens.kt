@@ -142,13 +142,16 @@ fun AnalyticsTabScreen(
                 }
             }
             Row(Modifier.tipAnchor("daily#2"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Tapping a tile switches the chart below to that range (approved FD_AnWeek).
                 StatTile(
                     "This week", if (o.isLoading) null else KashMoney.whole(o.weekSpent), Modifier.weight(1f),
                     change = o.weekChangePct, changeVs = "last week",
+                    selected = o.preset == SpendPreset.THIS_WEEK, onClick = { vm.setPreset(SpendPreset.THIS_WEEK) },
                 )
                 StatTile(
                     "This month", if (o.isLoading) null else KashMoney.whole(o.monthSpent), Modifier.weight(1f),
                     change = o.monthChangePct, changeVs = "last month",
+                    selected = o.preset == SpendPreset.THIS_MONTH, onClick = { vm.setPreset(SpendPreset.THIS_MONTH) },
                 )
             }
         },
@@ -212,12 +215,16 @@ private fun changeLong(pct: Int, vs: String): String = when {
 }
 
 @Composable
-private fun StatTile(label: String, value: String?, modifier: Modifier = Modifier, change: Int? = null, changeVs: String = "") {
+private fun StatTile(
+    label: String, value: String?, modifier: Modifier = Modifier, change: Int? = null, changeVs: String = "",
+    selected: Boolean = false, onClick: (() -> Unit)? = null,
+) {
     Column(
         modifier
+            .then(if (onClick != null) Modifier.kashClickable(onClickLabel = "Show $label on the chart", onClick = onClick) else Modifier)
             .clip(KashShapes.Control)
             .background(KashColors.GhostFill)
-            .border(1.dp, KashColors.GhostLine, KashShapes.Control)
+            .border(1.dp, if (selected) KashColors.OnSlateMuted else KashColors.GhostLine, KashShapes.Control)
             .padding(12.dp)
             .semantics(mergeDescendants = true) {
                 if (value != null) contentDescription = "$label: $value ETB" + (change?.let { ". ${changeLong(it, changeVs)}" } ?: "")

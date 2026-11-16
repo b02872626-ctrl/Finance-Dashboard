@@ -25,6 +25,8 @@ import com.financeapp.ui.kash.components.KashMoney
 import com.financeapp.ui.kash.components.KashTextField
 import com.financeapp.ui.kash.components.kashBank
 import com.financeapp.viewmodel.ShowOnly
+import com.financeapp.ui.kash.components.LocalKashTips
+import com.financeapp.ui.kash.components.tipAnchor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,6 +110,9 @@ fun HistoryScreen(
     // Load ten more days when the end of the list comes into view.
     val nearEnd by remember { derivedStateOf { list.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= list.layoutInfo.totalItemsCount - 3 } == true } }
     LaunchedEffect(nearEnd) { if (nearEnd) vm.loadMore() }
+    // First visit: the All transactions tips (approved "Tip · search / filters").
+    val tips = LocalKashTips.current
+    LaunchedEffect(loaded) { if (loaded) { kotlinx.coroutines.delay(600); tips?.offer(AppTips.allTransactions) } }
 
     KashScreen(
         heroGap = 16.dp,
@@ -119,12 +124,12 @@ fun HistoryScreen(
         },
     ) { pad ->
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(top = 4.dp).tipAnchor("search"), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 KashSearchField(filter.searchQuery, vm::setSearch, "Search name, amount or reference", Modifier.weight(1f))
                 FiltersButton(on = filter.sheetFilterCount > 0) { focus.clearFocus(); filtersOpen = true }
             }
             Row(
-                Modifier.padding(top = 10.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()),
+                Modifier.padding(top = 10.dp, bottom = 4.dp).tipAnchor("filters").horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
