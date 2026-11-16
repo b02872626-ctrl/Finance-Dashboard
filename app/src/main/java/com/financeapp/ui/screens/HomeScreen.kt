@@ -175,7 +175,7 @@ fun HomeScreen(
                         KashIconButton(KashIcon.Settings, "Settings", onSettings, onSlate = true)
                     }
                 }
-                BalanceBlock(state, hasAny, balanceVisible, counting = reading, modifier = Modifier.tipAnchor("balance")) { balanceVisible = !balanceVisible }
+                BalanceBlock(state, hasAny, balanceVisible, counting = reading, progress = scan?.let { if (it.total == 0) 0f else it.done.toFloat() / it.total }, modifier = Modifier.tipAnchor("balance")) { balanceVisible = !balanceVisible }
                 // Home, still reading: one card per bank, done / reading / waiting.
                 val p = scan
                 if (p != null) {
@@ -287,36 +287,14 @@ fun HomeScreen(
     }
 }
 
-/** Home, still reading: the sheet waits with one loading bar instead of rows trickling in. */
+/** Home, still reading: the sheet waits with faded rows instead of rows trickling in; the bar is under the balance. */
 @Composable
-private fun GettingReady(p: SmsIngestWorker.ScanProgress?) {
-    val fraction = if (p == null || p.total == 0) 0f else (p.done.toFloat() / p.total).coerceIn(0f, 1f)
-    val pct = (fraction * 100).toInt()
+private fun GettingReady(@Suppress("UNUSED_PARAMETER") p: SmsIngestWorker.ScanProgress?) {
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Transactions", style = KashType.TitleS, color = KashColors.Ink, modifier = Modifier.weight(1f))
         }
-        Column(
-            Modifier
-                .padding(top = 20.dp)
-                .fillMaxWidth()
-                .clip(KashShapes.Card)
-                .background(KashColors.SurfaceRaised)
-                .border(1.dp, KashColors.Line, KashShapes.Card)
-                .padding(16.dp)
-                .semantics { contentDescription = "Getting your transactions ready, $pct percent" },
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Getting your transactions ready", style = KashType.BodyStrong, color = KashColors.Ink, modifier = Modifier.weight(1f))
-                Text("$pct%", style = KashType.Caption.num(), color = KashColors.InkMuted)
-            }
-            Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.Well)) {
-                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(KashShapes.Pill).background(KashColors.Accent))
-            }
-            Text("They show up here all at once when Kash has read your SMS.", style = KashType.Caption, color = KashColors.InkMuted)
-        }
-        Column(Modifier.padding(top = 12.dp).alpha(0.6f)) { repeat(3) { KashSkeletonRow() } }
+        Column(Modifier.padding(top = 8.dp).alpha(0.6f)) { repeat(3) { KashSkeletonRow() } }
     }
 }
 
@@ -377,15 +355,15 @@ private fun ReadingBankCard(b: SmsIngestWorker.BankProgress, accounts: List<Acco
                 else KashFigure(mine.sumOf { it.balance }, style = KashType.FigureS, showDecimals = false, hidden = hidden)
             }
             waiting -> Text("Waiting", style = KashType.Caption, color = KashColors.OnSlateMuted)
-            else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.fillMaxWidth().height(4.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
-                    Box(
-                        Modifier.fillMaxWidth((b.done.toFloat() / b.total).coerceIn(0f, 1f)).fillMaxHeight()
-                            .clip(KashShapes.Pill).background(KashColors.Sand),
-                    )
-                }
-                Text("${fmt.format(b.done)} of ${fmt.format(b.total)}", style = KashType.Micro.num(), color = KashColors.OnSlateMuted)
-            }
+            else -> Text(
+                buildAnnotatedString {
+                    append(fmt.format(b.done))
+                    withStyle(SpanStyle(color = KashColors.OnSlateMuted, fontWeight = FontWeight.Medium, fontSize = KashType.Micro.fontSize)) {
+                        append(" of ${fmt.format(b.total)}")
+                    }
+                },
+                style = KashType.FigureS, color = KashColors.OnSlate, maxLines = 1,
+            )
         }
     }
 }
@@ -408,6 +386,8 @@ private fun BalanceBlock(
     hasAny: Boolean,
     visible: Boolean,
     counting: Boolean = false,
+    /** The first read's progress: a counting bar instead of the figure. */
+    progress: Float? = null,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit,
 ) {
@@ -427,7 +407,19 @@ private fun BalanceBlock(
             }
         }
         Crossfade(state.isLoading || counting, label = "balance") { loading ->
-            if (loading) {
+            if (loading && progress != null) {
+                // Home, still reading: "Counting…" over a bar that fills as Kash reads.
+                Column(
+                    Modifier.padding(top = 10.dp).height(44.dp).fillMaxWidth()
+                        .semantics { contentDescription = "Counting your balance, ${(progress * 100).toInt()} percent" },
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                ) {
+                    Text("Counting…", style = KashType.Body, color = KashColors.OnSlateMuted)
+                    Box(Modifier.fillMaxWidth().height(6.dp).clip(KashShapes.Pill).background(KashColors.GhostFill)) {
+                        Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().clip(KashShapes.Pill).background(KashColors.Sand))
+                    }
+                }
+            } else if (loading) {
                 Row(Modifier.padding(top = 10.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     KashSkeleton(width = 170.dp, height = 34.dp, radius = 10.dp, onSlate = true)
                     Text("Counting…", style = KashType.Body, color = KashColors.OnSlateMuted)
