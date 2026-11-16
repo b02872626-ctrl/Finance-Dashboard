@@ -6,6 +6,18 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-16 — Home: Show all transactions button and "Is this account yours?"
+
+- Home's list ends with a full-width "Show all transactions" button pinned
+  at the bottom over a fade (approved FD_HomeSearch), instead of a small
+  "See all" link. While Kash reads, "See all" (accent) sits beside
+  "Transactions".
+- Accounts whose SMS greet someone else are asked about one at a time on a
+  sand card: "Is this account yours?", the bank, the masked number, "Yes,
+  it’s mine" / "Not mine" (hides it; Settings can show it again). Replaces
+  the grouped "N accounts get SMS for X" card.
+- Account cards on the hero: white names, 14sp hidden figure, radius 14.
+
 ## 2026-11-16 — Review and the sort card: approved wording and the same-person switch everywhere
 
 - The sort card in Review is titled "What was this?". With no categories
