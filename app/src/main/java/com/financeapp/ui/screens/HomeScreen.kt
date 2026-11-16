@@ -557,6 +557,8 @@ private fun ConfirmAccountCard(a: AccountSummary, onMine: () -> Unit, onNotMine:
 /** "1000123453333" → "1•••••3333"; already masked or short: as is. */
 internal fun maskAccount(number: String): String {
     val n = number.trim()
+    // Already masked by the bank ("1****3333"): just draw the stars as dots.
+    if ('*' in n) return n.replace(Regex("\\*+"), "•••••")
     val digits = n.filter(Char::isDigit)
     if (digits.length < 6) return n
     return digits.take(1) + "•••••" + digits.takeLast(4)
