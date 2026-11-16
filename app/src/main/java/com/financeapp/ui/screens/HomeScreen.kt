@@ -106,8 +106,10 @@ fun HomeScreen(
     onSeeAll: () -> Unit,
     onSettings: () -> Unit,
     onAdd: () -> Unit,
-    onReviewToday: () -> Unit,
-    onReviewOlder: () -> Unit,
+    // Home shows nothing but the balance, the accounts and the transactions
+    // (owner, 16 Nov): sorting lives in the Review tab and its badge.
+    @Suppress("UNUSED_PARAMETER") onReviewToday: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onReviewOlder: () -> Unit,
     onOpenAccount: (bankName: String, accountSuffix: String?) -> Unit,
     /** Last month, in the first week of a new one (Kash Wrapped, NAH-34). */
     wrappedMonth: Long? = null,
@@ -183,9 +185,6 @@ fun HomeScreen(
                 } else {
                     if (!state.isLoading && state.accountBalances.isNotEmpty()) {
                         AccountStrip(state.accountBalances, hidden = !balanceVisible, onOpen = onOpenAccount, modifier = Modifier.tipAnchor("accounts"))
-                    }
-                    if (!state.isLoading) {
-                        ReviewBlock(state, hasAny, onReviewToday, onReviewOlder)
                     }
                 }
             },
@@ -496,52 +495,6 @@ private fun AccountChip(a: AccountSummary, hidden: Boolean, onClick: () -> Unit)
         }
     }
 }
-
-/** Review button with the count, or the quiet status when there is nothing to do. */
-@Composable
-private fun ReviewBlock(state: DashboardState, hasAny: Boolean, onToday: () -> Unit, onOlder: () -> Unit) {
-    val today = state.dailyReview
-    when {
-        today.pending > 0 -> KashButton(
-            "Review", onToday, Modifier.fillMaxWidth(), KashButtonVariant.Accent,
-            badge = today.pending.toString(), compact = true,
-        )
-        today.total > 0 -> GhostStatus(
-            icon = KashIcon.Check,
-            title = "All caught up",
-            text = "${today.done} reviewed today",
-            compact = true,
-        )
-        else -> GhostStatus(
-            icon = KashIcon.Sms,
-            title = "Listening for bank SMS",
-            text = "New transactions show up here as they arrive.",
-            compact = false,
-        )
-    }
-}
-
-@Composable
-private fun GhostStatus(icon: KashIcon, title: String, text: String, compact: Boolean) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .then(if (compact) Modifier.height(KashSize.ButtonHCompact) else Modifier)
-            .clip(KashShapes.Control)
-            .background(KashColors.GhostFill)
-            .border(1.dp, KashColors.GhostLine, KashShapes.Control)
-            .padding(horizontal = 16.dp, vertical = if (compact) 0.dp else 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
-    ) {
-        KashIconView(icon, size = if (compact) 18.dp else 22.dp, tint = KashColors.OnSlate, strokeWidth = if (compact) 2.4f else 2f)
-        Column(verticalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 2.dp)) {
-            Text(title, style = KashType.BodyStrong, color = KashColors.OnSlate)
-            Text(text, style = if (compact) KashType.Micro else KashType.Caption, color = KashColors.OnSlateMuted)
-        }
-    }
-}
-
 
 /**
  * "2 accounts get SMS for Hana and Tsion": their SMS greet someone else, so
