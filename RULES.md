@@ -13,7 +13,7 @@ anything.
   and syncs to Supabase.
 - Screens: Home, Review, History, Analytics, Accounts, Add, Settings, behind a
   4-digit PIN. Dates can be shown in the Ethiopian calendar.
-- Package `et.kash.app`, version 1.0.35 (versionCode 55), minSdk 23,
+- Package `et.kash.app`, version 1.0.36 (versionCode 56), minSdk 23,
   targetSdk 36. Testers install the APK from the download page; Play Store
   submission is in progress (`docs/play-store-submission.md`).
 - Not paid. No in-app purchases.
