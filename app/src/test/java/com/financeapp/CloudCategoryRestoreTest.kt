@@ -57,6 +57,19 @@ class CloudCategoryRestoreTest {
     }
 
     @Test
+    fun `a pull that failed is owed, so the next pass reaches back again`() {
+        val history = listOf(tx(dateTime = now - 400 * day), tx(dateTime = now - day))
+        // This pass uploads the old history: the restore back to it is owed.
+        val owed = CloudCategoryRestore.owedAfterUpload(now, history, owedSinceMs = null)
+        assertEquals(now - 400 * day, owed)
+        // Next pass uploads nothing new, but the owed restore still reaches back.
+        assertEquals(now - 400 * day, CloudCategoryRestore.pullSinceMs(now, emptyList(), owed))
+        assertEquals(now - 400 * day, CloudCategoryRestore.owedAfterUpload(now, emptyList(), owed))
+        // Only recent rows: nothing owed beyond the normal 90 days.
+        assertEquals(null, CloudCategoryRestore.owedAfterUpload(now, listOf(tx(dateTime = now - day)), null))
+    }
+
+    @Test
     fun `own categories come back, built-in and known ones are not added twice`() {
         val restored = CloudCategoryRestore.customCategoriesToRestore(
             listOf("Food", "Gym", "gym", null, " ", "Church  gifts", "Internal", "Savings"),

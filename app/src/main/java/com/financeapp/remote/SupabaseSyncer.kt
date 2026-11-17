@@ -35,6 +35,29 @@ sealed class SupabaseSyncResult {
 
 class SupabaseSyncer(private val context: Context) {
 
+    companion object {
+        /**
+         * Refresh tokens are single-use: two callers refreshing at once
+         * kills the session. Serialise every refresh through one lock.
+         */
+        private val refreshLock = Mutex()
+
+        /** Restore bookkeeping across passes (see CloudCategoryRestore). */
+        const val RESTORE_PREFS = "kash_restore"
+        private const val KEY_OWED_SINCE = "owed_since"
+        /** Set by a fresh read while signed in: own-account filing waits for the restore. */
+        const val KEY_OWN_TAG_WAITING = "own_tag_waiting"
+
+        /** A fresh read (reinstall) just started while signed in. */
+        fun holdOwnTransfersForRestore(context: Context) {
+            context.getSharedPreferences(RESTORE_PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_OWN_TAG_WAITING, true).apply()
+        }
+
+        fun ownTransfersHeld(context: Context): Boolean =
+            context.getSharedPreferences(RESTORE_PREFS, Context.MODE_PRIVATE).getBoolean(KEY_OWN_TAG_WAITING, false) &&
+                SettingsRepository(context).getSupabaseSession() != null
+    }
+
     suspend fun syncPendingData(): SupabaseSyncResult = withContext(Dispatchers.IO) {
         val result = syncPendingDataInner()
         // Events + device status ride along with every pass (best-effort).
@@ -76,11 +99,29 @@ class SupabaseSyncer(private val context: Context) {
         // Rows just uploaded decide how far back the pull reads: after a
         // reinstall that is the whole re-read history.
         val uploaded = if (pushResult is SupabaseSyncResult.Success) pendingTransactions else emptyList()
-        val pulled = runCatching { pullRemoteStates(repo, uploaded) }
+        // Remembered before pulling, so a failed pull is retried next pass.
+        val restorePrefs = context.getSharedPreferences(RESTORE_PREFS, Context.MODE_PRIVATE)
+        val owed = CloudCategoryRestore.owedAfterUpload(
+            System.currentTimeMillis(), uploaded,
+            restorePrefs.getLong(KEY_OWED_SINCE, -1L).takeIf { it >= 0 },
+        )
+        if (owed != null) restorePrefs.edit().putLong(KEY_OWED_SINCE, owed).apply()
+        val pullOk: Boolean
+        val pulled = runCatching { pullRemoteStates(repo, uploaded, owed) }
+            .also { pullOk = it.isSuccess }
             .getOrElse { e ->
                 ErrorLogRepository.fromContext(context).log("Supabase pull failed", e)
                 0
             }
+        if (pullOk) {
+            restorePrefs.edit().remove(KEY_OWED_SINCE).apply()
+            // A fresh read waits for its restore before filing own-account
+            // moves (see CloudCategoryRestore): now every row is up and back.
+            if (restorePrefs.getBoolean(KEY_OWN_TAG_WAITING, false) && repo.countUnsyncedTransactions() == 0) {
+                runCatching { repo.tagOwnTransfers() }
+                restorePrefs.edit().putBoolean(KEY_OWN_TAG_WAITING, false).apply()
+            }
+        }
 
         // Goals ride along every pass (pull, then push), so a reinstall gets
         // them back even when nothing else is pending. A failure here is
@@ -153,6 +194,7 @@ class SupabaseSyncer(private val context: Context) {
     private suspend fun pullRemoteStates(
         repo: TransactionRepository,
         justUploaded: List<TransactionEntity>,
+        owedSinceMs: Long? = null,
     ): Int {
         val cfg = SupabaseConfigProvider.fromBuildConfig() ?: return 0
         val settingsRepo = SettingsRepository(context)
@@ -161,7 +203,7 @@ class SupabaseSyncer(private val context: Context) {
         val client = SupabaseRestClient(cfg, session.accessToken)
         // Last 90 days bounds the bandwidth without missing anything fresh;
         // further back when older rows were just uploaded (a reinstall).
-        val since = CloudCategoryRestore.pullSinceMs(System.currentTimeMillis(), justUploaded)
+        val since = CloudCategoryRestore.pullSinceMs(System.currentTimeMillis(), justUploaded, owedSinceMs)
         val sinceIso = java.text.SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US
         ).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
@@ -343,11 +385,5 @@ class SupabaseSyncer(private val context: Context) {
             (msg.contains("Supabase auth failed (400)") && msg.contains("Invalid Refresh Token"))
     }
 
-    private companion object {
-        /**
-         * Refresh tokens are single-use: two callers refreshing at once
-         * kills the session. Serialise every refresh through one lock.
-         */
-        val refreshLock = Mutex()
-    }
+
 }
