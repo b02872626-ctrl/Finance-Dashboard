@@ -184,7 +184,6 @@ fun AddScreen(
             custom = customCategories,
             usage = categoryUsage,
             recent = recentCategories,
-            offerOwnAccounts = state.type == TransactionType.TRANSFER_OUT.name,
             applyToSimilar = false,
             onToggleApplyToSimilar = null,
             onClose = { pickerOpen = false },

@@ -94,6 +94,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-17 "Own accounts" always on the sort card (PR open). Merged today: categories kept across a reinstall (#95).
 - 2026-11-17 Categories after a reinstall (PR open): a failed restore is retried, and own-account filing waits for the restore so it can't overwrite your picks. Merged today: bug and motion review (#94).
 - 2026-11-16 Bug and motion review of everything since 1.0.35 (PR open): about 30 fixes across tips, Home and the SMS read, Review and All transactions, and Goals. Next: release 1.0.36.
 - 2026-11-16 Goals rebuilt to the approved flow + pace per day/week/month (PR open). Also merged today: dark-mode contrast (#87), Apple-style motion (#88). Next from the audit: shared styles, Review/sort-card fixes (keep Create and sort), Home Show all transactions button + new-account card, Add keypad, missing tips/Settings details; then release 1.0.36.
