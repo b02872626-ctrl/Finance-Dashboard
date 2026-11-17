@@ -6,6 +6,19 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-17 — Review: confirm Kash's guess in one tap
+
+Owner's request: a row Kash already has a guess for (the parser's
+predicted category, or "Own accounts" for a move between the user's
+accounts) needed Sort, then a tap on the already-ticked category.
+- Such a row's Sort button is now the guess: "✓ Coffee and refreshments".
+  One tap sorts that row as guessed, with Undo. It sorts only that row: no
+  rule and no "Put all N?" question (owner's choice). Tapping the row opens
+  the sort card to pick something else.
+- With two or more guesses in a tab, a bar above the list reads "Kash
+  guessed N of these" with Confirm all; one Undo puts them all back.
+- The sort card's switch no longer reads "New payments to to BOA …".
+
 ## 2026-11-17 — A transaction's page asks "Put all N in X?"
 
 Owner's request: a "sort all" picked by mistake (Undo missed) must be easy

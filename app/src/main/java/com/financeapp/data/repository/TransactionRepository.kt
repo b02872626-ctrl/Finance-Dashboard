@@ -374,6 +374,16 @@ class TransactionRepository(
         txnDao.updateReviewStatus(id, ReviewStatus.PENDING)
     }
 
+    /** Review's "Confirm all": each row takes Kash's guess, in one go (no rules). */
+    suspend fun confirmGuesses(guesses: Map<Long, String>) {
+        db.withTransaction { guesses.forEach { (id, category) -> applyReviewedCategory(id, category, applyToSimilar = false) } }
+    }
+
+    /** Undo for a "Confirm all": every row back in Review. */
+    suspend fun undoReviews(ids: List<Long>) {
+        db.withTransaction { ids.forEach { txnDao.updateReviewStatus(it, ReviewStatus.PENDING) } }
+    }
+
     /**
      * Hide (or show again) one account: every row naming it, and every row
      * that arrives for it later. Needs [settings]; a no-op without it.

@@ -73,4 +73,23 @@ class ReviewListTest {
         assertEquals("99+", ReviewList.tabCount(1885))
         assertEquals("12", ReviewList.tabCount(12))
     }
+
+    @Test
+    fun `a row's guess is Own accounts for a move between accounts, else the parser's`() {
+        val cafe = tx(1, todayStart).copy(predictedCategory = "Coffee and refreshments")
+        assertEquals("Coffee and refreshments", ReviewList.guess(cafe, ownAccount = false))
+        assertEquals(com.financeapp.data.model.Spending.OWN_ACCOUNTS, ReviewList.guess(cafe, ownAccount = true))
+        assertEquals(null, ReviewList.guess(tx(2, todayStart), ownAccount = false))
+        assertEquals(null, ReviewList.guess(tx(3, todayStart).copy(predictedCategory = "  "), ownAccount = false))
+    }
+
+    @Test
+    fun `confirm all and the switch label read right`() {
+        assertEquals("Kash guessed 12 of these", ReviewList.guessedLine(12))
+        assertEquals("12 sorted.", ReviewList.confirmedAllText(12))
+        assertEquals("1 sorted.", ReviewList.confirmedAllText(1))
+        assertEquals("BOA 221076931", ReviewList.withoutDirectionWord("to BOA 221076931"))
+        assertEquals("Abebe Kebede", ReviewList.withoutDirectionWord("from Abebe Kebede"))
+        assertEquals("Tomoca", ReviewList.withoutDirectionWord("Tomoca"))
+    }
 }
