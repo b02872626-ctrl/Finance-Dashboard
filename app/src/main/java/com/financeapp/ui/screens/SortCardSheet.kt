@@ -66,7 +66,6 @@ fun SortCardSheet(
     usage: List<SortCard.Use>,
     recent: List<String>,
     /** Offer "Own accounts" at the end: the move looks like one between the user's accounts. */
-    offerOwnAccounts: Boolean,
     /** The "New payments from X too" switch; null hides it. */
     applyToSimilar: Boolean,
     onToggleApplyToSimilar: (() -> Unit)?,
@@ -79,8 +78,8 @@ fun SortCardSheet(
 ) {
     val cal = LocalCalendarSystem.current
     var query by remember { mutableStateOf("") }
-    val yours = remember(custom, usage, recent, offerOwnAccounts, current) {
-        val list = SortCard.yours(custom, usage, recent, offerOwnAccounts)
+    val yours = remember(custom, usage, recent, current) {
+        val list = SortCard.yours(custom, usage, recent)
         // A suggestion not used anywhere yet still shows, picked, so one tap confirms it.
         if (current != null && list.none { it.equals(current, true) }) listOf(current) + list else list
     }

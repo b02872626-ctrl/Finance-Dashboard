@@ -11,9 +11,9 @@ import com.financeapp.data.model.TransactionCategoryCatalog
  * or put on a transaction (`usage`), most used first, then the most recently
  * picked, then A–Z. No built-in catalog (owner's call, 14 Nov 2026): a
  * built-in name shows only once a transaction of the user's carries it.
- * "Own accounts" joins the end only when the transaction looks like a move
- * between the user's accounts, so transfers can still be kept out of
- * spending.
+ * "Own accounts" is the one default: always last, on every transaction
+ * (owner's call, 17 Nov 2026), so a move between the user's accounts can
+ * always be kept out of spending.
  */
 object SortCard {
     /** How many transactions carry [category]. */
@@ -28,7 +28,6 @@ object SortCard {
         custom: List<String>,
         usage: List<Use>,
         recent: List<String> = emptyList(),
-        offerOwnAccounts: Boolean = false,
     ): List<String> {
         val counts = HashMap<String, Int>()
         val names = LinkedHashMap<String, String>() // lowercase → as written
@@ -51,7 +50,7 @@ object SortCard {
         val sorted = names.keys
             .sortedWith(compareBy({ -(counts[it] ?: 0) }, { recentRank[it] ?: Int.MAX_VALUE }, { it }))
             .map { names.getValue(it) }
-        return if (offerOwnAccounts) sorted + Spending.OWN_ACCOUNTS else sorted
+        return sorted + Spending.OWN_ACCOUNTS
     }
 
     fun search(query: String, yours: List<String>): Search {

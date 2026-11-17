@@ -156,7 +156,6 @@ fun TransactionScreen(
             custom = customCategories,
             usage = categoryUsage,
             recent = recentCategories,
-            offerOwnAccounts = looksOwnAccount(tx, userName),
             applyToSimilar = applyToSimilar,
             onToggleApplyToSimilar = { applyToSimilar = !applyToSimilar },
             onClose = { pickerOpen = false },

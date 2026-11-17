@@ -268,7 +268,6 @@ fun ReviewScreen(
             custom = customCategories,
             usage = categoryUsage,
             recent = recentCategories,
-            offerOwnAccounts = own,
             applyToSimilar = state.applyToSimilar,
             onToggleApplyToSimilar = vm::toggleApplyToSimilar,
             onClose = vm::closeSheets,

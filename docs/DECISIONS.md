@@ -6,6 +6,15 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-17 — "Own accounts" is always on the sort card
+
+Owner's call. Reverses part of the 14 Nov "only your categories" entry:
+"Own accounts" no longer waits for a transaction that looks like a move
+between the user's accounts. It is the one default category, always last
+on the sort card (Review, a transaction's page, Add), so any transfer can
+be kept out of spending. Every other built-in name still shows only once
+the user has used it.
+
 ## 2026-11-17 — Categories survive a reinstall: two more holes closed
 
 The owner still lost categories on every reinstall. Two holes in the
