@@ -45,7 +45,13 @@ class SmsIngestWorker(
             // Home's "Reading your SMS" is for the first full read only; the
             // quick scans after it (app opened, new SMS) stay out of sight.
             val scanPrefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            // Someone updating from before this pref already has a ledger:
+            // their history is read, so they never see the first-read view.
+            if (!scanPrefs.contains(KEY_HISTORY_DONE) && !firstRun) scanPrefs.edit().putBoolean(KEY_HISTORY_DONE, true).apply()
             val showProgress = !scanPrefs.getBoolean(KEY_HISTORY_DONE, false)
+            // Marks a first read as started, so a read cut short and resumed
+            // with some rows already saved still shows its progress.
+            if (showProgress) scanPrefs.edit().putBoolean(KEY_HISTORY_DONE, false).apply()
             val ingested = mutableListOf<com.financeapp.data.model.TransactionEntity>()
             try {
                 if (showProgress) progress.value = ScanProgress.start(byBank)
@@ -54,7 +60,7 @@ class SmsIngestWorker(
                         if (showProgress) progress.value = progress.value?.withBank(b, done)
                     }
                 }
-                scanPrefs.edit().putBoolean(KEY_HISTORY_DONE, true).apply()
+                if (showProgress) scanPrefs.edit().putBoolean(KEY_HISTORY_DONE, true).apply()
             } finally {
                 progress.value = null
             }
@@ -111,7 +117,8 @@ class SmsIngestWorker(
     }
 
     companion object {
-        private const val UNIQUE_WORK_NAME = "sms_ingest_now"
+        const val UNIQUE_WORK_NAME = "sms_ingest_now"
+        private val queueCheck = java.util.concurrent.Executors.newSingleThreadExecutor()
         val progress = kotlinx.coroutines.flow.MutableStateFlow<ScanProgress?>(null)
         private const val KEY_RESCAN = "rescan"
         private const val PREFS = "kash_scan"
@@ -124,7 +131,7 @@ class SmsIngestWorker(
          */
         /** After a wipe: the next read is a first read again, with Home's progress. */
         fun forgetHistory(context: Context) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_HISTORY_DONE).apply()
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_HISTORY_DONE, false).apply()
         }
 
         fun scanNow(context: Context) {
@@ -144,8 +151,22 @@ class SmsIngestWorker(
             val request = OneTimeWorkRequestBuilder<SmsIngestWorker>()
                 .setInputData(workDataOf(KEY_RESCAN to rescan))
                 .build()
+            val wm = WorkManager.getInstance(context.applicationContext)
+            // A burst of SMS during a scan queues one scan after it, not one
+            // each: a scan still waiting to start already reads them all.
+            val infos = wm.getWorkInfosForUniqueWork(UNIQUE_WORK_NAME)
+            infos.addListener({
+                val waiting = runCatching { infos.get() }.getOrNull().orEmpty()
+                    .any { it.state == androidx.work.WorkInfo.State.ENQUEUED || it.state == androidx.work.WorkInfo.State.BLOCKED }
+                if (!waiting || rescan) wm.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+            }, queueCheck)
+        }
+
+        /** After a wipe: stop any scan in flight and read everything afresh. */
+        fun restart(context: Context) {
+            val request = OneTimeWorkRequestBuilder<SmsIngestWorker>().build()
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+                .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
         }
     }
 }

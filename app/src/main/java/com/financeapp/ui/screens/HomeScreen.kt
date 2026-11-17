@@ -150,12 +150,13 @@ fun HomeScreen(
 
     // First visit, once the read is done: the Home tips (approved "Tip ·" screens).
     val tips = LocalKashTips.current
+    val tipsLife = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     val readyForTips = !state.isLoading && !reading && state.recentTransactions.isNotEmpty() && popup == null
     LaunchedEffect(readyForTips) {
         if (readyForTips) {
             delay(700)
             // The visit after the Home tips: where sorting lives.
-            if (tips?.seen(AppTips.home.key) == true) tips.offer(AppTips.reviewTab) else tips?.offer(AppTips.home)
+            if (tips?.seen(AppTips.home.key) == true) tips.offerOn(tipsLife, AppTips.reviewTab) else tips?.offerOn(tipsLife, AppTips.home)
         }
     }
 
@@ -227,6 +228,8 @@ fun HomeScreen(
                         onNotMine = {
                             val suffix = a.accountSuffix ?: com.financeapp.data.accounts.AccountGrouping.accountSuffix(a.accountNumber)
                             if (suffix != null) vm.setAccountHidden(a.bankName, suffix, true)
+                            // No number to hide it by: still never ask about it again.
+                            else { kept = kept + "${a.bankName}#${a.accountNumber}"; minePrefs.edit().putStringSet("kept", kept).apply() }
                         },
                         modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
                     )
@@ -298,7 +301,9 @@ fun HomeScreen(
     var wrappedSeen by remember(wrappedMonth) {
         mutableStateOf(wrappedMonth != null && wrappedPrefs.getLong("popup_seen", 0L) == wrappedMonth)
     }
-    val tipsBusy = tips != null && (tips.active != null || !tips.seen(AppTips.home.key))
+    // Both Home tip sets come first: the Review-tab tip would otherwise
+    // start under the pop-up and stay over Wrapped.
+    val tipsBusy = tips != null && (tips.active != null || !tips.seen(AppTips.home.key) || !tips.seen(AppTips.reviewTab.key))
     val month = wrappedMonth
     if (month != null && !wrappedSeen && !reading && !state.isLoading && popup == null && !tipsBusy) {
         fun seen() { wrappedPrefs.edit().putLong("popup_seen", month).apply(); wrappedSeen = true }
@@ -419,7 +424,7 @@ private fun BalanceBlock(
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Total balance", style = KashType.Body, color = KashColors.OnSlateMuted)
-            if (hasAny && !counting) {
+            if (hasAny) {
                 Box(
                     Modifier
                         .size(28.dp)

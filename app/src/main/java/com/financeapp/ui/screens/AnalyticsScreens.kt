@@ -121,8 +121,9 @@ fun AnalyticsTabScreen(
     var pickDates by remember { mutableStateOf(false) }
     // First visit: the Analytics tips, once the numbers are in.
     val tips = LocalKashTips.current
+    val tipsLife = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(o.isLoading) {
-        if (!o.isLoading) { kotlinx.coroutines.delay(700); tips?.offer(AppTips.analytics) }
+        if (!o.isLoading) { kotlinx.coroutines.delay(700); tips?.offerOn(tipsLife, AppTips.analytics) }
     }
 
     KashScreen(

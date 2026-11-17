@@ -16,7 +16,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Transient snackbar payload: gone after a few seconds or on Undo. */
-data class ReviewSnackbar(val text: String, val undoId: Long, val bold: String? = null)
+/** [tab] is where the row was, so Undo shows it back where it came from. */
+data class ReviewSnackbar(val text: String, val undoId: Long, val bold: String? = null, val tab: ReviewTab? = null)
 
 /**
  * "Put all N in X?": the user sorted a transaction whose sender has other
@@ -91,12 +92,13 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
                     was.count > 0 && ReviewList.count(was.tab, split) == 0 -> ReviewList.landing(split, from = was.tab)
                     else -> was.tab
                 }
+                val ids = (split.today + split.month + split.older).mapTo(HashSet()) { it.id }
                 _state.value = _state.value.copy(
                     tab = tab,
                     today = split.today, month = split.month, older = split.older, isLoading = false,
                     // A row that left the list closes its sheets.
-                    sorting = _state.value.sorting?.takeIf { s -> split.month.any { it.id == s.id } || split.older.any { it.id == s.id } },
-                    detail = _state.value.detail?.takeIf { d -> split.month.any { it.id == d.id } || split.older.any { it.id == d.id } },
+                    sorting = _state.value.sorting?.takeIf { it.id in ids },
+                    detail = _state.value.detail?.takeIf { it.id in ids },
                 )
             }
         }
@@ -119,6 +121,7 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
      * asks "Put all N in X?" first; otherwise the row is sorted at once.
      */
     fun sort(tx: TransactionEntity, category: String, applyToSimilar: Boolean = _state.value.applyToSimilar) {
+        val from = _state.value.tab
         viewModelScope.launch {
             val key = tx.merchantKey
             val counterparty = tx.counterparty
@@ -138,48 +141,54 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
             val rule = applyToSimilar && !key.isNullOrBlank()
             repo.applyReviewedCategory(tx.id, category, applyToSimilar = rule)
             _state.value = _state.value.copy(sorting = null, detail = null)
-            showSnackbar(ReviewList.sortedText(tx.counterparty?.trim()?.takeIf { it.isNotBlank() } ?: tx.bankName, category, rule), tx.id, bold = category)
+            showSnackbar(ReviewList.sortedText(tx.counterparty?.trim()?.takeIf { it.isNotBlank() } ?: tx.bankName, category, rule), tx.id, bold = category, tab = from)
         }
     }
 
     fun confirmApplyAll() {
         val d = _state.value.confirmApplyAll ?: return
+        val from = _state.value.tab
         viewModelScope.launch {
             repo.applyReviewedCategory(d.txId, d.category, applyToSimilar = true)
             _state.value = _state.value.copy(confirmApplyAll = null)
-            showSnackbar("${d.totalCount} from ${d.counterparty} are ${d.category}. New ones will be too.", d.txId, long = true, bold = d.category)
+            showSnackbar("${d.totalCount} from ${d.counterparty} are ${d.category}. New ones will be too.", d.txId, long = true, bold = d.category, tab = from)
         }
     }
 
     fun confirmApplyJustOne() {
         val d = _state.value.confirmApplyAll ?: return
+        val from = _state.value.tab
         viewModelScope.launch {
             repo.applyReviewedCategory(d.txId, d.category, applyToSimilar = false)
             _state.value = _state.value.copy(confirmApplyAll = null)
-            showSnackbar(ReviewList.sortedText(d.counterparty, d.category, rule = false), d.txId, bold = d.category)
+            showSnackbar(ReviewList.sortedText(d.counterparty, d.category, rule = false), d.txId, bold = d.category, tab = from)
         }
     }
 
     fun dismissConfirmApplyAll() { _state.value = _state.value.copy(confirmApplyAll = null) }
 
     fun markNotATransaction(tx: TransactionEntity) {
+        val from = _state.value.tab
         viewModelScope.launch {
             repo.markNotATransaction(tx.id)
             _state.value = _state.value.copy(sorting = null, detail = null)
-            showSnackbar("Marked as not a transaction", tx.id)
+            showSnackbar("Marked as not a transaction", tx.id, tab = from)
         }
     }
 
     fun undo() {
         val snack = _state.value.snackbar ?: return
+        // Back to the tab the row came from (Review may have moved on when
+        // that tab emptied). Set first, so the row's return doesn't move it.
+        snack.tab?.let { _state.value = _state.value.copy(tab = it) }
         viewModelScope.launch {
             repo.undoReview(snack.undoId)
             _state.value = _state.value.copy(snackbar = null)
         }
     }
 
-    private fun showSnackbar(text: String, undoId: Long, long: Boolean = false, bold: String? = null) {
-        _state.value = _state.value.copy(snackbar = ReviewSnackbar(text, undoId, bold))
+    private fun showSnackbar(text: String, undoId: Long, long: Boolean = false, bold: String? = null, tab: ReviewTab? = null) {
+        _state.value = _state.value.copy(snackbar = ReviewSnackbar(text, undoId, bold, tab))
         snackbarJob?.cancel()
         snackbarJob = viewModelScope.launch {
             kotlinx.coroutines.delay(if (long) 6500L else 3200L)

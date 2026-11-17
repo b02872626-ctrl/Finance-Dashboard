@@ -53,8 +53,12 @@ object GoalForm {
     fun amountOf(text: String): Double? = text.replace(",", "").trim().toDoubleOrNull()?.takeIf { it > 0.0 }
     fun monthsOf(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it in 1..60 }
 
-    /** Field problems on the details step. [today] is the start of today. */
-    fun check(f: Fields, today: Long): Errors = Errors(
+    /**
+     * Field problems on the details step. [today] is the start of today.
+     * [keepDay] is an edited goal's own date: keeping it is fine even once
+     * it has passed (renaming a reached goal, or changing its account).
+     */
+    fun check(f: Fields, today: Long, keepDay: Long? = null): Errors = Errors(
         name = if (f.name.isBlank()) "Give the goal a name" else null,
         amount = when {
             f.type == GoalType.OPEN_ENDED -> null
@@ -65,7 +69,7 @@ object GoalForm {
         date = when {
             f.type != GoalType.DATE_BOUND -> null
             f.deadlineDay == null -> "Pick when you want to have it"
-            f.deadlineDay < today -> "Pick a day from today on"
+            f.deadlineDay < today && f.deadlineDay != keepDay -> "Pick a day from today on"
             else -> null
         },
     )
@@ -135,7 +139,7 @@ object GoalForm {
         val end = day + DAY - 1
         if (left <= 0.5 || end < now) return null
         val months = kotlin.math.max(1, kotlin.math.ceil((end - now) / MONTH_MS).toInt())
-        val bold = GoalCopy.perUnit(left / months, unit)
+        val bold = GoalCopy.paceFor(left, end, now, left / months, unit)
         return if (editing) Helper("About ", bold, " from here")
         else Helper("About ", bold, ", done by ${KashDates.monthYear(day, cal)}")
     }

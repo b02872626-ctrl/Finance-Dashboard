@@ -143,13 +143,14 @@ fun GoalsScreen(
     var showReached by rememberSaveable { mutableStateOf(true) }
     // First visit: the Goals tips (after the crossing wipe settles).
     val tips = LocalKashTips.current
+    val tipsLife = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     val first = active.firstOrNull()
     LaunchedEffect(state.isLoading, empty, first?.goal?.id) {
         if (state.isLoading) return@LaunchedEffect
         kotlinx.coroutines.delay(900)
         when {
-            empty -> tips?.offer(AppTips.goalsEmpty)
-            first != null -> tips?.offer(AppTips.goals(first.goal.name, state.accountLabel(first.goal.linkedAccountKey)))
+            empty -> tips?.offerOn(tipsLife, AppTips.goalsEmpty)
+            first != null -> tips?.offerOn(tipsLife, AppTips.goals(first.goal.name, state.accountLabel(first.goal.linkedAccountKey)))
         }
     }
 
@@ -362,7 +363,9 @@ private fun ThickBar(fraction: Float, label: String) {
     val reduced = rememberReducedMotion()
     val v by animateFloatAsState(fraction.coerceIn(0f, 1f), if (reduced) snap() else com.financeapp.ui.kash.KashSpring.settle(0.5f), label = "thickBar")
     Box(Modifier.fillMaxWidth().height(24.dp).clip(RoundedCornerShape(9.dp)).background(GoalsColors.Well)) {
-        Box(
+        // At 0% there is no fill; the label sits on the empty well.
+        if (fraction <= 0f) Text(label, style = KashType.Micro.copy(fontWeight = FontWeight.Bold).num(), color = com.financeapp.ui.kash.KashColors.InkMuted, modifier = Modifier.align(Alignment.CenterStart).padding(start = 9.dp))
+        else Box(
             Modifier.fillMaxWidth(v.coerceAtLeast(0.14f)).fillMaxHeight().clip(RoundedCornerShape(9.dp)).background(GoalsColors.Accent),
             contentAlignment = Alignment.CenterEnd,
         ) {
@@ -457,9 +460,10 @@ fun GoalDetailScreen(
 
     // First time on a goal: where its money comes from.
     val tips = LocalKashTips.current
+    val tipsLife = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(goal.id) {
         kotlinx.coroutines.delay(700)
-        if (footer.action == GoalCopy.FooterAction.INFO) tips?.offer(AppTips.goalSource(accountLabel))
+        if (footer.action == GoalCopy.FooterAction.INFO) tips?.offerOn(tipsLife, AppTips.goalSource(accountLabel))
     }
 
     GoalsFrame(

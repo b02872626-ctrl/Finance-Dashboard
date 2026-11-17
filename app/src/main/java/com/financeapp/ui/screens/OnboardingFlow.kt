@@ -483,8 +483,10 @@ private fun SourcesScreen(
                 "Pick the accounts Kash should follow.",
                 style = KashType.TitleL, color = KashColors.Ink, modifier = Modifier.padding(top = 6.dp),
             )
+            val scanning by com.financeapp.sms.SmsIngestWorker.progress.collectAsState()
             if (sources.isEmpty()) Text(
-                "Kash is reading your SMS. Banks show up here as it finds them.",
+                if (scanning != null) "Kash is reading your SMS. Banks show up here as it finds them."
+                else "No bank SMS on this phone yet. Banks show up here as their messages arrive.",
                 style = KashType.BodyL, color = KashColors.InkMuted, modifier = Modifier.padding(top = 12.dp),
             )
         }

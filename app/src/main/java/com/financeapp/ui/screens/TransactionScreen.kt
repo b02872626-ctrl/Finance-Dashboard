@@ -75,7 +75,7 @@ fun TransactionScreen(
     categoryUsage: List<SortCard.Use>,
     /** The category and whether new payments from the same person sort the same way. */
     onCategorySelected: (String, Boolean) -> Unit,
-    onAddCategory: (String) -> Unit,
+    onAddCategory: (String) -> String?,
     onBack: () -> Unit,
 ) {
     KashSystemBars(darkIcons = false)
@@ -83,7 +83,10 @@ fun TransactionScreen(
     val cal = LocalCalendarSystem.current
     val dir = tx.kashDirection()
     var pickerOpen by remember { mutableStateOf(false) }
-    var applyToSimilar by remember(tx.id) { mutableStateOf(true) }
+    // Off by default here: unlike Review, this page has no "Put all N in X?" step.
+    var applyToSimilar by remember(tx.id) { mutableStateOf(false) }
+    // The switch only shows for a named sender; a hidden switch never applies.
+    val similarOn = applyToSimilar && !tx.counterparty.isNullOrBlank()
     var moreOpen by rememberSaveable(tx.id) { mutableStateOf(false) }
 
     KashScreen(
@@ -157,8 +160,8 @@ fun TransactionScreen(
             applyToSimilar = applyToSimilar,
             onToggleApplyToSimilar = { applyToSimilar = !applyToSimilar },
             onClose = { pickerOpen = false },
-            onPick = { pickerOpen = false; onCategorySelected(it, applyToSimilar) },
-            onCreate = { name -> pickerOpen = false; onAddCategory(name); onCategorySelected(name, applyToSimilar) },
+            onPick = { pickerOpen = false; onCategorySelected(it, similarOn) },
+            onCreate = { name -> pickerOpen = false; onCategorySelected(onAddCategory(name) ?: name, similarOn) },
         )
     }
 }

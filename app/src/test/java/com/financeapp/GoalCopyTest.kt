@@ -65,7 +65,10 @@ class GoalCopyTest {
         assertEquals("Behind" to GoalCopy.Tone.BAD, GoalCopy.status(result(pace = Pace.BEHIND), cal))
         assertEquals("Date passed" to GoalCopy.Tone.BAD, GoalCopy.status(result(pace = Pace.MISSED), cal))
         assertEquals("Reached" to GoalCopy.Tone.GOOD, GoalCopy.status(result(pace = Pace.REACHED), cal))
-        assertEquals("Just started" to GoalCopy.Tone.NEUTRAL, GoalCopy.status(result(saved = 0.0), cal))
+        val made = june2027 - 200 * day
+        assertEquals("Just started" to GoalCopy.Tone.NEUTRAL, GoalCopy.status(result(saved = 0.0, created = made), cal, now = made + day))
+        // A month on with nothing in, it's no longer "just started".
+        assertEquals("Behind" to GoalCopy.Tone.BAD, GoalCopy.status(result(saved = 0.0, created = made, pace = Pace.BEHIND), cal, now = made + 30 * day))
         assertEquals("Waiting for a full month" to GoalCopy.Tone.NEUTRAL, GoalCopy.status(result(type = GoalType.OPEN_ENDED, target = null), cal))
         assertEquals(
             "On track · 3 months in a row" to GoalCopy.Tone.GOOD,
@@ -84,7 +87,11 @@ class GoalCopyTest {
         assertTrue(GoalCopy.statusSentence(r, "GREGORIAN").startsWith("3,044 ETB a month gets you there by June 2027"))
         assertEquals("100 ETB a day", GoalCopy.perUnit(3_044.0, GoalCopy.PaceUnit.DAY))
         assertEquals("700 ETB a week", GoalCopy.perUnit(3_044.0, GoalCopy.PaceUnit.WEEK))
-        assertTrue(GoalCopy.statusSentence(r, "GREGORIAN", GoalCopy.PaceUnit.DAY).startsWith("100 ETB a day gets you there"))
+        // Day and week split what's left over the real days to go: 47,600 over 100 days.
+        val now = june2027 - 100 * day
+        assertTrue(GoalCopy.statusSentence(r, "GREGORIAN", GoalCopy.PaceUnit.DAY, now = now).startsWith("476 ETB a day gets you there"))
+        assertEquals("300 ETB a day", GoalCopy.paceFor(3_000.0, now + 10 * day, now, 3_000.0, GoalCopy.PaceUnit.DAY))
+        assertEquals("3,000 ETB a week", GoalCopy.paceFor(3_000.0, now + 3 * day, now, 3_000.0, GoalCopy.PaceUnit.WEEK))
         assertEquals("A new month starts at 0 on the 1st.", GoalCopy.statusSentence(result(type = GoalType.RECURRING, deadline = null), "GREGORIAN"))
         assertTrue(GoalCopy.statusSentence(result(pace = Pace.MISSED), "GREGORIAN").endsWith("has passed. Pick a new date to keep going."))
     }

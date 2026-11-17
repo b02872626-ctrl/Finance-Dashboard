@@ -31,8 +31,9 @@ object GoalCopy {
     fun pct(r: GoalProgress.Result): Int = (r.fraction * 100).roundToInt().coerceIn(0, 100)
 
     /** Nothing has come in yet. */
-    fun justStarted(r: GoalProgress.Result): Boolean =
-        r.movements.isEmpty() && r.saved <= 0.0 && r.pace !in setOf(Pace.MISSED, Pace.REACHED)
+    fun justStarted(r: GoalProgress.Result, now: Long = System.currentTimeMillis()): Boolean =
+        r.movements.isEmpty() && r.saved <= 0.0 && r.pace !in setOf(Pace.MISSED, Pace.REACHED) &&
+            now - r.goal.createdAt < 7 * DAY
 
     // ── Status: one coloured line, no pills ─────────────────────────────────
 
@@ -44,7 +45,7 @@ object GoalCopy {
         r.pace == Pace.REACHED && r.recurring -> "Done for ${KashDates.monthName(now, cal)}" to Tone.GOOD
         r.pace == Pace.REACHED -> "Reached" to Tone.GOOD
         r.pace == Pace.MISSED -> "Date passed" to Tone.BAD
-        justStarted(r) -> "Just started" to Tone.NEUTRAL
+        justStarted(r, now) -> "Just started" to Tone.NEUTRAL
         r.pace == Pace.BEHIND -> "Behind" to Tone.BAD
         r.recurring && r.streakMonths >= 2 -> "On track · ${r.streakMonths} months in a row" to Tone.GOOD
         else -> "On track" to Tone.GOOD
@@ -107,12 +108,27 @@ object GoalCopy {
         }
     ) + " a ${unit.word}"
 
+    /**
+     * The pace to finish [left] by [endMs], per [unit]. Day and week split
+     * the real time left (10 days to go means a tenth a day); month keeps
+     * the whole-month figure ([perMonth]).
+     */
+    fun paceFor(left: Double, endMs: Long, now: Long, perMonth: Double, unit: PaceUnit): String {
+        val msLeft = (endMs - now).coerceAtLeast(1L).toDouble()
+        return when (unit) {
+            PaceUnit.DAY -> etb(left / kotlin.math.max(1.0, kotlin.math.ceil(msLeft / DAY))) + " a day"
+            PaceUnit.WEEK -> etb(left / kotlin.math.max(1.0, kotlin.math.ceil(msLeft / (7 * DAY)))) + " a week"
+            PaceUnit.MONTH -> perUnit(perMonth, unit)
+        }
+    }
+
     /** The status card's sentence. */
     fun statusSentence(
         r: GoalProgress.Result,
         cal: String,
         unit: PaceUnit = PaceUnit.MONTH,
         averageMonthlySpend: Double = 0.0,
+        now: Long = System.currentTimeMillis(),
     ): String {
         val g = r.goal
         val perMonth = r.perMonthNeeded
@@ -128,7 +144,7 @@ object GoalCopy {
                 at + "That’s ${plural(months.toLong(), "month")} of your spending."
             }
             perMonth != null && g.deadline != null ->
-                "${perUnit(perMonth, unit)} gets you there by ${KashDates.monthYear(g.deadline, cal)}"
+                "${paceFor(r.remaining, g.deadline, now, perMonth, unit)} gets you there by ${KashDates.monthYear(g.deadline, cal)}"
             else -> "${etb(r.remaining)} to go"
         }
     }

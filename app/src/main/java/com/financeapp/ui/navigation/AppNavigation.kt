@@ -715,7 +715,8 @@ private fun openSupportEmail(context: Context) {
 private object KashNavMotion {
     private fun isTab(route: String?): Boolean = route != null && (
         route == Screen.Dashboard.route || route == Screen.Analytics.route ||
-            route == Screen.Goals.route || route.startsWith(Screen.DailyReview.route)
+            route == Screen.Goals.route || route.startsWith(Screen.DailyReview.route) ||
+            route == Screen.Categorize.route
         )
 
     private fun bothTabs(a: androidx.navigation.NavBackStackEntry, b: androidx.navigation.NavBackStackEntry) =
