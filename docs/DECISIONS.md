@@ -6,6 +6,21 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-17 — Categories survive a reinstall: two more holes closed
+
+The owner still lost categories on every reinstall. Two holes in the
+2026-11-12 restore:
+- The pull that brings the whole history back ran once per upload. If it
+  failed (a timeout on a long history), rows older than 90 days were never
+  pulled again. The reach back is now remembered until a pull succeeds.
+- Right after the re-read, transfers between the user's own accounts were
+  auto-filed as "Own accounts" and uploaded as a decision, over the category
+  the user had picked in the cloud. After a fresh read while signed in,
+  that filing now waits until every row is uploaded and restored.
+Still not restored: "sort all from this person" rules and categories never
+used on a transaction (both live only on the phone). Categories already
+overwritten in the cloud by earlier reinstalls can't come back.
+
 ## 2026-11-16 — Bug review before 1.0.36
 
 - Changing a category on a transaction's page no longer applies it to
