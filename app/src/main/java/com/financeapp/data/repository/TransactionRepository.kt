@@ -201,6 +201,23 @@ class TransactionRepository(
         }
     }
 
+    /**
+     * "Just this one" on a transaction's page: only this row changes, and a
+     * rule that sorts this sender somewhere else stops (it was probably the
+     * mistake being fixed), so their new payments wait in Review instead.
+     */
+    suspend fun applyJustThisOne(id: Long, category: String) {
+        applyReviewedCategory(id, category, applyToSimilar = false)
+        val tx = getById(id) ?: return
+        val canonical = TransactionCategoryCatalog.normalize(category)
+        val rules = listOfNotNull(
+            tx.merchantKey?.takeIf { it.isNotBlank() }?.let { ruleDao.getByKey(it) },
+            tx.counterpartyId?.takeIf { it.isNotBlank() }?.let { ruleDao.findByIdentifier(it) },
+        )
+        rules.filterNot { it.category.equals(canonical, ignoreCase = true) }
+            .forEach { ruleDao.deleteByKey(it.merchantKey) }
+    }
+
     /** Count of ALL transactions sharing a merchant_key (any reviewStatus). */
     suspend fun countTransactionsByMerchantKey(merchantKey: String): Int =
         txnDao.countTransactionsByMerchantKey(merchantKey)

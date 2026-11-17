@@ -6,6 +6,18 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-17 — A transaction's page asks "Put all N in X?"
+
+Owner's request: a "sort all" picked by mistake (Undo missed) must be easy
+to put right. Changing a category on a transaction's page now asks the same
+"Put all N in X?" card as Review when that person has other transactions.
+"Sort all N" moves every one of them and new ones follow. "Just this one"
+changes only that row and also stops a rule that sorted this person into
+another category, so their new payments wait in Review instead of going
+back to the wrong one. The "New payments to X too" switch on that page is
+gone (one question instead). Replaces the 16 Nov choice of a switch that
+starts off.
+
 ## 2026-11-17 — "Own accounts" is always on the sort card
 
 Owner's call. Reverses part of the 14 Nov "only your categories" entry:

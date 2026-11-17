@@ -199,7 +199,17 @@ class TransactionsViewModel(private val repo: TransactionRepository) : ViewModel
      * Review); without, only this one changes.
      */
     fun sortTransaction(id: Long, category: String, applyToSimilar: Boolean) {
-        viewModelScope.launch { repo.applyReviewedCategory(id, category, applyToSimilar) }
+        viewModelScope.launch {
+            if (applyToSimilar) repo.applyReviewedCategory(id, category, applyToSimilar = true)
+            else repo.applyJustThisOne(id, category)
+        }
+    }
+
+    /** The other transactions from [tx]'s sender: how many in all, and the newest few. */
+    suspend fun similarTo(tx: com.financeapp.data.model.TransactionEntity): Pair<Int, List<com.financeapp.data.model.TransactionEntity>> {
+        val key = tx.merchantKey?.takeIf { it.isNotBlank() } ?: return 0 to emptyList()
+        if (tx.counterparty.isNullOrBlank()) return 0 to emptyList()
+        return repo.countTransactionsByMerchantKey(key) to repo.getByMerchantKey(key, 4)
     }
 
     fun updateCategory(id: Long, category: String?, allowBulkSuggestion: Boolean = false) {
