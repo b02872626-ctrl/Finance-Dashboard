@@ -1,15 +1,17 @@
 {
-  "versionCode": 55,
-  "versionName": "1.0.35",
+  "versionCode": 56,
+  "versionName": "1.0.36",
   "url": "https://kash-140.pages.dev/download",
-  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.35.apk",
-  "sha256": "8463b1253e5a74ab60b873894471558eb267ab4465d11848c5689f00ae22cab8",
+  "apk": "https://kash-140.pages.dev/apk/Kash-1.0.36.apk",
+  "sha256": "c26b2087b5098d8ba7d4fdf5726604887747ef0429cb51a270cc46745b807da7",
   "notes": [
-    "New sign-in: tabs for Sign in and Create account, plus Forgot password",
-    "Goals: save toward something and see how close you are",
-    "Dark theme: pick Light, Dark or Match phone in Settings → Appearance",
-    "Review is now the list of your transactions and replaces History",
-    "Make a new category in one tap while sorting, and see the transaction as you do",
-    "Your categories stay after you reinstall and sign in again"
+    "Confirm Kash's guess in one tap, or a whole list with Confirm all",
+    "Search all your transactions and filter by date, bank, category or amount",
+    "Goals rebuilt: see what to save per day, week or month",
+    "Faster setup: banks show up one by one as Kash reads your SMS",
+    "Your categories come back when you reinstall and sign in",
+    "Change a category on a transaction and choose all from that person or just this one",
+    "Own accounts is always in the category list",
+    "Smoother animations, better dark mode, and many fixes"
   ]
 }

@@ -94,6 +94,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-17 1.0.36: Confirm Kash's guess in one tap, or a whole list with Confirm all; Search all your transactions and filter by date, bank, category or amount; Goals rebuilt: see what to save per day, week or month; Faster setup: banks show up one by one as Kash reads your SMS; Your categories come back when you reinstall and sign in; Change a category on a transaction and choose all from that person or just this one; Own accounts is always in the category list; Smoother animations, better dark mode, and many fixes. Not yet installed on a real phone.
 - 2026-11-17 Review: one-tap ✓ on Kash's guess and Confirm all (PR open). Merged today: Own accounts always offered (#96), Put all N in X? on the transaction page (#97).
 - 2026-11-17 Transaction page asks "Put all N in X?" when changing a category; "Just this one" stops the old auto-sort (PR open, stacked on #96).
 - 2026-11-17 "Own accounts" always on the sort card (PR open). Merged today: categories kept across a reinstall (#95).
