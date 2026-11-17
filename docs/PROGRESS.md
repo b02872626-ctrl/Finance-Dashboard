@@ -94,6 +94,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-17 Review: one-tap ✓ on Kash's guess and Confirm all (PR open). Merged today: Own accounts always offered (#96), Put all N in X? on the transaction page (#97).
 - 2026-11-17 Transaction page asks "Put all N in X?" when changing a category; "Just this one" stops the old auto-sort (PR open, stacked on #96).
 - 2026-11-17 "Own accounts" always on the sort card (PR open). Merged today: categories kept across a reinstall (#95).
 - 2026-11-17 Categories after a reinstall (PR open): a failed restore is retried, and own-account filing waits for the restore so it can't overwrite your picks. Merged today: bug and motion review (#94).

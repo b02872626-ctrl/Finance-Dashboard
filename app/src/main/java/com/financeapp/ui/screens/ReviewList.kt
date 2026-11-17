@@ -78,4 +78,23 @@ object ReviewList {
     /** The snackbar after a sort: "Yonas Girma is Rent. New ones will be too." */
     fun sortedText(name: String, category: String, rule: Boolean): String =
         "$name is $category." + if (rule) " New ones will be too." else ""
+
+    /**
+     * Kash's guess for a row, confirmed in one tap: "Own accounts" for a move
+     * between the user's accounts, else the parser's predicted category.
+     */
+    fun guess(tx: TransactionEntity, ownAccount: Boolean): String? = when {
+        ownAccount -> com.financeapp.data.model.Spending.OWN_ACCOUNTS
+        else -> tx.predictedCategory?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    /** "to BOA 221076931" → "BOA 221076931" (the label adds its own "to"/"from"). */
+    fun withoutDirectionWord(name: String): String =
+        name.replace(Regex("^(to|from)\\s+", RegexOption.IGNORE_CASE), "").ifBlank { name }
+
+    /** "Kash guessed 12 of these" / "Kash guessed 1 of these". */
+    fun guessedLine(count: Int): String = "Kash guessed $count of these"
+
+    /** The snackbar after "Confirm all". */
+    fun confirmedAllText(count: Int): String = if (count == 1) "1 sorted." else "$count sorted."
 }

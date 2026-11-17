@@ -132,6 +132,10 @@ fun ReviewScreen(
 
     val (figure, unit) = ReviewList.headline(state.tab, state.count)
     val groups = remember(state.shown) { groupByDay(state.shown) }
+    // Kash's guess per row in this tab ("Own accounts" or the parser's), confirmed in one tap.
+    val guesses = remember(state.shown, userName) {
+        buildMap { state.shown.forEach { tx -> ReviewList.guess(tx, looksOwnAccount(tx, userName))?.let { put(tx.id, it) } } }
+    }
     val months = remember(state.older, cal) { ReviewList.byMonth(state.older) { KashDates.monthBounds(it, cal).first } }
 
     // First visit with something to sort: the Review tips.
@@ -164,6 +168,9 @@ fun ReviewScreen(
                     onSelect = { haptic(Haptic.TAP); vm.setTab(it) },
                     modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 )
+                if (!state.isLoading && guesses.size >= 2) GuessedBar(guesses.size) {
+                    haptic(Haptic.CONFIRM); vm.confirmAllGuesses(guesses)
+                }
                 when {
                     state.isLoading -> Column {
                         KashSkeleton(Modifier.padding(top = 14.dp, bottom = 6.dp), width = 90.dp, height = 10.dp)
@@ -193,9 +200,15 @@ fun ReviewScreen(
                                     modifier = Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f)),
                                     account = tx.accountShort(),
                                     time = KashDates.whenShort(tx.dateTime, cal),
-                                    onClick = { vm.openDetail(tx) },
+                                    // A guessed row: tapping it changes the guess; the ✓ confirms it.
+                                    onClick = { if (guesses[tx.id] != null) vm.openSort(tx) else vm.openDetail(tx) },
                                     trailing = {
-                                        SortButton(tx.displayName(), if (m == 0 && i == 0) Modifier.tipAnchor("sortbtn") else Modifier) {
+                                        val anchor = if (m == 0 && i == 0) Modifier.tipAnchor("sortbtn") else Modifier
+                                        val guess = guesses[tx.id]
+                                        if (guess != null) GuessButton(guess, tx.displayName(), anchor) {
+                                            haptic(Haptic.CONFIRM); vm.confirmGuess(tx, guess)
+                                        }
+                                        else SortButton(tx.displayName(), anchor) {
                                             haptic(Haptic.TAP); vm.openSort(tx)
                                         }
                                     },
@@ -224,9 +237,15 @@ fun ReviewScreen(
                                     modifier = Modifier.animateItemPlacement(com.financeapp.ui.kash.KashSpring.settle(0.35f)),
                                     account = tx.accountShort(),
                                     time = KashDates.time(tx.dateTime),
-                                    onClick = { vm.openDetail(tx) },
+                                    // A guessed row: tapping it changes the guess; the ✓ confirms it.
+                                    onClick = { if (guesses[tx.id] != null) vm.openSort(tx) else vm.openDetail(tx) },
                                     trailing = {
-                                        SortButton(tx.displayName(), if (g == 0 && i == 0) Modifier.tipAnchor("sortbtn") else Modifier) {
+                                        val anchor = if (g == 0 && i == 0) Modifier.tipAnchor("sortbtn") else Modifier
+                                        val guess = guesses[tx.id]
+                                        if (guess != null) GuessButton(guess, tx.displayName(), anchor) {
+                                            haptic(Haptic.CONFIRM); vm.confirmGuess(tx, guess)
+                                        }
+                                        else SortButton(tx.displayName(), anchor) {
                                             haptic(Haptic.TAP); vm.openSort(tx)
                                         }
                                     },
@@ -346,6 +365,40 @@ private fun ReviewTabs(tab: ReviewTab, today: Int, month: Int, earlier: Int, onS
                 else KashIconView(KashIcon.Check, size = 14.dp, tint = KashColors.InkMuted, strokeWidth = 2.4f)
             }
         }
+    }
+}
+
+/** A guessed row's button: "✓ Food", one tap sorts it. Long names end in "…". */
+@Composable
+private fun GuessButton(category: String, name: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        modifier
+            .padding(start = 4.dp)
+            .kashClickable(onClickLabel = "Sort $name as $category", onClick = onClick)
+            .height(44.dp)
+            .widthIn(max = 150.dp)
+            .clip(KashShapes.Chip)
+            .background(KashColors.Well)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        KashIconView(KashIcon.Check, size = 14.dp, tint = KashColors.Ink, strokeWidth = 2.4f)
+        Text(category, style = KashType.Caption.copy(fontWeight = FontWeight.SemiBold), color = KashColors.Ink, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+}
+
+/** Above the list: "Kash guessed 12 of these" and Confirm all. */
+@Composable
+private fun GuessedBar(count: Int, onConfirmAll: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)
+            .clip(KashShapes.Field).background(KashColors.Well)
+            .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(ReviewList.guessedLine(count), style = KashType.Body, color = KashColors.Ink, modifier = Modifier.weight(1f))
+        KashButton("Confirm all", onConfirmAll, variant = KashButtonVariant.Secondary, compact = true)
     }
 }
 

@@ -84,7 +84,9 @@ fun SortCardSheet(
         if (current != null && list.none { it.equals(current, true) }) listOf(current) + list else list
     }
     val search = remember(query, yours) { SortCard.search(query, yours) }
+    // "to BOA 2210…" already says "to": drop it so the switch doesn't read "to to".
     val name = tx?.counterparty?.trim()?.takeIf { it.isNotBlank() && !tx.merchantKey.isNullOrBlank() }
+        ?.let { ReviewList.withoutDirectionWord(it) }
     // Money you sent goes "to" someone; money in comes "from" them.
     val similarLabel = if (tx?.kashDirection() == com.financeapp.ui.kash.components.KashDirection.In) "New payments from $name too" else "New payments to $name too"
 

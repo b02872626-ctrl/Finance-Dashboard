@@ -16,8 +16,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Transient snackbar payload: gone after a few seconds or on Undo. */
-/** [tab] is where the row was, so Undo shows it back where it came from. */
-data class ReviewSnackbar(val text: String, val undoId: Long, val bold: String? = null, val tab: ReviewTab? = null)
+/**
+ * [tab] is where the row was, so Undo shows it back where it came from.
+ * [moreIds] are the other rows a "Confirm all" sorted; Undo puts them back too.
+ */
+data class ReviewSnackbar(
+    val text: String, val undoId: Long, val bold: String? = null, val tab: ReviewTab? = null,
+    val moreIds: List<Long> = emptyList(),
+)
 
 /**
  * "Put all N in X?": the user sorted a transaction whose sender has other
@@ -167,6 +173,27 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
 
     fun dismissConfirmApplyAll() { _state.value = _state.value.copy(confirmApplyAll = null) }
 
+    /** The row's ✓ guess: sorted as Kash guessed, just this one (no rule, no question). */
+    fun confirmGuess(tx: TransactionEntity, category: String) {
+        val from = _state.value.tab
+        viewModelScope.launch {
+            repo.applyReviewedCategory(tx.id, category, applyToSimilar = false)
+            _state.value = _state.value.copy(sorting = null, detail = null)
+            showSnackbar(ReviewList.sortedText(tx.counterparty?.trim()?.takeIf { it.isNotBlank() } ?: tx.bankName, category, rule = false), tx.id, bold = category, tab = from)
+        }
+    }
+
+    /** "Confirm all": every guessed row in this tab takes its guess. One Undo for all. */
+    fun confirmAllGuesses(guesses: Map<Long, String>) {
+        if (guesses.isEmpty()) return
+        val from = _state.value.tab
+        viewModelScope.launch {
+            repo.confirmGuesses(guesses)
+            val ids = guesses.keys.toList()
+            showSnackbar(ReviewList.confirmedAllText(ids.size), ids.first(), long = true, tab = from, moreIds = ids.drop(1))
+        }
+    }
+
     fun markNotATransaction(tx: TransactionEntity) {
         val from = _state.value.tab
         viewModelScope.launch {
@@ -182,13 +209,17 @@ class ReviewListViewModel(private val repo: TransactionRepository) : ViewModel()
         // that tab emptied). Set first, so the row's return doesn't move it.
         snack.tab?.let { _state.value = _state.value.copy(tab = it) }
         viewModelScope.launch {
-            repo.undoReview(snack.undoId)
+            if (snack.moreIds.isEmpty()) repo.undoReview(snack.undoId)
+            else repo.undoReviews(listOf(snack.undoId) + snack.moreIds)
             _state.value = _state.value.copy(snackbar = null)
         }
     }
 
-    private fun showSnackbar(text: String, undoId: Long, long: Boolean = false, bold: String? = null, tab: ReviewTab? = null) {
-        _state.value = _state.value.copy(snackbar = ReviewSnackbar(text, undoId, bold, tab))
+    private fun showSnackbar(
+        text: String, undoId: Long, long: Boolean = false, bold: String? = null, tab: ReviewTab? = null,
+        moreIds: List<Long> = emptyList(),
+    ) {
+        _state.value = _state.value.copy(snackbar = ReviewSnackbar(text, undoId, bold, tab, moreIds))
         snackbarJob?.cancel()
         snackbarJob = viewModelScope.launch {
             kotlinx.coroutines.delay(if (long) 6500L else 3200L)
