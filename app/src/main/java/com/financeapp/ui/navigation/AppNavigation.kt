@@ -601,6 +601,7 @@ private fun MainNavigation(
                             txVm.sortTransaction(txId, cat, similar)
                             tx = transaction.copy(category = cat)
                         },
+                        similar = txVm::similarTo,
                         onAddCategory = { setVm.addCustomCategory(it) },
                         onBack = ::back
                     )

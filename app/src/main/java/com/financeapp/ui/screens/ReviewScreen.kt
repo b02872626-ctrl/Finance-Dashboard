@@ -435,9 +435,9 @@ private fun CheckThisOneSheet(
     }
 }
 
-/** AppReviewApplyAll: lists the newest rows from that sender. */
+/** AppReviewApplyAll: lists the newest rows from that sender. Also asked on a transaction's page. */
 @Composable
-private fun ApplyAllDialog(
+internal fun ApplyAllDialog(
     category: String,
     name: String,
     total: Int,

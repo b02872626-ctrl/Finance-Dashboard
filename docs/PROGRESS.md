@@ -94,6 +94,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-17 Transaction page asks "Put all N in X?" when changing a category; "Just this one" stops the old auto-sort (PR open, stacked on #96).
 - 2026-11-17 "Own accounts" always on the sort card (PR open). Merged today: categories kept across a reinstall (#95).
 - 2026-11-17 Categories after a reinstall (PR open): a failed restore is retried, and own-account filing waits for the restore so it can't overwrite your picks. Merged today: bug and motion review (#94).
 - 2026-11-16 Bug and motion review of everything since 1.0.35 (PR open): about 30 fixes across tips, Home and the SMS read, Review and All transactions, and Goals. Next: release 1.0.36.

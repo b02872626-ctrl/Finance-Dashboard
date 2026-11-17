@@ -22,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,8 +75,10 @@ fun TransactionScreen(
     customCategories: List<String>,
     recentCategories: List<String>,
     categoryUsage: List<SortCard.Use>,
-    /** The category and whether new payments from the same person sort the same way. */
+    /** The category, and true for every transaction from that person (and new ones). */
     onCategorySelected: (String, Boolean) -> Unit,
+    /** How many transactions the sender has in all, and the newest few. */
+    similar: suspend (TransactionEntity) -> Pair<Int, List<TransactionEntity>>,
     onAddCategory: (String) -> String?,
     onBack: () -> Unit,
 ) {
@@ -83,10 +87,17 @@ fun TransactionScreen(
     val cal = LocalCalendarSystem.current
     val dir = tx.kashDirection()
     var pickerOpen by remember { mutableStateOf(false) }
-    // Off by default here: unlike Review, this page has no "Put all N in X?" step.
-    var applyToSimilar by remember(tx.id) { mutableStateOf(false) }
-    // The switch only shows for a named sender; a hidden switch never applies.
-    val similarOn = applyToSimilar && !tx.counterparty.isNullOrBlank()
+    // A sender with other transactions is asked "Put all N in X?" (as in
+    // Review), so a "sort all" picked by mistake can be put right from here.
+    var askAll by remember(tx.id) { mutableStateOf<Triple<String, Int, List<TransactionEntity>>?>(null) }
+    val scope = rememberCoroutineScope()
+    fun pick(category: String) {
+        pickerOpen = false
+        scope.launch {
+            val (total, samples) = similar(tx)
+            if (total > 1) askAll = Triple(category, total, samples) else onCategorySelected(category, false)
+        }
+    }
     var moreOpen by rememberSaveable(tx.id) { mutableStateOf(false) }
 
     KashScreen(
@@ -156,11 +167,22 @@ fun TransactionScreen(
             custom = customCategories,
             usage = categoryUsage,
             recent = recentCategories,
-            applyToSimilar = applyToSimilar,
-            onToggleApplyToSimilar = { applyToSimilar = !applyToSimilar },
+            applyToSimilar = false,
+            onToggleApplyToSimilar = null,
             onClose = { pickerOpen = false },
-            onPick = { pickerOpen = false; onCategorySelected(it, similarOn) },
-            onCreate = { name -> pickerOpen = false; onCategorySelected(onAddCategory(name) ?: name, similarOn) },
+            onPick = ::pick,
+            onCreate = { name -> pick(onAddCategory(name) ?: name) },
+        )
+    }
+    askAll?.let { (category, total, samples) ->
+        ApplyAllDialog(
+            category = category,
+            name = tx.displayName(),
+            total = total,
+            samples = samples,
+            onAll = { askAll = null; onCategorySelected(category, true) },
+            onJustOne = { askAll = null; onCategorySelected(category, false) },
+            onDismiss = { askAll = null },
         )
     }
 }
