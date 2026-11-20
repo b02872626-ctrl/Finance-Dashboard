@@ -66,6 +66,7 @@ is still `is_admin()`.
 | `i_goals`, `i_goal_contributions` | Savings goals | — | read, insert, update, delete own (contributions: no update) | — | `add_goals.sql`, `add_goal_linked_account.sql` (one column, no policy change) |
 | `i_income_entries`, `i_income_dismissed` | Income | — | read, insert, update, delete own (dismissed: no update) | — | `add_income.sql` |
 | `i_ledger_entries`, `i_ledger_repayments` | Money lent and borrowed | — | read, insert, update, delete own (repayments: no update) | — | `add_ledger.sql` |
+| `i_habit_rules` | Which payees count as which habit (web Habits tab) | — | read, insert, update, delete own | — | `add_habit_rules.sql` |
 
 Every table has Row Level Security on. "—" means no policy, so the database
 returns nothing or refuses.
