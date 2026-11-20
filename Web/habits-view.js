@@ -14,14 +14,15 @@
 //   decidePassThrough(item, "yes" | "no" | null), addSalary(candidate), rejectSalary(key),
 //   kinds: Map(payee key → kind the user picked), setKind(key, kind | null, from),
 //   ai: { consent: true | false | null, status: "idle" | "asking" | "done" | "error", error, suggestions },
-//   setAiConsent(on), askGemini(items), aiAccept(suggestion, shared), aiSkip(suggestion)
+//   setAiConsent(on), askGemini(items), aiAccept(suggestion, shared), aiSkip(suggestion),
+//   payeeRules: Map(payee key → rule), ruleNo: Set(declined keys), setPayeeRule(key, rule | null), declineRule(key)
 // }
 
 import {
   SUGGESTED_HABITS, byHour, dateLabel, explainChains, explainGroups, explainHours,
   explainMonthly, explainPayday, groupPayments, habitChains, habitPayments, habitTotals,
   monthlyHabits, payees, paydayEffect, paydaysFrom, ruleFor,
-  monthOf, displayName,
+  monthOf, displayName, personKey,
 } from "./habits.js";
 import { passThroughReview, salaryByMonth, salaryCandidates, salaryPayments } from "./flows.js";
 import {
@@ -29,6 +30,7 @@ import {
   PICKABLE_KINDS, salaryVsSpending, smallPayments, spendingByKind, spendingRows, topPayees,
 } from "./money.js";
 import { AI_LIMIT, aiPayload } from "./ai.js";
+import { LOAN_ABOVE, explainLoan, explainOthers, loanBook, paidForOthers, suggestRules } from "./rules.js";
 
 // Categorical slots, fixed order (blue, orange, aqua, yellow, magenta, green,
 // violet, red); colour follows the habit, by the order it was first mapped.
@@ -38,7 +40,7 @@ const SHARED_GUESS = /food|lunch|breakfast|dinner|coffee|tea|drink|snack|macchia
 const ui = {
   filter: "", showAll: false, month: null, hour: null, editing: null, salaryAll: false,
   flowMonth: null, kindMonth: null, salaryMonth: null, payee: null, smallOpen: false, flowOpen: false,
-  aiList: false,
+  aiList: false, othersMonth: null, loanFriend: null,
 };
 // Kinds have their own fixed colours; "Other" is grey.
 const KIND_IDS = KINDS.map((k) => k.id);
@@ -205,6 +207,9 @@ function renderMoney(ctx) {
     ${kindCard(byKind, cal)}
     ${salaryGoesCard(sal, ctx, cal)}
     ${topCard(top, cal, ctx)}
+    ${rulesSuggestCard(ctx)}
+    ${othersCard(ctx, cal)}
+    ${loansCard(ctx, cal)}
     ${aiCard(ctx)}
     ${smallCard(small, cal)}`;
 }
@@ -275,7 +280,7 @@ function topCard(t, cal, ctx) {
         <span class="hb-top-trend" title="Last 6 months: ${r.trend.map((v) => etb(v)).join(", ")}">${sparkline(r.trend)}</span>
       </button>`).join("")}
     </div>
-    ${sel ? kindPicker(sel, ctx) + moneyTable(`${sel.name}: ${sel.count} payments`, sel.sources, cal) : ""}
+    ${sel ? kindPicker(sel, ctx) + ruleEditor(sel, ctx) + moneyTable(`${sel.name}: ${sel.count} payments`, sel.sources, cal) : ""}
   </div>`;
 }
 
@@ -290,6 +295,88 @@ function kindPicker(row, ctx) {
       ${PICKABLE_KINDS.map((k) => `<option value="${k}" ${k === row.kind ? "selected" : ""}>${esc(kindLabel(k))}</option>`).join("")}
     </select>
     ${picked ? `<button type="button" class="btn-ghost hb-btn" data-hb="reset-kind" data-key="${esc(row.key)}">Use Kash's guess</button>` : `<span class="muted small">Kash's guess</span>`}
+  </div>`;
+}
+
+// A per-person rule (rules.js): only N a month are mine, or loan vs bill share.
+function ruleEditor(row, ctx) {
+  if (!ctx.setPayeeRule || ctx.reviewStatus !== "ready") return "";
+  const rule = ctx.payeeRules?.get(row.key);
+  const k = esc(row.key);
+  const extra = rule?.type === "mine"
+    ? `<span>Only <input class="hb-num" type="number" min="1" max="31" step="1" value="${rule.n}" data-hb="rule-n" data-key="${k}" aria-label="Payments a month that are yours"> a month ${rule.n === 1 ? "is" : "are"} mine, the ${rule.n === 1 ? "one" : "ones"} closest to ETB
+        <input class="hb-num hb-num-wide" type="number" min="1" step="1" value="${rule.usual}" data-hb="rule-usual" data-key="${k}" aria-label="Your usual amount">. The rest is paid for others.</span>`
+    : rule?.type === "loan"
+      ? `<span>ETB <input class="hb-num hb-num-wide" type="number" min="1" step="1" value="${rule.above}" data-hb="rule-above" data-key="${k}" aria-label="Loan from this amount"> or more either way is a loan; less is a bill share.</span>`
+      : "";
+  return `<div class="hb-kind-pick hb-rule">
+    <label for="hb-rule-${k}">Rule</label>
+    <select class="hb-select" id="hb-rule-${k}" data-hb="rule-type" data-key="${k}">
+      <option value="" ${rule ? "" : "selected"}>Normal</option>
+      <option value="mine" ${rule?.type === "mine" ? "selected" : ""}>Only some payments a month are mine</option>
+      <option value="loan" ${rule?.type === "loan" ? "selected" : ""}>Loans and bill shares</option>
+    </select>
+    ${extra}
+  </div>`;
+}
+
+// Kash's suggestions for per-person rules.
+function rulesSuggestCard(ctx) {
+  if (!ctx.setPayeeRule || ctx.reviewStatus !== "ready") return "";
+  const habitKeys = (ctx.rules || []).map((r) => r.match);
+  const list = suggestRules(ctx.txs, { rules: ctx.payeeRules, declined: ctx.ruleNo, habitKeys, salaryKeys: ctx.salaryKeys, cal: ctx.cal });
+  if (!list.length) return "";
+  const what = (r) => r.type === "mine" ? `Only ${r.n} a month ${r.n === 1 ? "is" : "are"} mine (about ${etb(r.usual)} each); the rest is paid for others` : `${etb(r.above)} or more is a loan; less is a bill share`;
+  return `<div class="card">
+    <header class="section-header"><h3>Rules for some people?</h3><span class="muted small">Kash's guess</span></header>
+    ${list.map((x) => `<div class="hb-pass">
+      <div class="hb-pass-lines"><p><strong>${esc(x.name)}</strong></p><p class="small">${esc(what(x.rule))}</p><p class="muted small">${esc(x.why)}</p></div>
+      <div class="hb-pass-actions">
+        <button type="button" class="btn-ghost hb-btn primary" data-hb="rule-yes" data-key="${esc(x.key)}">Use this rule</button>
+        <button type="button" class="btn-ghost hb-btn" data-hb="rule-no" data-key="${esc(x.key)}">No</button>
+      </div></div>`).join("")}
+    <p class="muted small">You can change a rule any time: tap the person in "Who you pay most".</p>
+  </div>`;
+}
+
+function othersCard(ctx, cal) {
+  const o = paidForOthers(ctx.txs, { cal });
+  if (!o.count) return "";
+  const max = Math.max(...o.months.map((m) => m.total), 1);
+  const sel = o.months.find((m) => m.key === ui.othersMonth);
+  return `<div class="card">
+    <header class="section-header"><h3>Paid for others</h3><span class="muted small">Each month</span></header>
+    <p class="hb-explain">${esc(explainOthers(o))}</p>
+    <div class="hb-top">${o.months.map((m) => `
+      <button type="button" class="hb-top-row hb-others-row" data-hb="others-month" data-key="${m.key}" aria-pressed="${m.key === ui.othersMonth}">
+        <span class="hb-top-name"><strong>${esc(m.label)}</strong><span class="muted small">${m.count} ${m.count === 1 ? "payment" : "payments"}</span></span>
+        <span class="hb-top-share"><span class="hb-hbar"><span style="width:${(100 * m.total) / max}%;background:${kindColor("others")}"></span><em class="hb-amt">${etb(m.total)}</em></span></span>
+      </button>`).join("")}
+    </div>
+    ${sel ? moneyTable(`${sel.label}: paid for others`, sel.sources.map((t) => ({ ms: Date.parse(t.occurred_at), name: displayName(t.counterparty), kind: "others", amount: Number(t.amount) })), cal) : ""}
+  </div>`;
+}
+
+function loansCard(ctx, cal) {
+  if (!ctx.payeeRules?.size) return "";
+  const book = loanBook(ctx.txs, ctx.payeeRules);
+  if (!book.length) return "";
+  const sel = book.find((e) => e.key === ui.loanFriend);
+  return `<div class="card">
+    <header class="section-header"><h3>Loans with friends</h3><span class="muted small">Since your first message</span></header>
+    ${book.map((e) => `
+      <button type="button" class="hb-top-row hb-loan-row" data-hb="loan-friend" data-key="${esc(e.key)}" aria-pressed="${e.key === ui.loanFriend}">
+        <span class="hb-top-name"><strong>${esc(e.name)}</strong>
+          <span class="small">${esc(explainLoan(e))}</span>
+          <span class="muted small">Loans are ETB ${Math.round(e.above || LOAN_ABOVE).toLocaleString("en-US")} or more and stay out of income and spending.${e.billBack ? ` Bill shares sent back: <span class="hb-amt">${etb(e.billBack)}</span>, taken off your spending.` : ""}</span></span>
+        <span class="hb-loan-balance ${e.balance > 0 ? "owe" : e.balance < 0 ? "owed" : ""}"><span class="hb-amt">${etb(Math.abs(e.balance))}</span><span class="muted small">${e.balance > 0 ? "you owe" : e.balance < 0 ? "owed to you" : "even"}</span></span>
+      </button>`).join("")}
+    ${sel ? `<div class="hb-sources"><p><strong>${esc(sel.name)}: loans</strong></p><div class="hb-table-wrap"><table class="tx-table hb-table">
+      <thead><tr><th>Date</th><th>What</th><th class="right">Amount</th></tr></thead>
+      <tbody>${sel.sources.map((t) => `<tr><td>${esc(dateLabel(Date.parse(t.occurred_at), cal, { time: true }))}</td>
+        <td>${t.type === "CREDIT" ? "From them" : "To them"}</td><td class="right">${t.type === "CREDIT" ? "+" : "−"}${etb(Number(t.amount))}</td></tr>`).join("")}</tbody>
+    </table></div></div>` : ""}
+    <p class="muted small">Kash only sees what went through your bank and wallets, so cash loans aren't here.</p>
   </div>`;
 }
 
@@ -685,6 +772,30 @@ function wire(root, ctx, rules) {
   root.querySelectorAll('[data-hb="toggle"]').forEach((tr) => tr.addEventListener("click", () => {
     tr.nextElementSibling?.classList.toggle("hidden");
   }));
+  // Per-person rules.
+  toggle("others-month", "othersMonth");
+  toggle("loan-friend", "loanFriend");
+  const ruleOf = (key) => ctx.payeeRules?.get(key);
+  const usualOf = (key) => {
+    const xs = ctx.txs.filter((t) => personKey(t.counterparty) === key && t.type !== "CREDIT").map((t) => Number(t.amount) || 0).sort((a, b) => a - b);
+    return xs.length ? Math.round(xs[xs.length >> 1]) : 0;
+  };
+  root.querySelector('[data-hb="rule-type"]')?.addEventListener("change", (e) => {
+    const key = e.target.dataset.key, type = e.target.value;
+    ctx.setPayeeRule(key, type === "mine" ? { type, n: 1, usual: usualOf(key) || 1 } : type === "loan" ? { type, above: LOAN_ABOVE } : null);
+  });
+  const edit = (sel, field) => root.querySelector(`[data-hb="${sel}"]`)?.addEventListener("change", (e) => {
+    const key = e.target.dataset.key, v = Math.round(Number(e.target.value));
+    const r = ruleOf(key);
+    if (r && v > 0) ctx.setPayeeRule(key, { ...r, [field]: field === "n" ? Math.min(31, v) : v });
+  });
+  edit("rule-n", "n"); edit("rule-usual", "usual"); edit("rule-above", "above");
+  root.querySelectorAll('[data-hb="rule-yes"]').forEach((b) => b.addEventListener("click", () => {
+    const habitKeys = (ctx.rules || []).map((r) => r.match);
+    const x = suggestRules(ctx.txs, { rules: ctx.payeeRules, declined: ctx.ruleNo, habitKeys, salaryKeys: ctx.salaryKeys, cal: ctx.cal }).find((s) => s.key === b.dataset.key);
+    if (x) ctx.setPayeeRule(x.key, x.rule);
+  }));
+  root.querySelectorAll('[data-hb="rule-no"]').forEach((b) => b.addEventListener("click", () => ctx.declineRule(b.dataset.key)));
   // Payee kinds and Gemini.
   root.querySelector('[data-hb="set-kind"]')?.addEventListener("change", (e) => ctx.setKind(e.target.dataset.key, e.target.value, "you"));
   root.querySelector('[data-hb="reset-kind"]')?.addEventListener("click", (e) => ctx.setKind(e.currentTarget.dataset.key, null));

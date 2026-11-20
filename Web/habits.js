@@ -68,7 +68,8 @@ export function personKey(name) {
   return words.length === 1 ? words[0] : `${words[0]} ${words[1].slice(0, 3)}`;
 }
 
-const isOut = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnMove(tx) && !tx.pass_through;
+// Payments for others and friend loans (rules.js) aren't the user's habits.
+const isOut = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnMove(tx) && !tx.pass_through && !tx.for_others && !tx.friend_loan;
 
 /**
  * Everyone the user pays, grouped by personKey, for the "map a person to a

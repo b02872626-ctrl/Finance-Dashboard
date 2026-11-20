@@ -6,6 +6,31 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-20 — Per-person rules: paid for others, loans with friends (web Habits tab)
+
+Habit handoff, per-person rules. Owner's choices: payments past "mine" show
+as their own kind; friend loans get a card on the Habits tab; rules are set
+on the payee panel in "Who you pay most", and Kash suggests people. Logic in
+`Web/rules.js`, tested by `tests/web/rules.test.mjs`. Saved per user in
+`i_review_decisions` (kind `payee_rule`, `add_payee_rules.sql`).
+- **Only N a month are mine** (for example football paid for teammates):
+  each month the N payments closest to the usual amount are the user's;
+  the rest are marked "Paid for others", a new ninth kind with the next
+  colour slot. They still count as spending (the money left) but leave
+  habit totals. Suggested for a person mapped to a habit whom the user paid
+  twice within an hour in 3+ months; N is suggested from the usual number
+  of days a month they pay them.
+- **Loans and bill shares** (office friends): either way, ETB 1,000 or more
+  (changeable) is a loan. Loans leave income and spending everywhere on the
+  dashboard and show as a running balance on "Loans with friends". Less is
+  a bill share: what the user pays stays spending; what the friend sends
+  back leaves income everywhere and, on the Habits tab money views, comes
+  off spending (the Dashboard's own spending total doesn't net it).
+  Suggested for someone the user both pays and gets paid by, at least
+  twice each way, with amounts above and below 1,000.
+- Rules are marks on the transactions (like pass-throughs), redone on every
+  redraw, so removing a rule undoes it at once.
+
 ## 2026-11-20 — Gemini may see payee names, opt-in per user (web Habits tab)
 
 Changes the 2026-11-11 entry ("Gemini sees only per-user summaries"): the

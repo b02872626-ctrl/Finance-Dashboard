@@ -2801,3 +2801,14 @@ a:focus-visible, .tx-table tbody tr:focus-visible, summary:focus-visible {
 .hb-ai-details { margin-top: 14px; }
 .hb-ai-details summary { cursor: pointer; color: var(--k-ink-muted); }
 .hb-error { color: var(--coral); font-weight: 600; }
+
+/* Habits tab: per-person rules */
+.hb-rule { margin-top: 6px; }
+.hb-rule span { color: var(--k-ink-muted); font-size: 13px; line-height: 2.2; }
+#habits-root .hb-rule input.hb-num { width: 56px; height: auto; min-height: 0; margin: 0 2px; padding: 4px 8px; line-height: 1.4; border-radius: 8px; border: 1px solid var(--k-line-strong); background: var(--k-raised); color: var(--k-ink); font: inherit; }
+#habits-root .hb-rule input.hb-num-wide { width: 92px; }
+.hb-others-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.hb-loan-row { grid-template-columns: minmax(0, 1fr) auto; width: 100%; }
+.hb-loan-row .hb-top-name strong { white-space: normal; }
+.hb-loan-balance { display: flex; flex-direction: column; align-items: flex-end; font-weight: 600; font-size: 16px; }
+@media (max-width: 560px) { .hb-others-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
