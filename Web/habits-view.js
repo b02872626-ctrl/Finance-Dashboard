@@ -21,13 +21,29 @@ import {
   monthOf, displayName,
 } from "./habits.js";
 import { passThroughReview, salaryByMonth, salaryCandidates, salaryPayments } from "./flows.js";
+import {
+  KINDS, explainByKind, explainFlow, explainSalary, explainSmall, explainTop, kindLabel, moneyFlow,
+  salaryVsSpending, smallPayments, spendingByKind, spendingRows, topPayees,
+} from "./money.js";
 
 // Categorical slots, fixed order (blue, orange, aqua, yellow, magenta, green,
 // violet, red); colour follows the habit, by the order it was first mapped.
 const SLOTS = 8;
 const SHARED_GUESS = /food|lunch|breakfast|dinner|coffee|tea|drink|snack|macchiato|juice/i;
 
-const ui = { filter: "", showAll: false, month: null, hour: null, editing: null, salaryAll: false };
+const ui = {
+  filter: "", showAll: false, month: null, hour: null, editing: null, salaryAll: false,
+  flowMonth: null, kindMonth: null, salaryMonth: null, payee: null, smallOpen: false, flowOpen: false,
+};
+// Kinds have their own fixed colours; "Other" is grey.
+const KIND_IDS = KINDS.map((k) => k.id);
+const kindColor = (id) => (id === "other" ? "var(--hb-other)" : `var(--hb-${KIND_IDS.indexOf(id) + 1})`);
+let flowDraw = null; // the money flow drawn after the HTML is in place (it needs the card's width)
+let lastRoot = null;
+if (typeof window !== "undefined") {
+  let t = null;
+  window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => lastRoot && drawFlow(lastRoot), 150); });
+}
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const etb = (n) => `ETB ${Math.round(n).toLocaleString("en-US")}`;
@@ -60,6 +76,7 @@ export function renderHabits(root, ctx) {
       <p class="muted">Tell Kash which people and places are which habit (lunch, coffee, games…). Kash then shows how much each habit costs you, when it happens, what comes with it, and how much friends pay you back. Every number opens to the transactions behind it.</p>
     </div>
     ${renderPassThroughs(ctx)}
+    ${renderMoney(ctx)}
     ${renderSalary(ctx)}
     ${renderPicker(ctx, rules, order)}
     ${pays.length ? renderInsights(ctx, pays, order) : `<div class="card"><p class="muted">Map a few people or places above to see your habits.</p></div>`}`;
@@ -137,6 +154,206 @@ function renderSalary(ctx) {
   </div>`;
 }
 
+// ── Where your money goes ───────────────────────────────────────────────────
+const shortMonth = (label) => label.replace(/ (\d{4})$/, (_, y) => ` ’${y.slice(2)}`);
+const kindLegend = (present) => `<div class="hb-legend">${KINDS.filter((k) => present.includes(k.id)).map((k) =>
+  `<span><i style="background:${kindColor(k.id)}"></i>${esc(k.label)}</span>`).join("")}</div>`;
+
+function moneyTable(title, rows, cal) {
+  const sorted = [...rows].sort((a, b) => b.ms - a.ms);
+  return `<div class="hb-sources">
+    <p><strong>${esc(title)}</strong></p>
+    <div class="hb-table-wrap"><table class="tx-table hb-table">
+      <thead><tr><th>Date</th><th>To</th><th>Kind</th><th class="right">Amount</th></tr></thead>
+      <tbody>${sorted.slice(0, 200).map((r) => `<tr><td>${esc(dateLabel(r.ms, cal, { time: true }))}</td><td>${esc(r.name)}</td>
+        <td><i class="hb-key" style="background:${kindColor(r.kind)}"></i>${esc(kindLabel(r.kind))}</td><td class="right">${etb(r.amount)}</td></tr>`).join("")}</tbody>
+    </table></div>
+    ${sorted.length > 200 ? `<p class="muted small">Showing the latest 200 of ${sorted.length}.</p>` : ""}
+  </div>`;
+}
+
+function renderMoney(ctx) {
+  const cal = ctx.cal;
+  const rows = spendingRows(ctx.txs, { rules: ctx.rules || [], salaryKeys: ctx.salaryKeys });
+  if (!rows.length) return "";
+  const byKind = spendingByKind(rows, ctx.txs, { cal });
+  const months = byKind.months;
+  const full = months.filter((m) => !m.partial);
+  if (!ui.flowMonth || !months.some((m) => m.key === ui.flowMonth)) ui.flowMonth = (full[full.length - 1] || months[months.length - 1]).key;
+  const fm = months.find((m) => m.key === ui.flowMonth);
+  const flow = moneyFlow(ctx.txs, rows, { cal, key: fm.key, salaryKeys: ctx.salaryKeys });
+  flowDraw = { flow };
+  const sal = salaryVsSpending(ctx.txs, byKind, { cal, salaryKeys: ctx.salaryKeys });
+  const top = topPayees(rows, { cal, now: Date.now(), n: 10 });
+  const small = smallPayments(rows, ctx.txs, { cal });
+  return `
+    <div class="card">
+      <header class="section-header"><h3>Where your money went</h3>
+        <select class="hb-select" data-hb="flow-month" aria-label="Month">${[...months].reverse().map((m) =>
+          `<option value="${m.key}" ${m.key === fm.key ? "selected" : ""}>${esc(m.label)}${m.partial ? " (partial)" : ""}</option>`).join("")}</select></header>
+      <p class="hb-explain">${esc(explainFlow(flow, fm.label))}</p>
+      <div class="hb-flow" data-hb="flow"></div>
+      <p class="muted small">Left: what came in. Right: where it went. Moves between your own accounts and money that passed through you aren't counted.</p>
+      <button type="button" class="ghost-btn hb-more" data-hb="flow-open">${ui.flowOpen ? "Hide the payments" : `See all ${flow.sources.out.length} payments`}</button>
+      ${ui.flowOpen ? moneyTable(`${fm.label}: everything that went out`, flow.sources.out, cal) : ""}
+    </div>
+    ${kindCard(byKind, cal)}
+    ${salaryGoesCard(sal, ctx, cal)}
+    ${topCard(top, cal)}
+    ${smallCard(small, cal)}`;
+}
+
+function kindCard(b, cal) {
+  const present = KIND_IDS.filter((k) => b.totals[k] > 0);
+  const max = Math.max(...b.months.map((m) => m.total), 1);
+  const sel = b.months.find((m) => m.key === ui.kindMonth);
+  return `<div class="card">
+    <header class="section-header"><h3>Spending by kind</h3><span class="muted small">Each month</span></header>
+    <p class="hb-explain">${esc(explainByKind(b))}</p>
+    ${kindLegend(present)}
+    <div class="hb-bars hb-months">${b.months.map((m) => stackedBar(m.byKind, m.total, max, KIND_IDS,
+      `data-hb="kind-month" data-key="${m.key}" ${m.partial ? 'data-partial="1"' : ""} aria-pressed="${m.key === ui.kindMonth}"`,
+      esc(shortMonth(m.label)) + (m.partial ? "*" : ""),
+      `${m.label}${m.partial ? " (partial month)" : ""}: ${etb(m.total)}\n` + present.filter((k) => m.byKind[k]).map((k) => `${kindLabel(k)} ${etb(m.byKind[k])}`).join("\n"),
+      kindColor)).join("")}
+    </div>
+    <div class="hb-kind-totals">${present.sort((x, y) => b.totals[y] - b.totals[x]).map((k) => `
+      <div><i class="hb-key" style="background:${kindColor(k)}"></i>${esc(kindLabel(k))} <span class="muted small">${Math.round((100 * b.totals[k]) / b.all)}%${b.average[k] ? ` · <span class="hb-amt">${etb(b.average[k])}</span> a month` : ""}</span></div>`).join("")}
+    </div>
+    <p class="muted small">* Partial month: left out of the monthly figures. Kash sorts each payment by the name on it: habits you mapped first, then bills, airtime, cash, loans, shops and people. Tap a month to check.</p>
+    ${sel ? moneyTable(`${sel.label}: ${sel.sources.length} payments`, sel.sources, cal) : ""}
+  </div>`;
+}
+
+function salaryGoesCard(sal, ctx, cal) {
+  if (!ctx.salaryKeys.length) {
+    return `<div class="card"><header class="section-header"><h3>Where your salary goes</h3></header>
+      <p class="muted">Pick who pays your salary (below, or on the Dashboard's Payday card) to compare each month's spending with it.</p></div>`;
+  }
+  if (!sal.length) return "";
+  const present = KIND_IDS.filter((k) => sal.some((m) => m.byKind[k]));
+  const max = Math.max(...sal.map((m) => Math.max(m.total, m.salary)), 1);
+  const sel = sal.find((m) => m.key === ui.salaryMonth);
+  return `<div class="card">
+    <header class="section-header"><h3>Where your salary goes</h3><span class="muted small">Spending by kind, line = salary</span></header>
+    <p class="hb-explain">${esc(explainSalary(sal))}</p>
+    ${kindLegend(present)}<div class="hb-legend"><span><i class="hb-marker-key"></i>Salary that month</span></div>
+    <div class="hb-bars hb-months hb-with-marker">${sal.map((m) => stackedBar(m.byKind, m.total, max, KIND_IDS,
+      `data-hb="salary-month" data-key="${m.key}" ${m.partial ? 'data-partial="1"' : ""} aria-pressed="${m.key === ui.salaryMonth}"`,
+      esc(shortMonth(m.label)) + (m.partial ? "*" : ""),
+      `${m.label}: salary ${etb(m.salary)}, spent ${etb(m.total)} (${Math.round((100 * m.total) / (m.salary || 1))}%)`,
+      kindColor, m.salary)).join("")}
+    </div>
+    ${sel ? moneyTable(`${sel.label}: salary ${etb(sel.salary)}, ${sel.sources.length} payments`, sel.sources, cal) : ""}
+  </div>`;
+}
+
+function sparkline(values) {
+  const w = 84, h = 26, max = Math.max(...values, 1);
+  const pts = values.map((v, i) => `${(i * w) / (values.length - 1 || 1)},${h - 2 - (v / max) * (h - 4)}`).join(" ");
+  return `<svg class="hb-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+function topCard(t, cal) {
+  if (!t.rows.length) return "";
+  const max = t.rows[0].share || 1;
+  const sel = t.rows.find((r) => r.key === ui.payee);
+  return `<div class="card">
+    <header class="section-header"><h3>Who you pay most</h3><span class="muted small">Share of all spending · last 6 months</span></header>
+    <p class="hb-explain">${esc(explainTop(t))}</p>
+    <div class="hb-top">${t.rows.map((r) => `
+      <button type="button" class="hb-top-row" data-hb="payee" data-key="${esc(r.key)}" aria-pressed="${r.key === ui.payee}">
+        <span class="hb-top-name"><strong><i class="hb-key" style="background:${kindColor(r.kind)}"></i>${esc(r.name)}</strong>
+          <span class="muted small">${esc(kindLabel(r.kind))} · ${r.count} payments · <span class="hb-amt">${etb(r.total)}</span></span></span>
+        <span class="hb-top-share"><span class="hb-hbar"><span style="width:${(100 * r.share) / max}%;background:${kindColor(r.kind)}"></span><em>${r.share}%</em></span></span>
+        <span class="hb-top-trend" title="Last 6 months: ${r.trend.map((v) => etb(v)).join(", ")}">${sparkline(r.trend)}</span>
+      </button>`).join("")}
+    </div>
+    ${sel ? moneyTable(`${sel.name}: ${sel.count} payments`, sel.sources, cal) : ""}
+  </div>`;
+}
+
+function smallCard(s, cal) {
+  if (!s.count) return "";
+  return `<div class="card">
+    <header class="section-header"><h3>Small things add up</h3><span class="muted small">Payments under ${etb(s.limit)}</span></header>
+    <p class="hb-explain">${esc(explainSmall(s))}</p>
+    <div class="hb-stats">
+      ${s.perMonth ? `<div><p class="big-number">${s.perMonth.count}</p><p class="muted small">small payments a month</p></div>
+      <div><p class="big-number">${etb(s.perMonth.total)}</p><p class="muted small">on them a month</p></div>` : ""}
+      <div><p class="big-number">${s.share}%</p><p class="muted small">of your spending, ${s.countShare}% of your payments</p></div>
+    </div>
+    ${s.top.length ? `<p class="hb-sub"><strong>Where most of them go</strong></p>
+      ${s.top.map((x) => `<p>${esc(x.name)} <span class="muted small">${x.count} payments · <span class="hb-amt">${etb(x.total)}</span></span></p>`).join("")}` : ""}
+    <button type="button" class="ghost-btn hb-more" data-hb="small-open">${ui.smallOpen ? "Hide them" : `See all ${s.count}`}</button>
+    ${ui.smallOpen ? moneyTable(`Payments under ${etb(s.limit)}`, s.sources, cal) : ""}
+  </div>`;
+}
+
+// The money flow: what came in on the left, where it went on the right,
+// bands as wide as the money. Drawn at the card's real width so the labels
+// stay readable on a phone.
+function drawFlow(root) {
+  const box = root.querySelector('[data-hb="flow"]');
+  if (!box || !flowDraw) return;
+  const f = flowDraw.flow;
+  const W = Math.max(280, box.clientWidth || 600);
+  const narrow = W < 480; // a phone: shorter labels, no % on the right
+  const left = [
+    { id: "salary", label: "Salary", value: f.salary },
+    { id: "other-in", label: narrow ? "Other in" : "Other money in", value: f.other },
+    { id: "savings", label: narrow ? "Savings" : "From savings", value: f.fromSavings },
+  ].filter((n) => n.value > 0);
+  const right = [
+    ...KINDS.map((k) => ({ id: k.id, label: k.label, value: f.byKind[k.id] || 0 })).filter((n) => n.value > 0).sort((a, b) => b.value - a.value),
+    ...(f.kept > 0 ? [{ id: "kept", label: "Kept", value: f.kept }] : []),
+  ];
+  const total = left.reduce((s, n) => s + n.value, 0);
+  if (!total) { box.innerHTML = `<p class="muted">Nothing came in or went out this month.</p>`; return; }
+  const gap = 10, nodeW = 10, rowMin = 34;
+  const H = Math.max(200, right.length * rowMin + 16, left.length * 60);
+  const scale = (H - gap * (Math.max(left.length, right.length) - 1)) / total;
+  const lw = narrow ? W * 0.26 : Math.min(120, W * 0.27), rw = narrow ? W * 0.38 : Math.min(150, W * 0.36);
+  const x0 = lw, x1 = W - rw - nodeW;
+  const place = (nodes) => {
+    const used = nodes.reduce((s, n) => s + n.value * scale, 0) + gap * (nodes.length - 1);
+    let y = (H - used) / 2;
+    for (const n of nodes) { n.y = y; n.h = Math.max(1.5, n.value * scale); y += n.h + gap; n.off = 0; }
+  };
+  place(left); place(right);
+  // Labels sit by their node but never closer than 32px; pushed down, then
+  // back up if they run past the bottom.
+  const spread = (nodes) => {
+    let prev = -Infinity;
+    for (const n of nodes) { n.ly = Math.max(n.y + n.h / 2, prev + 32); prev = n.ly; }
+    const over = prev + 16 - (H + 8);
+    if (over > 0) for (const n of nodes) n.ly -= over;
+    for (let i = nodes.length - 2; i >= 0; i--) nodes[i].ly = Math.min(nodes[i].ly, nodes[i + 1].ly - 32);
+  };
+  spread(left); spread(right);
+  const all = [...left, ...right];
+  const pad = Math.max(0, 16 - Math.min(...all.map((n) => n.ly)));
+  const bottom = Math.max(H + 8, ...all.map((n) => n.ly + 20)) + pad;
+  const color = (id) => (id === "kept" ? "var(--hb-compare)" : kindColor(id));
+  let bands = "";
+  for (const a of left) for (const b of right) {
+    const v = (a.value * b.value) / total;
+    const t = v * scale;
+    if (t < 0.3) continue;
+    const ya = a.y + a.off, yb = b.y + b.off;
+    a.off += t; b.off += t;
+    const xa = x0 + nodeW, mid = (xa + x1) / 2;
+    bands += `<path d="M${xa},${ya} C${mid},${ya} ${mid},${yb} ${x1},${yb} L${x1},${yb + t} C${mid},${yb + t} ${mid},${ya + t} ${xa},${ya + t} Z" fill="${color(b.id)}" opacity="0.35"><title>${esc(a.label)} → ${esc(b.label)}: ${etb(v)}</title></path>`;
+  }
+  const lNodes = left.map((n) => `<rect x="${x0}" y="${n.y}" width="${nodeW}" height="${n.h}" rx="2" fill="var(--k-ink-muted)"/>
+    <text x="${x0 - 8}" y="${n.ly - 2}" text-anchor="end" class="hb-flow-label">${esc(n.label)}</text>
+    <text x="${x0 - 8}" y="${n.ly + 13}" text-anchor="end" class="hb-flow-value hb-amt">${etb(n.value)}</text>`).join("");
+  const rNodes = right.map((n) => `<rect x="${x1}" y="${n.y}" width="${nodeW}" height="${n.h}" rx="2" fill="${color(n.id)}"/>
+    <text x="${x1 + nodeW + 8}" y="${n.ly - 2}" class="hb-flow-label">${esc(n.label)}</text>
+    <text x="${x1 + nodeW + 8}" y="${n.ly + 13}" class="hb-flow-value hb-amt">${etb(n.value)}${narrow ? "" : ` · ${Math.round((100 * n.value) / total)}%`}</text>`).join("");
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${bottom}" width="${W}" height="${bottom}" role="img" aria-label="Money in and where it went"><g transform="translate(0 ${pad})">${bands}${lNodes}${rNodes}</g></svg>`;
+}
+
 // ── Who is which habit ──────────────────────────────────────────────────────
 function renderPicker(ctx, rules, order) {
   const list = payees(ctx.txs, { limit: 300 });
@@ -212,10 +429,11 @@ function legend(order, present) {
     `<span><i style="background:${colorOf(order, h)}"></i>${esc(h)}</span>`).join("")}</div>`;
 }
 
-function stackedBar(byHabit, total, max, order, attrs, label, title) {
+function stackedBar(byHabit, total, max, order, attrs, label, title, color = (h) => colorOf(order, h), marker = null) {
   const segs = order.filter((h) => byHabit[h] > 0).reverse()
-    .map((h) => `<span style="height:${(100 * byHabit[h]) / (total || 1)}%;background:${colorOf(order, h)}"></span>`).join("");
+    .map((h) => `<span style="height:${(100 * byHabit[h]) / (total || 1)}%;background:${color(h)}"></span>`).join("");
   return `<button type="button" class="hb-col" ${attrs} title="${esc(title)}">
+    ${marker != null ? `<span class="hb-marker" style="bottom:calc(34px + (100% - 34px) * ${max ? Math.min(1, marker / max) : 0})"></span>` : ""}
     <span class="hb-stack" style="height:${max ? (100 * total) / max : 0}%">${segs}</span>
     <span class="hb-col-label">${label}</span></button>`;
 }
@@ -334,6 +552,18 @@ function sourcesTable(title, rows, cal) {
 // ── Events ──────────────────────────────────────────────────────────────────
 function wire(root, ctx, rules) {
   const rerender = () => renderHabits(root, ctx);
+  lastRoot = root;
+  drawFlow(root);
+  root.querySelector('[data-hb="flow-month"]')?.addEventListener("change", (e) => { ui.flowMonth = e.target.value; ui.flowOpen = false; rerender(); });
+  root.querySelector('[data-hb="flow-open"]')?.addEventListener("click", () => { ui.flowOpen = !ui.flowOpen; rerender(); });
+  root.querySelector('[data-hb="small-open"]')?.addEventListener("click", () => { ui.smallOpen = !ui.smallOpen; rerender(); });
+  const toggle = (sel, field, num = false) => root.querySelectorAll(`[data-hb="${sel}"]`).forEach((b) => b.addEventListener("click", () => {
+    const v = num ? Number(b.dataset.key) : b.dataset.key;
+    ui[field] = ui[field] === v ? null : v; rerender();
+  }));
+  toggle("kind-month", "kindMonth");
+  toggle("salary-month", "salaryMonth");
+  toggle("payee", "payee");
   const filter = root.querySelector('[data-hb="filter"]');
   filter?.addEventListener("input", () => {
     ui.filter = filter.value;

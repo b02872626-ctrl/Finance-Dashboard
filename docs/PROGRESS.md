@@ -9,10 +9,13 @@ items to Done with the date, add what is next or blocked.
   tab) is merged and its table is on live. PR 2 (pass-through review,
   excluded from every total; salary card with suggested payers) is open.
   Owner: run `supabase/add_review_decisions.sql` on live (staging is
-  unreachable, see Blocked) before merging. Next PRs, one branch each: (3) "only N payments a month are mine" and
-  loans-vs-bill-shares; (4) split one transaction (instalment + loan
-  repaid); (5) opt-in Gemini habit suggestions (Edge Function, key in
-  Supabase secrets, new decision entry).
+  unreachable, see Blocked) before merging. PR 3 ("where your money goes":
+  money flow, spending by kind, salary vs spending, top payees, small
+  payments) is open, stacked on PR 2. Next PRs, one branch each:
+  opt-in Gemini suggestions for habits and for "People" / "Other" payees
+  (Edge Function, key in Supabase secrets, new decision entry); "only N
+  payments a month are mine" and loans-vs-bill-shares; split one
+  transaction (instalment + loan repaid).
 
 - **The approved canvas, in the app (sections 4, 5, 6 of "Final - Approved
   flow").** Three PRs, owner's decisions of 14 Nov: (1) dark theme, done,
@@ -106,8 +109,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-20 Web "where your money goes" (five views on the Habits tab), PR open, stacked on PR 2. Previewed with made-up data at desktop and phone width. Not yet seen signed in.
 - 2026-11-20 Web pass-throughs and salary, habit handoff PR 2 (PR open). Checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
-- 2026-11-20 Habits tab on the web dashboard, PR 1 (PR open). Numbers checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
+- 2026-11-20 Habits tab on the web dashboard, PR 1 (merged, #100; table on live). Numbers checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-17 1.0.36: Confirm Kash's guess in one tap, or a whole list with Confirm all; Search all your transactions and filter by date, bank, category or amount; Goals rebuilt: see what to save per day, week or month; Faster setup: banks show up one by one as Kash reads your SMS; Your categories come back when you reinstall and sign in; Change a category on a transaction and choose all from that person or just this one; Own accounts is always in the category list; Smoother animations, better dark mode, and many fixes. Not yet installed on a real phone.
 - 2026-11-17 Review: one-tap ✓ on Kash's guess and Confirm all (PR open). Merged today: Own accounts always offered (#96), Put all N in X? on the transaction page (#97).
 - 2026-11-17 Transaction page asks "Put all N in X?" when changing a category; "Just this one" stops the old auto-sort (PR open, stacked on #96).
