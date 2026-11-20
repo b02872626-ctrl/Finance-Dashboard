@@ -32,7 +32,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Bump this each release. Matches the Android versionName convention so the
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
-const APP_VERSION = "web-beta20";
+const APP_VERSION = "web-beta21";
 
 // Password reset links come back here with "#...type=recovery" (or
 // "#error_code=otp_expired" once stale). Read the hash before createClient,
