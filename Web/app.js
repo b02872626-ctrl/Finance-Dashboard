@@ -16,6 +16,7 @@ import {
   normaliseSource, incomeSenders,
 } from "./insights.js";
 import { renderHabits } from "./habits-view.js";
+import { markPassThroughs, passThroughReview } from "./flows.js";
 
 // One pinned, self-contained file: "@2" floated to whatever esm.sh had that
 // day and pulled ~14 module files, three requests deep, before sign-in could
@@ -31,7 +32,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Bump this each release. Matches the Android versionName convention so the
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
-const APP_VERSION = "web-beta19";
+const APP_VERSION = "web-beta20";
 
 // Password reset links come back here with "#...type=recovery" (or
 // "#error_code=otp_expired" once stale). Read the hash before createClient,
@@ -304,6 +305,9 @@ const state = {
   allTxs: [],     // raw transactions for the signed-in user (most recent first)
   habitRules: [], // i_habit_rules as [{ match, habit, shared }] (Habits tab)
   habitStatus: "loading", // "loading" | "ready" | "missing" | "error"
+  passDecisions: new Map(), // i_review_decisions kind=pass_through: ref → { decision, detail }
+  salaryNo: [],             // i_review_decisions kind=salary, decision=no: payer keys
+  reviewStatus: "loading",
   period: "month",
   search: "",
   typeFilter: "",
@@ -905,6 +909,7 @@ async function showDashboard(session) {
   fetchGoals().catch((e) => console.warn("Goals fetch failed:", e));
   fetchBudgets().catch((e) => console.warn("Budgets fetch failed:", e));
   fetchHabitRules().catch((e) => console.warn("Habit rules fetch failed:", e));
+  fetchReviewDecisions().catch((e) => console.warn("Review decisions fetch failed:", e));
 }
 
 // ----------------------------------------------------------------------------
@@ -949,6 +954,61 @@ async function removeHabitRule(key) {
   if (error) { alert(`Couldn't remove: ${error.message}`); await fetchHabitRules(); }
 }
 
+// The user's yes/no on what Kash found (i_review_decisions). Confirmed
+// pass-throughs are marked on the transactions themselves, so every total on
+// the dashboard (isSpending / isIncome) leaves them out.
+async function fetchReviewDecisions() {
+  if (!state.userId) return;
+  const { data, error } = await supabase.from("i_review_decisions")
+    .select("kind, ref, decision, detail")
+    .eq("user_id", state.userId);
+  if (error) {
+    const missing = /relation .* does not exist|could not find the table/i.test(error.message);
+    if (missing) console.warn("i_review_decisions table missing — run supabase/add_review_decisions.sql in your Supabase project.");
+    else console.warn("Review decisions fetch error:", error.message);
+    state.reviewStatus = missing ? "missing" : "error";
+    return;
+  }
+  state.reviewStatus = "ready";
+  state.passDecisions = new Map((data || []).filter((r) => r.kind === "pass_through").map((r) => [r.ref, { decision: r.decision, detail: r.detail || {} }]));
+  state.salaryNo = (data || []).filter((r) => r.kind === "salary" && r.decision === "no").map((r) => r.ref);
+  applyPassThroughs();
+}
+
+function applyPassThroughs() {
+  const toCheck = state.reviewStatus === "ready"
+    ? passThroughReview(state.allTxs || [], state.passDecisions, { salaryKeys: salaryEntries().map(entryKey) }).toReview.length : 0;
+  const badge = $("habits-badge");
+  if (badge) { badge.textContent = String(toCheck); badge.classList.toggle("hidden", toCheck === 0); }
+  rerender();
+}
+
+async function saveDecision(kind, ref, decision, detail = {}) {
+  const res = decision == null
+    ? await supabase.from("i_review_decisions").delete().eq("user_id", state.userId).eq("kind", kind).eq("ref", ref)
+    : await supabase.from("i_review_decisions").upsert(
+      { user_id: state.userId, kind, ref, decision, detail, updated_at: new Date().toISOString() },
+      { onConflict: "user_id,kind,ref" });
+  if (res.error) { showToast(`Couldn't save: ${res.error.message}`, "error"); await fetchReviewDecisions(); return false; }
+  return true;
+}
+
+async function decidePassThrough(item, decision) {
+  const detail = { out_ids: item.outs.map((o) => o.id) };
+  if (decision == null) state.passDecisions.delete(item.key);
+  else state.passDecisions.set(item.key, { decision, detail });
+  applyPassThroughs();
+  if (await saveDecision("pass_through", item.key, decision, detail)) {
+    showToast(decision === "yes" ? "Left out of your income and spending" : decision === "no" ? "Kept as yours" : "Undone", "success");
+  }
+}
+
+async function rejectSalary(key) {
+  state.salaryNo = [...new Set([...state.salaryNo, key])];
+  renderHabitsView();
+  await saveDecision("salary", key, "no");
+}
+
 function renderHabitsView() {
   if (!habitsView || state.view !== "habits") return;
   renderHabits($("habits-root"), {
@@ -959,6 +1019,12 @@ function renderHabitsView() {
     status: state.habitStatus,
     setRule: saveHabitRule,
     removeRule: removeHabitRule,
+    decisions: state.passDecisions,
+    salaryNo: state.salaryNo,
+    reviewStatus: state.reviewStatus,
+    decidePassThrough,
+    addSalary: (c) => toggleSalary(c.key, c),
+    rejectSalary,
   });
 }
 
@@ -2933,6 +2999,8 @@ function periodDays(period, range) {
 // ----------------------------------------------------------------------------
 function rerender() {
   if (!state.allTxs) return;
+  // Confirmed pass-throughs leave every total (marks survive a reload of allTxs).
+  markPassThroughs(state.allTxs, state.passDecisions);
   const range = periodRange(state.period);
   const txs = state.allTxs;
   const inRange = txs.filter((t) => {
@@ -3296,8 +3364,10 @@ function renderSalaryPicker() {
 }
 
 // Add a sender as income, or remove it (several can be on at once).
-async function toggleSalary(key) {
-  const sender = incomeSenders(state.allTxs, { now: Date.now() }).find((x) => x.key === key);
+// [given]: a sender from elsewhere (the Habits tab's salary suggestions),
+// { name, usual, last }, when it isn't among the last 6 months' top senders.
+async function toggleSalary(key, given = null) {
+  const sender = given || incomeSenders(state.allTxs, { now: Date.now() }).find((x) => x.key === key);
   if (!sender || !state.userId) return;
   const on = salaryEntries().find((e) => entryKey(e) === key);
   let error;
@@ -3316,7 +3386,7 @@ async function toggleSalary(key) {
   if (error) { showToast(prettyLedgerError(error.message), "error"); return; }
   showToast(on ? `${sender.name} removed from your income` : `${sender.name} added to your income`, "success");
   await fetchIncome();
-  renderSalaryPicker();
+  if (!$("pd-picker").classList.contains("hidden")) renderSalaryPicker();
 }
 
 async function useAutomaticSalary() {

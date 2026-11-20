@@ -7,21 +7,27 @@
 //   txs, cal, salaryKeys,
 //   rules: [{ match, habit, shared }],
 //   status: "ready" | "loading" | "missing" | "error",
-//   setRule(key, habit, shared), removeRule(key)
+//   setRule(key, habit, shared), removeRule(key),
+//   decisions: Map(ref → { decision, detail }) for pass-throughs,
+//   salaryNo: [payer keys the user said aren't salary],
+//   reviewStatus: "ready" | "loading" | "missing" | "error",
+//   decidePassThrough(item, "yes" | "no" | null), addSalary(candidate), rejectSalary(key)
 // }
 
 import {
   SUGGESTED_HABITS, byHour, dateLabel, explainChains, explainGroups, explainHours,
   explainMonthly, explainPayday, groupPayments, habitChains, habitPayments, habitTotals,
   monthlyHabits, payees, paydayEffect, paydaysFrom, ruleFor,
+  monthOf, displayName,
 } from "./habits.js";
+import { passThroughReview, salaryByMonth, salaryCandidates, salaryPayments } from "./flows.js";
 
 // Categorical slots, fixed order (blue, orange, aqua, yellow, magenta, green,
 // violet, red); colour follows the habit, by the order it was first mapped.
 const SLOTS = 8;
 const SHARED_GUESS = /food|lunch|breakfast|dinner|coffee|tea|drink|snack|macchiato|juice/i;
 
-const ui = { filter: "", showAll: false, month: null, hour: null, editing: null };
+const ui = { filter: "", showAll: false, month: null, hour: null, editing: null, salaryAll: false };
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const etb = (n) => `ETB ${Math.round(n).toLocaleString("en-US")}`;
@@ -53,9 +59,82 @@ export function renderHabits(root, ctx) {
       <h3>Your habits</h3>
       <p class="muted">Tell Kash which people and places are which habit (lunch, coffee, games…). Kash then shows how much each habit costs you, when it happens, what comes with it, and how much friends pay you back. Every number opens to the transactions behind it.</p>
     </div>
+    ${renderPassThroughs(ctx)}
+    ${renderSalary(ctx)}
     ${renderPicker(ctx, rules, order)}
     ${pays.length ? renderInsights(ctx, pays, order) : `<div class="card"><p class="muted">Map a few people or places above to see your habits.</p></div>`}`;
   wire(root, ctx, rules);
+}
+
+// ── Money that passed through you ───────────────────────────────────────────
+function passItem(item, cal, actions) {
+  return `<div class="hb-pass">
+    <div class="hb-pass-lines">
+      <p><strong>${esc(dateLabel(Date.parse(item.in.occurred_at), cal, { time: true }))}</strong></p>
+      <p class="hb-in">+<span class="hb-amt">${etb(Number(item.in.amount))}</span> from ${esc(displayName(item.in.counterparty))}</p>
+      ${item.outs.map((o) => `<p class="hb-out">−<span class="hb-amt">${etb(Number(o.amount))}</span> to ${esc(displayName(o.counterparty))} <span class="muted small">${esc(dateLabel(Date.parse(o.occurred_at), cal, { time: true }))}</span></p>`).join("")}
+    </div>
+    <div class="hb-pass-actions">${actions}</div>
+  </div>`;
+}
+
+function renderPassThroughs(ctx) {
+  if (ctx.reviewStatus === "missing") {
+    return `<div class="card"><h3>Money that passed through you</h3>
+      <p class="muted">Not switched on for this account yet. (Owner: run <code>supabase/add_review_decisions.sql</code> on Supabase.)</p></div>`;
+  }
+  const r = passThroughReview(ctx.txs, ctx.decisions || new Map(), { salaryKeys: ctx.salaryKeys });
+  if (!r.toReview.length && !r.confirmed.length && !r.rejected.length) return "";
+  const sum = (xs) => xs.reduce((s, x) => s + Number(x.in.amount), 0);
+  const btn = (key, d, label, cls = "") => `<button type="button" class="btn-ghost hb-btn ${cls}" data-hb="pass" data-key="${esc(key)}" data-d="${d}">${label}</button>`;
+  return `<div class="card">
+    <header class="section-header"><h3>Money that passed through you</h3><span class="muted small">${r.toReview.length ? `${r.toReview.length} to check` : "All checked"}</span></header>
+    <p class="hb-explain">Money that came in and went straight out again, usually for someone else. It isn't your income or your spending. ${r.confirmed.length ? `You confirmed ${r.confirmed.length} (<span class="hb-amt">${etb(sum(r.confirmed))}</span>); they're left out of every total on the dashboard.` : "Confirm the ones that weren't yours and Kash leaves them out of every total on the dashboard."}</p>
+    <p class="muted small">Kash looks for ETB 5,000 or more coming in, then payments of ETB 5,000 or more going out within 36 hours that add up to 90–110% of it.</p>
+    ${r.toReview.map((item) => passItem(item, ctx.cal, btn(item.key, "yes", "Not mine, passed through", "primary") + btn(item.key, "no", "It was mine"))).join("")}
+    ${r.confirmed.length ? `<details class="hb-details"><summary>Confirmed (${r.confirmed.length})</summary>
+      ${r.confirmed.map((item) => passItem(item, ctx.cal, btn(item.key, "undo", "Undo"))).join("")}</details>` : ""}
+    ${r.rejected.length ? `<details class="hb-details"><summary>Yours, counted as normal (${r.rejected.length})</summary>
+      ${r.rejected.map((item) => passItem(item, ctx.cal, btn(item.key, "undo", "Undo"))).join("")}</details>` : ""}
+  </div>`;
+}
+
+// ── Salary ──────────────────────────────────────────────────────────────────
+function renderSalary(ctx) {
+  const cal = ctx.cal;
+  const pays = salaryPayments(ctx.txs, ctx.salaryKeys);
+  const candidates = ctx.reviewStatus === "missing" ? [] : salaryCandidates(ctx.txs, { cal, picked: ctx.salaryKeys, rejected: ctx.salaryNo || [] });
+  if (!pays.length && !candidates.length) return "";
+  const months = salaryByMonth(pays, (ms) => monthOf(ms, cal));
+  const max = Math.max(...months.map((m) => m.total), 1);
+  const total = pays.reduce((s, p) => s + p.amount, 0);
+  const shown = ui.salaryAll ? [...pays].reverse() : [...pays].reverse().slice(0, 8);
+  const dayWord = (d) => (cal === "ethiopian" ? `around day ${d} of the month` : `around the ${d}${["th", "st", "nd", "rd"][(d % 100 > 10 && d % 100 < 14) || d % 10 > 3 ? 0 : d % 10]}`);
+  return `<div class="card">
+    <header class="section-header"><h3>Salary</h3><span class="muted small">Payers are picked on the Dashboard's Payday card</span></header>
+    ${pays.length ? `
+      <p class="hb-explain">${pays.filter((p) => !p.back).length} salary payments came in, <span class="hb-amt">${etb(total)}</span> in all${pays.some((p) => p.back) ? ", after taking off what you sent back to your payers" : ""}.</p>
+      <div class="hb-salary-months">${months.map((m) => `
+        <div class="hb-salary-month"><span class="muted small">${esc(m.label)}</span>
+          <div class="hb-hbar"><span style="width:${Math.max(0, (100 * m.total) / max)}%;background:var(--hb-6)"></span><em class="hb-amt">${etb(m.total)}</em></div></div>`).join("")}
+      </div>
+      <div class="hb-table-wrap"><table class="tx-table hb-table">
+        <thead><tr><th>Date</th><th>From</th><th class="right">Amount</th><th>Note</th></tr></thead>
+        <tbody>${shown.map((p) => `<tr><td>${esc(dateLabel(p.ms, cal))}</td><td>${esc(p.from)}</td>
+          <td class="right">${p.amount < 0 ? "−" : "+"}${etb(Math.abs(p.amount))}</td><td class="muted small">${p.back ? "Sent back" : ""}</td></tr>`).join("")}</tbody>
+      </table></div>
+      ${pays.length > 8 ? `<button type="button" class="ghost-btn hb-more" data-hb="salary-all">${ui.salaryAll ? "Show fewer" : `Show all ${pays.length}`}</button>` : ""}`
+    : `<p class="muted">You haven't picked who pays your salary yet.</p>`}
+    ${candidates.length ? `
+      <p class="hb-sub"><strong>${pays.length ? "Anyone else paying you a salary?" : "Is one of these your salary?"}</strong></p>
+      ${candidates.slice(0, 5).map((c) => `<div class="hb-payee">
+        <div class="hb-payee-name"><div><strong>${esc(c.name)}</strong>
+          <p class="muted small">${c.count} payments · usually <span class="hb-amt">${etb(c.usual)}</span> · ${c.cadence === "monthly" ? dayWord(c.usualDay) : "every 2 weeks"}</p></div></div>
+        <div class="hb-pass-actions">
+          <button type="button" class="btn-ghost hb-btn primary" data-hb="salary-yes" data-key="${esc(c.key)}">Yes, salary</button>
+          <button type="button" class="btn-ghost hb-btn" data-hb="salary-no" data-key="${esc(c.key)}">No</button>
+        </div></div>`).join("")}` : ""}
+  </div>`;
 }
 
 // ── Who is which habit ──────────────────────────────────────────────────────
@@ -282,6 +361,17 @@ function wire(root, ctx, rules) {
       if (r) ctx.setRule(r.match, r.habit, box.checked);
     });
   });
+  root.querySelectorAll('[data-hb="pass"]').forEach((b) => b.addEventListener("click", () => {
+    const r = passThroughReview(ctx.txs, ctx.decisions || new Map(), { salaryKeys: ctx.salaryKeys });
+    const item = [...r.toReview, ...r.confirmed, ...r.rejected].find((x) => x.key === b.dataset.key);
+    if (item) ctx.decidePassThrough(item, b.dataset.d === "undo" ? null : b.dataset.d);
+  }));
+  root.querySelectorAll('[data-hb="salary-yes"]').forEach((b) => b.addEventListener("click", () => {
+    const c = salaryCandidates(ctx.txs, { cal: ctx.cal, picked: ctx.salaryKeys, rejected: ctx.salaryNo || [] }).find((x) => x.key === b.dataset.key);
+    if (c) ctx.addSalary(c);
+  }));
+  root.querySelectorAll('[data-hb="salary-no"]').forEach((b) => b.addEventListener("click", () => ctx.rejectSalary(b.dataset.key)));
+  root.querySelector('[data-hb="salary-all"]')?.addEventListener("click", () => { ui.salaryAll = !ui.salaryAll; rerender(); });
   root.querySelector('[data-hb="more"]')?.addEventListener("click", () => { ui.showAll = !ui.showAll; rerender(); });
   root.querySelectorAll('[data-hb="month"]').forEach((b) => b.addEventListener("click", () => {
     ui.month = ui.month === b.dataset.key ? null : b.dataset.key; rerender();

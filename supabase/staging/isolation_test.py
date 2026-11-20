@@ -90,6 +90,8 @@ TABLES = [
         "entry_id": r["i_ledger_entries"], "user_id": o, "amount": 1, "note": m}),
     T("i_habit_rules", "habit", lambda o, m, r: {
         "user_id": o, "name_key": "isolation test", "habit": m[:40]}),
+    T("i_review_decisions", "ref", lambda o, m, r: {
+        "user_id": o, "kind": "pass_through", "ref": m, "decision": "yes"}),
 ]
 
 
