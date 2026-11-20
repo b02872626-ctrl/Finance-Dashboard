@@ -6,6 +6,31 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-20 — Gemini may see payee names, opt-in per user (web Habits tab)
+
+Changes the 2026-11-11 entry ("Gemini sees only per-user summaries"): the
+owner chose to let Gemini see payee names, because name rules alone put a
+café with a person's name, rent or instalments under "People".
+- Off until the user turns it on, per user. The choice is a row in
+  `i_review_decisions` (kind `ai_consent`), and the `kash-gemini` Edge
+  Function checks it on every call, so it can't run for anyone who didn't.
+- Before turning it on, the user sees the exact list that would be sent.
+- Sent per payee: name with digits removed, count, usual amount, usual
+  hour, weekday share, Kash's guess, under an id like "p3". Only payees
+  Kash put in People, Shops or Other and that the user hasn't sorted; at
+  most 60. Never account or phone numbers, balances, dates, SMS, email or
+  user ID. Bills, airtime, cash and loans are never sent (their names
+  already settle them).
+- Gemini only suggests a kind and maybe a habit, with a one-line reason;
+  nothing changes until the user accepts. Accepted kinds are saved as
+  `payee_kind` rows; habits as `i_habit_rules` rows.
+- The user can also pick any payee's kind by hand in "Who you pay most";
+  a picked kind beats the built-in rules, a habit beats both.
+- Key and model in Supabase secrets (`GEMINI_API_KEY`, `GEMINI_MODEL`,
+  default `gemini-2.5-flash`); 20 calls per user per day; the function
+  never logs names. Use a key on a billing-enabled project (paid tier),
+  so Google doesn't use what's sent to improve its products.
+
 ## 2026-11-20 — Web dashboard: one card's error never blanks the page
 
 A Payday card crash (every paycheck dated after "now") threw inside
@@ -13,6 +38,30 @@ A Payday card crash (every paycheck dated after "now") threw inside
 `rerender()` now runs each card on its own and logs a failure to the
 console; the other cards still draw. `paydayPattern` returns
 `{ found: false }` when no paycheck is on or before now.
+
+## 2026-11-20 — "Where your money goes" on the Habits tab, sorted by built-in kinds
+
+Owner's choices: inside the Habits tab; five views (money flow per month,
+spending by kind per month, where your salary goes, who you pay most with a
+6-month trend, small payments under ETB 200); built-in sorting now, opt-in
+Gemini suggestions in a later PR. Numbers in `Web/money.js`, tested by
+`tests/web/money.test.mjs`.
+- Every payment gets one **kind**, first match wins: your habits (mapped
+  payees), airtime & data, cash out (ATM, agent), loans (loan apps,
+  repayments, or a "Loan" category), bills & fees (electricity, water, TV,
+  insurance, levies, fees), shops & places (Plc, Trading, Hotel, Cafe…, or
+  a "123 - NAME" merchant till, or a PAYMENT), people (a name that looks
+  like a person), other. Eight kinds, one fixed colour each ("Other" grey).
+  The user's own categories are not used here; they stay on Categories.
+- Not counted as spending here: moves to the user's own accounts (except
+  cash out and loan repayments, which are where the money went), confirmed
+  pass-throughs, and money sent back to a salary payer (taken off salary).
+- The money flow is drawn at the card's real width (shorter labels on a
+  phone) so text stays readable; when more went out than came in the extra
+  shows as "From savings".
+- "Where your salary goes" draws salary as a dashed line on the same ETB
+  scale as the spending bars (no second axis). Its sentence uses the last
+  full month.
 
 ## 2026-11-20 — Pass-throughs leave every total; salary payers are suggested (web)
 

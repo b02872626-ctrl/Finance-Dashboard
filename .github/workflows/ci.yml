@@ -32,7 +32,7 @@ jobs:
       # The web dashboard's insight numbers (Web/insights.js). The time zone
       # pins day boundaries to Addis Ababa, like the users'.
       - name: Web insight and habit tests
-        run: TZ=Africa/Addis_Ababa node --test tests/web/insights.test.mjs tests/web/habits.test.mjs tests/web/flows.test.mjs
+        run: TZ=Africa/Addis_Ababa node --test tests/web/insights.test.mjs tests/web/habits.test.mjs tests/web/flows.test.mjs tests/web/money.test.mjs tests/web/ai.test.mjs
       # Fails when a new supabase/*.sql file is missing from the staging list.
       - name: Staging setup script is complete
         run: sh supabase/staging/build_setup.sh

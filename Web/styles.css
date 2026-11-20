@@ -2761,3 +2761,43 @@ a:focus-visible, .tx-table tbody tr:focus-visible, summary:focus-visible {
 .hb-sub { margin: 18px 0 4px; }
 .hb-salary-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 20px; margin: 4px 0 14px; }
 .hb-salary-month .hb-hbar span { height: 10px; }
+/* Habits tab: where your money goes (PR 3) */
+.hb-select { padding: 6px 10px; border-radius: 10px; border: 1px solid var(--k-line-strong); background: var(--k-raised); color: var(--k-ink); }
+.hb-flow { width: 100%; overflow: hidden; margin: 4px 0 8px; }
+.hb-flow svg { display: block; }
+.hb-flow-label { font-size: 13px; fill: var(--k-ink); }
+.hb-flow-value { font-size: 12px; fill: var(--k-ink-muted); }
+.hide-amounts .hb-flow-value { filter: blur(5px); }
+.hb-col { position: relative; }
+.hb-marker { position: absolute; left: -2px; right: -2px; height: 0; border-top: 2px dashed var(--k-ink); z-index: 1; pointer-events: none; }
+.hb-marker-key { width: 16px; height: 0; border-top: 2px dashed var(--k-ink); display: inline-block; vertical-align: middle; }
+.hb-kind-totals { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 16px; margin: 12px 0 6px; font-size: 14px; }
+.hb-top { display: flex; flex-direction: column; }
+.hb-top-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 6px; border: 0; border-bottom: 1px solid var(--k-line);
+  background: none; color: inherit; text-align: left; cursor: pointer; font: inherit; border-radius: 0; }
+.hb-top-row:hover, .hb-top-row[aria-pressed="true"] { background: var(--k-well); }
+.hb-top-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hb-top-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-top-trend { color: var(--k-ink-muted); }
+.hb-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 8px 0; }
+.hb-stats .big-number { font-size: 24px; margin: 0; }
+@media (max-width: 640px) {
+  .hb-top-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .hb-top-share { grid-column: 1 / -1; }
+  .hb-top-trend { grid-row: 1; grid-column: 2; }
+}
+.hb-legend .hb-marker-key { width: 18px; height: 0; border-radius: 0; background: none; border-top: 2px dashed var(--k-ink); }
+
+/* Habits tab: payee kinds and Gemini (opt-in) */
+.hb-kind-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 4px; }
+.hb-ai-what { margin: 8px 0; padding-left: 18px; color: var(--k-ink-muted); font-size: 13px; line-height: 1.5; }
+.hb-ai-what li { margin: 4px 0; }
+.hb-ai-what strong { color: var(--k-ink); }
+.hb-ai .hb-pass-actions { margin-top: 12px; }
+.hb-ai-list { margin-top: 8px; }
+.hb-ai-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--k-line); flex-wrap: wrap; }
+.hb-ai-row p { margin: 3px 0; }
+.hb-ai-row .hb-pass-actions { margin-top: 0; }
+.hb-ai-details { margin-top: 14px; }
+.hb-ai-details summary { cursor: pointer; color: var(--k-ink-muted); }
+.hb-error { color: var(--coral); font-weight: 600; }
