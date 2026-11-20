@@ -15,6 +15,7 @@ import {
   inContext, spendOverview, monthlyInOut, paydayPattern, lowBalanceDays, monthBounds, weekStart, DAY,
   normaliseSource, incomeSenders,
 } from "./insights.js";
+import { renderHabits } from "./habits-view.js";
 
 // One pinned, self-contained file: "@2" floated to whatever esm.sh had that
 // day and pulled ~14 module files, three requests deep, before sign-in could
@@ -30,7 +31,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Bump this each release. Matches the Android versionName convention so the
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
-const APP_VERSION = "web-beta18";
+const APP_VERSION = "web-beta19";
 
 // Password reset links come back here with "#...type=recovery" (or
 // "#error_code=otp_expired" once stale). Read the hash before createClient,
@@ -127,6 +128,7 @@ const ledgerView     = $("ledger-view");
 const incomeView     = $("income-view");
 const goalsView      = $("goals-view");
 const budgetsView    = $("budgets-view");
+const habitsView     = $("habits-view");
 
 // Budgets refs
 const budgetsBadge          = $("budgets-badge");
@@ -300,6 +302,8 @@ projectRef.textContent = new URL(SUPABASE_URL).hostname.split(".")[0];
 // ----------------------------------------------------------------------------
 const state = {
   allTxs: [],     // raw transactions for the signed-in user (most recent first)
+  habitRules: [], // i_habit_rules as [{ match, habit, shared }] (Habits tab)
+  habitStatus: "loading", // "loading" | "ready" | "missing" | "error"
   period: "month",
   search: "",
   typeFilter: "",
@@ -779,12 +783,14 @@ function switchView(name) {
   incomeView.classList.toggle("hidden", name !== "income");
   goalsView.classList.toggle("hidden", name !== "goals");
   budgetsView.classList.toggle("hidden", name !== "budgets");
+  habitsView.classList.toggle("hidden", name !== "habits");
   if (name === "transactions") renderTxTable();
   if (name === "categories") renderCategoriesView();
   if (name === "ledger") renderLedgerView();
   if (name === "income") renderIncomeView();
   if (name === "goals") renderGoalsView();
   if (name === "budgets") renderBudgetsView();
+  if (name === "habits") renderHabitsView();
   // Scroll to top so the user lands above-the-fold on the new view.
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -898,6 +904,62 @@ async function showDashboard(session) {
   fetchIncome().catch((e) => console.warn("Income fetch failed:", e));
   fetchGoals().catch((e) => console.warn("Goals fetch failed:", e));
   fetchBudgets().catch((e) => console.warn("Budgets fetch failed:", e));
+  fetchHabitRules().catch((e) => console.warn("Habit rules fetch failed:", e));
+}
+
+// ----------------------------------------------------------------------------
+// Habits — the user's own "who is which habit" rules (i_habit_rules); the
+// numbers come from habits.js (tested), habits-view.js draws them.
+// ----------------------------------------------------------------------------
+async function fetchHabitRules() {
+  if (!state.userId) return;
+  const { data, error } = await supabase.from("i_habit_rules")
+    .select("name_key, habit, shared, created_at")
+    .eq("user_id", state.userId)
+    .order("created_at", { ascending: true });
+  if (error) {
+    const missing = /relation .* does not exist|could not find the table/i.test(error.message);
+    if (missing) console.warn("i_habit_rules table missing — run supabase/add_habit_rules.sql in your Supabase project.");
+    else console.warn("Habit rules fetch error:", error.message);
+    state.habitStatus = missing ? "missing" : "error";
+    state.habitRules = [];
+  } else {
+    state.habitStatus = "ready";
+    state.habitRules = (data || []).map((r) => ({ match: r.name_key, habit: r.habit, shared: r.shared }));
+  }
+  if (state.view === "habits") renderHabitsView();
+}
+
+async function saveHabitRule(key, habit, shared) {
+  const i = state.habitRules.findIndex((r) => r.match === key);
+  if (i >= 0) state.habitRules[i] = { match: key, habit, shared };
+  else state.habitRules.push({ match: key, habit, shared });
+  renderHabitsView();
+  const { error } = await supabase.from("i_habit_rules").upsert(
+    { user_id: state.userId, name_key: key, habit, shared, updated_at: new Date().toISOString() },
+    { onConflict: "user_id,name_key" },
+  );
+  if (error) { alert(`Couldn't save: ${error.message}`); await fetchHabitRules(); }
+}
+
+async function removeHabitRule(key) {
+  state.habitRules = state.habitRules.filter((r) => r.match !== key);
+  renderHabitsView();
+  const { error } = await supabase.from("i_habit_rules").delete().eq("user_id", state.userId).eq("name_key", key);
+  if (error) { alert(`Couldn't remove: ${error.message}`); await fetchHabitRules(); }
+}
+
+function renderHabitsView() {
+  if (!habitsView || state.view !== "habits") return;
+  renderHabits($("habits-root"), {
+    txs: state.allTxs || [],
+    cal: calKey(),
+    salaryKeys: salaryEntries().map(entryKey),
+    rules: state.habitRules,
+    status: state.habitStatus,
+    setRule: saveHabitRule,
+    removeRule: removeHabitRule,
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -1444,7 +1506,8 @@ async function fetchIncome() {
   state.incomeDismissed = new Set((dismissedRes?.data || []).map((d) => d.counterparty_match));
   renderIncomeBadge();
   if (state.view === "income") renderIncomeView();
-  // Payday reads the salary pick from these entries.
+  // Payday (and the Habits tab's payday effect) read the salary pick from these entries.
+  renderHabitsView();
   if (state.allTxs?.length) renderLowBalance(state.allTxs, renderPayday(state.allTxs));
 }
 
@@ -2889,6 +2952,7 @@ function rerender() {
   renderTxTable();
   rerenderBudgets();
   if (state.view === "categories") renderCategoriesView();
+  renderHabitsView();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4905,6 +4969,7 @@ function setCalendar(calId) {
   if (typeof renderIncomeView   === "function" && !incomeView.classList.contains("hidden"))   renderIncomeView();
   if (typeof renderGoalsView    === "function" && !goalsView.classList.contains("hidden"))    renderGoalsView();
   if (typeof renderBudgetsView  === "function" && !budgetsView.classList.contains("hidden")) renderBudgetsView();
+  renderHabitsView();
 }
 
 if (calendarToggle) {

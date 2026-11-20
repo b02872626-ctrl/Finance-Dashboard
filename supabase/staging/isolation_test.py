@@ -88,6 +88,8 @@ TABLES = [
         "principal": 1, "balance": 1}),
     T("i_ledger_repayments", "note", lambda o, m, r: {
         "entry_id": r["i_ledger_entries"], "user_id": o, "amount": 1, "note": m}),
+    T("i_habit_rules", "habit", lambda o, m, r: {
+        "user_id": o, "name_key": "isolation test", "habit": m[:40]}),
 ]
 
 

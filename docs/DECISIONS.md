@@ -6,6 +6,38 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-20 — Habits tab on the web dashboard: Kash's methods, each user's labels
+
+Owner's plan (habit handoff, PR 1 of 5). A new Habits tab on the web
+dashboard. The methods are the same for everyone and live in
+`Web/habits.js` (pure, tested by `tests/web/habits.test.mjs`); the labels
+are each user's own: which payee is which habit and whether friends pay
+the user back there, saved per user in `i_habit_rules`
+(`add_habit_rules.sql`, owner-only RLS). Nothing personal is hard-coded.
+- Payees are grouped across spellings by a name key: the first word plus
+  the first three letters of the second, after dropping phone tails and
+  "(...)" notes. A rule matches a counterparty that starts with its key.
+- Own moves also include counterparties starting "to " / "from ", CBE
+  Birr, CBE ATM and Mela loan.
+- A payback is money in under ETB 1,000 from a person (not salary, not an
+  own move) the same day and within 2.5 hours after a payment at a place
+  marked "friends pay me back here", credited to the latest such payment.
+  A 24-hour window over-counted and was rejected. Matching is by timing
+  only, so a payment can show more back than paid; the page flags it.
+- Months follow the dashboard's GC/EC switch. The first and last months of
+  the data, and Pagume, are partial and stay out of averages.
+- Every figure opens to its transactions (date and amount), and each chart
+  has a plain-language sentence under it.
+- Colours: a fixed categorical order (blue, orange, aqua, yellow, magenta,
+  green, violet, red) and grey for comparisons; never blue next to light
+  purple.
+- The payday effect uses the salary payers picked on the Dashboard's
+  Payday card and counts calendar days from each payday.
+Later PRs: salary payers and pass-through review; "only N payments a month
+are mine" and loan-vs-bill-share rules; splitting one transaction; opt-in
+Gemini habit suggestions (needs its own decision entry, since it would
+send payee names to Google).
+
 ## 2026-11-17 — Review: confirm Kash's guess in one tap
 
 Owner's request: a row Kash already has a guess for (the parser's

@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="styles.css" />
     <!-- Fetch app.js's imports alongside it instead of after it. -->
     <link rel="modulepreload" href="insights.js" />
+    <link rel="modulepreload" href="habits.js" />
+    <link rel="modulepreload" href="habits-view.js" />
     <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2.119.0/es2022/supabase-js.bundle.mjs" crossorigin />
     <script>
       // Pre-paint: pick the right starting view by checking localStorage
@@ -96,6 +98,7 @@
             <button class="view-tab" data-view="income" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5M6 11l6-6 6 6"/></svg><span class="view-tab-label">Income</span><span id="income-badge" class="view-tab-badge income-badge hidden">0</span></button>
             <button class="view-tab" data-view="goals" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg><span class="view-tab-label">Goals</span><span id="goals-badge" class="view-tab-badge goals-badge hidden">0</span></button>
             <button class="view-tab" data-view="budgets" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v12H3z"/><path d="M3 7l3-4h12l3 4M16 13h2"/></svg><span class="view-tab-label">Budgets</span><span id="budgets-badge" class="view-tab-badge budgets-badge hidden">0</span></button>
+            <button class="view-tab" data-view="habits" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M11 3v3M14 3v3"/></svg><span class="view-tab-label">Habits</span></button>
           </div>
         </aside>
 
@@ -791,6 +794,11 @@
             </header>
             <div id="income-calendar" class="calendar-grid"></div>
           </section>
+        </section>
+
+        <!-- ===== Habits view (Web/habits-view.js draws it) ===== -->
+        <section id="habits-view" class="view dashboard-view hidden">
+          <div id="habits-root"></div>
         </section>
 
         <!-- ===== Goals view ===== -->
