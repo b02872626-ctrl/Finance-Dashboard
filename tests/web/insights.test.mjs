@@ -304,3 +304,9 @@ test("several picked incomes: the biggest sets payday, paychecks add up", () => 
   assert.equal(p.found, true);
   assert.equal(p.picked, true);
 });
+
+test("paydayPattern: a picked sender whose paychecks are all after now doesn't crash", () => {
+  const rows = [credit(NOW + 3 * 3600 * 1000, 20000, "ACME PLC"), tx(at(2026, 11, 10), 500)];
+  const p = paydayPattern(rows, { ...G, salarySources: ["ACME PLC"] });
+  assert.equal(p.found, false);
+});
