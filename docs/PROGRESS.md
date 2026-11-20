@@ -106,6 +106,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-20 Web dashboard: fixed the Payday card crash ("Invalid array length") that stopped the whole dashboard from drawing and looked like being signed out. Each card now fails on its own (PR open).
 - 2026-11-20 Web pass-throughs and salary, habit handoff PR 2 (PR open). Checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-20 Habits tab on the web dashboard, PR 1 (PR open). Numbers checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-17 1.0.36: Confirm Kash's guess in one tap, or a whole list with Confirm all; Search all your transactions and filter by date, bank, category or amount; Goals rebuilt: see what to save per day, week or month; Faster setup: banks show up one by one as Kash reads your SMS; Your categories come back when you reinstall and sign in; Change a category on a transaction and choose all from that person or just this one; Own accounts is always in the category list; Smoother animations, better dark mode, and many fixes. Not yet installed on a real phone.

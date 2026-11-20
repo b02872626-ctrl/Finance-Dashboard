@@ -484,6 +484,8 @@ function nextUsualDay(after, day, cal, now) {
 
 /** Spending per day after a payday, as a running total, for [days] days. */
 function cumulativeSpend(spending, from, days) {
+  // A bad date upstream must not throw "Invalid array length".
+  days = Number.isFinite(days) ? Math.max(0, Math.floor(days)) : 0;
   const out = new Array(days).fill(0);
   for (const t of spending) {
     const i = dayIndex(startOfDay(from), timeOf(t));
@@ -503,7 +505,10 @@ export function paydayPattern(txs, { cal, now, salarySource = null, salarySource
   if (!reg) return { found: false };
   const spending = txs.filter(isSpending);
   // Each cycle is measured against its own paycheck.
-  const checks = reg.paychecks.filter((p) => p.at <= now);
+  const checks = reg.paychecks.filter((p) => Number.isFinite(p.at) && p.at <= now);
+  // Every paycheck found is dated after now (e.g. an SMS stamped ahead):
+  // there is no cycle to measure yet.
+  if (!checks.length) return { found: false };
   const pays = checks.map((p) => p.at);
   const lengths = [];
   const cycles = [];

@@ -6,6 +6,14 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-20 — Web dashboard: one card's error never blanks the page
+
+A Payday card crash (every paycheck dated after "now") threw inside
+`rerender()`, so nothing after it drew and the page looked signed out.
+`rerender()` now runs each card on its own and logs a failure to the
+console; the other cards still draw. `paydayPattern` returns
+`{ found: false }` when no paycheck is on or before now.
+
 ## 2026-11-20 — Pass-throughs leave every total; salary payers are suggested (web)
 
 Habit handoff, PR 2 of 5. On the web dashboard's Habits tab:

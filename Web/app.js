@@ -2999,8 +2999,13 @@ function periodDays(period, range) {
 // ----------------------------------------------------------------------------
 function rerender() {
   if (!state.allTxs) return;
+  // One card failing must not stop the rest of the dashboard from drawing
+  // (an uncaught error here left the page looking signed out).
+  const safe = (name, fn) => {
+    try { return fn(); } catch (e) { console.error(`${name} failed:`, e); return undefined; }
+  };
   // Confirmed pass-throughs leave every total (marks survive a reload of allTxs).
-  markPassThroughs(state.allTxs, state.passDecisions);
+  safe("Pass-throughs", () => markPassThroughs(state.allTxs, state.passDecisions));
   const range = periodRange(state.period);
   const txs = state.allTxs;
   const inRange = txs.filter((t) => {
@@ -3008,19 +3013,20 @@ function rerender() {
     return Number.isFinite(ts) && ts >= range.start && ts <= range.end;
   });
 
-  renderBalance(txs);
-  renderOverview(txs);
-  renderInOut(txs);
-  renderLowBalance(txs, renderPayday(txs));
-  renderAccounts(txs);
-  renderCategoryList(inRange);
-  renderCounterparties(inRange);
-  renderRecurring(inRange);
-  renderWeekdayStrip(inRange);
-  renderTxTable();
-  rerenderBudgets();
-  if (state.view === "categories") renderCategoriesView();
-  renderHabitsView();
+  safe("Balance", () => renderBalance(txs));
+  safe("Overview", () => renderOverview(txs));
+  safe("In/out", () => renderInOut(txs));
+  const payday = safe("Payday", () => renderPayday(txs)) || { found: false };
+  safe("Low balance", () => renderLowBalance(txs, payday));
+  safe("Accounts", () => renderAccounts(txs));
+  safe("Categories", () => renderCategoryList(inRange));
+  safe("Counterparties", () => renderCounterparties(inRange));
+  safe("Recurring", () => renderRecurring(inRange));
+  safe("Weekdays", () => renderWeekdayStrip(inRange));
+  safe("Transactions", () => renderTxTable());
+  safe("Budgets", () => rerenderBudgets());
+  if (state.view === "categories") safe("Categories view", () => renderCategoriesView());
+  safe("Habits", () => renderHabitsView());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
