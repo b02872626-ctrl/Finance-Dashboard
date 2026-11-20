@@ -11,7 +11,10 @@
 //   decisions: Map(ref → { decision, detail }) for pass-throughs,
 //   salaryNo: [payer keys the user said aren't salary],
 //   reviewStatus: "ready" | "loading" | "missing" | "error",
-//   decidePassThrough(item, "yes" | "no" | null), addSalary(candidate), rejectSalary(key)
+//   decidePassThrough(item, "yes" | "no" | null), addSalary(candidate), rejectSalary(key),
+//   kinds: Map(payee key → kind the user picked), setKind(key, kind | null, from),
+//   ai: { consent: true | false | null, status: "idle" | "asking" | "done" | "error", error, suggestions },
+//   setAiConsent(on), askGemini(items), aiAccept(suggestion, shared), aiSkip(suggestion)
 // }
 
 import {
@@ -23,8 +26,9 @@ import {
 import { passThroughReview, salaryByMonth, salaryCandidates, salaryPayments } from "./flows.js";
 import {
   KINDS, explainByKind, explainFlow, explainSalary, explainSmall, explainTop, kindLabel, moneyFlow,
-  salaryVsSpending, smallPayments, spendingByKind, spendingRows, topPayees,
+  PICKABLE_KINDS, salaryVsSpending, smallPayments, spendingByKind, spendingRows, topPayees,
 } from "./money.js";
+import { AI_LIMIT, aiPayload } from "./ai.js";
 
 // Categorical slots, fixed order (blue, orange, aqua, yellow, magenta, green,
 // violet, red); colour follows the habit, by the order it was first mapped.
@@ -34,6 +38,7 @@ const SHARED_GUESS = /food|lunch|breakfast|dinner|coffee|tea|drink|snack|macchia
 const ui = {
   filter: "", showAll: false, month: null, hour: null, editing: null, salaryAll: false,
   flowMonth: null, kindMonth: null, salaryMonth: null, payee: null, smallOpen: false, flowOpen: false,
+  aiList: false,
 };
 // Kinds have their own fixed colours; "Other" is grey.
 const KIND_IDS = KINDS.map((k) => k.id);
@@ -174,7 +179,7 @@ function moneyTable(title, rows, cal) {
 
 function renderMoney(ctx) {
   const cal = ctx.cal;
-  const rows = spendingRows(ctx.txs, { rules: ctx.rules || [], salaryKeys: ctx.salaryKeys });
+  const rows = spendingRows(ctx.txs, { rules: ctx.rules || [], salaryKeys: ctx.salaryKeys, kinds: ctx.kinds });
   if (!rows.length) return "";
   const byKind = spendingByKind(rows, ctx.txs, { cal });
   const months = byKind.months;
@@ -199,7 +204,8 @@ function renderMoney(ctx) {
     </div>
     ${kindCard(byKind, cal)}
     ${salaryGoesCard(sal, ctx, cal)}
-    ${topCard(top, cal)}
+    ${topCard(top, cal, ctx)}
+    ${aiCard(ctx)}
     ${smallCard(small, cal)}`;
 }
 
@@ -254,7 +260,7 @@ function sparkline(values) {
   return `<svg class="hb-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 
-function topCard(t, cal) {
+function topCard(t, cal, ctx) {
   if (!t.rows.length) return "";
   const max = t.rows[0].share || 1;
   const sel = t.rows.find((r) => r.key === ui.payee);
@@ -269,7 +275,73 @@ function topCard(t, cal) {
         <span class="hb-top-trend" title="Last 6 months: ${r.trend.map((v) => etb(v)).join(", ")}">${sparkline(r.trend)}</span>
       </button>`).join("")}
     </div>
-    ${sel ? moneyTable(`${sel.name}: ${sel.count} payments`, sel.sources, cal) : ""}
+    ${sel ? kindPicker(sel, ctx) + moneyTable(`${sel.name}: ${sel.count} payments`, sel.sources, cal) : ""}
+  </div>`;
+}
+
+// Put a payee in another kind by hand (saved per user, i_review_decisions).
+function kindPicker(row, ctx) {
+  if (row.kind === "habits") return `<p class="hb-kind-pick muted small">Mapped to a habit. Change it under "Who is which habit".</p>`;
+  if (!ctx.setKind || ctx.reviewStatus !== "ready") return "";
+  const picked = ctx.kinds?.has(row.key);
+  return `<div class="hb-kind-pick">
+    <label for="hb-kind-${esc(row.key)}">${esc(row.name)} is</label>
+    <select class="hb-select" id="hb-kind-${esc(row.key)}" data-hb="set-kind" data-key="${esc(row.key)}">
+      ${PICKABLE_KINDS.map((k) => `<option value="${k}" ${k === row.kind ? "selected" : ""}>${esc(kindLabel(k))}</option>`).join("")}
+    </select>
+    ${picked ? `<button type="button" class="btn-ghost hb-btn" data-hb="reset-kind" data-key="${esc(row.key)}">Use Kash's guess</button>` : `<span class="muted small">Kash's guess</span>`}
+  </div>`;
+}
+
+// Opt-in: Gemini suggests a kind (and maybe a habit) for payees Kash can't
+// tell apart by name. Shows exactly what would be sent before anything is.
+function aiCard(ctx) {
+  if (!ctx.ai || ctx.reviewStatus !== "ready") return "";
+  const ai = ctx.ai;
+  const items = aiPayload(ctx.txs, { rules: ctx.rules || [], kinds: ctx.kinds, salaryKeys: ctx.salaryKeys });
+  const sentList = `<div class="hb-table-wrap"><table class="tx-table hb-table">
+      <thead><tr><th>Name sent</th><th class="right">Payments</th><th class="right">Usual</th><th class="right">Usual time</th><th class="right">Weekdays</th></tr></thead>
+      <tbody>${items.map((p) => `<tr><td>${esc(p.name)}</td><td class="right">${p.count}</td><td class="right"><span class="hb-amt">${etb(p.usual)}</span></td><td class="right">${hourLabel(p.hour)}</td><td class="right">${p.weekdays}%</td></tr>`).join("")}</tbody>
+    </table></div>`;
+  const what = `<ul class="hb-ai-what">
+      <li><strong>Sent to Google's Gemini:</strong> the names of up to ${AI_LIMIT} people and places Kash isn't sure about (digits removed), how many times you paid each, the usual amount, the usual time of day and how often it's on a weekday.</li>
+      <li><strong>Never sent:</strong> account or phone numbers, balances, dates, your SMS, or who you are.</li>
+      <li>Nothing changes until you accept a suggestion. You can turn this off any time.</li>
+    </ul>
+    <button type="button" class="ghost-btn hb-more" data-hb="ai-list">${ui.aiList ? "Hide the list" : `See exactly what would be sent (${items.length})`}</button>
+    ${ui.aiList ? sentList : ""}`;
+  const head = `<header class="section-header"><h3>Sort my payees with Gemini</h3><span class="muted small">Optional</span></header>`;
+
+  if (ai.consent !== true) {
+    return `<div class="card hb-ai">${head}
+      <p class="hb-explain">Kash sorts payees by their name, so a café with a person's name lands in People. Gemini can look at how you pay each one (amount, time, how often) and suggest a better kind, and a habit when it looks like one.</p>
+      ${what}
+      <div class="hb-pass-actions"><button type="button" class="btn-ghost hb-btn primary" data-hb="ai-on" ${items.length ? "" : "disabled"}>Turn on and sort ${items.length} payees</button></div>
+    </div>`;
+  }
+
+  const pending = ai.suggestions || [];
+  const status = ai.status === "asking" ? `<p class="muted">Asking Gemini about ${items.length} payees…</p>`
+    : ai.status === "error" ? `<p class="hb-error">${esc(ai.error)}</p>` : "";
+  const list = ai.status === "done" && !pending.length
+    ? `<p class="muted">Nothing left to look at. ${items.length ? "Ask again after you've paid new people or places." : ""}</p>`
+    : pending.length ? `<div class="hb-ai-list">${pending.map((x, i) => `
+      <div class="hb-ai-row">
+        <div><strong>${esc(x.name)}</strong> <span class="muted small">${x.count} payments</span>
+          <p class="small">${x.kind !== x.from ? `${esc(kindLabel(x.from))} → <i class="hb-key" style="background:${kindColor(x.kind)}"></i><strong>${esc(kindLabel(x.kind))}</strong>` : esc(kindLabel(x.kind))}${x.habit ? ` · habit: <strong>${esc(x.habit)}</strong>` : ""}</p>
+          ${x.why ? `<p class="muted small">${esc(x.why)}</p>` : ""}</div>
+        <div class="hb-pass-actions"><button type="button" class="btn-ghost hb-btn primary" data-hb="ai-accept" data-i="${i}">Accept</button>
+          <button type="button" class="btn-ghost hb-btn" data-hb="ai-skip" data-i="${i}">Skip</button></div>
+      </div>`).join("")}</div>
+      <div class="hb-pass-actions"><button type="button" class="btn-ghost hb-btn" data-hb="ai-accept-all">Accept all ${pending.length}</button></div>` : "";
+  return `<div class="card hb-ai">${head}
+    <p class="hb-explain">${items.length ? `${items.length} payees you haven't sorted yet. Gemini suggests; you decide.` : "Every payee you pay is sorted."}</p>
+    ${status}${list}
+    <div class="hb-pass-actions">
+      ${items.length && ai.status !== "asking" ? `<button type="button" class="btn-ghost hb-btn${pending.length ? "" : " primary"}" data-hb="ai-ask">${ai.status === "done" ? "Ask again" : `Sort ${items.length} payees`}</button>` : ""}
+      <button type="button" class="btn-ghost hb-btn" data-hb="ai-off">Turn off</button>
+    </div>
+    <details class="hb-ai-details"><summary class="small">What Gemini sees</summary>${what}</details>
   </div>`;
 }
 
@@ -613,4 +685,27 @@ function wire(root, ctx, rules) {
   root.querySelectorAll('[data-hb="toggle"]').forEach((tr) => tr.addEventListener("click", () => {
     tr.nextElementSibling?.classList.toggle("hidden");
   }));
+  // Payee kinds and Gemini.
+  root.querySelector('[data-hb="set-kind"]')?.addEventListener("change", (e) => ctx.setKind(e.target.dataset.key, e.target.value, "you"));
+  root.querySelector('[data-hb="reset-kind"]')?.addEventListener("click", (e) => ctx.setKind(e.currentTarget.dataset.key, null));
+  root.querySelector('[data-hb="ai-list"]')?.addEventListener("click", () => { ui.aiList = !ui.aiList; rerender(); });
+  const items = () => aiPayload(ctx.txs, { rules: ctx.rules || [], kinds: ctx.kinds, salaryKeys: ctx.salaryKeys });
+  root.querySelector('[data-hb="ai-on"]')?.addEventListener("click", async () => {
+    ui.aiList = false;
+    if (await ctx.setAiConsent(true)) ctx.askGemini(items());
+  });
+  root.querySelector('[data-hb="ai-off"]')?.addEventListener("click", () => ctx.setAiConsent(false));
+  root.querySelector('[data-hb="ai-ask"]')?.addEventListener("click", () => ctx.askGemini(items()));
+  // A habit already in use keeps its "pay me back" choice; a new one guesses from its name.
+  const sharedFor = (habit) => { const same = rules.find((r) => r.habit === habit); return same ? same.shared : SHARED_GUESS.test(habit || ""); };
+  const pending = () => ctx.ai?.suggestions || [];
+  root.querySelectorAll('[data-hb="ai-accept"]').forEach((b) => b.addEventListener("click", () => {
+    const x = pending()[Number(b.dataset.i)];
+    if (x) ctx.aiAccept([x], sharedFor);
+  }));
+  root.querySelectorAll('[data-hb="ai-skip"]').forEach((b) => b.addEventListener("click", () => {
+    const x = pending()[Number(b.dataset.i)];
+    if (x) ctx.aiSkip(x);
+  }));
+  root.querySelector('[data-hb="ai-accept-all"]')?.addEventListener("click", () => ctx.aiAccept([...pending()], sharedFor));
 }

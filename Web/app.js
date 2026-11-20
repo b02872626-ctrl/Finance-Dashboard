@@ -17,6 +17,7 @@ import {
 } from "./insights.js";
 import { renderHabits } from "./habits-view.js";
 import { markPassThroughs, passThroughReview } from "./flows.js";
+import { aiRequest, kindsFrom, readSuggestions } from "./ai.js";
 
 // One pinned, self-contained file: "@2" floated to whatever esm.sh had that
 // day and pulled ~14 module files, three requests deep, before sign-in could
@@ -32,7 +33,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Bump this each release. Matches the Android versionName convention so the
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
-const APP_VERSION = "web-beta21";
+const APP_VERSION = "web-beta22";
 
 // Password reset links come back here with "#...type=recovery" (or
 // "#error_code=otp_expired" once stale). Read the hash before createClient,
@@ -307,6 +308,8 @@ const state = {
   habitStatus: "loading", // "loading" | "ready" | "missing" | "error"
   passDecisions: new Map(), // i_review_decisions kind=pass_through: ref → { decision, detail }
   salaryNo: [],             // i_review_decisions kind=salary, decision=no: payer keys
+  payeeKinds: new Map(),    // i_review_decisions kind=payee_kind: payee key → kind
+  ai: { consent: null, status: "idle", error: "", suggestions: [] }, // Gemini (kind=ai_consent)
   reviewStatus: "loading",
   period: "month",
   search: "",
@@ -972,6 +975,8 @@ async function fetchReviewDecisions() {
   state.reviewStatus = "ready";
   state.passDecisions = new Map((data || []).filter((r) => r.kind === "pass_through").map((r) => [r.ref, { decision: r.decision, detail: r.detail || {} }]));
   state.salaryNo = (data || []).filter((r) => r.kind === "salary" && r.decision === "no").map((r) => r.ref);
+  state.payeeKinds = kindsFrom(data);
+  state.ai.consent = (data || []).some((r) => r.kind === "ai_consent" && r.ref === "gemini" && r.decision === "yes");
   applyPassThroughs();
 }
 
@@ -1009,6 +1014,72 @@ async function rejectSalary(key) {
   await saveDecision("salary", key, "no");
 }
 
+// A payee moved to another kind, by the user or from a Gemini suggestion.
+async function setPayeeKind(key, kind, from = "you") {
+  if (kind) state.payeeKinds.set(key, kind); else state.payeeKinds.delete(key);
+  if (from === "you") state.ai.suggestions = state.ai.suggestions.filter((x) => x.key !== key);
+  renderHabitsView();
+  await saveDecision("payee_kind", key, kind ? "yes" : null, kind ? { kind, from } : {});
+}
+
+// Gemini is off until the user turns it on; the Edge Function checks this
+// same row, so it can't be called for someone who didn't.
+async function setAiConsent(on) {
+  const before = state.ai.consent;
+  state.ai = { consent: on, status: "idle", error: "", suggestions: [] };
+  renderHabitsView();
+  if (await saveDecision("ai_consent", "gemini", on ? "yes" : "no")) {
+    showToast(on ? "Gemini turned on" : "Gemini turned off", "success");
+    return true;
+  }
+  state.ai.consent = before;
+  renderHabitsView();
+  return false;
+}
+
+const AI_ERRORS = {
+  not_configured: "Gemini isn't set up on Kash yet.",
+  not_turned_on: "Gemini is turned off for your account.",
+  daily_limit: "That's enough asking for today. Try again tomorrow.",
+  signed_out: "You've been signed out. Sign in and try again.",
+  gemini_failed: "Gemini didn't answer. Try again in a minute.",
+  gemini_unreadable: "Gemini's answer didn't make sense. Try again.",
+};
+
+async function askGemini(items) {
+  if (!items.length) return;
+  state.ai = { ...state.ai, status: "asking", error: "", suggestions: [] };
+  renderHabitsView();
+  const { data, error } = await supabase.functions.invoke("kash-gemini", { body: { payees: aiRequest(items) } });
+  if (error) {
+    let code = "";
+    try { code = (await error.context?.json())?.error || ""; } catch { /* not JSON */ }
+    console.warn("Gemini sort failed:", code || error.message);
+    state.ai = { ...state.ai, status: "error", error: AI_ERRORS[code] || "Couldn't reach Gemini. Check your connection and try again." };
+  } else {
+    state.ai = { ...state.ai, status: "done", suggestions: readSuggestions(data?.suggestions, items) };
+  }
+  renderHabitsView();
+}
+
+async function aiAccept(list, sharedFor) {
+  const done = new Set(list.map((x) => x.key));
+  state.ai.suggestions = state.ai.suggestions.filter((x) => !done.has(x.key));
+  const saves = [];
+  for (const x of list) {
+    if (x.kind !== x.from) saves.push(setPayeeKind(x.key, x.kind, "gemini"));
+    if (x.habit && !state.habitRules.some((r) => r.match === x.key)) saves.push(saveHabitRule(x.key, x.habit, sharedFor(x.habit)));
+  }
+  renderHabitsView();
+  await Promise.all(saves);
+  showToast(list.length === 1 ? `${list[0].name} sorted` : `${list.length} payees sorted`, "success");
+}
+
+function aiSkip(x) {
+  state.ai.suggestions = state.ai.suggestions.filter((s) => s.key !== x.key);
+  renderHabitsView();
+}
+
 function renderHabitsView() {
   if (!habitsView || state.view !== "habits") return;
   renderHabits($("habits-root"), {
@@ -1025,6 +1096,13 @@ function renderHabitsView() {
     decidePassThrough,
     addSalary: (c) => toggleSalary(c.key, c),
     rejectSalary,
+    kinds: state.payeeKinds,
+    setKind: setPayeeKind,
+    ai: state.ai,
+    setAiConsent,
+    askGemini,
+    aiAccept,
+    aiSkip,
   });
 }
 

@@ -5,17 +5,15 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Habits on the web dashboard (habit handoff, 5 PRs).** PR 1 (Habits
-  tab) is merged and its table is on live. PR 2 (pass-through review,
-  excluded from every total; salary card with suggested payers) is open.
-  Owner: run `supabase/add_review_decisions.sql` on live (staging is
-  unreachable, see Blocked) before merging. PR 3 ("where your money goes":
-  money flow, spending by kind, salary vs spending, top payees, small
-  payments) is open, stacked on PR 2. Next PRs, one branch each:
-  opt-in Gemini suggestions for habits and for "People" / "Other" payees
-  (Edge Function, key in Supabase secrets, new decision entry); "only N
-  payments a month are mine" and loans-vs-bill-shares; split one
-  transaction (instalment + loan repaid).
+- **Habits on the web dashboard (habit handoff, 5 PRs).** PRs 1 and 2
+  are merged and their tables are on live. PR 3 ("where your money goes")
+  was merged into PR 2's branch after PR 2 had landed, so it never reached
+  `main`; it rides along in PR 4. PR 4 (opt-in Gemini sorting for payees
+  Kash isn't sure about, plus picking a payee's kind by hand) is open.
+  Owner: run `supabase/add_payee_kinds.sql` on live, then deploy the Edge
+  Function (see Owner tasks). Next PRs, one branch each: "only N payments a
+  month are mine" and loans-vs-bill-shares; split one transaction
+  (instalment + loan repaid).
 
 - **The approved canvas, in the app (sections 4, 5, 6 of "Final - Approved
   flow").** Three PRs, owner's decisions of 14 Nov: (1) dark theme, done,
@@ -73,6 +71,15 @@ items to Done with the date, add what is next or blocked.
 
 ## Owner tasks
 
+- Gemini on the web dashboard (PR 4). Once: get a key in Google AI Studio
+  on a project with billing on (the free tier lets Google use what's sent
+  to improve its products; the privacy page doesn't allow that). Install
+  the Supabase CLI (`brew install supabase/tap/supabase`), `supabase login`,
+  `supabase link --project-ref sadbxjnmcgzwtjbqqhbk`, then type the key
+  yourself: `supabase secrets set GEMINI_API_KEY=...` and
+  `supabase functions deploy kash-gemini`. Run `supabase/add_payee_kinds.sql`
+  on live before merging.
+
 - PostHog session replay is on and checked. Keep "Capture console logs"
   off (PostHog → Settings → Session replay). Update the Play Console data
   safety form (App interactions row) to match `docs/play-store-sms-declaration.md`.
@@ -109,9 +116,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-20 Web: opt-in Gemini sorting and hand-picked payee kinds on the Habits tab, PR 4 (PR open, carries PR 3). Checked with made-up data and a fake Gemini answer at desktop and phone width; the real Gemini call is untested until the key is set.
 - 2026-11-20 Web dashboard: fixed the Payday card crash ("Invalid array length") that stopped the whole dashboard from drawing and looked like being signed out. Each card now fails on its own (PR open).
-- 2026-11-20 Web "where your money goes" (five views on the Habits tab), PR open, stacked on PR 2. Previewed with made-up data at desktop and phone width. Not yet seen signed in.
-- 2026-11-20 Web pass-throughs and salary, habit handoff PR 2 (PR open). Checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
+- 2026-11-20 Web "where your money goes" (five views on the Habits tab), #103 (landed on PR 2's branch, not main; carried in PR 4). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
+- 2026-11-20 Web pass-throughs and salary, habit handoff PR 2 (merged, #101; table on live). Checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-20 Habits tab on the web dashboard, PR 1 (merged, #100; table on live). Numbers checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-17 1.0.36: Confirm Kash's guess in one tap, or a whole list with Confirm all; Search all your transactions and filter by date, bank, category or amount; Goals rebuilt: see what to save per day, week or month; Faster setup: banks show up one by one as Kash reads your SMS; Your categories come back when you reinstall and sign in; Change a category on a transaction and choose all from that person or just this one; Own accounts is always in the category list; Smoother animations, better dark mode, and many fixes. Not yet installed on a real phone.
 - 2026-11-17 Review: one-tap ✓ on Kash's guess and Confirm all (PR open). Merged today: Own accounts always offered (#96), Put all N in X? on the transaction page (#97).

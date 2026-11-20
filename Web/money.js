@@ -11,7 +11,8 @@
 //   shops   — businesses (Plc, Trading, Hotel, Cafe…) and merchant payments
 //   people  — names that look like a person
 //   other   — the rest
-// Own moves, confirmed pass-throughs (isSpending) and money sent back to a
+// A kind the user picked for a payee (or accepted from Gemini) beats every
+// built-in rule except a habit. Own moves, confirmed pass-throughs (isSpending) and money sent back to a
 // salary payer (already taken off the salary) are never spending here.
 
 import { isIncome, isSpending } from "./insights.js";
@@ -34,6 +35,9 @@ export const KINDS = [
   { id: "loans", label: "Loans" },
   { id: "other", label: "Other" },
 ];
+/** Kinds a user can put a payee in by hand (habits come from habit rules). */
+export const PICKABLE_KINDS = KINDS.filter((k) => k.id !== "habits").map((k) => k.id);
+const KIND_IDS = new Set(PICKABLE_KINDS);
 export const kindLabel = (id) => KINDS.find((k) => k.id === id)?.label || id;
 
 const BILLS = /\b(eeu|electric|electricity|power|water|dstv|gotv|canal|insurance|disaster risk|tax|vat|service charge|commission|fees?|penalt\w*|tuition|school fee|rent|municipal|levy)\b/i;
@@ -45,9 +49,12 @@ const MERCHANT = /^\s*\d+\s*-\s*/; // "123 - KALDIS COFFEE"
 const PERSON = /^[a-z][a-z'’.\/-]*(?: [a-z][a-z'’.\/-]*){1,4}$/i;
 
 /** The kind of one outgoing payment. */
-export function kindOf(tx, rules = []) {
+export function kindOf(tx, rules = [], kinds = null) {
   const name = String(tx.counterparty || "");
   if (rules.length && ruleFor(name, rules)) return "habits";
+  // A kind the user picked (or accepted from Gemini) for this payee.
+  const picked = kinds && kinds.get(personKey(name));
+  if (picked && KIND_IDS.has(picked)) return picked;
   const text = `${name} ${tx.category || ""}`;
   if (AIRTIME.test(name)) return "airtime";
   if (CASH.test(name)) return "cash";
@@ -67,13 +74,13 @@ export function kindOf(tx, rules = []) {
  * the user's own accounts are left out too, except cash taken out and loan
  * repayments.
  */
-export function spendingRows(txs, { rules = [], salaryKeys = [] } = {}) {
+export function spendingRows(txs, { rules = [], salaryKeys = [], kinds = null } = {}) {
   const payers = salaryKeys.filter(Boolean);
   const rows = [];
   for (const t of txs) {
     if (!isSpending(t) || !Number.isFinite(timeOf(t))) continue;
     if (payers.length && isPayer(t.counterparty, payers)) continue;
-    const kind = kindOf(t, rules);
+    const kind = kindOf(t, rules, kinds);
     // Moves to the user's own accounts aren't spending; cash taken out and
     // loan repayments are kept, since that's where the money went.
     if (isOwnMove(t) && kind !== "cash" && kind !== "loans") continue;

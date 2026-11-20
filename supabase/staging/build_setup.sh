@@ -39,6 +39,7 @@ lock_transactions_backup.sql
 add_goal_linked_account.sql
 add_habit_rules.sql
 add_review_decisions.sql
+add_payee_kinds.sql
 "
 SKIPPED="migrate_banks_to_catalog.sql backfill_sessions_from_transactions.sql export_for_parsers.sql"
 

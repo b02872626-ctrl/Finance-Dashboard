@@ -67,7 +67,7 @@ is still `is_admin()`.
 | `i_income_entries`, `i_income_dismissed` | Income | — | read, insert, update, delete own (dismissed: no update) | — | `add_income.sql` |
 | `i_ledger_entries`, `i_ledger_repayments` | Money lent and borrowed | — | read, insert, update, delete own (repayments: no update) | — | `add_ledger.sql` |
 | `i_habit_rules` | Which payees count as which habit (web Habits tab) | — | read, insert, update, delete own | — | `add_habit_rules.sql` |
-| `i_review_decisions` | The user's yes/no on pass-throughs and suggested salary payers (web) | — | read, insert, update, delete own | — | `add_review_decisions.sql` |
+| `i_review_decisions` | The user's yes/no on pass-throughs and suggested salary payers, payee kinds they picked, and whether Gemini is on for them (web) | — | read, insert, update, delete own | — | `add_review_decisions.sql`, `add_payee_kinds.sql` (kind check only) |
 
 Every table has Row Level Security on. "—" means no policy, so the database
 returns nothing or refuses.
@@ -112,6 +112,17 @@ who is calling.
 | `delete_my_account()` | user (not anon) | Logs anonymous stats, then deletes the caller's `auth.users` row; owned rows cascade, feedback is unlinked | Uses `auth.uid()`; refuses when signed out |
 | `sync_auth_user_to_i_users()` | trigger only | Copies a new or changed `auth.users` row into `i_users` | Not callable through the API |
 
+## Edge Functions
+
+| Function | Who can call | What it does | Check |
+|---|---|---|---|
+| `kash-gemini` | signed-in user who turned Gemini on | Sends that user's payees (name without digits, count, usual amount, usual hour, weekday share, Kash's guess; at most 60, only People / Shops / Other) to Google Gemini and returns kind and habit suggestions | Runs with the caller's JWT (RLS applies, never the service-role key); refuses without an `ai_consent` = yes row; 20 calls per user per day, counted in `i_events` (users can't delete events); checks every field and strips digits again; logs only Gemini's status code, never names |
+
+What leaves Kash for Google: payee names and those four numbers, nothing
+else. Never account or phone numbers, balances, dates, SMS text, email or
+user ID. Turning Gemini off stops it at once (the function checks the row
+on every call).
+
 ## Secrets
 
 | Secret | Where it lives | Never |
@@ -122,6 +133,7 @@ who is calling.
 | Sentry organization token (uploads only) | `local.properties` (`sentry.authToken`) | Not in the repo, CI or chat; revoke in Sentry if leaked |
 | Release keystore and password | `~/.keystores/`, `local.properties` | Not in the repo or chat |
 | Google web client ID | `local.properties` | — |
+| Gemini API key (`GEMINI_API_KEY`), model (`GEMINI_MODEL`) | Supabase Edge Function secrets (`supabase secrets set`) | Not in the repo, the site or chat; rotate in Google AI Studio if leaked |
 
 ## On the phone
 

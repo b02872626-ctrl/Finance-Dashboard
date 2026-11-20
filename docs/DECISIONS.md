@@ -6,6 +6,31 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-20 — Gemini may see payee names, opt-in per user (web Habits tab)
+
+Changes the 2026-11-11 entry ("Gemini sees only per-user summaries"): the
+owner chose to let Gemini see payee names, because name rules alone put a
+café with a person's name, rent or instalments under "People".
+- Off until the user turns it on, per user. The choice is a row in
+  `i_review_decisions` (kind `ai_consent`), and the `kash-gemini` Edge
+  Function checks it on every call, so it can't run for anyone who didn't.
+- Before turning it on, the user sees the exact list that would be sent.
+- Sent per payee: name with digits removed, count, usual amount, usual
+  hour, weekday share, Kash's guess, under an id like "p3". Only payees
+  Kash put in People, Shops or Other and that the user hasn't sorted; at
+  most 60. Never account or phone numbers, balances, dates, SMS, email or
+  user ID. Bills, airtime, cash and loans are never sent (their names
+  already settle them).
+- Gemini only suggests a kind and maybe a habit, with a one-line reason;
+  nothing changes until the user accepts. Accepted kinds are saved as
+  `payee_kind` rows; habits as `i_habit_rules` rows.
+- The user can also pick any payee's kind by hand in "Who you pay most";
+  a picked kind beats the built-in rules, a habit beats both.
+- Key and model in Supabase secrets (`GEMINI_API_KEY`, `GEMINI_MODEL`,
+  default `gemini-2.5-flash`); 20 calls per user per day; the function
+  never logs names. Use a key on a billing-enabled project (paid tier),
+  so Google doesn't use what's sent to improve its products.
+
 ## 2026-11-20 — Web dashboard: one card's error never blanks the page
 
 A Payday card crash (every paycheck dated after "now") threw inside
