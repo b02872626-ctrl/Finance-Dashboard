@@ -18,6 +18,7 @@ import {
 import { renderHabits } from "./habits-view.js";
 import { markPassThroughs, passThroughReview } from "./flows.js";
 import { aiRequest, kindsFrom, readSuggestions } from "./ai.js";
+import { markRules, rulesFrom } from "./rules.js";
 
 // One pinned, self-contained file: "@2" floated to whatever esm.sh had that
 // day and pulled ~14 module files, three requests deep, before sign-in could
@@ -33,7 +34,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Bump this each release. Matches the Android versionName convention so the
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
-const APP_VERSION = "web-beta22";
+const APP_VERSION = "web-beta23";
 
 // Password reset links come back here with "#...type=recovery" (or
 // "#error_code=otp_expired" once stale). Read the hash before createClient,
@@ -309,6 +310,8 @@ const state = {
   passDecisions: new Map(), // i_review_decisions kind=pass_through: ref → { decision, detail }
   salaryNo: [],             // i_review_decisions kind=salary, decision=no: payer keys
   payeeKinds: new Map(),    // i_review_decisions kind=payee_kind: payee key → kind
+  payeeRules: new Map(),    // i_review_decisions kind=payee_rule: payee key → rule (rules.js)
+  ruleNo: new Set(),        // payee_rule decision=no: suggestions the user declined
   ai: { consent: null, status: "idle", error: "", suggestions: [] }, // Gemini (kind=ai_consent)
   reviewStatus: "loading",
   period: "month",
@@ -976,6 +979,7 @@ async function fetchReviewDecisions() {
   state.passDecisions = new Map((data || []).filter((r) => r.kind === "pass_through").map((r) => [r.ref, { decision: r.decision, detail: r.detail || {} }]));
   state.salaryNo = (data || []).filter((r) => r.kind === "salary" && r.decision === "no").map((r) => r.ref);
   state.payeeKinds = kindsFrom(data);
+  ({ rules: state.payeeRules, declined: state.ruleNo } = rulesFrom(data));
   state.ai.consent = (data || []).some((r) => r.kind === "ai_consent" && r.ref === "gemini" && r.decision === "yes");
   applyPassThroughs();
 }
@@ -1020,6 +1024,22 @@ async function setPayeeKind(key, kind, from = "you") {
   if (from === "you") state.ai.suggestions = state.ai.suggestions.filter((x) => x.key !== key);
   renderHabitsView();
   await saveDecision("payee_kind", key, kind ? "yes" : null, kind ? { kind, from } : {});
+}
+
+// A per-person rule (rules.js); null takes it away. Totals everywhere change,
+// so the whole dashboard redraws.
+async function setPayeeRule(key, rule) {
+  if (rule) { state.payeeRules.set(key, rule); state.ruleNo.delete(key); } else state.payeeRules.delete(key);
+  rerender();
+  if (await saveDecision("payee_rule", key, rule ? "yes" : null, rule || {})) {
+    showToast(rule ? "Rule saved" : "Rule removed", "success");
+  }
+}
+
+async function declineRule(key) {
+  state.ruleNo.add(key);
+  renderHabitsView();
+  await saveDecision("payee_rule", key, "no");
 }
 
 // Gemini is off until the user turns it on; the Edge Function checks this
@@ -1103,6 +1123,10 @@ function renderHabitsView() {
     askGemini,
     aiAccept,
     aiSkip,
+    payeeRules: state.payeeRules,
+    ruleNo: state.ruleNo,
+    setPayeeRule,
+    declineRule,
   });
 }
 
@@ -3084,6 +3108,8 @@ function rerender() {
   };
   // Confirmed pass-throughs leave every total (marks survive a reload of allTxs).
   safe("Pass-throughs", () => markPassThroughs(state.allTxs, state.passDecisions));
+  // Per-person rules: payments for others, friend loans, bill shares back.
+  safe("Payee rules", () => markRules(state.allTxs, state.payeeRules, { cal: calKey() }));
   const range = periodRange(state.period);
   const txs = state.allTxs;
   const inRange = txs.filter((t) => {

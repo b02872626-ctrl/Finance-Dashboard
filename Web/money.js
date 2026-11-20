@@ -10,6 +10,7 @@
 //   loans   — loan apps and repayments
 //   shops   — businesses (Plc, Trading, Hotel, Cafe…) and merchant payments
 //   people  — names that look like a person
+//   others  — "Paid for others": past the user's own N a month (rules.js)
 //   other   — the rest
 // A kind the user picked for a payee (or accepted from Gemini) beats every
 // built-in rule except a habit. Own moves, confirmed pass-throughs (isSpending) and money sent back to a
@@ -33,10 +34,11 @@ export const KINDS = [
   { id: "airtime", label: "Airtime & data" },
   { id: "cash", label: "Cash out" },
   { id: "loans", label: "Loans" },
+  { id: "others", label: "Paid for others" },
   { id: "other", label: "Other" },
 ];
 /** Kinds a user can put a payee in by hand (habits come from habit rules). */
-export const PICKABLE_KINDS = KINDS.filter((k) => k.id !== "habits").map((k) => k.id);
+export const PICKABLE_KINDS = KINDS.filter((k) => k.id !== "habits" && k.id !== "others").map((k) => k.id);
 const KIND_IDS = new Set(PICKABLE_KINDS);
 export const kindLabel = (id) => KINDS.find((k) => k.id === id)?.label || id;
 
@@ -80,11 +82,16 @@ export function spendingRows(txs, { rules = [], salaryKeys = [], kinds = null } 
   for (const t of txs) {
     if (!isSpending(t) || !Number.isFinite(timeOf(t))) continue;
     if (payers.length && isPayer(t.counterparty, payers)) continue;
-    const kind = kindOf(t, rules, kinds);
+    const kind = t.for_others ? "others" : kindOf(t, rules, kinds);
     // Moves to the user's own accounts aren't spending; cash taken out and
     // loan repayments are kept, since that's where the money went.
     if (isOwnMove(t) && kind !== "cash" && kind !== "loans") continue;
     rows.push({ tx: t, ms: timeOf(t), amount: amountOf(t), kind, name: displayName(t.counterparty) || "Unnamed", key: personKey(t.counterparty) || "unnamed" });
+  }
+  // A friend's share of a bill sent back (rules.js) comes off spending.
+  for (const t of txs) {
+    if (!t.bill_back || !Number.isFinite(timeOf(t))) continue;
+    rows.push({ tx: t, ms: timeOf(t), amount: -amountOf(t), back: true, kind: kindOf(t, rules, kinds), name: displayName(t.counterparty) || "Unnamed", key: personKey(t.counterparty) || "unnamed" });
   }
   return rows.sort((a, b) => a.ms - b.ms);
 }
@@ -173,17 +180,19 @@ export function topPayees(rows, { cal, now, n = 10, months = 6 }) {
   const total = rows.reduce((s, r) => s + r.amount, 0);
   const by = new Map();
   for (const r of rows) {
-    if (!by.has(r.key)) by.set(r.key, { key: r.key, names: new Map(), kind: r.kind, total: 0, count: 0, trend: Object.fromEntries(keys.map((k) => [k, 0])), sources: [] });
+    if (!by.has(r.key)) by.set(r.key, { key: r.key, names: new Map(), kinds: new Map(), total: 0, count: 0, trend: Object.fromEntries(keys.map((k) => [k, 0])), sources: [] });
     const e = by.get(r.key);
     e.names.set(r.name, (e.names.get(r.name) || 0) + 1);
-    e.total += r.amount; e.count += 1; e.sources.push(r);
+    if (r.kind !== "others") e.kinds.set(r.kind, (e.kinds.get(r.kind) || 0) + 1);
+    e.total += r.amount; if (!r.back) e.count += 1; e.sources.push(r);
     const mk = monthOf(r.ms, cal).key;
     if (mk in e.trend) e.trend[mk] += r.amount;
   }
   return {
     months: keys,
-    rows: [...by.values()].sort((a, b) => b.total - a.total).slice(0, n).map(({ names, trend, ...e }) => ({
+    rows: [...by.values()].sort((a, b) => b.total - a.total).slice(0, n).map(({ names, kinds, trend, ...e }) => ({
       ...e,
+      kind: [...kinds.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "others",
       name: [...names.entries()].sort((a, b) => b[1] - a[1])[0][0],
       share: pct(e.total, total),
       trend: keys.map((k) => trend[k]),
@@ -193,7 +202,8 @@ export function topPayees(rows, { cal, now, n = 10, months = 6 }) {
 
 /** Payments under [limit]: how many, how much, and where most of them go. */
 export function smallPayments(rows, txs, { cal, limit = 200 }) {
-  const small = rows.filter((r) => r.amount < limit);
+  const pays = rows.filter((r) => !r.back);
+  const small = pays.filter((r) => r.amount < limit);
   const total = small.reduce((s, r) => s + r.amount, 0);
   const all = rows.reduce((s, r) => s + r.amount, 0);
   const full = monthsOf(txs, cal).filter((m) => !m.partial).map((m) => m.key);
@@ -204,7 +214,7 @@ export function smallPayments(rows, txs, { cal, limit = 200 }) {
     const e = by.get(r.key); e.count += 1; e.total += r.amount;
   }
   return {
-    limit, count: small.length, total, share: pct(total, all), countShare: pct(small.length, rows.length),
+    limit, count: small.length, total, share: pct(total, all), countShare: pct(small.length, pays.length),
     perMonth: full.length ? { count: Math.round(inFull.length / full.length), total: Math.round(inFull.reduce((s, r) => s + r.amount, 0) / full.length) } : null,
     top: [...by.values()].sort((a, b) => b.total - a.total).slice(0, 3),
     sources: small,

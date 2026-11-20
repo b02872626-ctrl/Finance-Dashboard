@@ -67,7 +67,7 @@ is still `is_admin()`.
 | `i_income_entries`, `i_income_dismissed` | Income | — | read, insert, update, delete own (dismissed: no update) | — | `add_income.sql` |
 | `i_ledger_entries`, `i_ledger_repayments` | Money lent and borrowed | — | read, insert, update, delete own (repayments: no update) | — | `add_ledger.sql` |
 | `i_habit_rules` | Which payees count as which habit (web Habits tab) | — | read, insert, update, delete own | — | `add_habit_rules.sql` |
-| `i_review_decisions` | The user's yes/no on pass-throughs and suggested salary payers, payee kinds they picked, and whether Gemini is on for them (web) | — | read, insert, update, delete own | — | `add_review_decisions.sql`, `add_payee_kinds.sql` (kind check only) |
+| `i_review_decisions` | The user's yes/no on pass-throughs and suggested salary payers, payee kinds and per-person rules they picked, and whether Gemini is on for them (web) | — | read, insert, update, delete own | — | `add_review_decisions.sql`, `add_payee_kinds.sql`, `add_payee_rules.sql` (kind check only) |
 
 Every table has Row Level Security on. "—" means no policy, so the database
 returns nothing or refuses.

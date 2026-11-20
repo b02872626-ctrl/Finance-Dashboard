@@ -40,6 +40,7 @@ add_goal_linked_account.sql
 add_habit_rules.sql
 add_review_decisions.sql
 add_payee_kinds.sql
+add_payee_rules.sql
 "
 SKIPPED="migrate_banks_to_catalog.sql backfill_sessions_from_transactions.sql export_for_parsers.sql"
 

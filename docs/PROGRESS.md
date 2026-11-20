@@ -5,15 +5,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Habits on the web dashboard (habit handoff, 5 PRs).** PRs 1 and 2
-  are merged and their tables are on live. PR 3 ("where your money goes")
-  was merged into PR 2's branch after PR 2 had landed, so it never reached
-  `main`; it rides along in PR 4. PR 4 (opt-in Gemini sorting for payees
-  Kash isn't sure about, plus picking a payee's kind by hand) is open.
-  Owner: run `supabase/add_payee_kinds.sql` on live, then deploy the Edge
-  Function (see Owner tasks). Next PRs, one branch each: "only N payments a
-  month are mine" and loans-vs-bill-shares; split one transaction
-  (instalment + loan repaid).
+- **Habits on the web dashboard (habit handoff).** PRs 1–4 are merged
+  (Habits tab; pass-throughs and salary; where your money goes; opt-in
+  Gemini and hand-picked kinds). Per-person rules (paid for others, loans
+  with friends) are open. Owner: run `supabase/add_payee_rules.sql` on live
+  before merging. Last PR: split one transaction (instalment + loan
+  repaid) and commitments like the Mac.
 
 - **The approved canvas, in the app (sections 4, 5, 6 of "Final - Approved
   flow").** Three PRs, owner's decisions of 14 Nov: (1) dark theme, done,
@@ -116,9 +113,10 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
-- 2026-11-20 Web: opt-in Gemini sorting and hand-picked payee kinds on the Habits tab, PR 4 (PR open, carries PR 3). Checked with made-up data and a fake Gemini answer at desktop and phone width; the real Gemini call is untested until the key is set.
+- 2026-11-20 Web per-person rules on the Habits tab: only N a month are mine (Paid for others), loans vs bill shares (Loans with friends), suggestions (PR open). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
+- 2026-11-20 Web: opt-in Gemini sorting and hand-picked payee kinds on the Habits tab, PR 4 (merged, #104, carried PR 3; SQL on live; Gemini key and function not yet deployed). Checked with made-up data and a fake Gemini answer at desktop and phone width; the real Gemini call is untested until the key is set.
 - 2026-11-20 Web dashboard: fixed the Payday card crash ("Invalid array length") that stopped the whole dashboard from drawing and looked like being signed out. Each card now fails on its own (PR open).
-- 2026-11-20 Web "where your money goes" (five views on the Habits tab), #103 (landed on PR 2's branch, not main; carried in PR 4). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
+- 2026-11-20 Web "where your money goes" (five views on the Habits tab), #103 (landed on PR 2's branch, not main; reached main with #104). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
 - 2026-11-20 Web pass-throughs and salary, habit handoff PR 2 (merged, #101; table on live). Checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-20 Habits tab on the web dashboard, PR 1 (merged, #100; table on live). Numbers checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-17 1.0.36: Confirm Kash's guess in one tap, or a whole list with Confirm all; Search all your transactions and filter by date, bank, category or amount; Goals rebuilt: see what to save per day, week or month; Faster setup: banks show up one by one as Kash reads your SMS; Your categories come back when you reinstall and sign in; Change a category on a transaction and choose all from that person or just this one; Own accounts is always in the category list; Smoother animations, better dark mode, and many fixes. Not yet installed on a real phone.
