@@ -6,11 +6,10 @@ items to Done with the date, add what is next or blocked.
 ## Next up
 
 - **Habits on the web dashboard (habit handoff, 5 PRs).** PR 1 (Habits
-  tab: map payees to habits, paybacks, months, time of day, chains,
-  payday effect) is open. Owner: run `supabase/add_habit_rules.sql` on
-  staging, then the isolation test, then live, before merging. Next PRs,
-  one branch each: (2) salary payers + pass-through review, excluded from
-  income and spending; (3) "only N payments a month are mine" and
+  tab) is merged and its table is on live. PR 2 (pass-through review,
+  excluded from every total; salary card with suggested payers) is open.
+  Owner: run `supabase/add_review_decisions.sql` on live (staging is
+  unreachable, see Blocked) before merging. Next PRs, one branch each: (3) "only N payments a month are mine" and
   loans-vs-bill-shares; (4) split one transaction (instalment + loan
   repaid); (5) opt-in Gemini habit suggestions (Edge Function, key in
   Supabase secrets, new decision entry).
@@ -61,6 +60,9 @@ items to Done with the date, add what is next or blocked.
 
 ## Blocked
 
+- The staging Supabase project in `local.properties` no longer resolves
+  (paused or deleted), so `isolation_test.py` can't run. Restore it or make
+  a new one (`supabase/staging/README.md`).
 - Paparazzi screenshot tests (`KashComponentsScreenshotTest`,
   `KashSmallPhoneScreenshotTest`) don't run on SDK 36: 1.3.5 can't render
   it, 2.0 needs Gradle on Java 21. Skipped by default (CI too); run them
@@ -105,6 +107,7 @@ items to Done with the date, add what is next or blocked.
 ## Done
 
 - 2026-11-20 Web dashboard: fixed the Payday card crash ("Invalid array length") that stopped the whole dashboard from drawing and looked like being signed out. Each card now fails on its own (PR open).
+- 2026-11-20 Web pass-throughs and salary, habit handoff PR 2 (PR open). Checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-20 Habits tab on the web dashboard, PR 1 (PR open). Numbers checked locally against the owner's handoff figures (export never committed). Not yet seen signed in.
 - 2026-11-17 1.0.36: Confirm Kash's guess in one tap, or a whole list with Confirm all; Search all your transactions and filter by date, bank, category or amount; Goals rebuilt: see what to save per day, week or month; Faster setup: banks show up one by one as Kash reads your SMS; Your categories come back when you reinstall and sign in; Change a category on a transaction and choose all from that person or just this one; Own accounts is always in the category list; Smoother animations, better dark mode, and many fixes. Not yet installed on a real phone.
 - 2026-11-17 Review: one-tap ✓ on Kash's guess and Confirm all (PR open). Merged today: Own accounts always offered (#96), Put all N in X? on the transaction page (#97).

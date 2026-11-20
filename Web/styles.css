@@ -2749,3 +2749,15 @@ a:focus-visible, .tx-table tbody tr:focus-visible, summary:focus-visible {
   .hb-col-label { font-size: 9px; }
   .hb-payee-ctl { align-items: stretch; flex-basis: 100%; }
 }
+/* Habits tab: pass-throughs and salary (PR 2) */
+.hb-pass { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--k-line); flex-wrap: wrap; }
+.hb-pass-lines p { margin: 2px 0; }
+.hb-in { color: var(--green-income); }
+.hb-out { color: var(--coral); }
+.hb-pass-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hb-btn { padding: 8px 12px; font-size: 13px; }
+.hb-btn.primary { background: var(--k-slate); border-color: var(--k-slate); color: var(--k-on-slate); }
+.hb-details summary { cursor: pointer; margin: 12px 0 4px; color: var(--k-ink-muted); }
+.hb-sub { margin: 18px 0 4px; }
+.hb-salary-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 20px; margin: 4px 0 14px; }
+.hb-salary-month .hb-hbar span { height: 10px; }

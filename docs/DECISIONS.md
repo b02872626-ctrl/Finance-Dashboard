@@ -14,6 +14,27 @@ A Payday card crash (every paycheck dated after "now") threw inside
 console; the other cards still draw. `paydayPattern` returns
 `{ found: false }` when no paycheck is on or before now.
 
+## 2026-11-20 — Pass-throughs leave every total; salary payers are suggested (web)
+
+Habit handoff, PR 2 of 5. On the web dashboard's Habits tab:
+- **Pass-throughs.** Money in of ETB 5,000 or more (not salary, not an own
+  move) where payments of ETB 5,000 or more go out within 36 hours, taken
+  in time order while they fit under 110%, until they reach 90% of it.
+  Kash only suggests; the user confirms ("Not mine, passed through") or
+  rejects each one, and can undo. A confirmed one is saved with the ids of
+  its outgoing payments in `i_review_decisions`
+  (`add_review_decisions.sql`, owner-only RLS) and those transactions are
+  marked `pass_through`, so `isSpending` / `isIncome` (insights.js) leave
+  them out of every total on the dashboard, and habits skip them. **Web
+  only for now**: the phone's totals still count them.
+- **Salary.** Payers stay picked on the Payday card (`i_income_entries`).
+  A picked payer also matches longer or shorter spellings of the same full
+  name (never a lone first name). Money sent back to a payer is taken off;
+  a credit under a quarter of that payer's usual amount is left out (a
+  personal transfer from the same account). Kash suggests payers with a
+  steady amount (75% within ±25%) monthly on about the same day, or every
+  two weeks; "No" is saved and stops the suggestion.
+
 ## 2026-11-20 — Habits tab on the web dashboard: Kash's methods, each user's labels
 
 Owner's plan (habit handoff, PR 1 of 5). A new Habits tab on the web

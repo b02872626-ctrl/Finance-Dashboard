@@ -13,8 +13,10 @@ export const EXPENSE_TYPES = new Set(["DEBIT", "TRANSFER_OUT", "PAYMENT"]);
 export const OWN_ACCOUNTS = "Own accounts";
 export const isOwnAccountTransfer = (tx) =>
   tx.type === "INTERNAL_TRANSFER" || (tx.category || "").trim() === OWN_ACCOUNTS;
-export const isSpending = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnAccountTransfer(tx);
-export const isIncome = (tx) => tx.type === "CREDIT" && !isOwnAccountTransfer(tx);
+// tx.pass_through: money the user confirmed came in for someone else and
+// went straight out again (Web/flows.js markPassThroughs). Web only for now.
+export const isSpending = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnAccountTransfer(tx) && !tx.pass_through;
+export const isIncome = (tx) => tx.type === "CREDIT" && !isOwnAccountTransfer(tx) && !tx.pass_through;
 // Which way the money went, for the Transactions filter: "CREDIT" (money in),
 // "DEBIT" (money out) or "INTERNAL" (between the user's own accounts, which is
 // neither). Null for types that are none of these (UNKNOWN).
