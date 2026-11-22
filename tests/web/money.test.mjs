@@ -19,8 +19,8 @@ test("every payment gets one kind, first match wins", () => {
   const rules = [{ match: "sunrise caf", habit: "Coffee" }];
   assert.equal(kindOf(tx("Sunrise Cafe Plc"), rules), "habits");
   assert.equal(kindOf(tx("Sunrise Cafe Plc")), "shops");
-  assert.equal(kindOf(tx("Telecom package: Daily Internet 1GB", { type: "PAYMENT" })), "airtime");
-  assert.equal(kindOf(tx("Airtime")), "airtime");
+  assert.equal(kindOf(tx("Telecom package: Daily Internet 1GB", { type: "PAYMENT" })), "bills"); // airtime joined bills
+  assert.equal(kindOf(tx("Airtime")), "bills");
   assert.equal(kindOf(tx("CBE ATM")), "cash");
   assert.equal(kindOf(tx("Acme Bank S C ATM")), "cash");
   assert.equal(kindOf(tx("Mela loan repayment")), "loans");
@@ -56,7 +56,7 @@ const SAL = ["acme trading plc"];
 test("spending rows leave out own moves, pass-throughs and money sent back to a payer", () => {
   const rows = spendingRows(MONTH_TXS(), { rules: RULES, salaryKeys: SAL });
   assert.deepEqual(rows.map((r) => [r.kind, r.amount]), [
-    ["people", 100], ["people", 12000], ["habits", 150], ["habits", 120], ["cash", 2000], ["airtime", 50], ["people", 100],
+    ["people", 100], ["people", 12000], ["habits", 150], ["habits", 120], ["cash", 2000], ["bills", 50], ["people", 100],
   ]);
 });
 

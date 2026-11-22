@@ -4,8 +4,9 @@
 // Most people never label anything, so every payment gets one built-in
 // "kind", first match wins:
 //   habits  — a payee the user mapped to a habit (i_habit_rules)
-//   bills   — electricity, water, TV, insurance, school, levies, bank fees
-//   airtime — telecom packages, airtime, data
+//   bills   — electricity, water, TV, insurance, school, levies, bank fees,
+//             and airtime, data and telecom packages
+//   commitments — instalments the user labelled (splits.js)
 //   cash    — ATM and agent withdrawals
 //   loans   — loan apps and repayments
 //   shops   — businesses (Plc, Trading, Hotel, Cafe…) and merchant payments
@@ -30,15 +31,17 @@ export const KINDS = [
   { id: "habits", label: "Your habits" },
   { id: "people", label: "People" },
   { id: "shops", label: "Shops & places" },
-  { id: "bills", label: "Bills & fees" },
-  { id: "airtime", label: "Airtime & data" },
+  { id: "bills", label: "Bills, fees & airtime" },
+  { id: "commitments", label: "Commitments" },
   { id: "cash", label: "Cash out" },
   { id: "loans", label: "Loans" },
   { id: "others", label: "Paid for others" },
   { id: "other", label: "Other" },
 ];
 /** Kinds a user can put a payee in by hand (habits come from habit rules). */
-export const PICKABLE_KINDS = KINDS.filter((k) => k.id !== "habits" && k.id !== "others").map((k) => k.id);
+export const PICKABLE_KINDS = KINDS.filter((k) => !["habits", "others", "commitments"].includes(k.id)).map((k) => k.id);
+/** Kinds that no longer exist, read as their new home (airtime joined bills on 2026-11-22). */
+export const OLD_KINDS = { airtime: "bills" };
 const KIND_IDS = new Set(PICKABLE_KINDS);
 export const kindLabel = (id) => KINDS.find((k) => k.id === id)?.label || id;
 
@@ -58,7 +61,7 @@ export function kindOf(tx, rules = [], kinds = null) {
   const picked = kinds && kinds.get(personKey(name));
   if (picked && KIND_IDS.has(picked)) return picked;
   const text = `${name} ${tx.category || ""}`;
-  if (AIRTIME.test(name)) return "airtime";
+  if (AIRTIME.test(name)) return "bills";
   if (CASH.test(name)) return "cash";
   if (LOANS.test(text)) return "loans";
   if (BILLS.test(name)) return "bills";
@@ -82,11 +85,28 @@ export function spendingRows(txs, { rules = [], salaryKeys = [], kinds = null } 
   for (const t of txs) {
     if (!isSpending(t) || !Number.isFinite(timeOf(t))) continue;
     if (payers.length && isPayer(t.counterparty, payers)) continue;
+    const base = { tx: t, ms: timeOf(t), name: displayName(t.counterparty) || "Unnamed", key: personKey(t.counterparty) || "unnamed" };
+    // A labelled payment (splits.js): only its instalment and normal parts
+    // are spending; loan and passed-on parts aren't.
+    if (t.split) {
+      for (const p of t.split) {
+        if (p.what === "instalment") rows.push({ ...base, amount: p.amount, kind: "commitments", part: p });
+        else if (p.what === "normal") rows.push({ ...base, amount: p.amount, kind: kindOf(t, rules, kinds), part: p });
+      }
+      continue;
+    }
     const kind = t.for_others ? "others" : kindOf(t, rules, kinds);
     // Moves to the user's own accounts aren't spending; cash taken out and
     // loan repayments are kept, since that's where the money went.
     if (isOwnMove(t) && kind !== "cash" && kind !== "loans") continue;
     rows.push({ tx: t, ms: timeOf(t), amount: amountOf(t), kind, name: displayName(t.counterparty) || "Unnamed", key: personKey(t.counterparty) || "unnamed" });
+  }
+  // Refund parts of money in (splits.js) come off spending too.
+  for (const t of txs) {
+    if (!t.split || t.type !== "CREDIT" || !Number.isFinite(timeOf(t))) continue;
+    for (const p of t.split) {
+      if (p.what === "refund") rows.push({ tx: t, ms: timeOf(t), amount: -p.amount, back: true, part: p, kind: kindOf(t, rules, kinds), name: displayName(t.counterparty) || "Unnamed", key: personKey(t.counterparty) || "unnamed" });
+    }
   }
   // A friend's share of a bill sent back (rules.js) comes off spending.
   for (const t of txs) {
@@ -180,17 +200,17 @@ export function topPayees(rows, { cal, now, n = 10, months = 6 }) {
   const total = rows.reduce((s, r) => s + r.amount, 0);
   const by = new Map();
   for (const r of rows) {
-    if (!by.has(r.key)) by.set(r.key, { key: r.key, names: new Map(), kinds: new Map(), total: 0, count: 0, trend: Object.fromEntries(keys.map((k) => [k, 0])), sources: [] });
+    if (!by.has(r.key)) by.set(r.key, { key: r.key, names: new Map(), kinds: new Map(), ids: new Set(), total: 0, count: 0, trend: Object.fromEntries(keys.map((k) => [k, 0])), sources: [] });
     const e = by.get(r.key);
     e.names.set(r.name, (e.names.get(r.name) || 0) + 1);
     if (r.kind !== "others") e.kinds.set(r.kind, (e.kinds.get(r.kind) || 0) + 1);
-    e.total += r.amount; if (!r.back) e.count += 1; e.sources.push(r);
+    e.total += r.amount; if (!r.back) { e.ids.add(r.tx.id); e.count = e.ids.size; } e.sources.push(r);
     const mk = monthOf(r.ms, cal).key;
     if (mk in e.trend) e.trend[mk] += r.amount;
   }
   return {
     months: keys,
-    rows: [...by.values()].sort((a, b) => b.total - a.total).slice(0, n).map(({ names, kinds, trend, ...e }) => ({
+    rows: [...by.values()].sort((a, b) => b.total - a.total).slice(0, n).map(({ names, kinds, ids, trend, ...e }) => ({
       ...e,
       kind: [...kinds.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "others",
       name: [...names.entries()].sort((a, b) => b[1] - a[1])[0][0],

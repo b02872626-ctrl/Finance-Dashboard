@@ -41,6 +41,7 @@ add_habit_rules.sql
 add_review_decisions.sql
 add_payee_kinds.sql
 add_payee_rules.sql
+add_splits.sql
 "
 SKIPPED="migrate_banks_to_catalog.sql backfill_sessions_from_transactions.sql export_for_parsers.sql"
 

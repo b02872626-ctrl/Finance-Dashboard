@@ -19,6 +19,7 @@ import { renderHabits } from "./habits-view.js";
 import { markPassThroughs, passThroughReview } from "./flows.js";
 import { aiRequest, kindsFrom, readSuggestions } from "./ai.js";
 import { markRules, rulesFrom } from "./rules.js";
+import { markSplits, splitsFrom } from "./splits.js";
 
 // One pinned, self-contained file: "@2" floated to whatever esm.sh had that
 // day and pulled ~14 module files, three requests deep, before sign-in could
@@ -34,7 +35,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Bump this each release. Matches the Android versionName convention so the
 // admin dashboard can show "web-beta17", "android-beta17", etc. in one place.
-const APP_VERSION = "web-beta23";
+const APP_VERSION = "web-beta24";
 
 // Password reset links come back here with "#...type=recovery" (or
 // "#error_code=otp_expired" once stale). Read the hash before createClient,
@@ -312,6 +313,8 @@ const state = {
   payeeKinds: new Map(),    // i_review_decisions kind=payee_kind: payee key → kind
   payeeRules: new Map(),    // i_review_decisions kind=payee_rule: payee key → rule (rules.js)
   ruleNo: new Set(),        // payee_rule decision=no: suggestions the user declined
+  commitments: [],          // i_review_decisions kind=commitment (splits.js)
+  splitLabels: new Map(),   // kind=tx_split: transaction id → parts
   ai: { consent: null, status: "idle", error: "", suggestions: [] }, // Gemini (kind=ai_consent)
   reviewStatus: "loading",
   period: "month",
@@ -980,6 +983,7 @@ async function fetchReviewDecisions() {
   state.salaryNo = (data || []).filter((r) => r.kind === "salary" && r.decision === "no").map((r) => r.ref);
   state.payeeKinds = kindsFrom(data);
   ({ rules: state.payeeRules, declined: state.ruleNo } = rulesFrom(data));
+  ({ commitments: state.commitments, labels: state.splitLabels } = splitsFrom(data));
   state.ai.consent = (data || []).some((r) => r.kind === "ai_consent" && r.ref === "gemini" && r.decision === "yes");
   applyPassThroughs();
 }
@@ -1034,6 +1038,26 @@ async function setPayeeRule(key, rule) {
   if (await saveDecision("payee_rule", key, rule ? "yes" : null, rule || {})) {
     showToast(rule ? "Rule saved" : "Rule removed", "success");
   }
+}
+
+// Commitments and labelled / split payments (splits.js).
+async function saveCommitment(c) {
+  state.commitments = [...state.commitments.filter((x) => x.id !== c.id), c];
+  rerender();
+  if (await saveDecision("commitment", c.id, "yes", { name: c.name, key: c.key, total: c.total })) showToast(`${c.name} added`, "success");
+}
+
+async function removeCommitment(id) {
+  state.commitments = state.commitments.filter((x) => x.id !== id);
+  rerender();
+  if (await saveDecision("commitment", id, null)) showToast("Commitment removed", "success");
+}
+
+async function saveSplit(txId, parts) {
+  const ref = String(txId);
+  if (parts) state.splitLabels.set(ref, parts); else state.splitLabels.delete(ref);
+  rerender();
+  await saveDecision("tx_split", ref, parts ? "yes" : null, parts ? { parts } : {});
 }
 
 async function declineRule(key) {
@@ -1127,6 +1151,10 @@ function renderHabitsView() {
     ruleNo: state.ruleNo,
     setPayeeRule,
     declineRule,
+    commitments: state.commitments,
+    saveCommitment,
+    removeCommitment,
+    saveSplit,
   });
 }
 
@@ -3110,6 +3138,8 @@ function rerender() {
   safe("Pass-throughs", () => markPassThroughs(state.allTxs, state.passDecisions));
   // Per-person rules: payments for others, friend loans, bill shares back.
   safe("Payee rules", () => markRules(state.allTxs, state.payeeRules, { cal: calKey() }));
+  // Labelled and split payments (after the rules: a label wins).
+  safe("Splits", () => markSplits(state.allTxs, state.splitLabels, state.commitments));
   const range = periodRange(state.period);
   const txs = state.allTxs;
   const inRange = txs.filter((t) => {

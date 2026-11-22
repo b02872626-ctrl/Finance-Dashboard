@@ -6,6 +6,39 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-22 — Commitments and split payments; airtime joins bills (web Habits tab)
+
+Last habit-handoff PR. Owner's choices: label every payment to a
+commitment's person by hand (nothing automatic); five meanings for a part;
+airtime merged into bills to make colour room. Logic in `Web/splits.js`,
+tested by `tests/web/splits.test.mjs`. Saved per user in
+`i_review_decisions` (kinds `commitment` and `tx_split`, `add_splits.sql`).
+- A **commitment** (name, who you pay, optional total) lists every payment
+  to or from that person in "Label these" until the user labels it. One-tap
+  labels or Split… into up to 4 parts that must add up to the payment.
+- Part meanings: **instalment** (money out, spending, new kind
+  "Commitments"), **normal** (money out, the payee's usual kind), **loan**
+  (either way, out of income and spending, counted in "Loans with
+  friends"), **refund** (money in, out of income, off spending), **passed
+  on** (either way, out of totals). Any payment in "Who you pay most" can
+  be split too.
+- A label replaces a per-person rule's marks on that payment, and labelled
+  payments never count as habits.
+- Dashboard: a payment whose parts are all loan, refund or passed on leaves
+  its totals; a mixed one still counts in full there (Dashboard totals work
+  on whole payments). The Habits tab counts every part exactly.
+- **Airtime & data joined Bills & fees** as "Bills, fees & airtime";
+  Commitments took its colour slot, so the charts keep 8 colours plus grey.
+  Saved "airtime" picks and Gemini answers are read as bills; the
+  `kash-gemini` function no longer offers airtime (redeploy to pick it up).
+
+## 2026-11-22 — Kash isn't at the FOW Summit
+
+The owner said Kash is out of the Future of Work Ethiopia Summit (28 Nov).
+The summit sub-issues (NAH-32 list) stay as growth work without the
+26 Nov deadline. The 2026-11-11 choice of no AI in the Android app and
+Gemini only on the web stays as it is; it no longer depends on the summit.
+
 ## 2026-11-20 — Per-person rules: paid for others, loans with friends (web Habits tab)
 
 Habit handoff, per-person rules. Owner's choices: payments past "mine" show
