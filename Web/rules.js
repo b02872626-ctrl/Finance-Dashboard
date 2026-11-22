@@ -14,6 +14,7 @@
 import { EXPENSE_TYPES } from "./insights.js";
 import { displayName, isOwnMove, monthOf, personKey } from "./habits.js";
 import { kindOf, monthsOf } from "./money.js";
+import { splitLoans } from "./splits.js";
 
 const timeOf = (tx) => Date.parse(tx.occurred_at);
 const amountOf = (tx) => Number(tx.amount) || 0;
@@ -117,6 +118,13 @@ export function loanBook(txs, rules) {
     const e = by.get(key);
     if (t.type === "CREDIT") e.got += amountOf(t); else e.gave += amountOf(t);
     e.sources.push(t);
+  }
+  // Loan parts of split payments (splits.js) count too.
+  for (const l of splitLoans(txs)) {
+    if (!by.has(l.key)) by.set(l.key, { key: l.key, name: l.name, above: rules.get(l.key)?.above, got: 0, gave: 0, sources: [] });
+    const e = by.get(l.key);
+    if (l.in) e.got += l.amount; else e.gave += l.amount;
+    e.sources.push({ ...l.tx, amount: l.amount, part: true });
   }
   const backs = new Map();
   for (const t of txs) if (t.bill_back) {

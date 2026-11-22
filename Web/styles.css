@@ -2812,3 +2812,23 @@ a:focus-visible, .tx-table tbody tr:focus-visible, summary:focus-visible {
 .hb-loan-row .hb-top-name strong { white-space: normal; }
 .hb-loan-balance { display: flex; flex-direction: column; align-items: flex-end; font-weight: 600; font-size: 16px; }
 @media (max-width: 560px) { .hb-others-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+/* Habits tab: commitments and split payments */
+.hb-commit { padding: 10px 0; border-top: 1px solid var(--k-line); }
+.hb-commit:first-of-type { border-top: 0; }
+.hb-commit p { margin: 3px 0; }
+.hb-commit-remove { float: right; }
+.hb-commit-bar { margin: 6px 0; max-width: 420px; }
+.hb-commit-add { margin-top: 12px; }
+.hb-commit-form { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; padding: 8px 0; }
+.hb-commit-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--k-ink-muted); }
+#habits-root .hb-commit-form input { width: 180px; height: auto; min-height: 0; padding: 6px 10px; }
+.hb-split { flex-basis: 100%; margin-top: 8px; padding: 12px; border-radius: 12px; background: var(--k-well); }
+.hb-split p { margin: 4px 0; }
+.hb-split-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+#habits-root .hb-split input.hb-split-amt { width: 120px; height: auto; min-height: 0; padding: 6px 10px; }
+.hb-split [data-hb="split-sum"] { color: var(--k-ink-muted); }
+.hb-split button:disabled { opacity: .45; cursor: not-allowed; }
+.hb-split-row { flex-wrap: nowrap; }
+.hb-split-row select { flex: 1; min-width: 0; }
+#habits-root .hb-split input.hb-split-amt { flex: 0 0 104px; width: 104px; }

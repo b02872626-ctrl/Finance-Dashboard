@@ -15,7 +15,8 @@
 //   kinds: Map(payee key → kind the user picked), setKind(key, kind | null, from),
 //   ai: { consent: true | false | null, status: "idle" | "asking" | "done" | "error", error, suggestions },
 //   setAiConsent(on), askGemini(items), aiAccept(suggestion, shared), aiSkip(suggestion),
-//   payeeRules: Map(payee key → rule), ruleNo: Set(declined keys), setPayeeRule(key, rule | null), declineRule(key)
+//   payeeRules: Map(payee key → rule), ruleNo: Set(declined keys), setPayeeRule(key, rule | null), declineRule(key),
+//   commitments: [{ id, name, key, total }], saveCommitment(c), removeCommitment(id), saveSplit(txId, parts | null)
 // }
 
 import {
@@ -30,6 +31,9 @@ import {
   PICKABLE_KINDS, salaryVsSpending, smallPayments, spendingByKind, spendingRows, topPayees,
 } from "./money.js";
 import { AI_LIMIT, aiPayload } from "./ai.js";
+import {
+  MAX_PARTS, PARTS_IN, PARTS_OUT, PART_LABELS, cleanParts, commitmentSummary, explainCommitment, newCommitmentId, toLabel, wholeLabel,
+} from "./splits.js";
 import { LOAN_ABOVE, explainLoan, explainOthers, loanBook, paidForOthers, suggestRules } from "./rules.js";
 
 // Categorical slots, fixed order (blue, orange, aqua, yellow, magenta, green,
@@ -41,6 +45,7 @@ const ui = {
   filter: "", showAll: false, month: null, hour: null, editing: null, salaryAll: false,
   flowMonth: null, kindMonth: null, salaryMonth: null, payee: null, smallOpen: false, flowOpen: false,
   aiList: false, othersMonth: null, loanFriend: null,
+  addCommit: false, splitting: null, splitWhere: null, splitDraft: null, labelAll: false, labelledOpen: false,
 };
 // Kinds have their own fixed colours; "Other" is grey.
 const KIND_IDS = KINDS.map((k) => k.id);
@@ -166,14 +171,15 @@ const shortMonth = (label) => label.replace(/ (\d{4})$/, (_, y) => ` ’${y.slic
 const kindLegend = (present) => `<div class="hb-legend">${KINDS.filter((k) => present.includes(k.id)).map((k) =>
   `<span><i style="background:${kindColor(k.id)}"></i>${esc(k.label)}</span>`).join("")}</div>`;
 
-function moneyTable(title, rows, cal) {
+function moneyTable(title, rows, cal, { split = false } = {}) {
   const sorted = [...rows].sort((a, b) => b.ms - a.ms);
   return `<div class="hb-sources">
     <p><strong>${esc(title)}</strong></p>
     <div class="hb-table-wrap"><table class="tx-table hb-table">
-      <thead><tr><th>Date</th><th>To</th><th>Kind</th><th class="right">Amount</th></tr></thead>
+      <thead><tr><th>Date</th><th>To</th><th>Kind</th><th class="right">Amount</th>${split ? "<th></th>" : ""}</tr></thead>
       <tbody>${sorted.slice(0, 200).map((r) => `<tr><td>${esc(dateLabel(r.ms, cal, { time: true }))}</td><td>${esc(r.name)}</td>
-        <td><i class="hb-key" style="background:${kindColor(r.kind)}"></i>${esc(kindLabel(r.kind))}</td><td class="right">${etb(r.amount)}</td></tr>`).join("")}</tbody>
+        <td><i class="hb-key" style="background:${kindColor(r.kind)}"></i>${esc(kindLabel(r.kind))}${r.part ? ` <span class="muted small">(part)</span>` : ""}</td><td class="right">${etb(r.amount)}</td>
+        ${split ? `<td class="right">${r.tx && !r.back ? `<button type="button" class="btn-ghost hb-btn" data-hb="split" data-id="${esc(r.tx.id)}" data-where="top">${r.tx.split ? "Change" : "Split"}</button>` : ""}</td>` : ""}</tr>`).join("")}</tbody>
     </table></div>
     ${sorted.length > 200 ? `<p class="muted small">Showing the latest 200 of ${sorted.length}.</p>` : ""}
   </div>`;
@@ -209,6 +215,7 @@ function renderMoney(ctx) {
     ${topCard(top, cal, ctx)}
     ${rulesSuggestCard(ctx)}
     ${othersCard(ctx, cal)}
+    ${commitmentsCard(ctx, cal)}
     ${loansCard(ctx, cal)}
     ${aiCard(ctx)}
     ${smallCard(small, cal)}`;
@@ -231,7 +238,7 @@ function kindCard(b, cal) {
     <div class="hb-kind-totals">${present.sort((x, y) => b.totals[y] - b.totals[x]).map((k) => `
       <div><i class="hb-key" style="background:${kindColor(k)}"></i>${esc(kindLabel(k))} <span class="muted small">${Math.round((100 * b.totals[k]) / b.all)}%${b.average[k] ? ` · <span class="hb-amt">${etb(b.average[k])}</span> a month` : ""}</span></div>`).join("")}
     </div>
-    <p class="muted small">* Partial month: left out of the monthly figures. Kash sorts each payment by the name on it: habits you mapped first, then bills, airtime, cash, loans, shops and people. Tap a month to check.</p>
+    <p class="muted small">* Partial month: left out of the monthly figures. Kash sorts each payment by the name on it: habits you mapped first, then bills and airtime, cash, loans, shops and people. Tap a month to check.</p>
     ${sel ? moneyTable(`${sel.label}: ${sel.sources.length} payments`, sel.sources, cal) : ""}
   </div>`;
 }
@@ -280,7 +287,8 @@ function topCard(t, cal, ctx) {
         <span class="hb-top-trend" title="Last 6 months: ${r.trend.map((v) => etb(v)).join(", ")}">${sparkline(r.trend)}</span>
       </button>`).join("")}
     </div>
-    ${sel ? kindPicker(sel, ctx) + ruleEditor(sel, ctx) + moneyTable(`${sel.name}: ${sel.count} payments`, sel.sources, cal) : ""}
+    ${sel ? kindPicker(sel, ctx) + ruleEditor(sel, ctx) + moneyTable(`${sel.name}: ${sel.count} payments`, sel.sources, cal, { split: !!ctx.saveSplit })
+      + (ui.splitWhere === "top" ? splitEditorFor(ctx, cal) : "") : ""}
   </div>`;
 }
 
@@ -357,8 +365,117 @@ function othersCard(ctx, cal) {
   </div>`;
 }
 
+// ── Commitments and split payments (splits.js) ─────────────────────────────
+const txById = (ctx, id) => ctx.txs.find((t) => String(t.id) === String(id));
+const nameOfKey = (ctx, key) => displayName(ctx.txs.find((t) => personKey(t.counterparty) === key)?.counterparty) || key;
+const signed = (t) => `${t.type === "CREDIT" ? "+" : "−"}${etb(Number(t.amount))}`;
+const partsText = (parts, ctx) => parts.map((p) => {
+  const c = p.what === "instalment" ? (ctx.commitments || []).find((x) => x.id === p.commitment) : null;
+  return `${c ? `${c.name} instalment` : PART_LABELS[p.what]} ${etb(p.amount)}`;
+}).join(" + ");
+
+function commitmentsCard(ctx, cal) {
+  if (!ctx.saveCommitment || ctx.reviewStatus !== "ready") return "";
+  const list = ctx.commitments || [];
+  const sums = list.map((c) => commitmentSummary(ctx.txs, c, { cal }));
+  const waiting = toLabel(ctx.txs, list);
+  const labelled = ctx.txs.filter((t) => t.split && list.some((c) => c.key === personKey(t.counterparty)))
+    .sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
+  const form = ui.addCommit ? addCommitForm(ctx) : `<button type="button" class="btn-ghost hb-btn${list.length ? "" : " primary"}" data-hb="commit-add">+ Add a commitment</button>`;
+  if (!list.length) {
+    return `<div class="card"><header class="section-header"><h3>Commitments</h3></header>
+      <p class="hb-explain">Paying something off in parts, like a laptop in monthly instalments to one person? Add it here. Then you say what each payment to that person was, and Kash shows how much is paid and how much is left.</p>
+      ${form}</div>`;
+  }
+  const shown = ui.labelAll ? waiting : waiting.slice(0, 8);
+  return `<div class="card">
+    <header class="section-header"><h3>Commitments</h3><span class="muted small">You label each payment</span></header>
+    ${sums.map((s) => `<div class="hb-commit">
+      <p><strong>${esc(s.name)}</strong> <span class="muted small">to ${esc(nameOfKey(ctx, s.key))}</span>
+        <button type="button" class="btn-ghost hb-btn hb-commit-remove" data-hb="commit-remove" data-id="${esc(s.id)}">Remove</button></p>
+      <p class="hb-explain">${esc(explainCommitment(s))}</p>
+      ${s.total ? `<div class="hb-hbar hb-commit-bar" role="img" aria-label="${s.share}% paid"><span style="width:${s.share}%;background:${kindColor("commitments")}"></span><em class="hb-amt">${s.share}%</em></div>` : ""}
+      ${s.months.length ? `<p class="muted small">${s.months.map((m) => `${esc(shortMonth(m.label))} <span class="hb-amt">${etb(m.total)}</span>`).join(" · ")}</p>` : ""}
+    </div>`).join("")}
+    ${waiting.length ? `<p class="hb-sub"><strong>Label these (${waiting.length})</strong> <span class="muted small">Every payment to or from them, until you say what it was.</span></p>
+      ${shown.map((t) => labelRow(t, ctx, cal)).join("")}
+      ${waiting.length > 8 ? `<button type="button" class="ghost-btn hb-more" data-hb="label-all">${ui.labelAll ? "Show fewer" : `Show all ${waiting.length}`}</button>` : ""}`
+    : `<p class="muted small">Every payment to them is labelled.</p>`}
+    ${labelled.length ? `<button type="button" class="ghost-btn hb-more" data-hb="labelled-open">${ui.labelledOpen ? "Hide labelled payments" : `Labelled payments (${labelled.length})`}</button>
+      ${ui.labelledOpen ? labelled.map((t) => `<div class="hb-pass">
+        <div class="hb-pass-lines"><p><strong>${esc(dateLabel(Date.parse(t.occurred_at), cal, { time: true }))}</strong> <span class="hb-amt">${signed(t)}</span> ${esc(displayName(t.counterparty))}</p>
+          <p class="muted small">${esc(partsText(t.split, ctx))}</p></div>
+        <div class="hb-pass-actions"><button type="button" class="btn-ghost hb-btn" data-hb="split" data-id="${esc(t.id)}" data-where="commit">Change</button>
+          <button type="button" class="btn-ghost hb-btn" data-hb="label-undo" data-id="${esc(t.id)}">Undo</button></div>
+        ${ui.splitWhere === "commit" && String(ui.splitting) === String(t.id) ? splitEditorFor(ctx, cal) : ""}
+      </div>`).join("") : ""}` : ""}
+    <div class="hb-pass-actions hb-commit-add">${form}</div>
+  </div>`;
+}
+
+function addCommitForm(ctx) {
+  const people = payees(ctx.txs, { limit: 40 });
+  return `<div class="hb-commit-form">
+    <label>Name <input type="text" maxlength="40" placeholder="Laptop" data-hb="commit-name"></label>
+    <label>Paid to <select class="hb-select" data-hb="commit-key">${people.map((p) => `<option value="${esc(p.key)}">${esc(p.name)}</option>`).join("")}</select></label>
+    <label>Total price <span class="muted small">(optional)</span> <input type="number" min="1" step="1" placeholder="ETB" data-hb="commit-total"></label>
+    <div class="hb-pass-actions"><button type="button" class="btn-ghost hb-btn primary" data-hb="commit-save">Add</button>
+      <button type="button" class="btn-ghost hb-btn" data-hb="commit-cancel">Cancel</button></div>
+  </div>`;
+}
+
+function labelRow(t, ctx, cal) {
+  const credit = t.type === "CREDIT";
+  const mine = (ctx.commitments || []).filter((c) => c.key === personKey(t.counterparty));
+  const quick = credit
+    ? [["loan", "Loan"], ["refund", "Refund"], ["passed", "Passed on"]]
+    : [["instalment", mine.length === 1 ? `${mine[0].name} instalment` : "Instalment"], ["loan", "Loan repaid"], ["passed", "Passed on"], ["normal", "Normal"]];
+  return `<div class="hb-pass">
+    <div class="hb-pass-lines"><p><strong>${esc(dateLabel(Date.parse(t.occurred_at), cal, { time: true }))}</strong>
+      <span class="hb-amt ${credit ? "hb-in" : "hb-out"}">${signed(t)}</span> ${credit ? "from" : "to"} ${esc(displayName(t.counterparty))}</p></div>
+    <div class="hb-pass-actions">${quick.map(([what, label]) => `<button type="button" class="btn-ghost hb-btn" data-hb="label" data-id="${esc(t.id)}" data-what="${what}">${esc(label)}</button>`).join("")}
+      <button type="button" class="btn-ghost hb-btn" data-hb="split" data-id="${esc(t.id)}" data-where="commit">Split…</button></div>
+    ${ui.splitWhere === "commit" && String(ui.splitting) === String(t.id) ? splitEditorFor(ctx, cal) : ""}
+  </div>`;
+}
+
+// Up to 4 parts that must add up to the payment. The draft lives in ui so
+// typing doesn't redraw the page; Save turns on when the sum is right.
+function splitEditorFor(ctx) {
+  const t = ui.splitting != null && txById(ctx, ui.splitting);
+  if (!t) return "";
+  const credit = t.type === "CREDIT";
+  const kinds = credit ? PARTS_IN : PARTS_OUT;
+  const mine = (ctx.commitments || []).filter((c) => c.key === personKey(t.counterparty));
+  const all = ctx.commitments || [];
+  if (!ui.splitDraft) {
+    ui.splitDraft = t.split ? t.split.map((p) => ({ ...p })) : [
+      { what: credit ? "loan" : (all.length ? "instalment" : "normal"), amount: Number(t.amount), commitment: (mine[0] || all[0])?.id },
+      { what: credit ? "refund" : "loan", amount: 0 },
+    ];
+  }
+  const d = ui.splitDraft;
+  return `<div class="hb-split" data-hb="split-box">
+    <p><strong>Split ${esc(signed(t))}</strong> <span class="muted small">${credit ? "from" : "to"} ${esc(displayName(t.counterparty))}</span></p>
+    ${d.map((p, i) => `<div class="hb-split-row">
+      <input class="hb-split-amt" type="number" min="0" step="0.01" value="${p.amount || ""}" placeholder="ETB" data-hb="part-amt" data-i="${i}" aria-label="Part ${i + 1} amount">
+      <select class="hb-select" data-hb="part-what" data-i="${i}" aria-label="Part ${i + 1} is">${kinds.map((k) =>
+        `<option value="${k}" ${k === p.what ? "selected" : ""} ${k === "instalment" && !all.length ? "disabled" : ""}>${esc(PART_LABELS[k])}</option>`).join("")}</select>
+      ${p.what === "instalment" && all.length > 1 ? `<select class="hb-select" data-hb="part-commit" data-i="${i}" aria-label="Which commitment">${all.map((c) =>
+        `<option value="${esc(c.id)}" ${c.id === p.commitment ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>` : ""}
+      ${d.length > 1 ? `<button type="button" class="btn-ghost hb-btn" data-hb="part-remove" data-i="${i}" aria-label="Remove part ${i + 1}">×</button>` : ""}
+    </div>`).join("")}
+    <p class="small" data-hb="split-sum"></p>
+    <div class="hb-pass-actions">
+      ${d.length < MAX_PARTS ? `<button type="button" class="btn-ghost hb-btn" data-hb="part-add">+ Part</button>` : ""}
+      <button type="button" class="btn-ghost hb-btn primary" data-hb="split-save" data-id="${esc(t.id)}">Save</button>
+      ${t.split ? `<button type="button" class="btn-ghost hb-btn" data-hb="label-undo" data-id="${esc(t.id)}">Remove label</button>` : ""}
+      <button type="button" class="btn-ghost hb-btn" data-hb="split-cancel">Cancel</button>
+    </div>
+  </div>`;
+}
+
 function loansCard(ctx, cal) {
-  if (!ctx.payeeRules?.size) return "";
   const book = loanBook(ctx.txs, ctx.payeeRules);
   if (!book.length) return "";
   const sel = book.find((e) => e.key === ui.loanFriend);
@@ -368,7 +485,7 @@ function loansCard(ctx, cal) {
       <button type="button" class="hb-top-row hb-loan-row" data-hb="loan-friend" data-key="${esc(e.key)}" aria-pressed="${e.key === ui.loanFriend}">
         <span class="hb-top-name"><strong>${esc(e.name)}</strong>
           <span class="small">${esc(explainLoan(e))}</span>
-          <span class="muted small">Loans are ETB ${Math.round(e.above || LOAN_ABOVE).toLocaleString("en-US")} or more and stay out of income and spending.${e.billBack ? ` Bill shares sent back: <span class="hb-amt">${etb(e.billBack)}</span>, taken off your spending.` : ""}</span></span>
+          <span class="muted small">${e.above ? `Loans are ETB ${Math.round(e.above).toLocaleString("en-US")} or more` : "Loans are the payments you labelled as loans"} and stay out of income and spending.${e.billBack ? ` Bill shares sent back: <span class="hb-amt">${etb(e.billBack)}</span>, taken off your spending.` : ""}</span></span>
         <span class="hb-loan-balance ${e.balance > 0 ? "owe" : e.balance < 0 ? "owed" : ""}"><span class="hb-amt">${etb(Math.abs(e.balance))}</span><span class="muted small">${e.balance > 0 ? "you owe" : e.balance < 0 ? "owed to you" : "even"}</span></span>
       </button>`).join("")}
     ${sel ? `<div class="hb-sources"><p><strong>${esc(sel.name)}: loans</strong></p><div class="hb-table-wrap"><table class="tx-table hb-table">
@@ -772,6 +889,73 @@ function wire(root, ctx, rules) {
   root.querySelectorAll('[data-hb="toggle"]').forEach((tr) => tr.addEventListener("click", () => {
     tr.nextElementSibling?.classList.toggle("hidden");
   }));
+  // Commitments and splits.
+  root.querySelector('[data-hb="commit-add"]')?.addEventListener("click", () => { ui.addCommit = true; rerender(); });
+  root.querySelector('[data-hb="commit-cancel"]')?.addEventListener("click", () => { ui.addCommit = false; rerender(); });
+  root.querySelector('[data-hb="commit-save"]')?.addEventListener("click", () => {
+    const name = root.querySelector('[data-hb="commit-name"]').value.trim();
+    const key = root.querySelector('[data-hb="commit-key"]').value;
+    const total = Number(root.querySelector('[data-hb="commit-total"]').value) || null;
+    if (!name) { root.querySelector('[data-hb="commit-name"]').focus(); return; }
+    if (!key) return;
+    ui.addCommit = false;
+    ctx.saveCommitment({ id: newCommitmentId(name, (ctx.commitments || []).map((c) => c.id)), name: name.slice(0, 40), key, total });
+  });
+  root.querySelectorAll('[data-hb="commit-remove"]').forEach((b) => b.addEventListener("click", () => {
+    const c = (ctx.commitments || []).find((x) => x.id === b.dataset.id);
+    if (c && confirm(`Remove ${c.name}? Payments labelled as its instalments stay labelled but won't count until you label them again.`)) ctx.removeCommitment(c.id);
+  }));
+  root.querySelector('[data-hb="label-all"]')?.addEventListener("click", () => { ui.labelAll = !ui.labelAll; rerender(); });
+  root.querySelector('[data-hb="labelled-open"]')?.addEventListener("click", () => { ui.labelledOpen = !ui.labelledOpen; rerender(); });
+  root.querySelectorAll('[data-hb="label"]').forEach((b) => b.addEventListener("click", () => {
+    const t = txById(ctx, b.dataset.id);
+    if (!t) return;
+    const mine = (ctx.commitments || []).filter((c) => c.key === personKey(t.counterparty));
+    if (b.dataset.what === "instalment" && mine.length !== 1) { ui.splitting = t.id; ui.splitWhere = "commit"; ui.splitDraft = null; rerender(); return; }
+    ctx.saveSplit(t.id, wholeLabel(t, b.dataset.what, mine[0]?.id));
+  }));
+  root.querySelectorAll('[data-hb="label-undo"]').forEach((b) => b.addEventListener("click", () => {
+    ui.splitting = null; ui.splitDraft = null; ctx.saveSplit(b.dataset.id, null);
+  }));
+  root.querySelectorAll('[data-hb="split"]').forEach((b) => b.addEventListener("click", () => {
+    const same = String(ui.splitting) === String(b.dataset.id) && ui.splitWhere === b.dataset.where;
+    ui.splitting = same ? null : b.dataset.id; ui.splitWhere = same ? null : b.dataset.where; ui.splitDraft = null; rerender();
+  }));
+  const box = root.querySelector('[data-hb="split-box"]');
+  if (box && ui.splitDraft) {
+    const t = txById(ctx, ui.splitting);
+    const ids = (ctx.commitments || []).map((c) => c.id);
+    const check = () => {
+      const total = Number(t.amount) || 0;
+      const sum = ui.splitDraft.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+      const ok = !!cleanParts(ui.splitDraft.filter((p) => Number(p.amount) > 0), t, ids);
+      const left = Math.round((total - sum) * 100) / 100;
+      box.querySelector('[data-hb="split-sum"]').textContent = ok ? `Adds up to ${etb(total)}.` : left > 0 ? `ETB ${left.toLocaleString("en-US")} still to place.` : left < 0 ? `ETB ${(-left).toLocaleString("en-US")} too much.` : "Pick a commitment for each instalment.";
+      box.querySelector('[data-hb="split-save"]').disabled = !ok;
+    };
+    box.querySelectorAll('[data-hb="part-amt"]').forEach((i) => i.addEventListener("input", () => { ui.splitDraft[Number(i.dataset.i)].amount = Number(i.value) || 0; check(); }));
+    box.querySelectorAll('[data-hb="part-what"]').forEach((sel) => sel.addEventListener("change", () => {
+      const p = ui.splitDraft[Number(sel.dataset.i)];
+      p.what = sel.value;
+      if (p.what === "instalment" && !p.commitment) p.commitment = ((ctx.commitments || []).find((c) => c.key === personKey(t.counterparty)) || ctx.commitments?.[0])?.id;
+      rerender();
+    }));
+    box.querySelectorAll('[data-hb="part-commit"]').forEach((sel) => sel.addEventListener("change", () => { ui.splitDraft[Number(sel.dataset.i)].commitment = sel.value; check(); }));
+    box.querySelectorAll('[data-hb="part-remove"]').forEach((b) => b.addEventListener("click", () => { ui.splitDraft.splice(Number(b.dataset.i), 1); rerender(); }));
+    box.querySelector('[data-hb="part-add"]')?.addEventListener("click", () => {
+      const sum = ui.splitDraft.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+      ui.splitDraft.push({ what: t.type === "CREDIT" ? "passed" : "normal", amount: Math.max(0, Math.round((Number(t.amount) - sum) * 100) / 100) });
+      rerender();
+    });
+    box.querySelector('[data-hb="split-cancel"]').addEventListener("click", () => { ui.splitting = null; ui.splitDraft = null; rerender(); });
+    box.querySelector('[data-hb="split-save"]').addEventListener("click", () => {
+      const parts = cleanParts(ui.splitDraft.filter((p) => Number(p.amount) > 0), t, ids);
+      if (!parts) return;
+      ui.splitting = null; ui.splitDraft = null;
+      ctx.saveSplit(t.id, parts);
+    });
+    check();
+  }
   // Per-person rules.
   toggle("others-month", "othersMonth");
   toggle("loan-friend", "loanFriend");

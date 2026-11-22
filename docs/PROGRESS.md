@@ -5,11 +5,12 @@ items to Done with the date, add what is next or blocked.
 
 ## Next up
 
-- **Habits on the web dashboard (habit handoff).** PRs 1–4 are merged
-  (Habits tab; pass-throughs and salary; where your money goes; opt-in
-  Gemini and hand-picked kinds), and so are per-person rules (#105, SQL on
-  live). Last PR: split one transaction (instalment + loan
-  repaid) and commitments like the Mac.
+- **Habits on the web dashboard (habit handoff).** PRs 1–4 and per-person
+  rules (#105) are merged. The last PR, commitments and split payments
+  (plus airtime merged into bills), is open. Owner: run
+  `supabase/add_splits.sql` on live before merging. After it: maybe make
+  the Dashboard's totals count split parts exactly (now only all-loan /
+  passed-on payments leave them).
 
 - **The approved canvas, in the app (sections 4, 5, 6 of "Final - Approved
   flow").** Three PRs, owner's decisions of 14 Nov: (1) dark theme, done,
@@ -107,6 +108,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
+- 2026-11-22 Web commitments and split payments on the Habits tab (Label these, Split… into up to 4 parts, Commitments kind; airtime joins bills), PR open. Previewed with made-up data at desktop and phone width. Not yet seen signed in.
 - 2026-11-20 Web per-person rules on the Habits tab: only N a month are mine (Paid for others), loans vs bill shares (Loans with friends), suggestions (merged, #105; SQL on live). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
 - 2026-11-20 Web: opt-in Gemini sorting and hand-picked payee kinds on the Habits tab, PR 4 (merged, #104, carried PR 3; SQL on live; Gemini key and function not yet deployed). Checked with made-up data and a fake Gemini answer at desktop and phone width; the real Gemini call is untested until the key is set.
 - 2026-11-20 Web dashboard: fixed the Payday card crash ("Invalid array length") that stopped the whole dashboard from drawing and looked like being signed out. Each card now fails on its own (PR open).

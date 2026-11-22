@@ -15,9 +15,10 @@ export const isOwnAccountTransfer = (tx) =>
   tx.type === "INTERNAL_TRANSFER" || (tx.category || "").trim() === OWN_ACCOUNTS;
 // tx.pass_through: money the user confirmed came in for someone else and
 // went straight out again (Web/flows.js markPassThroughs). Web only for now.
-// friend_loan / bill_back come from per-person rules (rules.js, Habits tab).
-export const isSpending = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnAccountTransfer(tx) && !tx.pass_through && !tx.friend_loan;
-export const isIncome = (tx) => tx.type === "CREDIT" && !isOwnAccountTransfer(tx) && !tx.pass_through && !tx.friend_loan && !tx.bill_back;
+// friend_loan / bill_back come from per-person rules (rules.js), split_out from
+// a label whose parts are all loan, refund or passed on (splits.js).
+export const isSpending = (tx) => EXPENSE_TYPES.has(tx.type) && !isOwnAccountTransfer(tx) && !tx.pass_through && !tx.friend_loan && !tx.split_out;
+export const isIncome = (tx) => tx.type === "CREDIT" && !isOwnAccountTransfer(tx) && !tx.pass_through && !tx.friend_loan && !tx.bill_back && !tx.split_out;
 // Which way the money went, for the Transactions filter: "CREDIT" (money in),
 // "DEBIT" (money out) or "INTERNAL" (between the user's own accounts, which is
 // neither). Null for types that are none of these (UNKNOWN).

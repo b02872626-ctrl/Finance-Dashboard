@@ -9,10 +9,10 @@
 // are sent, and not ones the user already sorted (a habit or a picked kind).
 
 import { ruleFor, SUGGESTED_HABITS } from "./habits.js";
-import { PICKABLE_KINDS, spendingRows } from "./money.js";
+import { OLD_KINDS, PICKABLE_KINDS, spendingRows } from "./money.js";
 
 export const AI_LIMIT = 60;
-// Only kinds a name can't settle. Bills, airtime, cash and loans come from
+// Only kinds a name can't settle. Bills (with airtime), cash and loans come from
 // clear words in the name, so they are never sent.
 const UNSURE = new Set(["people", "shops", "other"]);
 const round = (n) => Math.round(n);
@@ -86,7 +86,8 @@ export function readSuggestions(answer, sent) {
     if (!s || typeof s !== "object") continue;
     const p = byId.get(String(s.id || ""));
     if (!p || seen.has(p.key)) continue;
-    const kind = PICKABLE_KINDS.includes(s.kind) ? s.kind : null;
+    const asked = OLD_KINDS[s.kind] || s.kind;
+    const kind = PICKABLE_KINDS.includes(asked) ? asked : null;
     let habit = typeof s.habit === "string" ? s.habit.trim().replace(/\s+/g, " ").slice(0, 40) : "";
     if (habit) habit = SUGGESTED_HABITS.find((h) => h.toLowerCase() === habit.toLowerCase()) || habit[0].toUpperCase() + habit.slice(1);
     if (!kind && !habit) continue;
@@ -109,7 +110,8 @@ export function readSuggestions(answer, sent) {
 export function kindsFrom(rows) {
   const m = new Map();
   for (const r of rows || []) {
-    if (r.kind === "payee_kind" && r.decision === "yes" && PICKABLE_KINDS.includes(r.detail?.kind)) m.set(r.ref, r.detail.kind);
+    const kind = OLD_KINDS[r.detail?.kind] || r.detail?.kind;
+    if (r.kind === "payee_kind" && r.decision === "yes" && PICKABLE_KINDS.includes(kind)) m.set(r.ref, kind);
   }
   return m;
 }

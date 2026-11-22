@@ -19,7 +19,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DAILY_LIMIT = 20;
 const MAX_PAYEES = 60;
-const KINDS = ["people", "shops", "bills", "airtime", "cash", "loans", "other"];
+const KINDS = ["people", "shops", "bills", "cash", "loans", "other"];
 const HABITS = ["Food", "Coffee", "Transport", "Internet", "Games", "Sport", "Drinks", "Snacks"];
 
 const CORS = {
@@ -53,8 +53,7 @@ You get the people and places they paid from their bank and mobile-money SMS: a 
 For each one, say what kind of payee it most likely is:
 - people: a person (family, friends, a landlord paid in person, someone they owe)
 - shops: a business, restaurant, cafe, shop, hotel, transport or service
-- bills: utilities, school fees, insurance, rent paid to a company, bank fees, taxes
-- airtime: phone airtime, data or telecom packages
+- bills: utilities, school fees, insurance, rent paid to a company, bank fees, taxes, phone airtime, data or telecom packages
 - cash: cash withdrawals, ATMs, agents
 - loans: loan apps, credit and repayments
 - other: you cannot tell
