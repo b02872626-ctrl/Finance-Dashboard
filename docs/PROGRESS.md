@@ -7,9 +7,8 @@ items to Done with the date, add what is next or blocked.
 
 - **Habits on the web dashboard (habit handoff).** PRs 1–4 are merged
   (Habits tab; pass-throughs and salary; where your money goes; opt-in
-  Gemini and hand-picked kinds). Per-person rules (paid for others, loans
-  with friends) are open. Owner: run `supabase/add_payee_rules.sql` on live
-  before merging. Last PR: split one transaction (instalment + loan
+  Gemini and hand-picked kinds), and so are per-person rules (#105, SQL on
+  live). Last PR: split one transaction (instalment + loan
   repaid) and commitments like the Mac.
 
 - **The approved canvas, in the app (sections 4, 5, 6 of "Final - Approved
@@ -33,9 +32,9 @@ items to Done with the date, add what is next or blocked.
   ignores the linked account and shows saves logged by hand only), "goal
   reached" notification, archived list.
 
-- **FOW Summit booth, 28 Nov (NAH-32).** Apply by 18 Nov. Goal: 100
-  downloads and 100 active users. Release and install on a real phone by
-  26 Nov. Sub-issues, one branch each: parsers NAH-29, notifications
+- **Growth work, no deadline (was the FOW Summit list, NAH-32).** Kash
+  isn't at the summit (owner, 22 Nov), so these keep their value but lose
+  the 26 Nov date. One branch each: parsers NAH-29, notifications
   NAH-33, analytics NAH-27, Kash Wrapped NAH-34, in-app update + popup
   NAH-35, category swipe NAH-36, icon clean-up NAH-37, download page
   NAH-38, web insights NAH-30, web redesign + speed NAH-39, Gemini "Ask
@@ -74,17 +73,12 @@ items to Done with the date, add what is next or blocked.
   the Supabase CLI (`brew install supabase/tap/supabase`), `supabase login`,
   `supabase link --project-ref sadbxjnmcgzwtjbqqhbk`, then type the key
   yourself: `supabase secrets set GEMINI_API_KEY=...` and
-  `supabase functions deploy kash-gemini`. Run `supabase/add_payee_kinds.sql`
-  on live before merging.
+  `supabase functions deploy kash-gemini`. (The SQL is already on live.)
 
 - PostHog session replay is on and checked. Keep "Capture console logs"
   off (PostHog → Settings → Session replay). Update the Play Console data
   safety form (App interactions row) to match `docs/play-store-sms-declaration.md`.
 
-- Send the FOW Summit booth application by 18 Nov (NAH-32). Check
-  whether a registered company is required.
-- Get a Gemini API key (Google AI Studio) for NAH-40; it goes into
-  Supabase secrets, never into chat or the repo.
 
 - Export a fresh `i_raw_data` CSV (the one in Downloads ends 28 Oct) so
   parser work sees November SMS.
@@ -113,7 +107,7 @@ items to Done with the date, add what is next or blocked.
 
 ## Done
 
-- 2026-11-20 Web per-person rules on the Habits tab: only N a month are mine (Paid for others), loans vs bill shares (Loans with friends), suggestions (PR open). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
+- 2026-11-20 Web per-person rules on the Habits tab: only N a month are mine (Paid for others), loans vs bill shares (Loans with friends), suggestions (merged, #105; SQL on live). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
 - 2026-11-20 Web: opt-in Gemini sorting and hand-picked payee kinds on the Habits tab, PR 4 (merged, #104, carried PR 3; SQL on live; Gemini key and function not yet deployed). Checked with made-up data and a fake Gemini answer at desktop and phone width; the real Gemini call is untested until the key is set.
 - 2026-11-20 Web dashboard: fixed the Payday card crash ("Invalid array length") that stopped the whole dashboard from drawing and looked like being signed out. Each card now fails on its own (PR open).
 - 2026-11-20 Web "where your money goes" (five views on the Habits tab), #103 (landed on PR 2's branch, not main; reached main with #104). Previewed with made-up data at desktop and phone width. Not yet seen signed in.
