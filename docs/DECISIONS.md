@@ -6,6 +6,13 @@ decision without asking the owner.
 
 Entries before 2026-11-05 were reconstructed from the git history.
 
+## 2026-11-22 — Kash isn't at the FOW Summit
+
+The owner said Kash is out of the Future of Work Ethiopia Summit (28 Nov).
+The summit sub-issues (NAH-32 list) stay as growth work without the
+26 Nov deadline. The 2026-11-11 choice of no AI in the Android app and
+Gemini only on the web stays as it is; it no longer depends on the summit.
+
 ## 2026-11-20 — Per-person rules: paid for others, loans with friends (web Habits tab)
 
 Habit handoff, per-person rules. Owner's choices: payments past "mine" show
